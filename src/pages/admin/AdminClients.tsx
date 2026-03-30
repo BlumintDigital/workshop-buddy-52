@@ -58,22 +58,18 @@ export default function AdminClients() {
   const handleAddClient = async () => {
     if (!newEmail || !newName) return;
     setAdding(true);
-    const tempPassword = crypto.randomUUID().slice(0, 12);
-    const { data, error } = await supabase.auth.signUp({
-      email: newEmail,
-      password: tempPassword,
-      options: { data: { full_name: newName } },
+    const { data, error } = await supabase.functions.invoke("create-client", {
+      body: { email: newEmail, full_name: newName, phone: newPhone || undefined },
     });
-    if (error) { toast.error(error.message); setAdding(false); return; }
-    // Update phone if provided
-    if (newPhone && data.user) {
-      await supabase.from("profiles").update({ phone: newPhone } as any).eq("id", data.user.id);
+    if (error || data?.error) {
+      toast.error(data?.error || error?.message || "Failed to create client");
+      setAdding(false);
+      return;
     }
     toast.success(`Client "${newName}" created. They can use "Forgot Password" to set their password.`);
     setAddOpen(false);
     setNewEmail(""); setNewName(""); setNewPhone("");
     setAdding(false);
-    // Refresh after a short delay for the trigger to run
     setTimeout(fetchClients, 1500);
   };
 
