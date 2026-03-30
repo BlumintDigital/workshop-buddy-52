@@ -118,8 +118,8 @@ export async function generateJobReport(jobId: string): Promise<void> {
   const [{ data: job }, { data: tasks }, { data: allNotes }, { data: allAttachments }, { data: settings }] = await Promise.all([
     supabase.from("jobs").select("*").eq("id", jobId).single(),
     supabase.from("job_tasks").select("*").eq("job_id", jobId).order("created_at"),
-    supabase.from("job_task_notes").select("*").order("created_at"),
-    supabase.from("job_attachments").select("*").eq("job_id", jobId).order("created_at"),
+    (supabase.from as any)("job_task_notes").select("*").order("created_at"),
+    (supabase.from as any)("job_attachments").select("*").eq("job_id", jobId).order("created_at"),
     supabase.from("workshop_settings").select("workshop_name").eq("id", 1).maybeSingle(),
   ]);
 
