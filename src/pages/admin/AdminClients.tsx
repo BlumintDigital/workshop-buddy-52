@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
-import { Plus, Search } from "lucide-react";
+import { Plus, Search, Pencil, Check, X } from "lucide-react";
 
 type ClientRow = {
   user_id: string;
@@ -31,6 +31,11 @@ export default function AdminClients() {
   const [newName, setNewName] = useState("");
   const [newPhone, setNewPhone] = useState("");
   const [adding, setAdding] = useState(false);
+
+  // Inline editing state
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editPhone, setEditPhone] = useState("");
 
   const fetchClients = async () => {
     const { data: roles } = await supabase.from("user_roles").select("user_id").eq("role", "client");
@@ -55,6 +60,24 @@ export default function AdminClients() {
     if (error) { toast.error(error.message); return; }
     setClients((prev) => prev.map((c) => (c.user_id === userId ? { ...c, is_active: active } : c)));
     toast.success(active ? "Client portal activated" : "Client portal deactivated");
+  };
+
+  const startEditing = (c: ClientRow) => {
+    setEditingId(c.user_id);
+    setEditName(c.full_name || "");
+    setEditPhone(c.phone || "");
+  };
+
+  const cancelEditing = () => {
+    setEditingId(null);
+  };
+
+  const saveEditing = async (userId: string) => {
+    const { error } = await supabase.from("profiles").update({ full_name: editName, phone: editPhone || null } as any).eq("id", userId);
+    if (error) { toast.error(error.message); return; }
+    setClients((prev) => prev.map((c) => (c.user_id === userId ? { ...c, full_name: editName, phone: editPhone || null } : c)));
+    setEditingId(null);
+    toast.success("Client updated");
   };
 
   const handleAddClient = async () => {
@@ -122,21 +145,53 @@ export default function AdminClients() {
                   <TableHead>Phone</TableHead>
                   <TableHead>Joined</TableHead>
                   <TableHead>Portal Active</TableHead>
+                  <TableHead className="w-[100px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filtered.length === 0 ? (
-                  <TableRow><TableCell colSpan={4} className="text-center py-8 text-muted-foreground">No clients found</TableCell></TableRow>
-                ) : filtered.map((c) => (
-                  <TableRow key={c.user_id} className="cursor-pointer" onClick={() => navigate(`/admin/users/${c.user_id}`)}>
-                    <TableCell className="font-medium text-primary hover:underline">{c.full_name || "—"}</TableCell>
-                    <TableCell>{c.phone || "—"}</TableCell>
-                    <TableCell>{new Date(c.created_at).toLocaleDateString()}</TableCell>
-                    <TableCell onClick={(e) => e.stopPropagation()}>
-                      <Switch checked={c.is_active} onCheckedChange={(v) => toggleActive(c.user_id, v)} />
-                    </TableCell>
-                  </TableRow>
-                ))}
+                  <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">No clients found</TableCell></TableRow>
+                ) : filtered.map((c) => {
+                  const isEditing = editingId === c.user_id;
+                  return (
+                    <TableRow key={c.user_id} className={isEditing ? "" : "cursor-pointer"} onClick={() => !isEditing && navigate(`/admin/users/${c.user_id}`)}>
+                      <TableCell onClick={(e) => isEditing && e.stopPropagation()}>
+                        {isEditing ? (
+                          <Input value={editName} onChange={(e) => setEditName(e.target.value)} className="h-8" autoFocus />
+                        ) : (
+                          <span className="font-medium text-primary hover:underline">{c.full_name || "—"}</span>
+                        )}
+                      </TableCell>
+                      <TableCell onClick={(e) => isEditing && e.stopPropagation()}>
+                        {isEditing ? (
+                          <Input value={editPhone} onChange={(e) => setEditPhone(e.target.value)} className="h-8" placeholder="Phone" />
+                        ) : (
+                          c.phone || "—"
+                        )}
+                      </TableCell>
+                      <TableCell>{new Date(c.created_at).toLocaleDateString()}</TableCell>
+                      <TableCell onClick={(e) => e.stopPropagation()}>
+                        <Switch checked={c.is_active} onCheckedChange={(v) => toggleActive(c.user_id, v)} />
+                      </TableCell>
+                      <TableCell onClick={(e) => e.stopPropagation()}>
+                        {isEditing ? (
+                          <div className="flex gap-1">
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => saveEditing(c.user_id)}>
+                              <Check className="h-4 w-4 text-primary" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={cancelEditing}>
+                              <X className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => startEditing(c)}>
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </CardContent>
