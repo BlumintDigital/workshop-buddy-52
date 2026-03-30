@@ -31,6 +31,7 @@ import ManagerInventory from "@/pages/manager/ManagerInventory";
 import ManagerInvoices from "@/pages/manager/ManagerInvoices";
 import ManagerStaff from "@/pages/manager/ManagerStaff";
 import ManagerUserDetail from "@/pages/manager/ManagerUserDetail";
+import ManagerCalendar from "@/pages/manager/ManagerCalendar";
 
 // Staff pages
 import StaffDashboard from "@/pages/staff/StaffDashboard";
@@ -85,6 +86,7 @@ const App = () => (
             <Route path="/manager/invoices" element={<ProtectedRoute allowedRoles={["manager"]}><ManagerInvoices /></ProtectedRoute>} />
             <Route path="/manager/staff" element={<ProtectedRoute allowedRoles={["manager"]}><ManagerStaff /></ProtectedRoute>} />
             <Route path="/manager/staff/:userId" element={<ProtectedRoute allowedRoles={["manager"]}><ManagerUserDetail /></ProtectedRoute>} />
+            <Route path="/manager/calendar" element={<ProtectedRoute allowedRoles={["manager"]}><ManagerCalendar /></ProtectedRoute>} />
 
             {/* Staff routes */}
             <Route path="/staff/dashboard" element={<ProtectedRoute allowedRoles={["staff"]}><StaffDashboard /></ProtectedRoute>} />
