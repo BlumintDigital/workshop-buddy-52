@@ -1,2 +1,95 @@
-import AdminUsers from "@/pages/admin/AdminUsers";
-export default AdminUsers;
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
+import DashboardLayout from "@/components/layout/DashboardLayout";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { toast } from "sonner";
+import { Eye } from "lucide-react";
+
+type StaffRow = {
+  user_id: string;
+  full_name: string | null;
+  role: string;
+  created_at: string;
+};
+
+export default function ManagerStaff() {
+  const [staff, setStaff] = useState<StaffRow[]>([]);
+  const navigate = useNavigate();
+
+  const fetchStaff = async () => {
+    const { data: roles } = await supabase.from("user_roles").select("user_id, role").in("role", ["staff", "manager"]);
+    const { data: profiles } = await supabase.from("profiles").select("id, full_name, created_at");
+    if (roles && profiles) {
+      const merged = roles.map((r) => {
+        const p = profiles.find((p) => p.id === r.user_id);
+        return { user_id: r.user_id, full_name: p?.full_name || "Unknown", role: r.role, created_at: p?.created_at || "" };
+      });
+      setStaff(merged);
+    }
+  };
+
+  useEffect(() => { fetchStaff(); }, []);
+
+  const changeRole = async (userId: string, newRole: string) => {
+    const { error } = await supabase.from("user_roles").update({ role: newRole } as any).eq("user_id", userId);
+    if (error) { toast.error(error.message); return; }
+    setStaff((prev) => prev.map((s) => (s.user_id === userId ? { ...s, role: newRole } : s)));
+    toast.success("Role updated");
+  };
+
+  return (
+    <DashboardLayout>
+      <div className="space-y-6">
+        <div>
+          <h2 className="text-3xl font-bold tracking-tight">Staff</h2>
+          <p className="text-muted-foreground">Manage staff and manager accounts</p>
+        </div>
+        <Card>
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead>Joined</TableHead>
+                  <TableHead className="w-[80px]">Details</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {staff.length === 0 ? (
+                  <TableRow><TableCell colSpan={4} className="text-center py-8 text-muted-foreground">No staff members</TableCell></TableRow>
+                ) : staff.map((s) => (
+                  <TableRow key={s.user_id}>
+                    <TableCell className="font-medium">{s.full_name}</TableCell>
+                    <TableCell>
+                      <Select value={s.role} onValueChange={(v) => changeRole(s.user_id, v)}>
+                        <SelectTrigger className="w-[130px] h-8">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="manager">Manager</SelectItem>
+                          <SelectItem value="staff">Staff</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </TableCell>
+                    <TableCell>{s.created_at ? new Date(s.created_at).toLocaleDateString() : "—"}</TableCell>
+                    <TableCell>
+                      <Button variant="ghost" size="icon" onClick={() => navigate(`/manager/staff/${s.user_id}`)}>
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      </div>
+    </DashboardLayout>
+  );
+}
