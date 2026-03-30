@@ -24,7 +24,7 @@ export default function AdminUsers() {
   const navigate = useNavigate();
 
   const fetchUsers = async () => {
-    const { data: roles } = await supabase.from("user_roles").select("user_id, role");
+    const { data: roles } = await supabase.from("user_roles").select("user_id, role").in("role", ["admin", "manager", "staff"]);
     const { data: profiles } = await supabase.from("profiles").select("id, full_name, created_at");
     if (roles && profiles) {
       const merged = roles.map((r) => {
