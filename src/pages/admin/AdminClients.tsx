@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -22,6 +23,7 @@ type ClientRow = {
 
 export default function AdminClients() {
   const [clients, setClients] = useState<ClientRow[]>([]);
+  const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [addOpen, setAddOpen] = useState(false);
@@ -126,11 +128,11 @@ export default function AdminClients() {
                 {filtered.length === 0 ? (
                   <TableRow><TableCell colSpan={4} className="text-center py-8 text-muted-foreground">No clients found</TableCell></TableRow>
                 ) : filtered.map((c) => (
-                  <TableRow key={c.user_id}>
-                    <TableCell className="font-medium">{c.full_name || "—"}</TableCell>
+                  <TableRow key={c.user_id} className="cursor-pointer" onClick={() => navigate(`/admin/users/${c.user_id}`)}>
+                    <TableCell className="font-medium text-primary hover:underline">{c.full_name || "—"}</TableCell>
                     <TableCell>{c.phone || "—"}</TableCell>
                     <TableCell>{new Date(c.created_at).toLocaleDateString()}</TableCell>
-                    <TableCell>
+                    <TableCell onClick={(e) => e.stopPropagation()}>
                       <Switch checked={c.is_active} onCheckedChange={(v) => toggleActive(c.user_id, v)} />
                     </TableCell>
                   </TableRow>

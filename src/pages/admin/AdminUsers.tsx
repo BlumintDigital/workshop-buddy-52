@@ -90,9 +90,9 @@ export default function AdminUsers() {
                 {filtered.length === 0 ? (
                   <TableRow><TableCell colSpan={4} className="text-center py-8 text-muted-foreground">No users found</TableCell></TableRow>
                 ) : filtered.map((u) => (
-                  <TableRow key={u.user_id}>
-                    <TableCell className="font-medium">{u.full_name}</TableCell>
-                    <TableCell>
+                  <TableRow key={u.user_id} className="cursor-pointer" onClick={() => navigate(`/admin/users/${u.user_id}`)}>
+                    <TableCell className="font-medium text-primary hover:underline">{u.full_name}</TableCell>
+                    <TableCell onClick={(e) => e.stopPropagation()}>
                       <Select value={u.role} onValueChange={(v) => changeRole(u.user_id, v)}>
                         <SelectTrigger className="w-[130px] h-8"><SelectValue /></SelectTrigger>
                         <SelectContent>
