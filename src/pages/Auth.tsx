@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { Wrench } from "lucide-react";
 import { useEffect } from "react";
+import LoadingScreen from "@/components/LoadingScreen";
 
 export default function Auth() {
   const { signIn, signUp, user, role, loading } = useAuth();
@@ -25,6 +26,8 @@ export default function Auth() {
       navigate(getRoleDashboardPath(role), { replace: true });
     }
   }, [user, role, loading, navigate]);
+
+  if (loading) return <LoadingScreen />;
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
