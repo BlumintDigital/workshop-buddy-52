@@ -162,13 +162,13 @@ export default function AdminSettings() {
         </div>
 
         <Tabs defaultValue="general">
-          <TabsList className="flex overflow-x-auto flex-nowrap w-full">
-            <TabsTrigger value="general">General</TabsTrigger>
-            <TabsTrigger value="billing">Billing</TabsTrigger>
-            <TabsTrigger value="notifications">Notifications</TabsTrigger>
-            <TabsTrigger value="branding">Branding</TabsTrigger>
-            <TabsTrigger value="email">Email</TabsTrigger>
-            <TabsTrigger value="data">Data</TabsTrigger>
+          <TabsList className="grid grid-cols-3 w-full h-auto">
+            <TabsTrigger value="general" className="text-xs sm:text-sm">General</TabsTrigger>
+            <TabsTrigger value="billing" className="text-xs sm:text-sm">Billing</TabsTrigger>
+            <TabsTrigger value="notifications" className="text-xs sm:text-sm">Notifications</TabsTrigger>
+            <TabsTrigger value="branding" className="text-xs sm:text-sm">Branding</TabsTrigger>
+            <TabsTrigger value="email" className="text-xs sm:text-sm">Email</TabsTrigger>
+            <TabsTrigger value="data" className="text-xs sm:text-sm">Data</TabsTrigger>
           </TabsList>
 
           <TabsContent value="general" className="mt-4">
