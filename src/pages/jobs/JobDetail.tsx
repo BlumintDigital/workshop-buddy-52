@@ -64,6 +64,7 @@ export default function JobDetail() {
   const [jobAttachments, setJobAttachments] = useState<any[]>([]);
   const [uploadingJob, setUploadingJob] = useState(false);
   const [uploadingTask, setUploadingTask] = useState(false);
+  const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
   const [generatingReport, setGeneratingReport] = useState(false);
   const jobFileInputRef = useRef<HTMLInputElement>(null);
   const taskFileInputRef = useRef<HTMLInputElement>(null);
@@ -163,7 +164,9 @@ export default function JobDetail() {
   const fetchJobAttachments = async () => {
     const { data } = await (supabase.from as any)("job_attachments")
       .select("*").eq("job_id", id!).is("task_id", null).order("created_at", { ascending: false });
-    setJobAttachments(data || []);
+    const list = data || [];
+    setJobAttachments(list);
+    if (list.length > 0) generateSignedUrls(list);
   };
 
   const fetchTaskDetails = async (taskId: string) => {
@@ -179,7 +182,9 @@ export default function JobDetail() {
       if (profiles) profiles.forEach(p => { authorMap[p.id] = p.full_name || "Unknown"; });
     }
     setTaskNotes(noteList.map((n: any) => ({ ...n, author_name: authorMap[n.user_id] || "Unknown" })));
-    setTaskAttachments(files || []);
+    const fileList = files || [];
+    setTaskAttachments(fileList);
+    if (fileList.length > 0) generateSignedUrls(fileList);
   };
 
   const fetchMaterials = async () => {
@@ -203,8 +208,17 @@ export default function JobDetail() {
   };
 
   // Storage helpers
-  const getFileUrl = (path: string) =>
-    supabase.storage.from("job-attachments").getPublicUrl(path).data.publicUrl;
+  const generateSignedUrls = async (attachments: any[]) => {
+    const newUrls: Record<string, string> = {};
+    await Promise.all(
+      attachments.map(async (a) => {
+        const { data } = await supabase.storage.from("job-attachments").createSignedUrl(a.file_path, 3600);
+        if (data?.signedUrl) newUrls[a.file_path] = data.signedUrl;
+      })
+    );
+    setSignedUrls(prev => ({ ...prev, ...newUrls }));
+  };
+  const getFileUrl = (path: string) => signedUrls[path] || "";
   const isImage = (type: string) => type.startsWith("image/");
 
   const handleUploadJobFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
