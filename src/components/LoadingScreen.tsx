@@ -10,7 +10,7 @@ export default function LoadingScreen() {
         <h1 className="text-xl font-semibold tracking-tight text-foreground">Workshop Manager</h1>
       </div>
       <div className="w-48 h-1.5 overflow-hidden rounded-full bg-secondary">
-        <div className="h-full w-1/3 rounded-full bg-primary animate-[indeterminate_1.4s_ease-in-out_infinite]" />
+        <div className="h-full w-1/3 rounded-full bg-primary animate-indeterminate" />
       </div>
       <p className="text-sm text-muted-foreground">Loading your workspace...</p>
     </div>
