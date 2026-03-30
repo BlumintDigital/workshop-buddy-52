@@ -852,7 +852,7 @@ export default function JobDetail() {
               </div>
               <div>
                 <Label>Assign Client</Label>
-                <Select value={editForm.client_id || ""} onValueChange={(v) => setEditForm({ ...editForm, client_id: v })}>
+                <Select value={editForm.client_id || "__none__"} onValueChange={(v) => setEditForm({ ...editForm, client_id: v === "__none__" ? "" : v })}>
                   <SelectTrigger className="mt-1"><SelectValue placeholder="None" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="__none__">None</SelectItem>
