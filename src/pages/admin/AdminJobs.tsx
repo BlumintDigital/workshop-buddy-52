@@ -31,7 +31,7 @@ export default function AdminJobs() {
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [form, setForm] = useState({ title: "", description: "", priority: "medium", assigned_staff_id: "", client_id: "", isQuote: false });
+  const [form, setForm] = useState({ title: "", description: "", priority: "medium", assigned_staff_id: "", client_id: "", isQuote: false, due_date: "" });
   const [staffUsers, setStaffUsers] = useState<UserOption[]>([]);
   const [clientUsers, setClientUsers] = useState<UserOption[]>([]);
   const { page, setPage, from, reset } = usePagination();
