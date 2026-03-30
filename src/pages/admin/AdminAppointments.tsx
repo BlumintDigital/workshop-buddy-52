@@ -255,7 +255,9 @@ export default function AdminAppointments() {
                     <TableCell>
                       <Select value={a.status} onValueChange={(v) => handleStatusChange(a.id, v)}>
                         <SelectTrigger className="w-32 h-8">
-                          <Badge variant={statusColors[a.status] || "outline"}>{a.status?.replace("_", " ")}</Badge>
+                          <SelectValue>
+                            <Badge variant={statusColors[a.status] || "outline"}>{a.status?.replace("_", " ")}</Badge>
+                          </SelectValue>
                         </SelectTrigger>
                         <SelectContent>
                           {APPT_STATUSES.map((s) => (

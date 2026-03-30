@@ -15,7 +15,6 @@ export default function StaffSchedule() {
     supabase
       .from("appointments")
       .select("*")
-      .eq("client_id", user.id)
       .order("appointment_date", { ascending: true })
       .then(({ data }) => setAppointments(data || []));
   }, [user?.id]);
