@@ -7,7 +7,19 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
+import { Database, Trash2, Loader2 } from "lucide-react";
 
 const defaultSettings = {
   workshop_name: "",
@@ -29,6 +41,8 @@ export default function AdminSettings() {
   const [settings, setSettings] = useState<Settings>({ ...defaultSettings });
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [seeding, setSeeding] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     supabase
@@ -77,6 +91,32 @@ export default function AdminSettings() {
     toast.success("Settings saved");
   };
 
+  const handleSeedData = async () => {
+    setSeeding(true);
+    const { data, error } = await supabase.functions.invoke("seed-data");
+    setSeeding(false);
+    if (error || data?.error) {
+      toast.error(data?.error || error?.message || "Failed to generate sample data");
+      return;
+    }
+    const counts = data?.counts || {};
+    const total = Object.values(counts).reduce((a: number, b: any) => a + (b as number), 0);
+    toast.success(`Generated ${total} sample records across ${Object.keys(counts).length} tables`);
+  };
+
+  const handleDeleteData = async () => {
+    setDeleting(true);
+    const { data, error } = await supabase.functions.invoke("delete-data");
+    setDeleting(false);
+    if (error || data?.error) {
+      toast.error(data?.error || error?.message || "Failed to delete data");
+      return;
+    }
+    const deleted = data?.deleted || {};
+    const total = Object.values(deleted).reduce((a: number, b: any) => a + (b as number), 0);
+    toast.success(`Deleted ${total} records across ${Object.keys(deleted).length} tables`);
+  };
+
   const set = (key: keyof Settings, value: string | boolean) =>
     setSettings(prev => ({ ...prev, [key]: value }));
 
@@ -96,6 +136,7 @@ export default function AdminSettings() {
             <TabsTrigger value="billing">Billing</TabsTrigger>
             <TabsTrigger value="notifications">Notifications</TabsTrigger>
             <TabsTrigger value="email">Email</TabsTrigger>
+            <TabsTrigger value="data">Data</TabsTrigger>
           </TabsList>
 
           <TabsContent value="general" className="mt-4">
@@ -220,6 +261,90 @@ export default function AdminSettings() {
                   <li>Run: <code className="bg-muted px-1 rounded">supabase functions deploy send-email</code></li>
                   <li>Enable the toggle above and set your from address, then save</li>
                 </ol>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="data" className="mt-4 space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Database className="h-5 w-5" />
+                  Generate Sample Data
+                </CardTitle>
+                <CardDescription>
+                  Populate the database with realistic sample jobs, appointments, inventory, invoices, and more for testing purposes.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button onClick={handleSeedData} disabled={seeding}>
+                  {seeding ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      <Database className="mr-2 h-4 w-4" />
+                      Generate Sample Data
+                    </>
+                  )}
+                </Button>
+                <p className="text-xs text-muted-foreground mt-2">
+                  Creates ~50+ records across all tables. Can be run multiple times to add more data.
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="border-destructive/50">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-destructive">
+                  <Trash2 className="h-5 w-5" />
+                  Delete All Data
+                </CardTitle>
+                <CardDescription>
+                  Remove all business data (jobs, appointments, inventory, invoices, notifications). User accounts, roles, and settings are preserved.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive" disabled={deleting}>
+                      {deleting ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Deleting...
+                        </>
+                      ) : (
+                        <>
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Delete All Data
+                        </>
+                      )}
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will permanently delete all jobs, appointments, inventory items, invoices, and notifications.
+                        User accounts, roles, and workshop settings will be preserved. This action cannot be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={handleDeleteData}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      >
+                        Yes, delete everything
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+                <p className="text-xs text-muted-foreground mt-2">
+                  This action is irreversible. Make sure you want to clear all data before proceeding.
+                </p>
               </CardContent>
             </Card>
           </TabsContent>
