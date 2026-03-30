@@ -396,15 +396,33 @@ export default function JobDetail() {
   const handleSaveTask = async () => {
     if (!taskForm.title.trim()) { toast.error("Task title is required"); return; }
     const payload = { job_id: id!, title: taskForm.title.trim(), description: taskForm.description || null, assigned_to: taskForm.assigned_to || null, status: taskForm.status };
+    let newTaskId: string | null = null;
     if (editingTask) {
       const { error } = await supabase.from("job_tasks").update(payload).eq("id", editingTask.id);
       if (error) { toast.error(error.message); return; }
+      newTaskId = editingTask.id;
       toast.success("Task updated");
     } else {
-      const { error } = await supabase.from("job_tasks").insert(payload);
+      const { data, error } = await supabase.from("job_tasks").insert(payload).select("id").single();
       if (error) { toast.error(error.message); return; }
+      newTaskId = data.id;
       toast.success("Task added");
     }
+    // Upload pending files for new task
+    if (newTaskId && taskPendingFiles.length > 0) {
+      for (const file of taskPendingFiles) {
+        const ext = file.name.split(".").pop();
+        const path = `${id}/${newTaskId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+        const { error: uploadErr } = await supabase.storage.from("job-attachments").upload(path, file);
+        if (uploadErr) { toast.error(`Failed to upload ${file.name}`); continue; }
+        await (supabase.from as any)("job_attachments").insert({
+          job_id: id!, task_id: newTaskId, uploaded_by: user!.id,
+          file_name: file.name, file_path: path, file_type: file.type, file_size: file.size,
+        });
+      }
+      if (taskPendingFiles.length > 0) toast.success(`${taskPendingFiles.length} file(s) attached`);
+    }
+    setTaskPendingFiles([]);
     setTaskOpen(false); setEditingTask(null); fetchTasks();
   };
 
