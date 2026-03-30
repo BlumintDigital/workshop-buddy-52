@@ -108,7 +108,7 @@ export default function AdminJobs() {
     if (error) { toast.error(error.message); return; }
     toast.success("Job created");
     setOpen(false);
-    setForm({ title: "", description: "", priority: "medium", assigned_staff_id: "", client_id: "", isQuote: false });
+    setForm({ title: "", description: "", priority: "medium", assigned_staff_id: "", client_id: "", isQuote: false, due_date: "" });
     fetchJobs(page, filter, debouncedSearch);
   };
 
