@@ -94,7 +94,9 @@ export default function AdminInvoices() {
                     <TableCell>
                       <Select value={inv.status} onValueChange={(v) => handleStatusChange(inv.id, v)}>
                         <SelectTrigger className="w-28 h-8">
-                          <Badge variant={statusColors[inv.status]}>{inv.status}</Badge>
+                          <SelectValue>
+                            <Badge variant={statusColors[inv.status]}>{inv.status}</Badge>
+                          </SelectValue>
                         </SelectTrigger>
                         <SelectContent>
                           {["draft", "sent", "paid", "overdue", "cancelled"].map((s) => (
