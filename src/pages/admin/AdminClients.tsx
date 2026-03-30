@@ -177,7 +177,7 @@ export default function AdminClients() {
                         {isEditing ? (
                           <div className="flex gap-1">
                             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => saveEditing(c.user_id)}>
-                              <Check className="h-4 w-4 text-green-600" />
+                              <Check className="h-4 w-4 text-primary" />
                             </Button>
                             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={cancelEditing}>
                               <X className="h-4 w-4 text-destructive" />
