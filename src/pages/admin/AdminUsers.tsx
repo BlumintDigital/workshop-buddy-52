@@ -1,14 +1,14 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
-import { Eye } from "lucide-react";
+import { Eye, Search } from "lucide-react";
 
 type UserRow = {
   user_id: string;
@@ -19,6 +19,8 @@ type UserRow = {
 
 export default function AdminUsers() {
   const [users, setUsers] = useState<UserRow[]>([]);
+  const [search, setSearch] = useState("");
+  const [roleFilter, setRoleFilter] = useState("all");
   const navigate = useNavigate();
 
   const fetchUsers = async () => {
@@ -35,6 +37,14 @@ export default function AdminUsers() {
 
   useEffect(() => { fetchUsers(); }, []);
 
+  const filtered = useMemo(() => {
+    return users.filter((u) => {
+      const matchesSearch = !search || (u.full_name || "").toLowerCase().includes(search.toLowerCase());
+      const matchesRole = roleFilter === "all" || u.role === roleFilter;
+      return matchesSearch && matchesRole;
+    });
+  }, [users, search, roleFilter]);
+
   const changeRole = async (userId: string, newRole: string) => {
     const { error } = await supabase.from("user_roles").update({ role: newRole } as any).eq("user_id", userId);
     if (error) { toast.error(error.message); return; }
@@ -49,6 +59,22 @@ export default function AdminUsers() {
           <h2 className="text-3xl font-bold tracking-tight">Users</h2>
           <p className="text-muted-foreground">Manage all users and roles</p>
         </div>
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input placeholder="Search by name…" value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+          </div>
+          <Select value={roleFilter} onValueChange={setRoleFilter}>
+            <SelectTrigger className="w-[160px]"><SelectValue placeholder="Filter by role" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Roles</SelectItem>
+              <SelectItem value="admin">Admin</SelectItem>
+              <SelectItem value="manager">Manager</SelectItem>
+              <SelectItem value="staff">Staff</SelectItem>
+              <SelectItem value="client">Client</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
         <Card>
           <CardContent className="p-0">
             <Table>
@@ -61,16 +87,14 @@ export default function AdminUsers() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {users.length === 0 ? (
-                  <TableRow><TableCell colSpan={4} className="text-center py-8 text-muted-foreground">No users</TableCell></TableRow>
-                ) : users.map((u) => (
+                {filtered.length === 0 ? (
+                  <TableRow><TableCell colSpan={4} className="text-center py-8 text-muted-foreground">No users found</TableCell></TableRow>
+                ) : filtered.map((u) => (
                   <TableRow key={u.user_id}>
                     <TableCell className="font-medium">{u.full_name}</TableCell>
                     <TableCell>
                       <Select value={u.role} onValueChange={(v) => changeRole(u.user_id, v)}>
-                        <SelectTrigger className="w-[130px] h-8">
-                          <SelectValue />
-                        </SelectTrigger>
+                        <SelectTrigger className="w-[130px] h-8"><SelectValue /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value="admin">Admin</SelectItem>
                           <SelectItem value="manager">Manager</SelectItem>

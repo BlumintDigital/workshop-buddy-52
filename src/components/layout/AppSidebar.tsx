@@ -32,6 +32,7 @@ const navItems: Record<AppRole, { title: string; url: string; icon: any }[]> = {
     { title: "Dashboard", url: "/manager/dashboard", icon: LayoutDashboard },
     { title: "Jobs", url: "/manager/jobs", icon: Briefcase },
     { title: "Appointments", url: "/manager/appointments", icon: Calendar },
+    { title: "Calendar", url: "/manager/calendar", icon: CalendarDays },
     { title: "Inventory", url: "/manager/inventory", icon: Package },
     { title: "Invoices", url: "/manager/invoices", icon: FileText },
     { title: "Staff", url: "/manager/staff", icon: Users },
