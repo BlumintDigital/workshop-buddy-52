@@ -18,6 +18,9 @@ import AdminInventory from "@/pages/admin/AdminInventory";
 import AdminInvoices from "@/pages/admin/AdminInvoices";
 import AdminReports from "@/pages/admin/AdminReports";
 import AdminUsers from "@/pages/admin/AdminUsers";
+import AdminUserDetail from "@/pages/admin/AdminUserDetail";
+import AdminClients from "@/pages/admin/AdminClients";
+import AdminCalendar from "@/pages/admin/AdminCalendar";
 import AdminSettings from "@/pages/admin/AdminSettings";
 
 // Manager pages
@@ -27,6 +30,7 @@ import ManagerAppointments from "@/pages/manager/ManagerAppointments";
 import ManagerInventory from "@/pages/manager/ManagerInventory";
 import ManagerInvoices from "@/pages/manager/ManagerInvoices";
 import ManagerStaff from "@/pages/manager/ManagerStaff";
+import ManagerUserDetail from "@/pages/manager/ManagerUserDetail";
 
 // Staff pages
 import StaffDashboard from "@/pages/staff/StaffDashboard";
@@ -68,6 +72,9 @@ const App = () => (
             <Route path="/admin/invoices" element={<ProtectedRoute allowedRoles={["admin"]}><AdminInvoices /></ProtectedRoute>} />
             <Route path="/admin/reports" element={<ProtectedRoute allowedRoles={["admin"]}><AdminReports /></ProtectedRoute>} />
             <Route path="/admin/users" element={<ProtectedRoute allowedRoles={["admin"]}><AdminUsers /></ProtectedRoute>} />
+            <Route path="/admin/users/:userId" element={<ProtectedRoute allowedRoles={["admin"]}><AdminUserDetail /></ProtectedRoute>} />
+            <Route path="/admin/clients" element={<ProtectedRoute allowedRoles={["admin"]}><AdminClients /></ProtectedRoute>} />
+            <Route path="/admin/calendar" element={<ProtectedRoute allowedRoles={["admin"]}><AdminCalendar /></ProtectedRoute>} />
             <Route path="/admin/settings" element={<ProtectedRoute allowedRoles={["admin"]}><AdminSettings /></ProtectedRoute>} />
 
             {/* Manager routes */}
@@ -77,6 +84,7 @@ const App = () => (
             <Route path="/manager/inventory" element={<ProtectedRoute allowedRoles={["manager"]}><ManagerInventory /></ProtectedRoute>} />
             <Route path="/manager/invoices" element={<ProtectedRoute allowedRoles={["manager"]}><ManagerInvoices /></ProtectedRoute>} />
             <Route path="/manager/staff" element={<ProtectedRoute allowedRoles={["manager"]}><ManagerStaff /></ProtectedRoute>} />
+            <Route path="/manager/staff/:userId" element={<ProtectedRoute allowedRoles={["manager"]}><ManagerUserDetail /></ProtectedRoute>} />
 
             {/* Staff routes */}
             <Route path="/staff/dashboard" element={<ProtectedRoute allowedRoles={["staff"]}><StaffDashboard /></ProtectedRoute>} />

@@ -2,7 +2,7 @@ import { useEffect, useState, DragEvent } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import DashboardLayout from "@/components/layout/DashboardLayout";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { CalendarDays, GripVertical } from "lucide-react";
@@ -36,11 +36,47 @@ export default function StaffKanban() {
 
   useEffect(() => {
     if (!user) return;
+
+    // Initial fetch
     supabase
       .from("jobs")
       .select("id, title, status, priority, due_date, description")
       .eq("assigned_staff_id", user.id)
       .then(({ data }) => setJobs(data || []));
+
+    // Realtime subscription
+    const channel = supabase
+      .channel("staff-kanban-jobs")
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "jobs", filter: `assigned_staff_id=eq.${user.id}` },
+        (payload) => {
+          const updated = payload.new as Job;
+          setJobs((prev) => prev.map((j) => (j.id === updated.id ? { ...j, ...updated } : j)));
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "jobs", filter: `assigned_staff_id=eq.${user.id}` },
+        (payload) => {
+          const newJob = payload.new as Job;
+          setJobs((prev) => {
+            if (prev.some((j) => j.id === newJob.id)) return prev;
+            return [...prev, newJob];
+          });
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "DELETE", schema: "public", table: "jobs" },
+        (payload) => {
+          const oldId = (payload.old as any).id;
+          setJobs((prev) => prev.filter((j) => j.id !== oldId));
+        }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
   }, [user]);
 
   const handleDragStart = (e: DragEvent, id: string) => {
@@ -76,7 +112,7 @@ export default function StaffKanban() {
       <div className="space-y-6">
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Kanban Board</h2>
-          <p className="text-muted-foreground">Drag tasks between columns to update status</p>
+          <p className="text-muted-foreground">Drag tasks between columns to update status — updates in real-time</p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 min-h-[60vh]">
           {columns.map((col) => {

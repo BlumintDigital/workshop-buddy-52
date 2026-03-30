@@ -1,5 +1,5 @@
 import {
-  LayoutDashboard, Briefcase, Calendar, Package, FileText, Users, Settings, LogOut, Wrench, ChevronDown, BarChart3, Columns3,
+  LayoutDashboard, Briefcase, Calendar, Package, FileText, Users, Settings, LogOut, Wrench, ChevronDown, BarChart3, Columns3, UserCheck, CalendarDays,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -20,10 +20,12 @@ const navItems: Record<AppRole, { title: string; url: string; icon: any }[]> = {
     { title: "Dashboard", url: "/admin/dashboard", icon: LayoutDashboard },
     { title: "Jobs", url: "/admin/jobs", icon: Briefcase },
     { title: "Appointments", url: "/admin/appointments", icon: Calendar },
+    { title: "Calendar", url: "/admin/calendar", icon: CalendarDays },
     { title: "Inventory", url: "/admin/inventory", icon: Package },
     { title: "Invoices", url: "/admin/invoices", icon: FileText },
     { title: "Reports", url: "/admin/reports", icon: BarChart3 },
     { title: "Users", url: "/admin/users", icon: Users },
+    { title: "Clients", url: "/admin/clients", icon: UserCheck },
     { title: "Settings", url: "/admin/settings", icon: Settings },
   ],
   manager: [
