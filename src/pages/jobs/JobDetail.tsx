@@ -182,7 +182,9 @@ export default function JobDetail() {
       if (profiles) profiles.forEach(p => { authorMap[p.id] = p.full_name || "Unknown"; });
     }
     setTaskNotes(noteList.map((n: any) => ({ ...n, author_name: authorMap[n.user_id] || "Unknown" })));
-    setTaskAttachments(files || []);
+    const fileList = files || [];
+    setTaskAttachments(fileList);
+    if (fileList.length > 0) generateSignedUrls(fileList);
   };
 
   const fetchMaterials = async () => {
