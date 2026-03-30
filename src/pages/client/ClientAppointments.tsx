@@ -13,7 +13,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, CalendarIcon, Clock } from "lucide-react";
+import { Plus, CalendarIcon, Clock, Download } from "lucide-react";
+import { generateICS, downloadICS } from "@/lib/ical";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -76,6 +77,17 @@ export default function ClientAppointments() {
     fetchAppts();
   };
 
+  const handleExportCalendar = () => {
+    const events = appointments.map(a => ({
+      title: a.title,
+      date: a.appointment_date,
+      time: a.appointment_time?.slice(0, 5),
+      durationMinutes: 60,
+      description: a.type || undefined,
+    }));
+    downloadICS("my-appointments", generateICS(events, "My Workshop Appointments"));
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -84,7 +96,13 @@ export default function ClientAppointments() {
             <h2 className="text-3xl font-bold tracking-tight">Appointments</h2>
             <p className="text-muted-foreground">Book and manage your appointments</p>
           </div>
-          <Dialog open={open} onOpenChange={setOpen}>
+          <div className="flex gap-2">
+            {appointments.length > 0 && (
+              <Button variant="outline" onClick={handleExportCalendar}>
+                <Download className="mr-2 h-4 w-4" />Export
+              </Button>
+            )}
+            <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild><Button><Plus className="mr-2 h-4 w-4" />Book Appointment</Button></DialogTrigger>
             <DialogContent className="sm:max-w-lg">
               <DialogHeader><DialogTitle>Book Appointment</DialogTitle></DialogHeader>
@@ -155,6 +173,7 @@ export default function ClientAppointments() {
               </div>
             </DialogContent>
           </Dialog>
+          </div>
         </div>
         <Card>
           <CardContent className="p-0">

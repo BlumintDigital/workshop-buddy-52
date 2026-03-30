@@ -1,23 +1,31 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 export default function StaffSchedule() {
+  const { user } = useAuth();
   const [appointments, setAppointments] = useState<any[]>([]);
 
   useEffect(() => {
-    supabase.from("appointments").select("*").order("appointment_date", { ascending: true }).then(({ data }) => setAppointments(data || []));
-  }, []);
+    if (!user?.id) return;
+    supabase
+      .from("appointments")
+      .select("*")
+      .eq("client_id", user.id)
+      .order("appointment_date", { ascending: true })
+      .then(({ data }) => setAppointments(data || []));
+  }, [user?.id]);
 
   return (
     <DashboardLayout>
       <div className="space-y-6">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Schedule</h2>
-          <p className="text-muted-foreground">View upcoming appointments</p>
+          <h2 className="text-3xl font-bold tracking-tight">My Schedule</h2>
+          <p className="text-muted-foreground">View your upcoming appointments</p>
         </div>
         <Card>
           <CardContent className="p-0">
@@ -33,7 +41,7 @@ export default function StaffSchedule() {
               </TableHeader>
               <TableBody>
                 {appointments.length === 0 ? (
-                  <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">No appointments</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">No appointments scheduled</TableCell></TableRow>
                 ) : appointments.map((a) => (
                   <TableRow key={a.id}>
                     <TableCell className="font-medium">{a.title}</TableCell>

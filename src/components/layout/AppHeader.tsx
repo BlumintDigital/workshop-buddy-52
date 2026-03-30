@@ -10,17 +10,17 @@ export function AppHeader() {
   const pageTitle = segments[segments.length - 1]?.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()) || "Dashboard";
 
   return (
-    <header className="flex h-14 shrink-0 items-center gap-2 border-b px-4">
+    <header className="flex h-14 shrink-0 items-center gap-2 border-b border-border bg-background/80 backdrop-blur-sm px-4 sticky top-0 z-10">
       <SidebarTrigger className="-ml-1 min-h-[44px] min-w-[44px]" />
       <Separator orientation="vertical" className="mr-2 h-4" />
       <Breadcrumb>
         <BreadcrumbList>
           <BreadcrumbItem>
-            <BreadcrumbPage className="text-sm sm:text-base">{pageTitle}</BreadcrumbPage>
+            <BreadcrumbPage className="text-sm sm:text-base font-medium">{pageTitle}</BreadcrumbPage>
           </BreadcrumbItem>
         </BreadcrumbList>
       </Breadcrumb>
-      <div className="ml-auto">
+      <div className="ml-auto flex items-center gap-3">
         <NotificationBell />
       </div>
     </header>

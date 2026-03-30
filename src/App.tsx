@@ -49,6 +49,7 @@ import ClientInvoices from "@/pages/client/ClientInvoices";
 // Shared pages
 import JobDetail from "@/pages/jobs/JobDetail";
 import InvoiceCreate from "@/pages/invoices/InvoiceCreate";
+import InvoiceDetail from "@/pages/invoices/InvoiceDetail";
 
 const queryClient = new QueryClient();
 
@@ -104,6 +105,7 @@ const App = () => (
             {/* Shared routes */}
             <Route path="/jobs/:id" element={<ProtectedRoute allowedRoles={["admin", "manager", "staff", "client"]}><JobDetail /></ProtectedRoute>} />
             <Route path="/invoices/new" element={<ProtectedRoute allowedRoles={["admin", "manager"]}><InvoiceCreate /></ProtectedRoute>} />
+            <Route path="/invoices/:id" element={<ProtectedRoute allowedRoles={["admin", "manager", "client"]}><InvoiceDetail /></ProtectedRoute>} />
 
             <Route path="*" element={<NotFound />} />
           </Routes>

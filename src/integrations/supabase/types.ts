@@ -246,6 +246,149 @@ export type Database = {
           },
         ]
       }
+      job_attachments: {
+        Row: {
+          id: string
+          job_id: string
+          task_id: string | null
+          uploaded_by: string
+          file_name: string
+          file_path: string
+          file_type: string
+          file_size: number | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          job_id: string
+          task_id?: string | null
+          uploaded_by: string
+          file_name: string
+          file_path: string
+          file_type: string
+          file_size?: number | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          job_id?: string
+          task_id?: string | null
+          uploaded_by?: string
+          file_name?: string
+          file_path?: string
+          file_type?: string
+          file_size?: number | null
+          created_at?: string
+        }
+        Relationships: []
+      }
+      job_ratings: {
+        Row: {
+          id: string
+          job_id: string
+          client_id: string
+          rating: number
+          comment: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          job_id: string
+          client_id: string
+          rating: number
+          comment?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          job_id?: string
+          client_id?: string
+          rating?: number
+          comment?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_ratings_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      job_task_notes: {
+        Row: {
+          id: string
+          task_id: string
+          user_id: string
+          note: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          task_id: string
+          user_id: string
+          note: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          task_id?: string
+          user_id?: string
+          note?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
+      job_tasks: {
+        Row: {
+          id: string
+          job_id: string
+          title: string
+          description: string | null
+          assigned_to: string | null
+          status: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          job_id: string
+          title: string
+          description?: string | null
+          assigned_to?: string | null
+          status?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          job_id?: string
+          title?: string
+          description?: string | null
+          assigned_to?: string | null
+          status?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_tasks_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_tasks_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_updates: {
         Row: {
           created_at: string
@@ -383,6 +526,51 @@ export type Database = {
           is_active?: boolean
           phone?: string | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      workshop_settings: {
+        Row: {
+          id: number
+          workshop_name: string | null
+          contact_email: string | null
+          phone: string | null
+          address: string | null
+          default_tax_rate: number | null
+          currency: string | null
+          notify_job_status: boolean
+          notify_new_appointment: boolean
+          notify_low_inventory: boolean
+          email_notifications_enabled: boolean
+          from_email: string | null
+        }
+        Insert: {
+          id?: number
+          workshop_name?: string | null
+          contact_email?: string | null
+          phone?: string | null
+          address?: string | null
+          default_tax_rate?: number | null
+          currency?: string | null
+          notify_job_status?: boolean
+          notify_new_appointment?: boolean
+          notify_low_inventory?: boolean
+          email_notifications_enabled?: boolean
+          from_email?: string | null
+        }
+        Update: {
+          id?: number
+          workshop_name?: string | null
+          contact_email?: string | null
+          phone?: string | null
+          address?: string | null
+          default_tax_rate?: number | null
+          currency?: string | null
+          notify_job_status?: boolean
+          notify_new_appointment?: boolean
+          notify_low_inventory?: boolean
+          email_notifications_enabled?: boolean
+          from_email?: string | null
         }
         Relationships: []
       }

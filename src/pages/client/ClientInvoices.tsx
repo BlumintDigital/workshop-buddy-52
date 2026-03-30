@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ExternalLink } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const statusColors: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
   draft: "outline", sent: "secondary", paid: "default", overdue: "destructive", cancelled: "destructive",
@@ -45,7 +46,9 @@ export default function ClientInvoices() {
                   <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">No invoices</TableCell></TableRow>
                 ) : invoices.map((inv) => (
                   <TableRow key={inv.id}>
-                    <TableCell className="font-medium">{inv.invoice_number}</TableCell>
+                    <TableCell className="font-medium">
+                      <Link to={`/invoices/${inv.id}`} className="text-primary hover:underline">{inv.invoice_number}</Link>
+                    </TableCell>
                     <TableCell><Badge variant={statusColors[inv.status] || "outline"}>{inv.status}</Badge></TableCell>
                     <TableCell>${Number(inv.total).toFixed(2)}</TableCell>
                     <TableCell className="hidden sm:table-cell">{inv.due_date || "—"}</TableCell>

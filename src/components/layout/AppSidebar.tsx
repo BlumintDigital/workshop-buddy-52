@@ -77,13 +77,13 @@ export function AppSidebar() {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" className="cursor-default hover:bg-transparent">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/15 text-white">
                 <Wrench className="h-4 w-4" />
               </div>
               {!collapsed && (
                 <div className="flex flex-col gap-0.5 leading-none">
-                  <span className="font-semibold">Workshop Manager</span>
-                  <span className="text-xs text-muted-foreground capitalize">{role || "user"}</span>
+                  <span className="font-semibold text-sidebar-accent-foreground">Workshop Manager</span>
+                  <span className="text-xs text-sidebar-foreground capitalize">{role || "user"}</span>
                 </div>
               )}
             </SidebarMenuButton>
@@ -91,11 +91,11 @@ export function AppSidebar() {
         </SidebarMenu>
       </SidebarHeader>
 
-      <SidebarSeparator />
+      <SidebarSeparator className="bg-sidebar-border" />
 
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Navigation</SidebarGroupLabel>
+          <SidebarGroupLabel className="text-sidebar-foreground/60 text-xs font-medium tracking-wider uppercase">Navigation</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {items.map((item) => (
@@ -104,11 +104,11 @@ export function AppSidebar() {
                     <NavLink
                       to={item.url}
                       end
-                      className="hover:bg-muted/50 min-h-[44px]"
-                      activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                      className="text-sidebar-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground min-h-[44px] rounded-lg transition-colors duration-150"
+                      activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-semibold border-l-2 border-sidebar-primary pl-[calc(0.75rem-2px)]"
                       onClick={handleNavClick}
                     >
-                      <item.icon className="h-4 w-4" />
+                      <item.icon className="h-5 w-5" />
                       {!collapsed && <span>{item.title}</span>}
                     </NavLink>
                   </SidebarMenuButton>
@@ -124,17 +124,17 @@ export function AppSidebar() {
           <SidebarMenuItem>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <SidebarMenuButton size="lg" className="min-h-[44px]">
+                <SidebarMenuButton size="lg" className="min-h-[44px] hover:bg-sidebar-accent/60 transition-colors duration-150">
                   <Avatar className="h-8 w-8">
-                    <AvatarFallback className="bg-primary/10 text-primary text-xs">{initials}</AvatarFallback>
+                    <AvatarFallback className="bg-white/15 text-white text-xs font-semibold">{initials}</AvatarFallback>
                   </Avatar>
                   {!collapsed && (
                     <div className="flex flex-1 flex-col gap-0.5 leading-none">
-                      <span className="text-sm font-medium">{profile?.full_name || "User"}</span>
-                      <span className="text-xs text-muted-foreground capitalize">{role}</span>
+                      <span className="text-sm font-medium text-sidebar-accent-foreground">{profile?.full_name || "User"}</span>
+                      <span className="text-xs text-sidebar-foreground capitalize">{role}</span>
                     </div>
                   )}
-                  {!collapsed && <ChevronDown className="ml-auto h-4 w-4" />}
+                  {!collapsed && <ChevronDown className="ml-auto h-4 w-4 text-sidebar-foreground" />}
                 </SidebarMenuButton>
               </DropdownMenuTrigger>
               <DropdownMenuContent side="top" align="start" className="w-56">

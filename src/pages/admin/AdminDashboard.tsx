@@ -59,12 +59,48 @@ export default function AdminDashboard() {
         </div>
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          <StatCard title="Total Jobs" value={stats.jobs} icon={Briefcase} description="All workshop jobs" />
-          <StatCard title="Appointments" value={stats.appointments} icon={Calendar} description="Scheduled bookings" />
-          <StatCard title="Inventory Items" value={stats.inventory} icon={Package} description="Items tracked" />
-          <StatCard title="Invoices" value={stats.invoices} icon={FileText} description="Total invoices" />
-          <StatCard title="Total Users" value={stats.users} icon={Users} description="Registered users" />
-          <StatCard title="Low Stock Alerts" value={stats.lowStock} icon={AlertTriangle} description="Items below minimum" />
+          <StatCard
+            title="Total Jobs"
+            value={stats.jobs}
+            icon={Briefcase}
+            description="All workshop jobs"
+            iconClassName="bg-gradient-to-br from-blue-500 to-blue-700"
+          />
+          <StatCard
+            title="Appointments"
+            value={stats.appointments}
+            icon={Calendar}
+            description="Scheduled bookings"
+            iconClassName="bg-gradient-to-br from-emerald-500 to-emerald-700"
+          />
+          <StatCard
+            title="Inventory Items"
+            value={stats.inventory}
+            icon={Package}
+            description="Items tracked"
+            iconClassName="bg-gradient-to-br from-violet-500 to-violet-700"
+          />
+          <StatCard
+            title="Invoices"
+            value={stats.invoices}
+            icon={FileText}
+            description="Total invoices"
+            iconClassName="bg-gradient-to-br from-amber-400 to-orange-500"
+          />
+          <StatCard
+            title="Total Users"
+            value={stats.users}
+            icon={Users}
+            description="Registered users"
+            iconClassName="bg-gradient-to-br from-sky-500 to-cyan-600"
+          />
+          <StatCard
+            title="Low Stock Alerts"
+            value={stats.lowStock}
+            icon={AlertTriangle}
+            description="Items below minimum"
+            iconClassName="bg-gradient-to-br from-rose-500 to-red-600"
+          />
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">
