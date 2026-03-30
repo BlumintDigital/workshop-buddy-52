@@ -845,7 +845,7 @@ export default function JobDetail() {
                 <Select value={editForm.assigned_staff_id || ""} onValueChange={(v) => setEditForm({ ...editForm, assigned_staff_id: v })}>
                   <SelectTrigger className="mt-1"><SelectValue placeholder="None" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">None</SelectItem>
+                    <SelectItem value="__none__">None</SelectItem>
                     {staffUsers.map(u => <SelectItem key={u.id} value={u.id}>{u.full_name}</SelectItem>)}
                   </SelectContent>
                 </Select>
