@@ -37,6 +37,7 @@ const navGroups: Record<AppRole, NavGroup[]> = {
       { title: "Clients", url: "/admin/clients", icon: UserCheck },
     ]},
     { label: "System", items: [
+      { title: "Activity Logs", url: "/admin/activity-logs", icon: Activity },
       { title: "Settings", url: "/admin/settings", icon: Settings },
     ]},
   ],
