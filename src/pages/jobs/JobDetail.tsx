@@ -164,7 +164,9 @@ export default function JobDetail() {
   const fetchJobAttachments = async () => {
     const { data } = await (supabase.from as any)("job_attachments")
       .select("*").eq("job_id", id!).is("task_id", null).order("created_at", { ascending: false });
-    setJobAttachments(data || []);
+    const list = data || [];
+    setJobAttachments(list);
+    if (list.length > 0) generateSignedUrls(list);
   };
 
   const fetchTaskDetails = async (taskId: string) => {
