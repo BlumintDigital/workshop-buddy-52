@@ -4,10 +4,12 @@ import { supabase } from "@/integrations/supabase/client";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { StatCard } from "@/components/dashboard/StatsCards";
 import { RecentActivity } from "@/components/dashboard/RecentActivity";
+import { JobStatusChart } from "@/components/dashboard/JobStatusChart";
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState({ jobs: 0, appointments: 0, inventory: 0, invoices: 0, users: 0, lowStock: 0 });
   const [recentJobs, setRecentJobs] = useState<any[]>([]);
+  const [statusData, setStatusData] = useState<{ name: string; value: number }[]>([]);
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -34,8 +36,18 @@ export default function AdminDashboard() {
       setRecentJobs((data || []).map((j) => ({ id: j.id, title: j.title, status: j.status, date: new Date(j.created_at).toLocaleDateString() })));
     };
 
+    const fetchStatusDistribution = async () => {
+      const { data } = await supabase.from("jobs").select("status");
+      if (!data) return;
+      const counts: Record<string, number> = {};
+      data.forEach((j) => { counts[j.status] = (counts[j.status] || 0) + 1; });
+      const statuses = ["pending", "in_progress", "review", "completed", "cancelled"];
+      setStatusData(statuses.map(s => ({ name: s.replace("_", " "), value: counts[s] || 0 })).filter(d => d.value > 0));
+    };
+
     fetchStats();
     fetchRecent();
+    fetchStatusDistribution();
   }, []);
 
   return (
@@ -56,6 +68,7 @@ export default function AdminDashboard() {
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">
+          <JobStatusChart data={statusData} />
           <RecentActivity activities={recentJobs} title="Recent Jobs" />
         </div>
       </div>
