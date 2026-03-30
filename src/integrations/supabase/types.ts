@@ -195,6 +195,7 @@ export type Database = {
           notes: string | null
           paid_at: string | null
           status: string
+          stripe_payment_url: string | null
           subtotal: number
           tax_amount: number
           tax_rate: number
@@ -211,6 +212,7 @@ export type Database = {
           notes?: string | null
           paid_at?: string | null
           status?: string
+          stripe_payment_url?: string | null
           subtotal?: number
           tax_amount?: number
           tax_rate?: number
@@ -227,6 +229,7 @@ export type Database = {
           notes?: string | null
           paid_at?: string | null
           status?: string
+          stripe_payment_url?: string | null
           subtotal?: number
           tax_amount?: number
           tax_rate?: number
@@ -373,6 +376,27 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_job_completion_stats: {
+        Args: never
+        Returns: {
+          count: number
+          status: string
+        }[]
+      }
+      get_monthly_bookings: {
+        Args: never
+        Returns: {
+          count: number
+          month: string
+        }[]
+      }
+      get_monthly_revenue: {
+        Args: never
+        Returns: {
+          month: string
+          revenue: number
+        }[]
+      }
       get_user_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
