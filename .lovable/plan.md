@@ -1,45 +1,29 @@
 
 
-## Plan: Three Enhancements
+## Clearer Loading Screen
 
-### 1. Staff & Client Assignment in Job Creation Form
+Replace the plain spinner in `ProtectedRoute.tsx` and add a matching one for the Auth page redirect check with a branded loading screen that includes:
 
-**What**: Add two dropdown selects to the job creation dialog in `AdminJobs.tsx` — one for assigning a staff member, one for assigning a client.
+- The Workshop Manager logo (Wrench icon) and app name
+- A smooth progress bar (indeterminate) using the existing `Progress` component or a custom animated bar
+- A subtle "Loading your workspace..." message
+- Fade-in animation for polish
 
-**How**:
-- On dialog open, fetch staff users via `user_roles` joined with `profiles` where `role = 'staff'`, and client users where `role = 'client'`
-- Add two `Select` fields: "Assign Staff" and "Assign Client" (both optional)
-- Include `assigned_staff_id` and `client_id` in the insert payload
-- Show assigned staff/client names in the jobs table (join profiles on fetch)
-- Since `ManagerJobs` re-exports `AdminJobs`, managers get this automatically
+### Changes
 
-**Files changed**: `src/pages/admin/AdminJobs.tsx`
+**1. Create `src/components/LoadingScreen.tsx`**
 
----
+A reusable full-screen loading component with:
+- Centered Wrench icon + "Workshop Manager" title (matching Auth page branding)
+- An indeterminate animated progress bar beneath
+- "Loading your workspace..." muted text
+- `animate-fade-in` entrance animation
 
-### 2. Job Status Distribution Chart on Admin Dashboard
+**2. Update `src/components/ProtectedRoute.tsx`**
 
-**What**: Add a pie/bar chart showing counts per job status (pending, in_progress, review, completed, cancelled) using recharts.
+Replace the bare spinner `div` (lines 15-19) with `<LoadingScreen />`.
 
-**How**:
-- Fetch all jobs and group by status (or fetch with a count query per status)
-- Create a `JobStatusChart` component using recharts `PieChart` (or `BarChart`) with colored segments matching status badge colors
-- Place it in the dashboard grid next to the RecentActivity card
-- recharts is already a project dependency
+**3. Update `src/pages/Auth.tsx`**
 
-**Files changed**: `src/pages/admin/AdminDashboard.tsx`, new `src/components/dashboard/JobStatusChart.tsx`
-
----
-
-### 3. Password Reset Flow
-
-**What**: Add "Forgot password?" link on the login form, a forgot password page, and a `/reset-password` page.
-
-**How**:
-- **Auth.tsx**: Add a "Forgot password?" link below the sign-in button
-- **ForgotPassword.tsx** (`/forgot-password`): Simple form that calls `supabase.auth.resetPasswordForEmail(email, { redirectTo: origin + '/reset-password' })`
-- **ResetPassword.tsx** (`/reset-password`): Listens for `PASSWORD_RECOVERY` event from `onAuthStateChange`, shows a new password form, calls `supabase.auth.updateUser({ password })`
-- **App.tsx**: Add two new public routes: `/forgot-password` and `/reset-password`
-
-**Files changed**: `src/pages/Auth.tsx`, new `src/pages/ForgotPassword.tsx`, new `src/pages/ResetPassword.tsx`, `src/App.tsx`
+Replace the early-return loading/redirect check (the `useEffect` + implicit render while loading) to also show `<LoadingScreen />` when `loading` is true, so users see the same branded screen before being redirected to their dashboard.
 
