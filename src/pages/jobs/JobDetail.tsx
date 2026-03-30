@@ -52,6 +52,8 @@ export default function JobDetail() {
   const [taskOpen, setTaskOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<any | null>(null);
   const [taskForm, setTaskForm] = useState({ ...emptyTaskForm });
+  const [taskPendingFiles, setTaskPendingFiles] = useState<File[]>([]);
+  const taskCreateFileRef = useRef<HTMLInputElement>(null);
 
   // Task detail (notes + files)
   const [viewTask, setViewTask] = useState<any | null>(null);
