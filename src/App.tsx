@@ -22,6 +22,7 @@ import AdminUserDetail from "@/pages/admin/AdminUserDetail";
 import AdminClients from "@/pages/admin/AdminClients";
 import AdminCalendar from "@/pages/admin/AdminCalendar";
 import AdminSettings from "@/pages/admin/AdminSettings";
+import AdminActivityLogs from "@/pages/admin/AdminActivityLogs";
 
 // Manager pages
 import ManagerDashboard from "@/pages/manager/ManagerDashboard";
@@ -78,6 +79,7 @@ const App = () => (
             <Route path="/admin/users/:userId" element={<ProtectedRoute allowedRoles={["admin"]}><AdminUserDetail /></ProtectedRoute>} />
             <Route path="/admin/clients" element={<ProtectedRoute allowedRoles={["admin"]}><AdminClients /></ProtectedRoute>} />
             <Route path="/admin/calendar" element={<ProtectedRoute allowedRoles={["admin"]}><AdminCalendar /></ProtectedRoute>} />
+            <Route path="/admin/activity-logs" element={<ProtectedRoute allowedRoles={["admin"]}><AdminActivityLogs /></ProtectedRoute>} />
             <Route path="/admin/settings" element={<ProtectedRoute allowedRoles={["admin"]}><AdminSettings /></ProtectedRoute>} />
 
             {/* Manager routes */}
