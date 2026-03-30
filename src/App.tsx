@@ -50,6 +50,7 @@ import ClientInvoices from "@/pages/client/ClientInvoices";
 import JobDetail from "@/pages/jobs/JobDetail";
 import InvoiceCreate from "@/pages/invoices/InvoiceCreate";
 import InvoiceDetail from "@/pages/invoices/InvoiceDetail";
+import UserProfile from "@/pages/profile/UserProfile";
 
 const queryClient = new QueryClient();
 
