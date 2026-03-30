@@ -1,45 +1,45 @@
 
 
-## Workshop Management System
+## Plan: Three Enhancements
 
-A manufacturing/fabrication workshop management system with role-based access, inspired by the shadcn-admin dashboard design (collapsible sidebar, top header with search & user menu, card-based stats, clean data tables).
+### 1. Staff & Client Assignment in Job Creation Form
 
-### 1. Authentication & Roles
-- **Login/Signup pages** with email & password via Supabase Auth
-- **Database tables**: `profiles` (user info, linked to auth.users), `user_roles` (with `app_role` enum: admin, manager, staff, client)
-- **Security definer function** `has_role()` to avoid RLS recursion
-- **Post-login redirect** to `/admin/dashboard`, `/manager/dashboard`, `/staff/dashboard`, or `/client/dashboard` based on role
-- **Protected routes** with role-checking wrapper component
+**What**: Add two dropdown selects to the job creation dialog in `AdminJobs.tsx` — one for assigning a staff member, one for assigning a client.
 
-### 2. Layout & Design (shadcn-admin style)
-- **Collapsible sidebar** with role-specific navigation items, app logo, and user info at bottom
-- **Top header** with breadcrumbs, search bar, theme toggle, and user avatar dropdown
-- **Dashboard pages** with stat cards, charts (recharts), and recent activity tables
-- Each role gets a tailored sidebar menu and dashboard view
+**How**:
+- On dialog open, fetch staff users via `user_roles` joined with `profiles` where `role = 'staff'`, and client users where `role = 'client'`
+- Add two `Select` fields: "Assign Staff" and "Assign Client" (both optional)
+- Include `assigned_staff_id` and `client_id` in the insert payload
+- Show assigned staff/client names in the jobs table (join profiles on fetch)
+- Since `ManagerJobs` re-exports `AdminJobs`, managers get this automatically
 
-### 3. Job/Task Tracking Module
-- **Tables**: `jobs` (title, description, status, priority, assigned_staff, client_id, dates), `job_updates` (status history/notes)
-- **Features**: Create/assign jobs, kanban-style or table view, status workflow (pending → in-progress → review → completed), filter/search
-- **Permissions**: Admin/Manager create & assign; Staff view/update assigned jobs; Client view own jobs
+**Files changed**: `src/pages/admin/AdminJobs.tsx`
 
-### 4. Appointment/Booking Module
-- **Table**: `appointments` (client_id, date, time, type, status, notes)
-- **Features**: Calendar view and list view, book/reschedule/cancel, approval workflow
-- **Permissions**: Admin/Manager manage all; Staff view schedule; Client book & view own
+---
 
-### 5. Inventory Management Module
-- **Tables**: `inventory_items` (name, SKU, category, quantity, min_stock, unit_cost), `inventory_transactions` (item_id, type, quantity, job_id reference)
-- **Features**: Stock levels dashboard with low-stock alerts, add/edit items, track usage per job
-- **Permissions**: Admin/Manager full CRUD; Staff view & log usage; Client no access
+### 2. Job Status Distribution Chart on Admin Dashboard
 
-### 6. Invoicing & Payments Module
-- **Tables**: `invoices` (client_id, job_id, amount, status, due_date), `invoice_items` (line items)
-- **Features**: Generate invoices from completed jobs, PDF-style invoice view, status tracking (draft → sent → paid → overdue)
-- **Permissions**: Admin/Manager create & manage; Staff view; Client view & download own invoices
+**What**: Add a pie/bar chart showing counts per job status (pending, in_progress, review, completed, cancelled) using recharts.
 
-### 7. RLS Policies
-- All tables secured with row-level security using the `has_role()` function
-- Client users can only access their own data
-- Staff can access assigned jobs and related data
-- Manager and Admin have broader access with Admin having full control
+**How**:
+- Fetch all jobs and group by status (or fetch with a count query per status)
+- Create a `JobStatusChart` component using recharts `PieChart` (or `BarChart`) with colored segments matching status badge colors
+- Place it in the dashboard grid next to the RecentActivity card
+- recharts is already a project dependency
+
+**Files changed**: `src/pages/admin/AdminDashboard.tsx`, new `src/components/dashboard/JobStatusChart.tsx`
+
+---
+
+### 3. Password Reset Flow
+
+**What**: Add "Forgot password?" link on the login form, a forgot password page, and a `/reset-password` page.
+
+**How**:
+- **Auth.tsx**: Add a "Forgot password?" link below the sign-in button
+- **ForgotPassword.tsx** (`/forgot-password`): Simple form that calls `supabase.auth.resetPasswordForEmail(email, { redirectTo: origin + '/reset-password' })`
+- **ResetPassword.tsx** (`/reset-password`): Listens for `PASSWORD_RECOVERY` event from `onAuthStateChange`, shows a new password form, calls `supabase.auth.updateUser({ password })`
+- **App.tsx**: Add two new public routes: `/forgot-password` and `/reset-password`
+
+**Files changed**: `src/pages/Auth.tsx`, new `src/pages/ForgotPassword.tsx`, new `src/pages/ResetPassword.tsx`, `src/App.tsx`
 
