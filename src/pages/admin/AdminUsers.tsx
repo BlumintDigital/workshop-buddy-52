@@ -98,7 +98,6 @@ export default function AdminUsers() {
                           <SelectItem value="admin">Admin</SelectItem>
                           <SelectItem value="manager">Manager</SelectItem>
                           <SelectItem value="staff">Staff</SelectItem>
-                          <SelectItem value="client">Client</SelectItem>
                         </SelectContent>
                       </Select>
                     </TableCell>
