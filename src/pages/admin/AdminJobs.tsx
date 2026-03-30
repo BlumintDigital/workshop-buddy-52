@@ -183,7 +183,7 @@ export default function AdminJobs() {
 
         <div className="flex flex-col sm:flex-row gap-3">
           <Tabs value={filter} onValueChange={handleFilterChange} className="flex-1">
-            <TabsList className="flex-wrap">
+            <TabsList className="flex overflow-x-auto flex-nowrap">
               <TabsTrigger value="all">All</TabsTrigger>
               <TabsTrigger value="quote">Quotes</TabsTrigger>
               <TabsTrigger value="pending">Pending</TabsTrigger>
