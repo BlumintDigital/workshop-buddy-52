@@ -880,7 +880,7 @@ export default function JobDetail() {
               </div>
               <div>
                 <Label>Assign To</Label>
-                <Select value={taskForm.assigned_to} onValueChange={(v) => setTaskForm({ ...taskForm, assigned_to: v })}>
+                <Select value={taskForm.assigned_to || "__none__"} onValueChange={(v) => setTaskForm({ ...taskForm, assigned_to: v === "__none__" ? "" : v })}>
                   <SelectTrigger className="mt-1"><SelectValue placeholder="Unassigned" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="__none__">Unassigned</SelectItem>
