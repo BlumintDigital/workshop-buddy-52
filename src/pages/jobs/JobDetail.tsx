@@ -64,6 +64,7 @@ export default function JobDetail() {
   const [jobAttachments, setJobAttachments] = useState<any[]>([]);
   const [uploadingJob, setUploadingJob] = useState(false);
   const [uploadingTask, setUploadingTask] = useState(false);
+  const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
   const [generatingReport, setGeneratingReport] = useState(false);
   const jobFileInputRef = useRef<HTMLInputElement>(null);
   const taskFileInputRef = useRef<HTMLInputElement>(null);
