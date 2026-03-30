@@ -172,7 +172,7 @@ export default function JobDetail() {
       (supabase.from as any)("job_attachments").select("*").eq("task_id", taskId).order("created_at", { ascending: false }),
     ]);
     const noteList = notes || [];
-    const authorIds = [...new Set(noteList.map((n: any) => n.user_id))];
+    const authorIds = [...new Set(noteList.map((n: any) => n.user_id))] as string[];
     let authorMap: Record<string, string> = {};
     if (authorIds.length > 0) {
       const { data: profiles } = await supabase.from("profiles").select("id, full_name").in("id", authorIds);
