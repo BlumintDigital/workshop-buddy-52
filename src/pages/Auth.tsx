@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { Wrench } from "lucide-react";
 import { useEffect } from "react";
+import LoadingScreen from "@/components/LoadingScreen";
 
 export default function Auth() {
   const { signIn, signUp, user, role, loading } = useAuth();

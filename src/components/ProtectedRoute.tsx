@@ -1,5 +1,6 @@
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import LoadingScreen from "@/components/LoadingScreen";
 
 type AppRole = "admin" | "manager" | "staff" | "client";
 
