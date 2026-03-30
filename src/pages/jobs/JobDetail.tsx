@@ -161,24 +161,24 @@ export default function JobDetail() {
   };
 
   const fetchJobAttachments = async () => {
-    const { data } = await supabase.from("job_attachments")
+    const { data } = await (supabase.from as any)("job_attachments")
       .select("*").eq("job_id", id!).is("task_id", null).order("created_at", { ascending: false });
     setJobAttachments(data || []);
   };
 
   const fetchTaskDetails = async (taskId: string) => {
     const [{ data: notes }, { data: files }] = await Promise.all([
-      supabase.from("job_task_notes").select("*").eq("task_id", taskId).order("created_at"),
-      supabase.from("job_attachments").select("*").eq("task_id", taskId).order("created_at", { ascending: false }),
+      (supabase.from as any)("job_task_notes").select("*").eq("task_id", taskId).order("created_at"),
+      (supabase.from as any)("job_attachments").select("*").eq("task_id", taskId).order("created_at", { ascending: false }),
     ]);
     const noteList = notes || [];
-    const authorIds = [...new Set(noteList.map(n => n.user_id))];
+    const authorIds = [...new Set(noteList.map((n: any) => n.user_id))] as string[];
     let authorMap: Record<string, string> = {};
     if (authorIds.length > 0) {
       const { data: profiles } = await supabase.from("profiles").select("id, full_name").in("id", authorIds);
       if (profiles) profiles.forEach(p => { authorMap[p.id] = p.full_name || "Unknown"; });
     }
-    setTaskNotes(noteList.map(n => ({ ...n, author_name: authorMap[n.user_id] || "Unknown" })));
+    setTaskNotes(noteList.map((n: any) => ({ ...n, author_name: authorMap[n.user_id] || "Unknown" })));
     setTaskAttachments(files || []);
   };
 
@@ -198,7 +198,7 @@ export default function JobDetail() {
 
   const fetchRating = async () => {
     if (!user) return;
-    const { data } = await supabase.from("job_ratings").select("*").eq("job_id", id!).eq("client_id", user.id).maybeSingle();
+    const { data } = await (supabase.from as any)("job_ratings").select("*").eq("job_id", id!).eq("client_id", user.id).maybeSingle();
     if (data) { setExistingRating(data); setRatingValue(data.rating); setRatingComment(data.comment || ""); }
   };
 
@@ -215,7 +215,7 @@ export default function JobDetail() {
     const path = `${id}/job/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
     const { error: uploadErr } = await supabase.storage.from("job-attachments").upload(path, file);
     if (uploadErr) { toast.error(uploadErr.message); setUploadingJob(false); return; }
-    await supabase.from("job_attachments").insert({
+    await (supabase.from as any)("job_attachments").insert({
       job_id: id!, task_id: null, uploaded_by: user!.id,
       file_name: file.name, file_path: path, file_type: file.type, file_size: file.size,
     });
@@ -233,7 +233,7 @@ export default function JobDetail() {
     const path = `${id}/${viewTask.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
     const { error: uploadErr } = await supabase.storage.from("job-attachments").upload(path, file);
     if (uploadErr) { toast.error(uploadErr.message); setUploadingTask(false); return; }
-    await supabase.from("job_attachments").insert({
+    await (supabase.from as any)("job_attachments").insert({
       job_id: id!, task_id: viewTask.id, uploaded_by: user!.id,
       file_name: file.name, file_path: path, file_type: file.type, file_size: file.size,
     });
@@ -245,7 +245,7 @@ export default function JobDetail() {
 
   const handleDeleteAttachment = async (attachmentId: string, filePath: string, isTaskLevel: boolean) => {
     await supabase.storage.from("job-attachments").remove([filePath]);
-    await supabase.from("job_attachments").delete().eq("id", attachmentId);
+    await (supabase.from as any)("job_attachments").delete().eq("id", attachmentId);
     if (isTaskLevel && viewTask) fetchTaskDetails(viewTask.id);
     else fetchJobAttachments();
     toast.success("File removed");
@@ -254,7 +254,7 @@ export default function JobDetail() {
   const handleAddTaskNote = async () => {
     if (!newTaskNote.trim() || !viewTask) return;
     setAddingNote(true);
-    const { error } = await supabase.from("job_task_notes").insert({
+    const { error } = await (supabase.from as any)("job_task_notes").insert({
       task_id: viewTask.id, user_id: user!.id, note: newTaskNote.trim(),
     });
     setAddingNote(false);
@@ -288,7 +288,7 @@ export default function JobDetail() {
   const handleSubmitRating = async () => {
     if (!user || ratingValue === 0) return;
     setSubmittingRating(true);
-    const { error } = await supabase.from("job_ratings").insert({
+    const { error } = await (supabase.from as any)("job_ratings").insert({
       job_id: id!, client_id: user.id, rating: ratingValue, comment: ratingComment || null,
     });
     setSubmittingRating(false);

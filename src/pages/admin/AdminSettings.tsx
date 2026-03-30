@@ -48,8 +48,8 @@ export default function AdminSettings() {
             notify_job_status: data.notify_job_status ?? true,
             notify_new_appointment: data.notify_new_appointment ?? true,
             notify_low_inventory: data.notify_low_inventory ?? true,
-            email_notifications_enabled: data.email_notifications_enabled ?? false,
-            from_email: data.from_email ?? "",
+            email_notifications_enabled: (data as any).email_notifications_enabled ?? false,
+            from_email: (data as any).from_email ?? "",
           });
         }
         setLoading(false);
@@ -58,7 +58,7 @@ export default function AdminSettings() {
 
   const handleSave = async () => {
     setSaving(true);
-    const { error } = await supabase.from("workshop_settings").upsert({
+    const { error } = await (supabase.from("workshop_settings") as any).upsert({
       id: 1,
       workshop_name: settings.workshop_name || null,
       contact_email: settings.contact_email || null,
