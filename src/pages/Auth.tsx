@@ -21,6 +21,8 @@ export default function Auth() {
   const [signupName, setSignupName] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
+  if (loading) return <LoadingScreen />;
+
   useEffect(() => {
     if (!loading && user && role) {
       navigate(getRoleDashboardPath(role), { replace: true });
