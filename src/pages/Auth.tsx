@@ -30,8 +30,11 @@ export default function Auth() {
     e.preventDefault();
     setSubmitting(true);
     try {
-      await signIn(loginEmail, loginPassword);
+      const nextRole = await signIn(loginEmail, loginPassword);
       toast.success("Signed in successfully");
+      if (nextRole) {
+        navigate(getRoleDashboardPath(nextRole), { replace: true });
+      }
     } catch (err: any) {
       toast.error(err.message || "Failed to sign in");
     } finally {

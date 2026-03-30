@@ -11,7 +11,7 @@ interface AuthContextType {
   role: AppRole | null;
   profile: { full_name: string; avatar_url: string | null } | null;
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<void>;
+  signIn: (email: string, password: string) => Promise<AppRole | null>;
   signUp: (email: string, password: string, fullName: string) => Promise<void>;
   signOut: () => Promise<void>;
 }
@@ -25,13 +25,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<{ full_name: string; avatar_url: string | null } | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchUserData = async (userId: string) => {
+  const fetchUserData = async (userId: string): Promise<AppRole | null> => {
     const [roleRes, profileRes] = await Promise.all([
-      supabase.from("user_roles").select("role").eq("user_id", userId).single(),
-      supabase.from("profiles").select("full_name, avatar_url").eq("id", userId).single(),
+      supabase.from("user_roles").select("role").eq("user_id", userId).maybeSingle(),
+      supabase.from("profiles").select("full_name, avatar_url").eq("id", userId).maybeSingle(),
     ]);
-    if (roleRes.data) setRole(roleRes.data.role as AppRole);
-    if (profileRes.data) setProfile(profileRes.data);
+
+    const nextRole = (roleRes.data?.role as AppRole | undefined) ?? null;
+    setRole(nextRole);
+    setProfile(profileRes.data ?? null);
+
+    return nextRole;
   };
 
   useEffect(() => {
@@ -62,8 +66,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
+
+    setSession(data.session ?? null);
+    setUser(data.user ?? null);
+
+    if (!data.user) return null;
+
+    return await fetchUserData(data.user.id);
   };
 
   const signUp = async (email: string, password: string, fullName: string) => {
