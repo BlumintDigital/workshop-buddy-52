@@ -32,7 +32,7 @@ export default function StaffJobs() {
           <p className="text-muted-foreground">Jobs assigned to you</p>
         </div>
         <Tabs value={filter} onValueChange={setFilter}>
-          <TabsList className="flex-wrap">
+          <TabsList className="flex overflow-x-auto flex-nowrap">
             <TabsTrigger value="all">All</TabsTrigger>
             <TabsTrigger value="pending">Pending</TabsTrigger>
             <TabsTrigger value="in_progress">In Progress</TabsTrigger>

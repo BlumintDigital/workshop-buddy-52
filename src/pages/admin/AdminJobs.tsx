@@ -31,7 +31,7 @@ export default function AdminJobs() {
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [form, setForm] = useState({ title: "", description: "", priority: "medium", assigned_staff_id: "", client_id: "", isQuote: false });
+  const [form, setForm] = useState({ title: "", description: "", priority: "medium", assigned_staff_id: "", client_id: "", isQuote: false, due_date: "" });
   const [staffUsers, setStaffUsers] = useState<UserOption[]>([]);
   const [clientUsers, setClientUsers] = useState<UserOption[]>([]);
   const { page, setPage, from, reset } = usePagination();
@@ -103,11 +103,12 @@ export default function AdminJobs() {
     const payload: any = { title: form.title, description: form.description, priority: form.priority, status: form.isQuote ? "quote" : "pending" };
     if (form.assigned_staff_id) payload.assigned_staff_id = form.assigned_staff_id;
     if (form.client_id) payload.client_id = form.client_id;
+    if (form.due_date) payload.due_date = form.due_date;
     const { error } = await supabase.from("jobs").insert(payload);
     if (error) { toast.error(error.message); return; }
     toast.success("Job created");
     setOpen(false);
-    setForm({ title: "", description: "", priority: "medium", assigned_staff_id: "", client_id: "", isQuote: false });
+    setForm({ title: "", description: "", priority: "medium", assigned_staff_id: "", client_id: "", isQuote: false, due_date: "" });
     fetchJobs(page, filter, debouncedSearch);
   };
 
@@ -157,6 +158,10 @@ export default function AdminJobs() {
                     </SelectContent>
                   </Select>
                 </div>
+                <div>
+                  <Label>Due Date</Label>
+                  <Input type="date" value={form.due_date} onChange={(e) => setForm({ ...form, due_date: e.target.value })} className="mt-1" />
+                </div>
                 <div className="flex items-center gap-2 pt-1">
                   <Checkbox
                     id="isQuote"
@@ -178,7 +183,7 @@ export default function AdminJobs() {
 
         <div className="flex flex-col sm:flex-row gap-3">
           <Tabs value={filter} onValueChange={handleFilterChange} className="flex-1">
-            <TabsList className="flex-wrap">
+            <TabsList className="flex overflow-x-auto flex-nowrap">
               <TabsTrigger value="all">All</TabsTrigger>
               <TabsTrigger value="quote">Quotes</TabsTrigger>
               <TabsTrigger value="pending">Pending</TabsTrigger>

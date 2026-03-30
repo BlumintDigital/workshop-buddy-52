@@ -524,7 +524,10 @@ export type Database = {
       }
       profiles: {
         Row: {
+          address: string | null
           avatar_url: string | null
+          company_name: string | null
+          contact_person: string | null
           created_at: string
           full_name: string | null
           id: string
@@ -533,7 +536,10 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          address?: string | null
           avatar_url?: string | null
+          company_name?: string | null
+          contact_person?: string | null
           created_at?: string
           full_name?: string | null
           id: string
@@ -542,7 +548,10 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          address?: string | null
           avatar_url?: string | null
+          company_name?: string | null
+          contact_person?: string | null
           created_at?: string
           full_name?: string | null
           id?: string
@@ -577,6 +586,7 @@ export type Database = {
           currency: string | null
           default_tax_rate: number | null
           id: number
+          login_image_url: string | null
           notify_job_status: boolean | null
           notify_low_inventory: boolean | null
           notify_new_appointment: boolean | null
@@ -589,6 +599,7 @@ export type Database = {
           currency?: string | null
           default_tax_rate?: number | null
           id?: number
+          login_image_url?: string | null
           notify_job_status?: boolean | null
           notify_low_inventory?: boolean | null
           notify_new_appointment?: boolean | null
@@ -601,6 +612,7 @@ export type Database = {
           currency?: string | null
           default_tax_rate?: number | null
           id?: number
+          login_image_url?: string | null
           notify_job_status?: boolean | null
           notify_low_inventory?: boolean | null
           notify_new_appointment?: boolean | null

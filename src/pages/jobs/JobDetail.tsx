@@ -52,6 +52,8 @@ export default function JobDetail() {
   const [taskOpen, setTaskOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<any | null>(null);
   const [taskForm, setTaskForm] = useState({ ...emptyTaskForm });
+  const [taskPendingFiles, setTaskPendingFiles] = useState<File[]>([]);
+  const taskCreateFileRef = useRef<HTMLInputElement>(null);
 
   // Task detail (notes + files)
   const [viewTask, setViewTask] = useState<any | null>(null);
@@ -384,7 +386,7 @@ export default function JobDetail() {
     setJob({ ...job, ...payload }); setEditOpen(false); toast.success("Job updated");
   };
 
-  const handleOpenAddTask = () => { setEditingTask(null); setTaskForm({ ...emptyTaskForm }); setTaskOpen(true); };
+  const handleOpenAddTask = () => { setEditingTask(null); setTaskForm({ ...emptyTaskForm }); setTaskPendingFiles([]); setTaskOpen(true); };
   const handleOpenEditTask = (task: any) => {
     setEditingTask(task);
     setTaskForm({ title: task.title, description: task.description || "", assigned_to: task.assigned_to || "", status: task.status });
@@ -394,15 +396,33 @@ export default function JobDetail() {
   const handleSaveTask = async () => {
     if (!taskForm.title.trim()) { toast.error("Task title is required"); return; }
     const payload = { job_id: id!, title: taskForm.title.trim(), description: taskForm.description || null, assigned_to: taskForm.assigned_to || null, status: taskForm.status };
+    let newTaskId: string | null = null;
     if (editingTask) {
       const { error } = await supabase.from("job_tasks").update(payload).eq("id", editingTask.id);
       if (error) { toast.error(error.message); return; }
+      newTaskId = editingTask.id;
       toast.success("Task updated");
     } else {
-      const { error } = await supabase.from("job_tasks").insert(payload);
+      const { data, error } = await supabase.from("job_tasks").insert(payload).select("id").single();
       if (error) { toast.error(error.message); return; }
+      newTaskId = data.id;
       toast.success("Task added");
     }
+    // Upload pending files for new task
+    if (newTaskId && taskPendingFiles.length > 0) {
+      for (const file of taskPendingFiles) {
+        const ext = file.name.split(".").pop();
+        const path = `${id}/${newTaskId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+        const { error: uploadErr } = await supabase.storage.from("job-attachments").upload(path, file);
+        if (uploadErr) { toast.error(`Failed to upload ${file.name}`); continue; }
+        await (supabase.from as any)("job_attachments").insert({
+          job_id: id!, task_id: newTaskId, uploaded_by: user!.id,
+          file_name: file.name, file_path: path, file_type: file.type, file_size: file.size,
+        });
+      }
+      if (taskPendingFiles.length > 0) toast.success(`${taskPendingFiles.length} file(s) attached`);
+    }
+    setTaskPendingFiles([]);
     setTaskOpen(false); setEditingTask(null); fetchTasks();
   };
 
@@ -899,6 +919,30 @@ export default function JobDetail() {
                   </SelectContent>
                 </Select>
               </div>
+              {!editingTask && (
+                <div>
+                  <Label>Attachments <span className="text-muted-foreground text-xs">(optional)</span></Label>
+                  <input ref={taskCreateFileRef} type="file" multiple className="hidden" onChange={(e) => {
+                    if (e.target.files) setTaskPendingFiles(prev => [...prev, ...Array.from(e.target.files!)]);
+                    e.target.value = "";
+                  }} />
+                  <Button type="button" variant="outline" size="sm" className="mt-1 w-full" onClick={() => taskCreateFileRef.current?.click()}>
+                    <FileUp className="mr-2 h-4 w-4" />Add Files
+                  </Button>
+                  {taskPendingFiles.length > 0 && (
+                    <div className="mt-2 space-y-1">
+                      {taskPendingFiles.map((f, i) => (
+                        <div key={i} className="flex items-center justify-between text-xs border rounded px-2 py-1">
+                          <span className="truncate">{f.name}</span>
+                          <Button variant="ghost" size="icon" className="h-5 w-5 shrink-0" onClick={() => setTaskPendingFiles(prev => prev.filter((_, idx) => idx !== i))}>
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
               <Button onClick={handleSaveTask} className="w-full">{editingTask ? "Save Changes" : "Add Task"}</Button>
             </div>
           </DialogContent>
