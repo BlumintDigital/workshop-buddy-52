@@ -103,6 +103,7 @@ export default function AdminJobs() {
     const payload: any = { title: form.title, description: form.description, priority: form.priority, status: form.isQuote ? "quote" : "pending" };
     if (form.assigned_staff_id) payload.assigned_staff_id = form.assigned_staff_id;
     if (form.client_id) payload.client_id = form.client_id;
+    if (form.due_date) payload.due_date = form.due_date;
     const { error } = await supabase.from("jobs").insert(payload);
     if (error) { toast.error(error.message); return; }
     toast.success("Job created");
