@@ -158,6 +158,10 @@ export default function AdminJobs() {
                     </SelectContent>
                   </Select>
                 </div>
+                <div>
+                  <Label>Due Date</Label>
+                  <Input type="date" value={form.due_date} onChange={(e) => setForm({ ...form, due_date: e.target.value })} className="mt-1" />
+                </div>
                 <div className="flex items-center gap-2 pt-1">
                   <Checkbox
                     id="isQuote"
