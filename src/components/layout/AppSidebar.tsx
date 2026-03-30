@@ -1,5 +1,5 @@
 import {
-  LayoutDashboard, Briefcase, Calendar, Package, FileText, Users, Settings, LogOut, Wrench, ChevronDown,
+  LayoutDashboard, Briefcase, Calendar, Package, FileText, Users, Settings, LogOut, Wrench, ChevronDown, BarChart3, Columns3,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -22,6 +22,7 @@ const navItems: Record<AppRole, { title: string; url: string; icon: any }[]> = {
     { title: "Appointments", url: "/admin/appointments", icon: Calendar },
     { title: "Inventory", url: "/admin/inventory", icon: Package },
     { title: "Invoices", url: "/admin/invoices", icon: FileText },
+    { title: "Reports", url: "/admin/reports", icon: BarChart3 },
     { title: "Users", url: "/admin/users", icon: Users },
     { title: "Settings", url: "/admin/settings", icon: Settings },
   ],
@@ -36,6 +37,7 @@ const navItems: Record<AppRole, { title: string; url: string; icon: any }[]> = {
   staff: [
     { title: "Dashboard", url: "/staff/dashboard", icon: LayoutDashboard },
     { title: "My Jobs", url: "/staff/jobs", icon: Briefcase },
+    { title: "Kanban", url: "/staff/kanban", icon: Columns3 },
     { title: "Schedule", url: "/staff/schedule", icon: Calendar },
     { title: "Inventory", url: "/staff/inventory", icon: Package },
   ],
@@ -48,7 +50,7 @@ const navItems: Record<AppRole, { title: string; url: string; icon: any }[]> = {
 };
 
 export function AppSidebar() {
-  const { state } = useSidebar();
+  const { state, setOpenMobile } = useSidebar();
   const collapsed = state === "collapsed";
   const location = useLocation();
   const navigate = useNavigate();
@@ -60,6 +62,10 @@ export function AppSidebar() {
   const handleSignOut = async () => {
     await signOut();
     navigate("/auth");
+  };
+
+  const handleNavClick = () => {
+    setOpenMobile(false);
   };
 
   return (
@@ -92,7 +98,13 @@ export function AppSidebar() {
               {items.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild isActive={location.pathname === item.url}>
-                    <NavLink to={item.url} end className="hover:bg-muted/50" activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium">
+                    <NavLink
+                      to={item.url}
+                      end
+                      className="hover:bg-muted/50 min-h-[44px]"
+                      activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                      onClick={handleNavClick}
+                    >
                       <item.icon className="h-4 w-4" />
                       {!collapsed && <span>{item.title}</span>}
                     </NavLink>
@@ -109,7 +121,7 @@ export function AppSidebar() {
           <SidebarMenuItem>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <SidebarMenuButton size="lg">
+                <SidebarMenuButton size="lg" className="min-h-[44px]">
                   <Avatar className="h-8 w-8">
                     <AvatarFallback className="bg-primary/10 text-primary text-xs">{initials}</AvatarFallback>
                   </Avatar>
@@ -123,7 +135,7 @@ export function AppSidebar() {
                 </SidebarMenuButton>
               </DropdownMenuTrigger>
               <DropdownMenuContent side="top" align="start" className="w-56">
-                <DropdownMenuItem onClick={handleSignOut}>
+                <DropdownMenuItem onClick={handleSignOut} className="min-h-[44px]">
                   <LogOut className="mr-2 h-4 w-4" />
                   Sign out
                 </DropdownMenuItem>

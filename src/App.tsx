@@ -16,6 +16,7 @@ import AdminJobs from "@/pages/admin/AdminJobs";
 import AdminAppointments from "@/pages/admin/AdminAppointments";
 import AdminInventory from "@/pages/admin/AdminInventory";
 import AdminInvoices from "@/pages/admin/AdminInvoices";
+import AdminReports from "@/pages/admin/AdminReports";
 import AdminUsers from "@/pages/admin/AdminUsers";
 import AdminSettings from "@/pages/admin/AdminSettings";
 
@@ -30,6 +31,7 @@ import ManagerStaff from "@/pages/manager/ManagerStaff";
 // Staff pages
 import StaffDashboard from "@/pages/staff/StaffDashboard";
 import StaffJobs from "@/pages/staff/StaffJobs";
+import StaffKanban from "@/pages/staff/StaffKanban";
 import StaffSchedule from "@/pages/staff/StaffSchedule";
 import StaffInventory from "@/pages/staff/StaffInventory";
 
@@ -38,6 +40,10 @@ import ClientDashboard from "@/pages/client/ClientDashboard";
 import ClientJobs from "@/pages/client/ClientJobs";
 import ClientAppointments from "@/pages/client/ClientAppointments";
 import ClientInvoices from "@/pages/client/ClientInvoices";
+
+// Shared pages
+import JobDetail from "@/pages/jobs/JobDetail";
+import InvoiceCreate from "@/pages/invoices/InvoiceCreate";
 
 const queryClient = new QueryClient();
 
@@ -60,6 +66,7 @@ const App = () => (
             <Route path="/admin/appointments" element={<ProtectedRoute allowedRoles={["admin"]}><AdminAppointments /></ProtectedRoute>} />
             <Route path="/admin/inventory" element={<ProtectedRoute allowedRoles={["admin"]}><AdminInventory /></ProtectedRoute>} />
             <Route path="/admin/invoices" element={<ProtectedRoute allowedRoles={["admin"]}><AdminInvoices /></ProtectedRoute>} />
+            <Route path="/admin/reports" element={<ProtectedRoute allowedRoles={["admin"]}><AdminReports /></ProtectedRoute>} />
             <Route path="/admin/users" element={<ProtectedRoute allowedRoles={["admin"]}><AdminUsers /></ProtectedRoute>} />
             <Route path="/admin/settings" element={<ProtectedRoute allowedRoles={["admin"]}><AdminSettings /></ProtectedRoute>} />
 
@@ -74,6 +81,7 @@ const App = () => (
             {/* Staff routes */}
             <Route path="/staff/dashboard" element={<ProtectedRoute allowedRoles={["staff"]}><StaffDashboard /></ProtectedRoute>} />
             <Route path="/staff/jobs" element={<ProtectedRoute allowedRoles={["staff"]}><StaffJobs /></ProtectedRoute>} />
+            <Route path="/staff/kanban" element={<ProtectedRoute allowedRoles={["staff"]}><StaffKanban /></ProtectedRoute>} />
             <Route path="/staff/schedule" element={<ProtectedRoute allowedRoles={["staff"]}><StaffSchedule /></ProtectedRoute>} />
             <Route path="/staff/inventory" element={<ProtectedRoute allowedRoles={["staff"]}><StaffInventory /></ProtectedRoute>} />
 
@@ -82,6 +90,10 @@ const App = () => (
             <Route path="/client/jobs" element={<ProtectedRoute allowedRoles={["client"]}><ClientJobs /></ProtectedRoute>} />
             <Route path="/client/appointments" element={<ProtectedRoute allowedRoles={["client"]}><ClientAppointments /></ProtectedRoute>} />
             <Route path="/client/invoices" element={<ProtectedRoute allowedRoles={["client"]}><ClientInvoices /></ProtectedRoute>} />
+
+            {/* Shared routes */}
+            <Route path="/jobs/:id" element={<ProtectedRoute allowedRoles={["admin", "manager", "staff", "client"]}><JobDetail /></ProtectedRoute>} />
+            <Route path="/invoices/new" element={<ProtectedRoute allowedRoles={["admin", "manager"]}><InvoiceCreate /></ProtectedRoute>} />
 
             <Route path="*" element={<NotFound />} />
           </Routes>
