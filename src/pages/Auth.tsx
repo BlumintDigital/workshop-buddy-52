@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useAuth, getRoleDashboardPath } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -88,6 +88,9 @@ export default function Auth() {
                   <Button type="submit" className="w-full" disabled={submitting}>
                     {submitting ? "Signing in..." : "Sign In"}
                   </Button>
+                  <Link to="/forgot-password" className="block text-center text-sm text-muted-foreground hover:text-foreground">
+                    Forgot password?
+                  </Link>
                 </form>
               </CardContent>
             </Card>
