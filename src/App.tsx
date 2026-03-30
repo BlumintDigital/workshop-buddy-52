@@ -22,6 +22,7 @@ import AdminUserDetail from "@/pages/admin/AdminUserDetail";
 import AdminClients from "@/pages/admin/AdminClients";
 import AdminCalendar from "@/pages/admin/AdminCalendar";
 import AdminSettings from "@/pages/admin/AdminSettings";
+import AdminActivityLogs from "@/pages/admin/AdminActivityLogs";
 
 // Manager pages
 import ManagerDashboard from "@/pages/manager/ManagerDashboard";
