@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,19 +7,31 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
+  AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { Database, Trash2, Loader2 } from "lucide-react";
+import { Database, Trash2, Loader2, Upload, ImageIcon, X } from "lucide-react";
+
+const currencies = [
+  { value: "USD", label: "USD — US Dollar" },
+  { value: "EUR", label: "EUR — Euro" },
+  { value: "GBP", label: "GBP — British Pound" },
+  { value: "CAD", label: "CAD — Canadian Dollar" },
+  { value: "AUD", label: "AUD — Australian Dollar" },
+  { value: "NGN", label: "NGN — Nigerian Naira" },
+  { value: "ZAR", label: "ZAR — South African Rand" },
+  { value: "KES", label: "KES — Kenyan Shilling" },
+  { value: "GHS", label: "GHS — Ghanaian Cedi" },
+  { value: "INR", label: "INR — Indian Rupee" },
+  { value: "JPY", label: "JPY — Japanese Yen" },
+  { value: "CNY", label: "CNY — Chinese Yuan" },
+  { value: "BRL", label: "BRL — Brazilian Real" },
+  { value: "MXN", label: "MXN — Mexican Peso" },
+  { value: "AED", label: "AED — UAE Dirham" },
+];
 
 const defaultSettings = {
   workshop_name: "",
@@ -33,6 +45,7 @@ const defaultSettings = {
   notify_low_inventory: true,
   email_notifications_enabled: false,
   from_email: "",
+  login_image_url: "",
 };
 
 type Settings = typeof defaultSettings;
@@ -43,6 +56,8 @@ export default function AdminSettings() {
   const [loading, setLoading] = useState(true);
   const [seeding, setSeeding] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     supabase
@@ -64,6 +79,7 @@ export default function AdminSettings() {
             notify_low_inventory: data.notify_low_inventory ?? true,
             email_notifications_enabled: (data as any).email_notifications_enabled ?? false,
             from_email: (data as any).from_email ?? "",
+            login_image_url: (data as any).login_image_url ?? "",
           });
         }
         setLoading(false);
@@ -85,20 +101,38 @@ export default function AdminSettings() {
       notify_low_inventory: settings.notify_low_inventory,
       email_notifications_enabled: settings.email_notifications_enabled,
       from_email: settings.from_email || null,
+      login_image_url: settings.login_image_url || null,
     });
     setSaving(false);
     if (error) { toast.error(error.message); return; }
     toast.success("Settings saved");
   };
 
+  const handleUploadLoginImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) { toast.error("Please select an image file"); return; }
+    setUploadingImage(true);
+    const ext = file.name.split(".").pop();
+    const path = `login-image-${Date.now()}.${ext}`;
+    const { error: uploadErr } = await supabase.storage.from("workshop-assets").upload(path, file, { upsert: true });
+    if (uploadErr) { toast.error(uploadErr.message); setUploadingImage(false); return; }
+    const { data: urlData } = supabase.storage.from("workshop-assets").getPublicUrl(path);
+    set("login_image_url", urlData.publicUrl);
+    setUploadingImage(false);
+    toast.success("Image uploaded — remember to save settings");
+    e.target.value = "";
+  };
+
+  const handleRemoveLoginImage = () => {
+    set("login_image_url", "");
+  };
+
   const handleSeedData = async () => {
     setSeeding(true);
     const { data, error } = await supabase.functions.invoke("seed-data");
     setSeeding(false);
-    if (error || data?.error) {
-      toast.error(data?.error || error?.message || "Failed to generate sample data");
-      return;
-    }
+    if (error || data?.error) { toast.error(data?.error || error?.message || "Failed to generate sample data"); return; }
     const counts = data?.counts || {};
     const total = Object.values(counts).reduce((a: number, b: any) => a + (b as number), 0);
     toast.success(`Generated ${total} sample records across ${Object.keys(counts).length} tables`);
@@ -108,10 +142,7 @@ export default function AdminSettings() {
     setDeleting(true);
     const { data, error } = await supabase.functions.invoke("delete-data");
     setDeleting(false);
-    if (error || data?.error) {
-      toast.error(data?.error || error?.message || "Failed to delete data");
-      return;
-    }
+    if (error || data?.error) { toast.error(data?.error || error?.message || "Failed to delete data"); return; }
     const deleted = data?.deleted || {};
     const total = Object.values(deleted).reduce((a: number, b: any) => a + (b as number), 0);
     toast.success(`Deleted ${total} records across ${Object.keys(deleted).length} tables`);
@@ -126,15 +157,16 @@ export default function AdminSettings() {
     <DashboardLayout>
       <div className="space-y-6 max-w-2xl">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Settings</h2>
+          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Settings</h2>
           <p className="text-muted-foreground">Workshop configuration</p>
         </div>
 
         <Tabs defaultValue="general">
-          <TabsList>
+          <TabsList className="flex overflow-x-auto flex-nowrap w-full">
             <TabsTrigger value="general">General</TabsTrigger>
             <TabsTrigger value="billing">Billing</TabsTrigger>
             <TabsTrigger value="notifications">Notifications</TabsTrigger>
+            <TabsTrigger value="branding">Branding</TabsTrigger>
             <TabsTrigger value="email">Email</TabsTrigger>
             <TabsTrigger value="data">Data</TabsTrigger>
           </TabsList>
@@ -175,12 +207,18 @@ export default function AdminSettings() {
               <CardContent className="space-y-4">
                 <div>
                   <Label htmlFor="default_tax_rate">Default Tax Rate (%)</Label>
-                  <Input id="default_tax_rate" type="number" min="0" max="100" step="0.1" value={settings.default_tax_rate} onChange={(e) => set("default_tax_rate", e.target.value)} className="mt-1 w-32" />
+                  <Input id="default_tax_rate" type="number" min="0" max="100" step="0.1" value={settings.default_tax_rate} onChange={(e) => set("default_tax_rate", e.target.value)} className="mt-1 w-full sm:w-32" />
                 </div>
                 <div>
-                  <Label htmlFor="currency">Currency</Label>
-                  <Input id="currency" value={settings.currency} onChange={(e) => set("currency", e.target.value)} placeholder="USD" className="mt-1 w-32" maxLength={3} />
-                  <p className="text-xs text-muted-foreground mt-1">3-letter ISO currency code (e.g. USD, EUR, GBP)</p>
+                  <Label>Currency</Label>
+                  <Select value={settings.currency} onValueChange={(v) => set("currency", v)}>
+                    <SelectTrigger className="mt-1 w-full sm:w-64"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {currencies.map(c => (
+                        <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </CardContent>
             </Card>
@@ -193,22 +231,22 @@ export default function AdminSettings() {
                 <CardDescription>Choose which events create in-app notifications</CardDescription>
               </CardHeader>
               <CardContent className="space-y-5">
-                <div className="flex items-center justify-between">
-                  <div>
+                <div className="flex items-center justify-between gap-4">
+                  <div className="min-w-0">
                     <p className="text-sm font-medium">Job status changes</p>
                     <p className="text-xs text-muted-foreground">Notify client and staff when a job status updates</p>
                   </div>
                   <Switch checked={settings.notify_job_status} onCheckedChange={(v) => set("notify_job_status", v)} />
                 </div>
-                <div className="flex items-center justify-between">
-                  <div>
+                <div className="flex items-center justify-between gap-4">
+                  <div className="min-w-0">
                     <p className="text-sm font-medium">New appointments</p>
                     <p className="text-xs text-muted-foreground">Notify admin when a client books an appointment</p>
                   </div>
                   <Switch checked={settings.notify_new_appointment} onCheckedChange={(v) => set("notify_new_appointment", v)} />
                 </div>
-                <div className="flex items-center justify-between">
-                  <div>
+                <div className="flex items-center justify-between gap-4">
+                  <div className="min-w-0">
                     <p className="text-sm font-medium">Low inventory alerts</p>
                     <p className="text-xs text-muted-foreground">Notify admin when stock falls below minimum</p>
                   </div>
@@ -218,36 +256,51 @@ export default function AdminSettings() {
             </Card>
           </TabsContent>
 
+          <TabsContent value="branding" className="mt-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Login Page Image</CardTitle>
+                <CardDescription>Upload a hero image that appears on the sign-in page</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {settings.login_image_url ? (
+                  <div className="relative rounded-lg overflow-hidden border">
+                    <img src={settings.login_image_url} alt="Login hero" className="w-full h-48 object-cover" />
+                    <Button size="icon" variant="destructive" className="absolute top-2 right-2 h-7 w-7" onClick={handleRemoveLoginImage}>
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="border border-dashed rounded-lg p-8 flex flex-col items-center justify-center text-center">
+                    <ImageIcon className="h-10 w-10 text-muted-foreground mb-2" />
+                    <p className="text-sm text-muted-foreground">No image set — a gradient will be shown</p>
+                  </div>
+                )}
+                <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={handleUploadLoginImage} />
+                <Button variant="outline" disabled={uploadingImage} onClick={() => imageInputRef.current?.click()}>
+                  <Upload className="mr-2 h-4 w-4" />{uploadingImage ? "Uploading..." : "Upload Image"}
+                </Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
           <TabsContent value="email" className="mt-4 space-y-4">
             <Card>
               <CardHeader>
                 <CardTitle>Email Notifications</CardTitle>
-                <CardDescription>
-                  Send emails for key events via Resend. Requires a Resend API key configured as a Supabase secret.
-                </CardDescription>
+                <CardDescription>Send emails for key events via Resend. Requires a Resend API key configured as a Supabase secret.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-5">
-                <div className="flex items-center justify-between">
-                  <div>
+                <div className="flex items-center justify-between gap-4">
+                  <div className="min-w-0">
                     <p className="text-sm font-medium">Enable email notifications</p>
                     <p className="text-xs text-muted-foreground">Send emails for job updates, quotes, and appointments</p>
                   </div>
-                  <Switch
-                    checked={settings.email_notifications_enabled}
-                    onCheckedChange={(v) => set("email_notifications_enabled", v)}
-                  />
+                  <Switch checked={settings.email_notifications_enabled} onCheckedChange={(v) => set("email_notifications_enabled", v)} />
                 </div>
                 <div>
                   <Label htmlFor="from_email">From Email Address</Label>
-                  <Input
-                    id="from_email"
-                    type="email"
-                    value={settings.from_email}
-                    onChange={(e) => set("from_email", e.target.value)}
-                    placeholder="noreply@yourworkshop.com"
-                    className="mt-1"
-                    disabled={!settings.email_notifications_enabled}
-                  />
+                  <Input id="from_email" type="email" value={settings.from_email} onChange={(e) => set("from_email", e.target.value)} placeholder="noreply@yourworkshop.com" className="mt-1" disabled={!settings.email_notifications_enabled} />
                   <p className="text-xs text-muted-foreground mt-1">Must be a verified sender domain in Resend</p>
                 </div>
               </CardContent>
@@ -268,83 +321,40 @@ export default function AdminSettings() {
           <TabsContent value="data" className="mt-4 space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Database className="h-5 w-5" />
-                  Generate Sample Data
-                </CardTitle>
-                <CardDescription>
-                  Populate the database with realistic sample jobs, appointments, inventory, invoices, and more for testing purposes.
-                </CardDescription>
+                <CardTitle className="flex items-center gap-2"><Database className="h-5 w-5" />Generate Sample Data</CardTitle>
+                <CardDescription>Populate the database with realistic sample data for testing.</CardDescription>
               </CardHeader>
               <CardContent>
                 <Button onClick={handleSeedData} disabled={seeding}>
-                  {seeding ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Generating...
-                    </>
-                  ) : (
-                    <>
-                      <Database className="mr-2 h-4 w-4" />
-                      Generate Sample Data
-                    </>
-                  )}
+                  {seeding ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Generating...</> : <><Database className="mr-2 h-4 w-4" />Generate Sample Data</>}
                 </Button>
-                <p className="text-xs text-muted-foreground mt-2">
-                  Creates ~50+ records across all tables. Can be run multiple times to add more data.
-                </p>
+                <p className="text-xs text-muted-foreground mt-2">Creates ~50+ records across all tables.</p>
               </CardContent>
             </Card>
-
             <Card className="border-destructive/50">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-destructive">
-                  <Trash2 className="h-5 w-5" />
-                  Delete All Data
-                </CardTitle>
-                <CardDescription>
-                  Remove all business data (jobs, appointments, inventory, invoices, notifications). User accounts, roles, and settings are preserved.
-                </CardDescription>
+                <CardTitle className="flex items-center gap-2 text-destructive"><Trash2 className="h-5 w-5" />Delete All Data</CardTitle>
+                <CardDescription>Remove all business data. User accounts, roles, and settings are preserved.</CardDescription>
               </CardHeader>
               <CardContent>
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <Button variant="destructive" disabled={deleting}>
-                      {deleting ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Deleting...
-                        </>
-                      ) : (
-                        <>
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Delete All Data
-                        </>
-                      )}
+                      {deleting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Deleting...</> : <><Trash2 className="mr-2 h-4 w-4" />Delete All Data</>}
                     </Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent>
                     <AlertDialogHeader>
                       <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        This will permanently delete all jobs, appointments, inventory items, invoices, and notifications.
-                        User accounts, roles, and workshop settings will be preserved. This action cannot be undone.
-                      </AlertDialogDescription>
+                      <AlertDialogDescription>This will permanently delete all jobs, appointments, inventory items, invoices, and notifications. This action cannot be undone.</AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                       <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction
-                        onClick={handleDeleteData}
-                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                      >
-                        Yes, delete everything
-                      </AlertDialogAction>
+                      <AlertDialogAction onClick={handleDeleteData} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Yes, delete everything</AlertDialogAction>
                     </AlertDialogFooter>
                   </AlertDialogContent>
                 </AlertDialog>
-                <p className="text-xs text-muted-foreground mt-2">
-                  This action is irreversible. Make sure you want to clear all data before proceeding.
-                </p>
+                <p className="text-xs text-muted-foreground mt-2">This action is irreversible.</p>
               </CardContent>
             </Card>
           </TabsContent>

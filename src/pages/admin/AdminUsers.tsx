@@ -56,7 +56,7 @@ export default function AdminUsers() {
     <DashboardLayout>
       <div className="space-y-6">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Users</h2>
+          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Users</h2>
           <p className="text-muted-foreground">Manage all users and roles</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-3">
@@ -65,7 +65,7 @@ export default function AdminUsers() {
             <Input placeholder="Search by name…" value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
           </div>
           <Select value={roleFilter} onValueChange={setRoleFilter}>
-            <SelectTrigger className="w-[160px]"><SelectValue placeholder="Filter by role" /></SelectTrigger>
+            <SelectTrigger className="w-full sm:w-[160px]"><SelectValue placeholder="Filter by role" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Roles</SelectItem>
               <SelectItem value="admin">Admin</SelectItem>
@@ -74,14 +74,16 @@ export default function AdminUsers() {
             </SelectContent>
           </Select>
         </div>
-        <Card>
+
+        {/* Desktop table */}
+        <Card className="hidden sm:block">
           <CardContent className="p-0">
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Name</TableHead>
                   <TableHead>Role</TableHead>
-                  <TableHead>Joined</TableHead>
+                  <TableHead className="hidden md:table-cell">Joined</TableHead>
                   <TableHead className="w-[80px]">Details</TableHead>
                 </TableRow>
               </TableHeader>
@@ -93,7 +95,7 @@ export default function AdminUsers() {
                     <TableCell className="font-medium text-primary hover:underline">{u.full_name}</TableCell>
                     <TableCell onClick={(e) => e.stopPropagation()}>
                       <Select value={u.role} onValueChange={(v) => changeRole(u.user_id, v)}>
-                        <SelectTrigger className="w-[130px] h-8"><SelectValue /></SelectTrigger>
+                        <SelectTrigger className="w-[110px] h-8"><SelectValue /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value="admin">Admin</SelectItem>
                           <SelectItem value="manager">Manager</SelectItem>
@@ -101,7 +103,7 @@ export default function AdminUsers() {
                         </SelectContent>
                       </Select>
                     </TableCell>
-                    <TableCell>{u.created_at ? new Date(u.created_at).toLocaleDateString() : "—"}</TableCell>
+                    <TableCell className="hidden md:table-cell">{u.created_at ? new Date(u.created_at).toLocaleDateString() : "—"}</TableCell>
                     <TableCell>
                       <Button variant="ghost" size="icon" onClick={() => navigate(`/admin/users/${u.user_id}`)}>
                         <Eye className="h-4 w-4" />
@@ -113,6 +115,32 @@ export default function AdminUsers() {
             </Table>
           </CardContent>
         </Card>
+
+        {/* Mobile cards */}
+        <div className="sm:hidden space-y-3">
+          {filtered.length === 0 ? (
+            <p className="text-center py-8 text-muted-foreground">No users found</p>
+          ) : filtered.map((u) => (
+            <Card key={u.user_id} className="cursor-pointer" onClick={() => navigate(`/admin/users/${u.user_id}`)}>
+              <CardContent className="p-4 flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="font-medium text-primary truncate">{u.full_name}</p>
+                  <p className="text-xs text-muted-foreground">{u.created_at ? new Date(u.created_at).toLocaleDateString() : ""}</p>
+                </div>
+                <div onClick={(e) => e.stopPropagation()}>
+                  <Select value={u.role} onValueChange={(v) => changeRole(u.user_id, v)}>
+                    <SelectTrigger className="w-[100px] h-8"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="admin">Admin</SelectItem>
+                      <SelectItem value="manager">Manager</SelectItem>
+                      <SelectItem value="staff">Staff</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       </div>
     </DashboardLayout>
   );

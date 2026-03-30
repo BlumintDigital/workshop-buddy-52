@@ -13,7 +13,6 @@ serve(async (req) => {
   }
 
   try {
-    // Verify caller is authenticated admin/manager
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
@@ -39,7 +38,6 @@ serve(async (req) => {
 
     const callerId = claimsData.claims.sub as string;
 
-    // Check caller has admin or manager role
     const adminClient = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
@@ -58,9 +56,8 @@ serve(async (req) => {
       });
     }
 
-    // Parse and validate input
     const body = await req.json();
-    const { email, full_name, phone } = body;
+    const { email, full_name, phone, company_name, contact_person, address } = body;
 
     if (!email || typeof email !== "string" || !email.includes("@")) {
       return new Response(JSON.stringify({ error: "Valid email is required" }), {
@@ -69,13 +66,12 @@ serve(async (req) => {
       });
     }
     if (!full_name || typeof full_name !== "string" || full_name.trim().length === 0) {
-      return new Response(JSON.stringify({ error: "Full name is required" }), {
+      return new Response(JSON.stringify({ error: "Company name is required" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Create user via admin API (does not affect caller session)
     const { data: newUser, error: createError } = await adminClient.auth.admin.createUser({
       email,
       email_confirm: true,
@@ -89,12 +85,20 @@ serve(async (req) => {
       });
     }
 
-    // Update phone if provided
-    if (phone && newUser.user) {
-      await adminClient
-        .from("profiles")
-        .update({ phone })
-        .eq("id", newUser.user.id);
+    // Update profile with company fields
+    if (newUser.user) {
+      const profileUpdate: Record<string, string | null> = {};
+      if (phone) profileUpdate.phone = phone;
+      if (company_name) profileUpdate.company_name = company_name;
+      if (contact_person) profileUpdate.contact_person = contact_person;
+      if (address) profileUpdate.address = address;
+
+      if (Object.keys(profileUpdate).length > 0) {
+        await adminClient
+          .from("profiles")
+          .update(profileUpdate)
+          .eq("id", newUser.user.id);
+      }
     }
 
     return new Response(
