@@ -386,7 +386,7 @@ export default function JobDetail() {
     setJob({ ...job, ...payload }); setEditOpen(false); toast.success("Job updated");
   };
 
-  const handleOpenAddTask = () => { setEditingTask(null); setTaskForm({ ...emptyTaskForm }); setTaskOpen(true); };
+  const handleOpenAddTask = () => { setEditingTask(null); setTaskForm({ ...emptyTaskForm }); setTaskPendingFiles([]); setTaskOpen(true); };
   const handleOpenEditTask = (task: any) => {
     setEditingTask(task);
     setTaskForm({ title: task.title, description: task.description || "", assigned_to: task.assigned_to || "", status: task.status });
