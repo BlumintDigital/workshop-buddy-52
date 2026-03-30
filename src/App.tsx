@@ -107,6 +107,7 @@ const App = () => (
             <Route path="/jobs/:id" element={<ProtectedRoute allowedRoles={["admin", "manager", "staff", "client"]}><JobDetail /></ProtectedRoute>} />
             <Route path="/invoices/new" element={<ProtectedRoute allowedRoles={["admin", "manager"]}><InvoiceCreate /></ProtectedRoute>} />
             <Route path="/invoices/:id" element={<ProtectedRoute allowedRoles={["admin", "manager", "client"]}><InvoiceDetail /></ProtectedRoute>} />
+            <Route path="/profile" element={<ProtectedRoute allowedRoles={["admin", "manager", "staff", "client"]}><UserProfile /></ProtectedRoute>} />
 
             <Route path="*" element={<NotFound />} />
           </Routes>
