@@ -919,6 +919,30 @@ export default function JobDetail() {
                   </SelectContent>
                 </Select>
               </div>
+              {!editingTask && (
+                <div>
+                  <Label>Attachments <span className="text-muted-foreground text-xs">(optional)</span></Label>
+                  <input ref={taskCreateFileRef} type="file" multiple className="hidden" onChange={(e) => {
+                    if (e.target.files) setTaskPendingFiles(prev => [...prev, ...Array.from(e.target.files!)]);
+                    e.target.value = "";
+                  }} />
+                  <Button type="button" variant="outline" size="sm" className="mt-1 w-full" onClick={() => taskCreateFileRef.current?.click()}>
+                    <FileUp className="mr-2 h-4 w-4" />Add Files
+                  </Button>
+                  {taskPendingFiles.length > 0 && (
+                    <div className="mt-2 space-y-1">
+                      {taskPendingFiles.map((f, i) => (
+                        <div key={i} className="flex items-center justify-between text-xs border rounded px-2 py-1">
+                          <span className="truncate">{f.name}</span>
+                          <Button variant="ghost" size="icon" className="h-5 w-5 shrink-0" onClick={() => setTaskPendingFiles(prev => prev.filter((_, idx) => idx !== i))}>
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
               <Button onClick={handleSaveTask} className="w-full">{editingTask ? "Save Changes" : "Add Task"}</Button>
             </div>
           </DialogContent>
