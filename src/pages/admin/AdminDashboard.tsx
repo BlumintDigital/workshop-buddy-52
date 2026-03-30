@@ -1,0 +1,64 @@
+import { useEffect, useState } from "react";
+import { Briefcase, Calendar, Package, FileText, Users, AlertTriangle } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import DashboardLayout from "@/components/layout/DashboardLayout";
+import { StatCard } from "@/components/dashboard/StatsCards";
+import { RecentActivity } from "@/components/dashboard/RecentActivity";
+
+export default function AdminDashboard() {
+  const [stats, setStats] = useState({ jobs: 0, appointments: 0, inventory: 0, invoices: 0, users: 0, lowStock: 0 });
+  const [recentJobs, setRecentJobs] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      const [jobs, appts, items, invs, roles, lowStock] = await Promise.all([
+        supabase.from("jobs").select("*", { count: "exact", head: true }),
+        supabase.from("appointments").select("*", { count: "exact", head: true }),
+        supabase.from("inventory_items").select("*", { count: "exact", head: true }),
+        supabase.from("invoices").select("*", { count: "exact", head: true }),
+        supabase.from("user_roles").select("*", { count: "exact", head: true }),
+        supabase.from("inventory_items").select("*", { count: "exact", head: true }).filter("quantity", "lte", "min_stock" as any),
+      ]);
+      setStats({
+        jobs: jobs.count || 0,
+        appointments: appts.count || 0,
+        inventory: items.count || 0,
+        invoices: invs.count || 0,
+        users: roles.count || 0,
+        lowStock: lowStock.count || 0,
+      });
+    };
+
+    const fetchRecent = async () => {
+      const { data } = await supabase.from("jobs").select("id, title, status, created_at").order("created_at", { ascending: false }).limit(5);
+      setRecentJobs((data || []).map((j) => ({ id: j.id, title: j.title, status: j.status, date: new Date(j.created_at).toLocaleDateString() })));
+    };
+
+    fetchStats();
+    fetchRecent();
+  }, []);
+
+  return (
+    <DashboardLayout>
+      <div className="space-y-6">
+        <div>
+          <h2 className="text-3xl font-bold tracking-tight">Admin Dashboard</h2>
+          <p className="text-muted-foreground">Overview of your entire workshop</p>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <StatCard title="Total Jobs" value={stats.jobs} icon={Briefcase} description="All workshop jobs" />
+          <StatCard title="Appointments" value={stats.appointments} icon={Calendar} description="Scheduled bookings" />
+          <StatCard title="Inventory Items" value={stats.inventory} icon={Package} description="Items tracked" />
+          <StatCard title="Invoices" value={stats.invoices} icon={FileText} description="Total invoices" />
+          <StatCard title="Total Users" value={stats.users} icon={Users} description="Registered users" />
+          <StatCard title="Low Stock Alerts" value={stats.lowStock} icon={AlertTriangle} description="Items below minimum" />
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <RecentActivity activities={recentJobs} title="Recent Jobs" />
+        </div>
+      </div>
+    </DashboardLayout>
+  );
+}
