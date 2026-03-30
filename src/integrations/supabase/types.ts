@@ -246,145 +246,50 @@ export type Database = {
           },
         ]
       }
-      job_attachments: {
-        Row: {
-          id: string
-          job_id: string
-          task_id: string | null
-          uploaded_by: string
-          file_name: string
-          file_path: string
-          file_type: string
-          file_size: number | null
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          job_id: string
-          task_id?: string | null
-          uploaded_by: string
-          file_name: string
-          file_path: string
-          file_type: string
-          file_size?: number | null
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          job_id?: string
-          task_id?: string | null
-          uploaded_by?: string
-          file_name?: string
-          file_path?: string
-          file_type?: string
-          file_size?: number | null
-          created_at?: string
-        }
-        Relationships: []
-      }
-      job_ratings: {
-        Row: {
-          id: string
-          job_id: string
-          client_id: string
-          rating: number
-          comment: string | null
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          job_id: string
-          client_id: string
-          rating: number
-          comment?: string | null
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          job_id?: string
-          client_id?: string
-          rating?: number
-          comment?: string | null
-          created_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "job_ratings_job_id_fkey"
-            columns: ["job_id"]
-            isOneToOne: false
-            referencedRelation: "jobs"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      job_task_notes: {
-        Row: {
-          id: string
-          task_id: string
-          user_id: string
-          note: string
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          task_id: string
-          user_id: string
-          note: string
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          task_id?: string
-          user_id?: string
-          note?: string
-          created_at?: string
-        }
-        Relationships: []
-      }
       job_tasks: {
         Row: {
+          assigned_to: string | null
+          created_at: string
+          description: string | null
           id: string
           job_id: string
-          title: string
-          description: string | null
-          assigned_to: string | null
           status: string
-          created_at: string
+          title: string
           updated_at: string
         }
         Insert: {
+          assigned_to?: string | null
+          created_at?: string
+          description?: string | null
           id?: string
           job_id: string
-          title: string
-          description?: string | null
-          assigned_to?: string | null
           status?: string
-          created_at?: string
+          title: string
           updated_at?: string
         }
         Update: {
+          assigned_to?: string | null
+          created_at?: string
+          description?: string | null
           id?: string
           job_id?: string
-          title?: string
-          description?: string | null
-          assigned_to?: string | null
           status?: string
-          created_at?: string
+          title?: string
           updated_at?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "job_tasks_job_id_fkey"
-            columns: ["job_id"]
-            isOneToOne: false
-            referencedRelation: "jobs"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "job_tasks_assigned_to_fkey"
             columns: ["assigned_to"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_tasks_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
             referencedColumns: ["id"]
           },
         ]
@@ -529,51 +434,6 @@ export type Database = {
         }
         Relationships: []
       }
-      workshop_settings: {
-        Row: {
-          id: number
-          workshop_name: string | null
-          contact_email: string | null
-          phone: string | null
-          address: string | null
-          default_tax_rate: number | null
-          currency: string | null
-          notify_job_status: boolean
-          notify_new_appointment: boolean
-          notify_low_inventory: boolean
-          email_notifications_enabled: boolean
-          from_email: string | null
-        }
-        Insert: {
-          id?: number
-          workshop_name?: string | null
-          contact_email?: string | null
-          phone?: string | null
-          address?: string | null
-          default_tax_rate?: number | null
-          currency?: string | null
-          notify_job_status?: boolean
-          notify_new_appointment?: boolean
-          notify_low_inventory?: boolean
-          email_notifications_enabled?: boolean
-          from_email?: string | null
-        }
-        Update: {
-          id?: number
-          workshop_name?: string | null
-          contact_email?: string | null
-          phone?: string | null
-          address?: string | null
-          default_tax_rate?: number | null
-          currency?: string | null
-          notify_job_status?: boolean
-          notify_new_appointment?: boolean
-          notify_low_inventory?: boolean
-          email_notifications_enabled?: boolean
-          from_email?: string | null
-        }
-        Relationships: []
-      }
       user_roles: {
         Row: {
           id: string
@@ -589,6 +449,45 @@ export type Database = {
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
+        }
+        Relationships: []
+      }
+      workshop_settings: {
+        Row: {
+          address: string | null
+          contact_email: string | null
+          currency: string | null
+          default_tax_rate: number | null
+          id: number
+          notify_job_status: boolean | null
+          notify_low_inventory: boolean | null
+          notify_new_appointment: boolean | null
+          phone: string | null
+          workshop_name: string | null
+        }
+        Insert: {
+          address?: string | null
+          contact_email?: string | null
+          currency?: string | null
+          default_tax_rate?: number | null
+          id?: number
+          notify_job_status?: boolean | null
+          notify_low_inventory?: boolean | null
+          notify_new_appointment?: boolean | null
+          phone?: string | null
+          workshop_name?: string | null
+        }
+        Update: {
+          address?: string | null
+          contact_email?: string | null
+          currency?: string | null
+          default_tax_rate?: number | null
+          id?: number
+          notify_job_status?: boolean | null
+          notify_low_inventory?: boolean | null
+          notify_new_appointment?: boolean | null
+          phone?: string | null
+          workshop_name?: string | null
         }
         Relationships: []
       }
