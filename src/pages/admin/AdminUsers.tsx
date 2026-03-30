@@ -24,7 +24,7 @@ export default function AdminUsers() {
   const navigate = useNavigate();
 
   const fetchUsers = async () => {
-    const { data: roles } = await supabase.from("user_roles").select("user_id, role");
+    const { data: roles } = await supabase.from("user_roles").select("user_id, role").in("role", ["admin", "manager", "staff"]);
     const { data: profiles } = await supabase.from("profiles").select("id, full_name, created_at");
     if (roles && profiles) {
       const merged = roles.map((r) => {
@@ -71,7 +71,6 @@ export default function AdminUsers() {
               <SelectItem value="admin">Admin</SelectItem>
               <SelectItem value="manager">Manager</SelectItem>
               <SelectItem value="staff">Staff</SelectItem>
-              <SelectItem value="client">Client</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -99,7 +98,6 @@ export default function AdminUsers() {
                           <SelectItem value="admin">Admin</SelectItem>
                           <SelectItem value="manager">Manager</SelectItem>
                           <SelectItem value="staff">Staff</SelectItem>
-                          <SelectItem value="client">Client</SelectItem>
                         </SelectContent>
                       </Select>
                     </TableCell>
