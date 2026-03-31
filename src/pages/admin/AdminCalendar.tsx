@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ChevronLeft, ChevronRight, Briefcase, CalendarDays, AlertTriangle, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Link } from "react-router-dom";
+import { toast } from "sonner";
 
 type CalendarEvent = {
   id: string;
