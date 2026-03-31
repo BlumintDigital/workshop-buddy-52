@@ -1,5 +1,5 @@
-import { useEffect, useState, useMemo } from "react";
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, parseISO, isBefore } from "date-fns";
+import { useEffect, useState, useMemo, useCallback } from "react";
+import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, addWeeks, subWeeks, eachDayOfInterval, isSameDay, parseISO, isBefore, addDays } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,6 +11,7 @@ import { ChevronLeft, ChevronRight, Briefcase, CalendarDays, AlertTriangle, Plus
 import { cn } from "@/lib/utils";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
+import CreateJobDialog from "@/components/calendar/CreateJobDialog";
 
 type CalendarEvent = {
   id: string;
@@ -45,7 +46,9 @@ const statusBadgeColors: Record<string, string> = {
 };
 
 export default function AdminCalendar() {
+  const [viewMode, setViewMode] = useState<"month" | "week">("month");
   const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [currentWeekDate, setCurrentWeekDate] = useState(new Date());
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [showTypes, setShowTypes] = useState<string[]>(["appointment", "job"]);
@@ -53,6 +56,14 @@ export default function AdminCalendar() {
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [draggedEventId, setDraggedEventId] = useState<string | null>(null);
   const [dragOverDate, setDragOverDate] = useState<Date | null>(null);
+  const [createJobOpen, setCreateJobOpen] = useState(false);
+  const [createJobDate, setCreateJobDate] = useState("");
+  const [fetchKey, setFetchKey] = useState(0);
+
+  const openCreateJob = (date: Date) => {
+    setCreateJobDate(format(date, "yyyy-MM-dd"));
+    setCreateJobOpen(true);
+  };
 
   const handleDragStart = (e: React.DragEvent, eventId: string) => {
     e.dataTransfer.setData("text/plain", eventId);
@@ -66,9 +77,7 @@ export default function AdminCalendar() {
     setDragOverDate(date);
   };
 
-  const handleDragLeave = () => {
-    setDragOverDate(null);
-  };
+  const handleDragLeave = () => { setDragOverDate(null); };
 
   const handleDrop = async (e: React.DragEvent, targetDate: Date) => {
     e.preventDefault();
@@ -79,13 +88,9 @@ export default function AdminCalendar() {
     if (!event || event.type !== "job") return;
     const newDate = format(targetDate, "yyyy-MM-dd");
     if (event.date === newDate) return;
-
-    // Optimistic update
     setEvents((prev) => prev.map((ev) => (ev.id === eventId ? { ...ev, date: newDate } : ev)));
-
     const { error } = await supabase.from("jobs").update({ due_date: newDate }).eq("id", eventId);
     if (error) {
-      // Revert on failure
       setEvents((prev) => prev.map((ev) => (ev.id === eventId ? { ...ev, date: event.date } : ev)));
       toast.error("Failed to reschedule job");
     } else {
@@ -93,46 +98,46 @@ export default function AdminCalendar() {
     }
   };
 
-  useEffect(() => {
-    const start = format(startOfMonth(currentMonth), "yyyy-MM-dd");
-    const end = format(endOfMonth(currentMonth), "yyyy-MM-dd");
+  // Compute date range based on view mode
+  const dateRange = useMemo(() => {
+    if (viewMode === "week") {
+      const ws = startOfWeek(currentWeekDate);
+      const we = endOfWeek(currentWeekDate);
+      return { start: format(ws, "yyyy-MM-dd"), end: format(we, "yyyy-MM-dd") };
+    }
+    return { start: format(startOfMonth(currentMonth), "yyyy-MM-dd"), end: format(endOfMonth(currentMonth), "yyyy-MM-dd") };
+  }, [viewMode, currentMonth, currentWeekDate]);
 
+  useEffect(() => {
     const fetchEvents = async () => {
       const [apptRes, jobRes] = await Promise.all([
-        supabase.from("appointments").select("id, title, appointment_date, appointment_time, status, type, client_id").gte("appointment_date", start).lte("appointment_date", end),
-        supabase.from("jobs").select("id, title, due_date, status, priority, estimated_hours, assigned_staff_id, client_id").gte("due_date", start).lte("due_date", end),
+        supabase.from("appointments").select("id, title, appointment_date, appointment_time, status, type, client_id").gte("appointment_date", dateRange.start).lte("appointment_date", dateRange.end),
+        supabase.from("jobs").select("id, title, due_date, status, priority, estimated_hours, assigned_staff_id, client_id").gte("due_date", dateRange.start).lte("due_date", dateRange.end),
       ]);
-
       const jobs = jobRes.data || [];
       const appts = apptRes.data || [];
-
-      // Collect unique profile IDs
       const profileIds = new Set<string>();
       jobs.forEach((j) => { if (j.assigned_staff_id) profileIds.add(j.assigned_staff_id); if (j.client_id) profileIds.add(j.client_id); });
       appts.forEach((a) => { if (a.client_id) profileIds.add(a.client_id); });
-
       let profileMap: Record<string, string> = {};
       if (profileIds.size > 0) {
         const { data: profiles } = await supabase.from("profiles").select("id, full_name, company_name").in("id", Array.from(profileIds));
         (profiles || []).forEach((p) => { profileMap[p.id] = p.full_name || p.company_name || "Unknown"; });
       }
-
       const apptEvents: CalendarEvent[] = appts.map((a) => ({
         id: a.id, title: a.title, date: a.appointment_date, time: a.appointment_time, type: "appointment", status: a.status,
         clientName: profileMap[a.client_id] || undefined,
       }));
-
       const jobEvents: CalendarEvent[] = jobs.map((j) => ({
         id: j.id, title: j.title, date: j.due_date!, type: "job", status: j.status,
         priority: j.priority, estimatedHours: j.estimated_hours,
         staffName: j.assigned_staff_id ? profileMap[j.assigned_staff_id] : undefined,
         clientName: j.client_id ? profileMap[j.client_id] : undefined,
       }));
-
       setEvents([...apptEvents, ...jobEvents]);
     };
     fetchEvents();
-  }, [currentMonth]);
+  }, [dateRange, fetchKey]);
 
   const filteredEvents = useMemo(() => {
     return events.filter((e) => {
@@ -145,17 +150,101 @@ export default function AdminCalendar() {
     });
   }, [events, showTypes, statusFilter, priorityFilter]);
 
-  const days = eachDayOfInterval({ start: startOfMonth(currentMonth), end: endOfMonth(currentMonth) });
-  const firstDayOfWeek = startOfMonth(currentMonth).getDay();
-  const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-
-  const eventsForDate = (date: Date) => filteredEvents.filter((e) => isSameDay(parseISO(e.date), date));
+  const eventsForDate = useCallback((date: Date) => filteredEvents.filter((e) => isSameDay(parseISO(e.date), date)), [filteredEvents]);
   const selectedEvents = selectedDate ? eventsForDate(selectedDate) : [];
 
   // Stats
   const totalJobs = events.filter((e) => e.type === "job").length;
   const totalAppts = events.filter((e) => e.type === "appointment").length;
   const overdueJobs = events.filter((e) => e.type === "job" && e.status !== "completed" && isBefore(parseISO(e.date), new Date())).length;
+
+  // Navigation
+  const goBack = () => {
+    if (viewMode === "week") setCurrentWeekDate((d) => subWeeks(d, 1));
+    else setCurrentMonth((d) => new Date(d.getFullYear(), d.getMonth() - 1));
+  };
+  const goForward = () => {
+    if (viewMode === "week") setCurrentWeekDate((d) => addWeeks(d, 1));
+    else setCurrentMonth((d) => new Date(d.getFullYear(), d.getMonth() + 1));
+  };
+
+  const headerLabel = viewMode === "week"
+    ? `${format(startOfWeek(currentWeekDate), "MMM d")} – ${format(endOfWeek(currentWeekDate), "MMM d, yyyy")}`
+    : format(currentMonth, "MMMM yyyy");
+
+  // Days to render
+  const days = viewMode === "week"
+    ? eachDayOfInterval({ start: startOfWeek(currentWeekDate), end: endOfWeek(currentWeekDate) })
+    : eachDayOfInterval({ start: startOfMonth(currentMonth), end: endOfMonth(currentMonth) });
+
+  const firstDayOfWeek = viewMode === "month" ? startOfMonth(currentMonth).getDay() : 0;
+  const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+  const renderEventPill = (ev: CalendarEvent) => (
+    <div
+      key={ev.id}
+      draggable={ev.type === "job"}
+      onDragStart={ev.type === "job" ? (e) => { e.stopPropagation(); handleDragStart(e, ev.id); } : undefined}
+      className={cn(
+        "text-[10px] leading-tight px-1 py-0.5 rounded truncate border-l-2",
+        ev.type === "appointment"
+          ? "bg-primary/10 text-primary border-l-blue-500"
+          : cn("bg-secondary text-secondary-foreground cursor-grab active:cursor-grabbing", priorityColors[ev.priority || "medium"]),
+        draggedEventId === ev.id && "opacity-50"
+      )}
+    >
+      {ev.title}
+    </div>
+  );
+
+  const renderDayCell = (day: Date) => {
+    const dayEvents = eventsForDate(day);
+    const isSelected = selectedDate && isSameDay(day, selectedDate);
+    const isToday = isSameDay(day, new Date());
+    const jobCount = dayEvents.filter((e) => e.type === "job").length;
+    const apptCount = dayEvents.filter((e) => e.type === "appointment").length;
+    const isWeek = viewMode === "week";
+    const maxShow = isWeek ? 999 : 3;
+
+    return (
+      <div
+        key={day.toISOString()}
+        onClick={() => setSelectedDate(day)}
+        onDragOver={(e) => handleDragOver(e, day)}
+        onDragLeave={handleDragLeave}
+        onDrop={(e) => handleDrop(e, day)}
+        className={cn(
+          "p-1 border rounded-md text-left transition-colors hover:bg-muted/50 cursor-pointer",
+          isWeek ? "min-h-[200px]" : "min-h-[80px]",
+          isSelected && "ring-2 ring-primary",
+          isToday && "bg-accent/30",
+          dragOverDate && isSameDay(day, dragOverDate) && "bg-primary/10 ring-2 ring-primary/30"
+        )}
+      >
+        <div className="flex items-center justify-between">
+          <span className={cn("text-xs font-medium", isToday && "text-primary font-bold")}>
+            {isWeek ? format(day, "EEE, MMM d") : format(day, "d")}
+          </span>
+          <div className="flex items-center gap-1">
+            {jobCount > 0 && <span className="text-[9px] bg-secondary text-secondary-foreground rounded-full px-1">{jobCount}J</span>}
+            {apptCount > 0 && <span className="text-[9px] bg-primary/10 text-primary rounded-full px-1">{apptCount}A</span>}
+            <button
+              onClick={(e) => { e.stopPropagation(); openCreateJob(day); }}
+              className="h-4 w-4 flex items-center justify-center rounded hover:bg-muted text-muted-foreground hover:text-foreground"
+            >
+              <Plus className="h-3 w-3" />
+            </button>
+          </div>
+        </div>
+        <div className="mt-1 space-y-0.5">
+          {dayEvents.slice(0, maxShow).map(renderEventPill)}
+          {!isWeek && dayEvents.length > 3 && (
+            <span className="text-[10px] text-muted-foreground px-1">+{dayEvents.length - 3} more</span>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   return (
     <DashboardLayout>
@@ -194,6 +283,13 @@ export default function AdminCalendar() {
         <Card className="p-4">
           <div className="flex flex-wrap items-center gap-4">
             <div className="flex items-center gap-2">
+              <span className="text-sm font-medium">View:</span>
+              <ToggleGroup type="single" value={viewMode} onValueChange={(v) => v && setViewMode(v as "month" | "week")} size="sm">
+                <ToggleGroupItem value="month" className="text-xs">Month</ToggleGroupItem>
+                <ToggleGroupItem value="week" className="text-xs">Week</ToggleGroupItem>
+              </ToggleGroup>
+            </div>
+            <div className="flex items-center gap-2">
               <span className="text-sm font-medium">Show:</span>
               <ToggleGroup type="multiple" value={showTypes} onValueChange={(v) => v.length && setShowTypes(v)} size="sm">
                 <ToggleGroupItem value="appointment" className="text-xs">Appointments</ToggleGroupItem>
@@ -231,11 +327,11 @@ export default function AdminCalendar() {
         <Card>
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
-              <Button variant="ghost" size="icon" onClick={() => setCurrentMonth((d) => new Date(d.getFullYear(), d.getMonth() - 1))}>
+              <Button variant="ghost" size="icon" onClick={goBack}>
                 <ChevronLeft className="h-4 w-4" />
               </Button>
-              <CardTitle className="text-lg">{format(currentMonth, "MMMM yyyy")}</CardTitle>
-              <Button variant="ghost" size="icon" onClick={() => setCurrentMonth((d) => new Date(d.getFullYear(), d.getMonth() + 1))}>
+              <CardTitle className="text-lg">{headerLabel}</CardTitle>
+              <Button variant="ghost" size="icon" onClick={goForward}>
                 <ChevronRight className="h-4 w-4" />
               </Button>
             </div>
@@ -246,59 +342,7 @@ export default function AdminCalendar() {
                 <div key={d} className="text-center text-xs font-medium text-muted-foreground py-2">{d}</div>
               ))}
               {Array.from({ length: firstDayOfWeek }).map((_, i) => <div key={`blank-${i}`} />)}
-              {days.map((day) => {
-                const dayEvents = eventsForDate(day);
-                const isSelected = selectedDate && isSameDay(day, selectedDate);
-                const isToday = isSameDay(day, new Date());
-                const jobCount = dayEvents.filter((e) => e.type === "job").length;
-                const apptCount = dayEvents.filter((e) => e.type === "appointment").length;
-                return (
-                  <div
-                    key={day.toISOString()}
-                    onClick={() => setSelectedDate(day)}
-                    onDragOver={(e) => handleDragOver(e, day)}
-                    onDragLeave={handleDragLeave}
-                    onDrop={(e) => handleDrop(e, day)}
-                    className={cn(
-                      "min-h-[80px] p-1 border rounded-md text-left transition-colors hover:bg-muted/50 cursor-pointer",
-                      isSelected && "ring-2 ring-primary",
-                      isToday && "bg-accent/30",
-                      dragOverDate && isSameDay(day, dragOverDate) && "bg-primary/10 ring-2 ring-primary/30"
-                    )}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className={cn("text-xs font-medium", isToday && "text-primary font-bold")}>{format(day, "d")}</span>
-                      {(jobCount > 0 || apptCount > 0) && (
-                        <div className="flex gap-1">
-                          {jobCount > 0 && <span className="text-[9px] bg-secondary text-secondary-foreground rounded-full px-1">{jobCount}J</span>}
-                          {apptCount > 0 && <span className="text-[9px] bg-primary/10 text-primary rounded-full px-1">{apptCount}A</span>}
-                        </div>
-                      )}
-                    </div>
-                    <div className="mt-1 space-y-0.5">
-                      {dayEvents.slice(0, 3).map((ev) => (
-                        <div
-                          key={ev.id}
-                          draggable={ev.type === "job"}
-                          onDragStart={ev.type === "job" ? (e) => { e.stopPropagation(); handleDragStart(e, ev.id); } : undefined}
-                          className={cn(
-                            "text-[10px] leading-tight px-1 py-0.5 rounded truncate border-l-2",
-                            ev.type === "appointment"
-                              ? "bg-primary/10 text-primary border-l-blue-500"
-                              : cn("bg-secondary text-secondary-foreground cursor-grab active:cursor-grabbing", priorityColors[ev.priority || "medium"]),
-                            draggedEventId === ev.id && "opacity-50"
-                          )}
-                        >
-                          {ev.title}
-                        </div>
-                      ))}
-                      {dayEvents.length > 3 && (
-                        <span className="text-[10px] text-muted-foreground px-1">+{dayEvents.length - 3} more</span>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
+              {days.map(renderDayCell)}
             </div>
           </CardContent>
         </Card>
@@ -309,10 +353,8 @@ export default function AdminCalendar() {
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-base">{format(selectedDate, "EEEE, MMMM d, yyyy")}</CardTitle>
-                <Button asChild size="sm" variant="outline">
-                  <Link to="/admin/jobs">
-                    <Plus className="h-4 w-4 mr-1" /> Create Job
-                  </Link>
+                <Button size="sm" variant="outline" onClick={() => openCreateJob(selectedDate)}>
+                  <Plus className="h-4 w-4 mr-1" /> Create Job
                 </Button>
               </div>
             </CardHeader>
@@ -346,7 +388,7 @@ export default function AdminCalendar() {
                         </div>
                       </div>
                       {ev.type === "job" && (
-                        <Link to={`/admin/jobs`} className="text-xs text-primary hover:underline mt-2 inline-block">
+                        <Link to="/admin/jobs" className="text-xs text-primary hover:underline mt-2 inline-block">
                           View Details →
                         </Link>
                       )}
@@ -357,6 +399,14 @@ export default function AdminCalendar() {
             </CardContent>
           </Card>
         )}
+
+        {/* Create Job Dialog */}
+        <CreateJobDialog
+          open={createJobOpen}
+          onOpenChange={setCreateJobOpen}
+          defaultDate={createJobDate}
+          onCreated={() => setFetchKey((k) => k + 1)}
+        />
       </div>
     </DashboardLayout>
   );
