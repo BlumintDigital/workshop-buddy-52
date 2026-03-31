@@ -1,97 +1,79 @@
 
 
-## Global Admin Dashboard — Architecture Plan
+## Expanding the Admin API — Additional Data Endpoints
 
-### Overview
+The current `admin-api` exposes counts and configuration. To make the global dashboard a true single source of truth, we should expose the actual operational data from each instance. Here's what's available in the schema and worth surfacing:
 
-Build a **separate Lovable project** with its own **central Supabase project** that acts as a command center for managing multiple deployed workshop instances. Each deployed instance exposes a set of Edge Function endpoints (a REST API), and the global dashboard calls them to read stats, push config, and manage users/data.
+### New endpoints to add to `admin-api`
 
-### Architecture
+#### 1. Jobs list — `GET ?action=jobs`
+Full job records with client name, staff name, status, priority, dates, hours. Enables the dashboard to show a cross-instance job board, filter by status, and spot bottlenecks.
 
+#### 2. Invoices & Revenue — `GET ?action=invoices`
+Invoice list with status, totals, paid dates, client info. Plus a companion `GET ?action=revenue` that returns monthly revenue aggregates (calls existing `get_monthly_revenue` DB function).
+
+#### 3. Appointments — `GET ?action=appointments`
+Upcoming and recent appointments with client name, status, date/time. Lets the dashboard show scheduling load across instances.
+
+#### 4. Inventory — `GET ?action=inventory`
+Full inventory item list with quantities, min stock, unit cost, category. Enables central stock monitoring and cross-instance procurement planning.
+
+#### 5. Activity logs — `GET ?action=activity-logs`
+Recent activity log entries (last 100 or with pagination). Gives the dashboard a live feed of what's happening in each instance without needing to log into each one.
+
+#### 6. Analytics / Aggregates — `GET ?action=analytics`
+Combined endpoint calling existing DB functions:
+- `get_monthly_revenue()` — revenue by month
+- `get_monthly_bookings()` — bookings by month  
+- `get_job_completion_stats()` — jobs by status
+
+Returns all three in one response for charting on the dashboard.
+
+#### 7. Job ratings — `GET ?action=ratings`
+Client satisfaction data: average rating, rating count, recent ratings with comments. Useful for quality monitoring across instances.
+
+#### 8. Storage usage — `GET ?action=storage`
+List storage buckets and file counts from `job_attachments` table. Helps monitor data growth per instance.
+
+#### 9. Create user — `POST ?action=create-user`
+Proxy to the existing `create-client` edge function. Allows creating users on any instance from the central dashboard.
+
+#### 10. Update instance version — `POST ?action=update-version`
+Allows the dashboard to set the `instance_version` field after a deployment, keeping version tracking accurate.
+
+### Query parameters for list endpoints
+All list endpoints would support:
+- `?limit=50` — default 50, max 200
+- `?offset=0` — for pagination
+- `?status=pending` — filter by status (where applicable)
+- `?from=2026-01-01&to=2026-03-31` — date range filters
+
+### Implementation approach
+1. Add all new `case` blocks to `supabase/functions/admin-api/index.ts`
+2. Each endpoint uses the existing service-role client — no schema changes needed
+3. List endpoints join with `profiles` to include readable names instead of just UUIDs
+4. The `analytics` endpoint calls the existing RPC functions directly
+
+### Technical details
+
+**File to modify:** `supabase/functions/admin-api/index.ts`
+
+No database migrations needed — all data already exists. We're just exposing read access (and two write proxies) through the existing authenticated API.
+
+The `analytics` endpoint would look like:
 ```text
-┌──────────────────────────────┐
-│   Global Admin Dashboard     │
-│   (new Lovable project)      │
-│   + Central Supabase DB      │
-│                              │
-│  Tables:                     │
-│   - instances (registry)     │
-│   - admin_users              │
-│   - audit_log                │
-└──────────┬───────────────────┘
-           │  REST calls (JWT / shared secret)
-     ┌─────┴─────┬─────────────┐
-     ▼           ▼             ▼
-┌─────────┐ ┌─────────┐ ┌─────────┐
-│Instance A│ │Instance B│ │Instance C│
-│(Company) │ │(Company) │ │(Company) │
-│Supabase  │ │Supabase  │ │Supabase  │
-└──────────┘ └──────────┘ └──────────┘
+Promise.all([
+  supabase.rpc("get_monthly_revenue"),
+  supabase.rpc("get_monthly_bookings"),
+  supabase.rpc("get_job_completion_stats"),
+])
 ```
 
-### What needs to happen in TWO projects
-
----
-
-#### A. Changes to THIS project (each deployed instance)
-
-Add an Edge Function `admin-api` that the global dashboard calls. It validates a shared secret, then performs actions:
-
-1. **`GET /admin-api?action=stats`** — returns job count, user count, appointment count, invoice count, inventory count, low-stock count
-2. **`GET /admin-api?action=config`** — returns current `workshop_settings`
-3. **`POST /admin-api?action=update-config`** — updates `workshop_settings` (name, branding, currency, tax rate, notifications)
-4. **`GET /admin-api?action=users`** — lists users with roles
-5. **`POST /admin-api?action=update-role`** — changes a user's role
-6. **`POST /admin-api?action=toggle-user`** — activate/deactivate a user
-7. **`POST /admin-api?action=seed-data`** / **`delete-data`** — proxy to existing Edge Functions
-8. **`GET /admin-api?action=health`** — simple health check / version ping
-
-Auth: a `GLOBAL_ADMIN_SECRET` stored as a Supabase secret, validated via `Authorization: Bearer <secret>` header. The Edge Function uses the service role key internally.
-
----
-
-#### B. New Lovable project (Global Admin Dashboard)
-
-**Central Supabase tables:**
-
-- **`instances`** — `id`, `name`, `company_name`, `supabase_url`, `api_secret`, `status`, `created_at`, `last_health_check`, `version`
-- **`admin_users`** — global admin accounts (email/password via Supabase Auth)
-- **`audit_log`** — tracks all actions taken from the dashboard (who, what instance, what action, when)
-
-**Pages:**
-
-1. **Dashboard** — grid of instance cards showing health, user/job counts, last checked
-2. **Instance Detail** — stats, config editor, user list, data management actions
-3. **Add Instance** — form to register a new deployment (URL + API secret)
-4. **Audit Log** — filterable log of all global admin actions
-5. **Settings** — manage global admin users
-
-**Key frontend patterns:**
-- Each instance card polls `/admin-api?action=health` periodically
-- Instance detail page fetches stats + config on load
-- Config editor sends `update-config` calls
-- User table supports role changes and activation toggles
-- All mutations log to the central `audit_log`
-
----
-
-### Implementation order
-
-1. **This project first**: Create the `admin-api` Edge Function with all endpoints and the `GLOBAL_ADMIN_SECRET`
-2. **New project**: Set up the central Supabase schema, then build the dashboard UI
-
-### Security considerations
-
-- The shared secret is per-instance (stored in each instance's Supabase secrets and in the central DB)
-- The Edge Function uses service role internally — never exposed to the client
-- All actions are audit-logged centrally
-- The global dashboard itself uses Supabase Auth for admin login
-
----
-
-### Scope for this session
-
-Since this is a separate project, I recommend we start by **adding the `admin-api` Edge Function to this project** so each deployment is ready to be managed. The new dashboard project would then be created separately.
-
-Shall I proceed with building the `admin-api` Edge Function in this project first?
+For list endpoints, joins use the pattern:
+```text
+supabase.from("jobs")
+  .select("*, client:profiles!client_id(full_name, company_name), staff:profiles!assigned_staff_id(full_name)")
+  .order("created_at", { ascending: false })
+  .range(offset, offset + limit - 1)
+```
 
