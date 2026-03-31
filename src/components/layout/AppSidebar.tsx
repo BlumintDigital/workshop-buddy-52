@@ -125,12 +125,16 @@ export function AppSidebar() {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" className="cursor-default hover:bg-transparent">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/15 text-white">
-                <Wrench className="h-4 w-4" />
-              </div>
+              {logoUrl ? (
+                <img src={logoUrl} alt={workshopName} className="h-8 w-8 shrink-0 rounded-lg object-contain" />
+              ) : (
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/15 text-white">
+                  <Wrench className="h-4 w-4" />
+                </div>
+              )}
               {!collapsed && (
                 <div className="flex flex-col gap-0.5 leading-none">
-                  <span className="font-semibold text-sidebar-accent-foreground">Workshop Manager</span>
+                  <span className="font-semibold text-sidebar-accent-foreground">{workshopName}</span>
                   <span className="text-xs text-sidebar-foreground capitalize">{role || "user"}</span>
                 </div>
               )}
