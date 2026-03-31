@@ -54,10 +54,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (inactivityTimer.current) {
       clearTimeout(inactivityTimer.current);
     }
+    sessionDeadline.current = Date.now() + SESSION_TIMEOUT_MS;
+    setSessionTimeLeft(SESSION_TIMEOUT_MS);
     inactivityTimer.current = setTimeout(() => {
       performSignOut("Session expired due to inactivity");
     }, SESSION_TIMEOUT_MS);
   }, [performSignOut]);
+
+  const extendSession = useCallback(() => {
+    resetInactivityTimer();
+  }, [resetInactivityTimer]);
 
   useEffect(() => {
     if (!user) return;
