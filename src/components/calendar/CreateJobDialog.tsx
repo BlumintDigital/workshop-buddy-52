@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { format, parseISO } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -8,11 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "@/components/ui/input-group";
-import { FileText, CalendarIcon } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { DatePickerInput } from "@/components/ui/date-picker-input";
+import { FileText } from "lucide-react";
 import { toast } from "sonner";
 
 interface UserOption {
