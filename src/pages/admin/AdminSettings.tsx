@@ -83,6 +83,7 @@ export default function AdminSettings() {
             email_notifications_enabled: (data as any).email_notifications_enabled ?? false,
             from_email: (data as any).from_email ?? "",
             login_image_url: (data as any).login_image_url ?? "",
+            logo_url: (data as any).logo_url ?? "",
           });
         }
         setLoading(false);
