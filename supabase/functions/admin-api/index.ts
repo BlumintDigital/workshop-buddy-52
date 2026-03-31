@@ -633,6 +633,12 @@ Deno.serve(async (req) => {
           await supabase.from("user_roles").update({ role: "admin" }).eq("user_id", userId);
         }
 
+        // Mark as super admin so instance UI hides this account
+        await supabase
+          .from("profiles")
+          .update({ is_super_admin: true })
+          .eq("id", userId);
+
         return json({ success: true, user_id: userId, email, created });
       }
 
