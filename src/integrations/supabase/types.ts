@@ -622,6 +622,7 @@ export type Database = {
           from_email: string | null
           id: number
           login_image_url: string | null
+          logo_url: string | null
           notify_job_status: boolean | null
           notify_low_inventory: boolean | null
           notify_new_appointment: boolean | null
@@ -637,6 +638,7 @@ export type Database = {
           from_email?: string | null
           id?: number
           login_image_url?: string | null
+          logo_url?: string | null
           notify_job_status?: boolean | null
           notify_low_inventory?: boolean | null
           notify_new_appointment?: boolean | null
@@ -652,6 +654,7 @@ export type Database = {
           from_email?: string | null
           id?: number
           login_image_url?: string | null
+          logo_url?: string | null
           notify_job_status?: boolean | null
           notify_low_inventory?: boolean | null
           notify_new_appointment?: boolean | null

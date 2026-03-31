@@ -203,7 +203,7 @@ export default function Auth() {
         {loginImageUrl && (
           <div className="absolute inset-0 bg-black/30 flex items-end p-8">
             <div className="text-white">
-              <h2 className="text-2xl font-bold">Workshop Manager</h2>
+              <h2 className="text-2xl font-bold">{workshopName}</h2>
               <p className="text-white/70 text-sm mt-1">Manufacturing & Fabrication Management</p>
             </div>
           </div>

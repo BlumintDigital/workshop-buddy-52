@@ -281,7 +281,32 @@ export default function AdminSettings() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="branding" className="mt-4">
+          <TabsContent value="branding" className="mt-4 space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Workshop Logo</CardTitle>
+                <CardDescription>Upload a logo displayed on the login page (recommended: square, e.g. 200×200)</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {settings.logo_url ? (
+                  <div className="relative inline-block rounded-lg overflow-hidden border">
+                    <img src={settings.logo_url} alt="Workshop logo" className="w-24 h-24 object-contain" />
+                    <Button size="icon" variant="destructive" className="absolute top-1 right-1 h-6 w-6" onClick={handleRemoveLogo}>
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="border border-dashed rounded-lg p-6 flex flex-col items-center justify-center text-center">
+                    <ImageIcon className="h-8 w-8 text-muted-foreground mb-2" />
+                    <p className="text-sm text-muted-foreground">No logo set — wrench icon will be shown</p>
+                  </div>
+                )}
+                <input ref={logoInputRef} type="file" accept="image/*" className="hidden" onChange={handleUploadLogo} />
+                <Button variant="outline" disabled={uploadingLogo} onClick={() => logoInputRef.current?.click()}>
+                  <Upload className="mr-2 h-4 w-4" />{uploadingLogo ? "Uploading..." : "Upload Logo"}
+                </Button>
+              </CardContent>
+            </Card>
             <Card>
               <CardHeader>
                 <CardTitle>Login Page Image</CardTitle>
