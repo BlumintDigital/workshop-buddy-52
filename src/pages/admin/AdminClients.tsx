@@ -66,7 +66,7 @@ export default function AdminClients() {
     })));
   };
 
-  useEffect(() => { fetchClients(); }, []);
+  useEffect(() => { fetchClients(); }, [page]);
 
   const filtered = useMemo(() => {
     return clients.filter((c) => {
