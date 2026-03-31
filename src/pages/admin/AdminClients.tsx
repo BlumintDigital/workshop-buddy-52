@@ -28,6 +28,7 @@ type ClientRow = {
 
 export default function AdminClients() {
   const [clients, setClients] = useState<ClientRow[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -38,6 +39,7 @@ export default function AdminClients() {
   const [newPhone, setNewPhone] = useState("");
   const [newAddress, setNewAddress] = useState("");
   const [adding, setAdding] = useState(false);
+  const { page, setPage, from, to, reset: resetPage } = usePagination();
 
   // Inline editing state
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -48,9 +50,10 @@ export default function AdminClients() {
 
   const fetchClients = async () => {
     const { data: roles } = await supabase.from("user_roles").select("user_id").eq("role", "client");
-    if (!roles?.length) { setClients([]); return; }
+    if (!roles?.length) { setClients([]); setTotalCount(0); return; }
     const ids = roles.map((r) => r.user_id);
-    const { data: profiles } = await supabase.from("profiles").select("id, full_name, phone, created_at, is_active, company_name, contact_person, address" as any).in("id", ids);
+    const { data: profiles, count } = await supabase.from("profiles").select("id, full_name, phone, created_at, is_active, company_name, contact_person, address" as any, { count: "exact" }).in("id", ids).range(from, to);
+    setTotalCount(count ?? 0);
     setClients((profiles || []).map((p: any) => ({
       user_id: p.id,
       full_name: p.full_name,
