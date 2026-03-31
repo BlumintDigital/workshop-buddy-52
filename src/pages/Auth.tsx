@@ -23,6 +23,8 @@ export default function Auth() {
   const [signupLastName, setSignupLastName] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [loginImageUrl, setLoginImageUrl] = useState<string | null>(null);
+  const [workshopName, setWorkshopName] = useState<string>("Workshop Manager");
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (!loading && user && role) {
@@ -33,11 +35,14 @@ export default function Auth() {
   useEffect(() => {
     supabase
       .from("workshop_settings")
-      .select("login_image_url")
+      .select("login_image_url, workshop_name, logo_url")
       .eq("id", 1)
       .maybeSingle()
       .then(({ data }) => {
+        if (!data) return;
         if ((data as any)?.login_image_url) setLoginImageUrl((data as any).login_image_url);
+        if ((data as any)?.workshop_name) setWorkshopName((data as any).workshop_name);
+        if ((data as any)?.logo_url) setLogoUrl((data as any).logo_url);
       });
   }, []);
 
