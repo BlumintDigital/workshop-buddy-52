@@ -62,7 +62,8 @@ export default function AdminInventory() {
   };
 
   const handleAdjust = async () => {
-    if (!adjustItem || !user) return;
+    if (!adjustItem) return;
+    if (!user) { toast.error("You must be logged in"); return; }
     const qty = parseInt(adjustForm.quantity);
     if (isNaN(qty) || qty <= 0) { toast.error("Enter a valid quantity"); return; }
 
@@ -78,10 +79,15 @@ export default function AdminInventory() {
       quantity: qty,
       notes: adjustForm.notes || null,
     });
-    if (txError) { toast.error(txError.message); return; }
+    if (txError) { toast.error("Failed to log transaction: " + txError.message); return; }
 
-    const { error: updateError } = await supabase.from("inventory_items").update({ quantity: newQuantity }).eq("id", adjustItem.id);
-    if (updateError) { toast.error(updateError.message); return; }
+    const { data: updated, error: updateError } = await supabase
+      .from("inventory_items")
+      .update({ quantity: newQuantity })
+      .eq("id", adjustItem.id)
+      .select();
+    if (updateError) { toast.error("Failed to update stock: " + updateError.message); return; }
+    if (!updated || updated.length === 0) { toast.error("Stock update was blocked. Please try again."); return; }
 
     toast.success("Stock updated");
     setAdjustOpen(false);
