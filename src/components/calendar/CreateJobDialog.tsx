@@ -104,29 +104,46 @@ export default function CreateJobDialog({ open, onOpenChange, defaultDate, onCre
           </div>
           <div>
             <Label>Due Date</Label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className={cn(
-                    "w-full justify-start text-left font-normal mt-1",
-                    !form.due_date && "text-muted-foreground"
-                  )}
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {form.due_date ? format(parseISO(form.due_date), "PPP") : <span>Pick a date</span>}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={form.due_date ? parseISO(form.due_date) : undefined}
-                  onSelect={(date) => setForm({ ...form, due_date: date ? format(date, "yyyy-MM-dd") : "" })}
-                  initialFocus
-                  className={cn("p-3 pointer-events-auto")}
-                />
-              </PopoverContent>
-            </Popover>
+            <InputGroup className="mt-1">
+              <InputGroupInput
+                value={form.due_date ? format(parseISO(form.due_date), "MMMM dd, yyyy") : ""}
+                placeholder="Pick a date"
+                onChange={(e) => {
+                  const parsed = new Date(e.target.value);
+                  if (!isNaN(parsed.getTime())) {
+                    setForm({ ...form, due_date: format(parsed, "yyyy-MM-dd") });
+                  }
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "ArrowDown") {
+                    e.preventDefault();
+                    setDatePickerOpen(true);
+                  }
+                }}
+              />
+              <InputGroupAddon align="inline-end">
+                <Popover open={datePickerOpen} onOpenChange={setDatePickerOpen}>
+                  <PopoverTrigger asChild>
+                    <InputGroupButton variant="ghost" size="icon" aria-label="Select date">
+                      <CalendarIcon className="h-4 w-4" />
+                    </InputGroupButton>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto overflow-hidden p-0" align="end" alignOffset={-8} sideOffset={10}>
+                    <Calendar
+                      mode="single"
+                      selected={form.due_date ? parseISO(form.due_date) : undefined}
+                      month={datePickerMonth}
+                      onMonthChange={setDatePickerMonth}
+                      onSelect={(date) => {
+                        setForm({ ...form, due_date: date ? format(date, "yyyy-MM-dd") : "" });
+                        setDatePickerOpen(false);
+                      }}
+                      className={cn("p-3 pointer-events-auto")}
+                    />
+                  </PopoverContent>
+                </Popover>
+              </InputGroupAddon>
+            </InputGroup>
           </div>
           <div className="flex items-center gap-2 pt-1">
             <Checkbox id="calIsQuote" checked={form.isQuote} onCheckedChange={(v) => setForm({ ...form, isQuote: !!v })} />
