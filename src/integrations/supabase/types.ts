@@ -621,6 +621,7 @@ export type Database = {
           email_notifications_enabled: boolean | null
           from_email: string | null
           id: number
+          instance_version: string | null
           login_image_url: string | null
           logo_url: string | null
           notify_job_status: boolean | null
@@ -637,6 +638,7 @@ export type Database = {
           email_notifications_enabled?: boolean | null
           from_email?: string | null
           id?: number
+          instance_version?: string | null
           login_image_url?: string | null
           logo_url?: string | null
           notify_job_status?: boolean | null
@@ -653,6 +655,7 @@ export type Database = {
           email_notifications_enabled?: boolean | null
           from_email?: string | null
           id?: number
+          instance_version?: string | null
           login_image_url?: string | null
           logo_url?: string | null
           notify_job_status?: boolean | null

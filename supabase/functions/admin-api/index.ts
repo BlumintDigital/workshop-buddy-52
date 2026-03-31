@@ -45,7 +45,17 @@ Deno.serve(async (req) => {
     switch (action) {
       // ==================== HEALTH ====================
       case "health": {
-        return json({ status: "ok", version: "1.0.0", timestamp: new Date().toISOString() });
+        const { data: settings } = await supabase
+          .from("workshop_settings")
+          .select("instance_version, workshop_name")
+          .limit(1)
+          .maybeSingle();
+        return json({
+          status: "ok",
+          version: settings?.instance_version ?? "1.0.0",
+          workshop_name: settings?.workshop_name ?? null,
+          timestamp: new Date().toISOString(),
+        });
       }
 
       // ==================== STATS ====================

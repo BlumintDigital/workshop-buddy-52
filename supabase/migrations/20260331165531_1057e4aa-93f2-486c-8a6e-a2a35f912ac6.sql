@@ -1,0 +1,1 @@
+ALTER TABLE public.workshop_settings ADD COLUMN IF NOT EXISTS instance_version text DEFAULT '1.0.0';
