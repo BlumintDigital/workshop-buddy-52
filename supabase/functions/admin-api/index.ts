@@ -166,29 +166,39 @@ Deno.serve(async (req) => {
       case "seed-data": {
         if (req.method !== "POST") return err("POST required", 405);
 
-        // Proxy to the existing seed-data function using service role
-        const seedUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/seed-data`;
-        // We need a valid admin JWT — create one via service role
-        const { data: adminUsers } = await supabase
+        // Find an admin user to act as caller for the seed function
+        const { data: adminRoles } = await supabase
           .from("user_roles")
           .select("user_id")
           .eq("role", "admin")
           .limit(1);
+        if (!adminRoles?.length) return err("No admin user found in this instance", 500);
 
-        if (!adminUsers?.length) return err("No admin user found to proxy seed", 500);
+        const adminId = adminRoles[0].user_id;
+        const { data: adminUser } = await supabase.auth.admin.getUserById(adminId);
+        if (!adminUser?.user?.email) return err("Admin user has no email", 500);
 
-        // Use service role to generate a token for the admin user
-        const { data: tokenData, error: tokenErr } = await supabase.auth.admin.generateLink({
+        // Generate an OTP link to get a valid session token
+        const { data: linkData, error: linkErr } = await supabase.auth.admin.generateLink({
           type: "magiclink",
-          email: "", // we'll use a different approach
-        }).catch(() => ({ data: null, error: { message: "Cannot generate token" } }));
+          email: adminUser.user.email,
+        });
+        if (linkErr || !linkData) return err("Failed to generate admin token: " + (linkErr?.message || "unknown"), 500);
 
-        // Simpler approach: call seed-data directly with service role key as anon
+        const token = linkData.properties?.hashed_token;
+        // Verify the OTP to get a session
+        const { data: sessionData, error: sessionErr } = await supabase.auth.verifyOtp({
+          token_hash: token!,
+          type: "magiclink",
+        });
+        if (sessionErr || !sessionData?.session) return err("Failed to create admin session: " + (sessionErr?.message || "unknown"), 500);
+
+        const seedUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/seed-data`;
         const resp = await fetch(seedUrl, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+            Authorization: `Bearer ${sessionData.session.access_token}`,
             apikey: Deno.env.get("SUPABASE_ANON_KEY")!,
           },
         });
@@ -200,12 +210,35 @@ Deno.serve(async (req) => {
       case "delete-data": {
         if (req.method !== "POST") return err("POST required", 405);
 
+        const { data: adminRoles2 } = await supabase
+          .from("user_roles")
+          .select("user_id")
+          .eq("role", "admin")
+          .limit(1);
+        if (!adminRoles2?.length) return err("No admin user found in this instance", 500);
+
+        const adminId2 = adminRoles2[0].user_id;
+        const { data: adminUser2 } = await supabase.auth.admin.getUserById(adminId2);
+        if (!adminUser2?.user?.email) return err("Admin user has no email", 500);
+
+        const { data: linkData2, error: linkErr2 } = await supabase.auth.admin.generateLink({
+          type: "magiclink",
+          email: adminUser2.user.email,
+        });
+        if (linkErr2 || !linkData2) return err("Failed to generate admin token", 500);
+
+        const { data: sessionData2, error: sessionErr2 } = await supabase.auth.verifyOtp({
+          token_hash: linkData2.properties?.hashed_token!,
+          type: "magiclink",
+        });
+        if (sessionErr2 || !sessionData2?.session) return err("Failed to create admin session", 500);
+
         const deleteUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/delete-data`;
         const resp = await fetch(deleteUrl, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+            Authorization: `Bearer ${sessionData2.session.access_token}`,
             apikey: Deno.env.get("SUPABASE_ANON_KEY")!,
           },
         });
