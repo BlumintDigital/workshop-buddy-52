@@ -23,6 +23,8 @@ export default function Auth() {
   const [signupLastName, setSignupLastName] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [loginImageUrl, setLoginImageUrl] = useState<string | null>(null);
+  const [workshopName, setWorkshopName] = useState<string>("Workshop Manager");
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (!loading && user && role) {
@@ -33,11 +35,14 @@ export default function Auth() {
   useEffect(() => {
     supabase
       .from("workshop_settings")
-      .select("login_image_url")
+      .select("login_image_url, workshop_name, logo_url")
       .eq("id", 1)
       .maybeSingle()
       .then(({ data }) => {
+        if (!data) return;
         if ((data as any)?.login_image_url) setLoginImageUrl((data as any).login_image_url);
+        if ((data as any)?.workshop_name) setWorkshopName((data as any).workshop_name);
+        if ((data as any)?.logo_url) setLogoUrl((data as any).logo_url);
       });
   }, []);
 
@@ -87,10 +92,14 @@ export default function Auth() {
       <div className="flex flex-1 items-center justify-center bg-background p-6 sm:p-8">
         <div className="w-full max-w-md space-y-6">
           <div className="flex flex-col items-center gap-2">
-            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-              <Wrench className="h-6 w-6" />
-            </div>
-            <h1 className="text-2xl font-bold tracking-tight">Workshop Manager</h1>
+            {logoUrl ? (
+              <img src={logoUrl} alt={workshopName} className="h-12 w-12 rounded-lg object-contain" />
+            ) : (
+              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+                <Wrench className="h-6 w-6" />
+              </div>
+            )}
+            <h1 className="text-2xl font-bold tracking-tight">{workshopName}</h1>
             <p className="text-sm text-muted-foreground">Manufacturing & Fabrication Management</p>
           </div>
 
@@ -179,8 +188,12 @@ export default function Auth() {
         ) : (
           <div className="absolute inset-0 bg-gradient-to-br from-primary/80 via-primary/60 to-primary/90 flex items-center justify-center">
             <div className="text-center space-y-4 px-12">
-              <Wrench className="h-16 w-16 text-primary-foreground/80 mx-auto" />
-              <h2 className="text-3xl font-bold text-primary-foreground">Workshop Manager</h2>
+              {logoUrl ? (
+                <img src={logoUrl} alt={workshopName} className="h-16 w-16 rounded-lg object-contain mx-auto" />
+              ) : (
+                <Wrench className="h-16 w-16 text-primary-foreground/80 mx-auto" />
+              )}
+              <h2 className="text-3xl font-bold text-primary-foreground">{workshopName}</h2>
               <p className="text-primary-foreground/70 text-lg max-w-sm mx-auto">
                 Streamline your manufacturing & fabrication workflow with powerful job tracking, inventory management, and client collaboration.
               </p>
@@ -190,7 +203,7 @@ export default function Auth() {
         {loginImageUrl && (
           <div className="absolute inset-0 bg-black/30 flex items-end p-8">
             <div className="text-white">
-              <h2 className="text-2xl font-bold">Workshop Manager</h2>
+              <h2 className="text-2xl font-bold">{workshopName}</h2>
               <p className="text-white/70 text-sm mt-1">Manufacturing & Fabrication Management</p>
             </div>
           </div>

@@ -46,6 +46,7 @@ const defaultSettings = {
   email_notifications_enabled: false,
   from_email: "",
   login_image_url: "",
+  logo_url: "",
 };
 
 type Settings = typeof defaultSettings;
@@ -57,7 +58,9 @@ export default function AdminSettings() {
   const [seeding, setSeeding] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
   const imageInputRef = useRef<HTMLInputElement>(null);
+  const logoInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     supabase
@@ -80,6 +83,7 @@ export default function AdminSettings() {
             email_notifications_enabled: (data as any).email_notifications_enabled ?? false,
             from_email: (data as any).from_email ?? "",
             login_image_url: (data as any).login_image_url ?? "",
+            logo_url: (data as any).logo_url ?? "",
           });
         }
         setLoading(false);
@@ -102,6 +106,7 @@ export default function AdminSettings() {
       email_notifications_enabled: settings.email_notifications_enabled,
       from_email: settings.from_email || null,
       login_image_url: settings.login_image_url || null,
+      logo_url: settings.logo_url || null,
     });
     setSaving(false);
     if (error) { toast.error(error.message); return; }
@@ -126,6 +131,26 @@ export default function AdminSettings() {
 
   const handleRemoveLoginImage = () => {
     set("login_image_url", "");
+  };
+
+  const handleUploadLogo = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) { toast.error("Please select an image file"); return; }
+    setUploadingLogo(true);
+    const ext = file.name.split(".").pop();
+    const path = `logo-${Date.now()}.${ext}`;
+    const { error: uploadErr } = await supabase.storage.from("workshop-assets").upload(path, file, { upsert: true });
+    if (uploadErr) { toast.error(uploadErr.message); setUploadingLogo(false); return; }
+    const { data: urlData } = supabase.storage.from("workshop-assets").getPublicUrl(path);
+    set("logo_url", urlData.publicUrl);
+    setUploadingLogo(false);
+    toast.success("Logo uploaded — remember to save settings");
+    e.target.value = "";
+  };
+
+  const handleRemoveLogo = () => {
+    set("logo_url", "");
   };
 
   const handleSeedData = async () => {
@@ -256,7 +281,32 @@ export default function AdminSettings() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="branding" className="mt-4">
+          <TabsContent value="branding" className="mt-4 space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Workshop Logo</CardTitle>
+                <CardDescription>Upload a logo displayed on the login page (recommended: square, e.g. 200×200)</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {settings.logo_url ? (
+                  <div className="relative inline-block rounded-lg overflow-hidden border">
+                    <img src={settings.logo_url} alt="Workshop logo" className="w-24 h-24 object-contain" />
+                    <Button size="icon" variant="destructive" className="absolute top-1 right-1 h-6 w-6" onClick={handleRemoveLogo}>
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="border border-dashed rounded-lg p-6 flex flex-col items-center justify-center text-center">
+                    <ImageIcon className="h-8 w-8 text-muted-foreground mb-2" />
+                    <p className="text-sm text-muted-foreground">No logo set — wrench icon will be shown</p>
+                  </div>
+                )}
+                <input ref={logoInputRef} type="file" accept="image/*" className="hidden" onChange={handleUploadLogo} />
+                <Button variant="outline" disabled={uploadingLogo} onClick={() => logoInputRef.current?.click()}>
+                  <Upload className="mr-2 h-4 w-4" />{uploadingLogo ? "Uploading..." : "Upload Logo"}
+                </Button>
+              </CardContent>
+            </Card>
             <Card>
               <CardHeader>
                 <CardTitle>Login Page Image</CardTitle>
