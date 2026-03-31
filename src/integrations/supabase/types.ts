@@ -665,7 +665,30 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      workshop_settings_public: {
+        Row: {
+          currency: string | null
+          id: number | null
+          login_image_url: string | null
+          logo_url: string | null
+          workshop_name: string | null
+        }
+        Insert: {
+          currency?: string | null
+          id?: number | null
+          login_image_url?: string | null
+          logo_url?: string | null
+          workshop_name?: string | null
+        }
+        Update: {
+          currency?: string | null
+          id?: number | null
+          login_image_url?: string | null
+          logo_url?: string | null
+          workshop_name?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       get_job_completion_stats: {
