@@ -61,9 +61,18 @@ export default function Auth() {
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (signupPassword !== signupConfirmPassword) {
+      toast.error("Passwords do not match");
+      return;
+    }
+    if (!signupFirstName.trim() || !signupLastName.trim()) {
+      toast.error("First and last name are required");
+      return;
+    }
     setSubmitting(true);
     try {
-      await signUp(signupEmail, signupPassword, signupName);
+      const fullName = `${signupFirstName.trim()} ${signupLastName.trim()}`;
+      await signUp(signupEmail, signupPassword, fullName);
       toast.success("Account created! Check your email to verify.");
     } catch (err: any) {
       toast.error(err.message || "Failed to create account");
