@@ -8,13 +8,25 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { toast } from "sonner";
-import { User } from "lucide-react";
+import { User, ShieldCheck, ShieldOff, Copy, Loader2 } from "lucide-react";
+import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 
 export default function UserProfile() {
   const { user, profile, role } = useAuth();
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
   const [saving, setSaving] = useState(false);
+
+  // MFA state
+  const [mfaEnabled, setMfaEnabled] = useState(false);
+  const [mfaLoading, setMfaLoading] = useState(true);
+  const [enrolling, setEnrolling] = useState(false);
+  const [qrCode, setQrCode] = useState<string | null>(null);
+  const [secret, setSecret] = useState<string | null>(null);
+  const [factorId, setFactorId] = useState<string | null>(null);
+  const [verifyCode, setVerifyCode] = useState("");
+  const [verifying, setVerifying] = useState(false);
+  const [unenrolling, setUnenrolling] = useState(false);
 
   useEffect(() => {
     if (profile) {
@@ -26,6 +38,24 @@ export default function UserProfile() {
       });
     }
   }, [profile, user]);
+
+  // Load MFA status
+  useEffect(() => {
+    const loadMfaStatus = async () => {
+      setMfaLoading(true);
+      const { data } = await supabase.auth.mfa.listFactors();
+      const verifiedTotp = data?.totp?.find((f) => f.status === "verified");
+      if (verifiedTotp) {
+        setMfaEnabled(true);
+        setFactorId(verifiedTotp.id);
+      } else {
+        setMfaEnabled(false);
+        setFactorId(null);
+      }
+      setMfaLoading(false);
+    };
+    loadMfaStatus();
+  }, []);
 
   const initials = (fullName || "U").split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
 
@@ -39,6 +69,72 @@ export default function UserProfile() {
     setSaving(false);
     if (error) { toast.error(error.message); return; }
     toast.success("Profile updated");
+  };
+
+  const handleEnroll2FA = async () => {
+    setEnrolling(true);
+    try {
+      const { data, error } = await supabase.auth.mfa.enroll({ factorType: "totp" });
+      if (error) throw error;
+      setQrCode(data.totp.qr_code);
+      setSecret(data.totp.secret);
+      setFactorId(data.id);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to start 2FA enrollment");
+    } finally {
+      setEnrolling(false);
+    }
+  };
+
+  const handleVerifyEnrollment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!factorId || verifyCode.length !== 6) return;
+    setVerifying(true);
+    try {
+      const { data: challengeData, error: challengeError } = await supabase.auth.mfa.challenge({ factorId });
+      if (challengeError) throw challengeError;
+
+      const { error: verifyError } = await supabase.auth.mfa.verify({
+        factorId,
+        challengeId: challengeData.id,
+        code: verifyCode,
+      });
+      if (verifyError) throw verifyError;
+
+      setMfaEnabled(true);
+      setQrCode(null);
+      setSecret(null);
+      setVerifyCode("");
+      toast.success("Two-factor authentication enabled");
+    } catch (err: any) {
+      toast.error(err.message || "Invalid verification code");
+      setVerifyCode("");
+    } finally {
+      setVerifying(false);
+    }
+  };
+
+  const handleDisable2FA = async () => {
+    if (!factorId) return;
+    setUnenrolling(true);
+    try {
+      const { error } = await supabase.auth.mfa.unenroll({ factorId });
+      if (error) throw error;
+      setMfaEnabled(false);
+      setFactorId(null);
+      toast.success("Two-factor authentication disabled");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to disable 2FA");
+    } finally {
+      setUnenrolling(false);
+    }
+  };
+
+  const copySecret = () => {
+    if (secret) {
+      navigator.clipboard.writeText(secret);
+      toast.success("Secret copied to clipboard");
+    }
   };
 
   return (
@@ -78,6 +174,84 @@ export default function UserProfile() {
             <Button onClick={handleSave} disabled={saving}>
               {saving ? "Saving..." : "Save Changes"}
             </Button>
+          </CardContent>
+        </Card>
+
+        {/* Two-Factor Authentication Card */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="h-5 w-5 text-primary" />
+              <CardTitle className="text-lg">Two-Factor Authentication</CardTitle>
+            </div>
+            <CardDescription>
+              Add an extra layer of security to your account using an authenticator app
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {mfaLoading ? (
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Loading 2FA status...
+              </div>
+            ) : mfaEnabled ? (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-sm text-primary">
+                  <ShieldCheck className="h-4 w-4" />
+                  Two-factor authentication is enabled
+                </div>
+                <Button variant="destructive" size="sm" onClick={handleDisable2FA} disabled={unenrolling}>
+                  <ShieldOff className="h-4 w-4 mr-1" />
+                  {unenrolling ? "Disabling..." : "Disable 2FA"}
+                </Button>
+              </div>
+            ) : qrCode ? (
+              <div className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  Scan this QR code with your authenticator app (Google Authenticator, Authy, etc.)
+                </p>
+                <div className="flex justify-center">
+                  <img src={qrCode} alt="2FA QR Code" className="rounded-lg border p-2" />
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">Or enter this secret manually:</p>
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 rounded bg-muted px-2 py-1 text-xs font-mono break-all">{secret}</code>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={copySecret}>
+                      <Copy className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                </div>
+                <form onSubmit={handleVerifyEnrollment} className="space-y-3">
+                  <Label>Enter the 6-digit code from your app</Label>
+                  <div className="flex justify-center">
+                    <InputOTP maxLength={6} value={verifyCode} onChange={setVerifyCode}>
+                      <InputOTPGroup>
+                        <InputOTPSlot index={0} />
+                        <InputOTPSlot index={1} />
+                        <InputOTPSlot index={2} />
+                        <InputOTPSlot index={3} />
+                        <InputOTPSlot index={4} />
+                        <InputOTPSlot index={5} />
+                      </InputOTPGroup>
+                    </InputOTP>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button type="submit" disabled={verifying || verifyCode.length !== 6}>
+                      {verifying ? "Verifying..." : "Verify & Enable"}
+                    </Button>
+                    <Button type="button" variant="ghost" onClick={() => { setQrCode(null); setSecret(null); setVerifyCode(""); }}>
+                      Cancel
+                    </Button>
+                  </div>
+                </form>
+              </div>
+            ) : (
+              <Button onClick={handleEnroll2FA} disabled={enrolling}>
+                <ShieldCheck className="h-4 w-4 mr-1" />
+                {enrolling ? "Setting up..." : "Enable 2FA"}
+              </Button>
+            )}
           </CardContent>
         </Card>
       </div>

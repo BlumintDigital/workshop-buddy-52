@@ -1,9 +1,11 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, useRef, useCallback, ReactNode } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
-import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 
 type AppRole = "admin" | "manager" | "staff" | "client";
+
+const SESSION_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
 
 interface AuthContextType {
   session: Session | null;
@@ -11,9 +13,11 @@ interface AuthContextType {
   role: AppRole | null;
   profile: { full_name: string; avatar_url: string | null } | null;
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<AppRole | null>;
+  needsMfaVerification: boolean;
+  signIn: (email: string, password: string) => Promise<{ role: AppRole | null; needsMfa: boolean; factorId?: string }>;
   signUp: (email: string, password: string, fullName: string) => Promise<void>;
   signOut: () => Promise<void>;
+  clearMfaFlag: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -24,6 +28,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<AppRole | null>(null);
   const [profile, setProfile] = useState<{ full_name: string; avatar_url: string | null } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [needsMfaVerification, setNeedsMfaVerification] = useState(false);
+  const inactivityTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const performSignOut = useCallback(async (reason?: string) => {
+    if (inactivityTimer.current) {
+      clearTimeout(inactivityTimer.current);
+      inactivityTimer.current = null;
+    }
+    await supabase.auth.signOut();
+    setRole(null);
+    setProfile(null);
+    setNeedsMfaVerification(false);
+    if (reason) {
+      toast.info(reason);
+    }
+  }, []);
+
+  // Inactivity timer
+  const resetInactivityTimer = useCallback(() => {
+    if (inactivityTimer.current) {
+      clearTimeout(inactivityTimer.current);
+    }
+    inactivityTimer.current = setTimeout(() => {
+      performSignOut("Session expired due to inactivity");
+    }, SESSION_TIMEOUT_MS);
+  }, [performSignOut]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const events = ["mousemove", "keydown", "click", "touchstart", "scroll"];
+    const handler = () => resetInactivityTimer();
+
+    events.forEach((e) => window.addEventListener(e, handler, { passive: true }));
+    resetInactivityTimer();
+
+    return () => {
+      events.forEach((e) => window.removeEventListener(e, handler));
+      if (inactivityTimer.current) {
+        clearTimeout(inactivityTimer.current);
+        inactivityTimer.current = null;
+      }
+    };
+  }, [user, resetInactivityTimer]);
 
   const fetchUserData = async (userId: string): Promise<AppRole | null> => {
     const [roleRes, profileRes] = await Promise.all([
@@ -38,17 +86,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return nextRole;
   };
 
+  const checkMfaStatus = async () => {
+    const { data } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    if (data && data.currentLevel === "aal1" && data.nextLevel === "aal2") {
+      setNeedsMfaVerification(true);
+      return true;
+    }
+    setNeedsMfaVerification(false);
+    return false;
+  };
+
   useEffect(() => {
     const handleSession = (session: Session | null) => {
       setSession(session);
       setUser(session?.user ?? null);
 
       if (session?.user) {
+        // Check JWT expiry
+        if (session.expires_at && session.expires_at * 1000 < Date.now()) {
+          performSignOut("Session expired. Please sign in again.");
+          return;
+        }
+
         setLoading(true);
-        void fetchUserData(session.user.id).finally(() => setLoading(false));
+        Promise.all([fetchUserData(session.user.id), checkMfaStatus()]).finally(() =>
+          setLoading(false)
+        );
       } else {
         setRole(null);
         setProfile(null);
+        setNeedsMfaVerification(false);
         setLoading(false);
       }
     };
@@ -71,9 +138,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSession(data.session ?? null);
     setUser(data.user ?? null);
 
-    if (!data.user) return null;
+    if (!data.user) return { role: null, needsMfa: false };
 
-    return await fetchUserData(data.user.id);
+    const nextRole = await fetchUserData(data.user.id);
+
+    // Check if MFA is required
+    const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    if (aalData && aalData.currentLevel === "aal1" && aalData.nextLevel === "aal2") {
+      setNeedsMfaVerification(true);
+      // Get the TOTP factor ID
+      const { data: factorsData } = await supabase.auth.mfa.listFactors();
+      const totpFactor = factorsData?.totp?.find((f) => f.status === "verified");
+      return { role: nextRole, needsMfa: true, factorId: totpFactor?.id };
+    }
+
+    setNeedsMfaVerification(false);
+    return { role: nextRole, needsMfa: false };
   };
 
   const signUp = async (email: string, password: string, fullName: string) => {
@@ -86,13 +166,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
-    setRole(null);
-    setProfile(null);
+    await performSignOut();
   };
 
+  const clearMfaFlag = () => setNeedsMfaVerification(false);
+
   return (
-    <AuthContext.Provider value={{ session, user, role, profile, loading, signIn, signUp, signOut }}>
+    <AuthContext.Provider value={{ session, user, role, profile, loading, needsMfaVerification, signIn, signUp, signOut, clearMfaFlag }}>
       {children}
     </AuthContext.Provider>
   );

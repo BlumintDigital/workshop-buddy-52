@@ -10,13 +10,17 @@ interface ProtectedRouteProps {
 }
 
 export default function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
-  const { user, role, loading } = useAuth();
+  const { user, role, loading, needsMfaVerification } = useAuth();
 
   if (loading || (user && !role)) {
     return <LoadingScreen />;
   }
 
   if (!user) return <Navigate to="/auth" replace />;
+
+  if (needsMfaVerification) {
+    return <Navigate to="/auth" replace />;
+  }
 
   if (allowedRoles && role && !allowedRoles.includes(role)) {
     return <Navigate to={`/${role}/dashboard`} replace />;
