@@ -23,12 +23,17 @@ export default function ManagerStaff() {
 
   const fetchStaff = async () => {
     const { data: roles } = await supabase.from("user_roles").select("user_id, role").in("role", ["staff", "manager"]);
-    const { data: profiles } = await supabase.from("profiles").select("id, full_name, created_at");
+    const { data: profiles } = await supabase.from("profiles").select("id, full_name, created_at, is_super_admin");
     if (roles && profiles) {
-      const merged = roles.map((r) => {
-        const p = profiles.find((p) => p.id === r.user_id);
-        return { user_id: r.user_id, full_name: p?.full_name || "Unknown", role: r.role, created_at: p?.created_at || "" };
-      });
+      const merged = roles
+        .map((r) => {
+          const p = profiles.find((p) => p.id === r.user_id);
+          return { user_id: r.user_id, full_name: p?.full_name || "Unknown", role: r.role, created_at: p?.created_at || "" };
+        })
+        .filter((u) => {
+          const p = profiles.find((p) => p.id === u.user_id);
+          return !(p as any)?.is_super_admin;
+        });
       setStaff(merged);
     }
   };

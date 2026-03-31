@@ -25,12 +25,14 @@ export default function AdminUsers() {
 
   const fetchUsers = async () => {
     const { data: roles } = await supabase.from("user_roles").select("user_id, role").in("role", ["admin", "manager", "staff"]);
-    const { data: profiles } = await supabase.from("profiles").select("id, full_name, created_at");
+    const { data: profiles } = await supabase.from("profiles").select("id, full_name, created_at, is_super_admin");
     if (roles && profiles) {
-      const merged = roles.map((r) => {
-        const p = profiles.find((p) => p.id === r.user_id);
-        return { user_id: r.user_id, full_name: p?.full_name || "Unknown", role: r.role, created_at: p?.created_at || "" };
-      });
+      const merged = roles
+        .map((r) => {
+          const p = profiles.find((p) => p.id === r.user_id);
+          return { user_id: r.user_id, full_name: p?.full_name || "Unknown", role: r.role, created_at: p?.created_at || "", is_super_admin: !!(p as any)?.is_super_admin };
+        })
+        .filter((u) => !u.is_super_admin);
       setUsers(merged);
     }
   };
