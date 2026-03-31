@@ -5,7 +5,7 @@ import { toast } from "sonner";
 
 type AppRole = "admin" | "manager" | "staff" | "client";
 
-const SESSION_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
+export const SESSION_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
 
 interface AuthContextType {
   session: Session | null;
@@ -14,10 +14,12 @@ interface AuthContextType {
   profile: { full_name: string; avatar_url: string | null } | null;
   loading: boolean;
   needsMfaVerification: boolean;
+  sessionTimeLeft: number;
   signIn: (email: string, password: string) => Promise<{ role: AppRole | null; needsMfa: boolean; factorId?: string }>;
   signUp: (email: string, password: string, fullName: string) => Promise<void>;
   signOut: () => Promise<void>;
   clearMfaFlag: () => void;
+  extendSession: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -29,7 +31,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<{ full_name: string; avatar_url: string | null } | null>(null);
   const [loading, setLoading] = useState(true);
   const [needsMfaVerification, setNeedsMfaVerification] = useState(false);
+  const [sessionTimeLeft, setSessionTimeLeft] = useState(SESSION_TIMEOUT_MS);
   const inactivityTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const sessionDeadline = useRef<number>(Date.now() + SESSION_TIMEOUT_MS);
 
   const performSignOut = useCallback(async (reason?: string) => {
     if (inactivityTimer.current) {
@@ -50,10 +54,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (inactivityTimer.current) {
       clearTimeout(inactivityTimer.current);
     }
+    sessionDeadline.current = Date.now() + SESSION_TIMEOUT_MS;
+    setSessionTimeLeft(SESSION_TIMEOUT_MS);
     inactivityTimer.current = setTimeout(() => {
       performSignOut("Session expired due to inactivity");
     }, SESSION_TIMEOUT_MS);
   }, [performSignOut]);
+
+  const extendSession = useCallback(() => {
+    resetInactivityTimer();
+  }, [resetInactivityTimer]);
+
+  // Countdown interval
+  useEffect(() => {
+    if (!user) return;
+    const interval = setInterval(() => {
+      setSessionTimeLeft(Math.max(0, sessionDeadline.current - Date.now()));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [user]);
 
   useEffect(() => {
     if (!user) return;
@@ -172,7 +191,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const clearMfaFlag = () => setNeedsMfaVerification(false);
 
   return (
-    <AuthContext.Provider value={{ session, user, role, profile, loading, needsMfaVerification, signIn, signUp, signOut, clearMfaFlag }}>
+    <AuthContext.Provider value={{ session, user, role, profile, loading, needsMfaVerification, sessionTimeLeft, signIn, signUp, signOut, clearMfaFlag, extendSession }}>
       {children}
     </AuthContext.Provider>
   );
