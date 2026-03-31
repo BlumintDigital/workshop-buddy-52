@@ -51,6 +51,47 @@ export default function AdminCalendar() {
   const [showTypes, setShowTypes] = useState<string[]>(["appointment", "job"]);
   const [statusFilter, setStatusFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
+  const [draggedEventId, setDraggedEventId] = useState<string | null>(null);
+  const [dragOverDate, setDragOverDate] = useState<Date | null>(null);
+
+  const handleDragStart = (e: React.DragEvent, eventId: string) => {
+    e.dataTransfer.setData("text/plain", eventId);
+    e.dataTransfer.effectAllowed = "move";
+    setDraggedEventId(eventId);
+  };
+
+  const handleDragOver = (e: React.DragEvent, date: Date) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    setDragOverDate(date);
+  };
+
+  const handleDragLeave = () => {
+    setDragOverDate(null);
+  };
+
+  const handleDrop = async (e: React.DragEvent, targetDate: Date) => {
+    e.preventDefault();
+    setDragOverDate(null);
+    const eventId = e.dataTransfer.getData("text/plain");
+    setDraggedEventId(null);
+    const event = events.find((ev) => ev.id === eventId);
+    if (!event || event.type !== "job") return;
+    const newDate = format(targetDate, "yyyy-MM-dd");
+    if (event.date === newDate) return;
+
+    // Optimistic update
+    setEvents((prev) => prev.map((ev) => (ev.id === eventId ? { ...ev, date: newDate } : ev)));
+
+    const { error } = await supabase.from("jobs").update({ due_date: newDate }).eq("id", eventId);
+    if (error) {
+      // Revert on failure
+      setEvents((prev) => prev.map((ev) => (ev.id === eventId ? { ...ev, date: event.date } : ev)));
+      toast.error("Failed to reschedule job");
+    } else {
+      toast.success(`"${event.title}" moved to ${format(targetDate, "MMM d")}`);
+    }
+  };
 
   useEffect(() => {
     const start = format(startOfMonth(currentMonth), "yyyy-MM-dd");
