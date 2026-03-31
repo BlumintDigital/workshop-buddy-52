@@ -327,9 +327,14 @@ export default function AdminCalendar() {
         <Card>
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
-              <Button variant="ghost" size="icon" onClick={goBack}>
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
+              <div className="flex items-center gap-1">
+                <Button variant="ghost" size="icon" onClick={goBack}>
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <Button variant="outline" size="sm" className="text-xs" onClick={() => { const now = new Date(); setCurrentMonth(now); setCurrentWeekDate(now); setSelectedDate(now); }}>
+                  Today
+                </Button>
+              </div>
               <CardTitle className="text-lg">{headerLabel}</CardTitle>
               <Button variant="ghost" size="icon" onClick={goForward}>
                 <ChevronRight className="h-4 w-4" />
