@@ -106,6 +106,7 @@ export default function AdminSettings() {
       email_notifications_enabled: settings.email_notifications_enabled,
       from_email: settings.from_email || null,
       login_image_url: settings.login_image_url || null,
+      logo_url: settings.logo_url || null,
     });
     setSaving(false);
     if (error) { toast.error(error.message); return; }
