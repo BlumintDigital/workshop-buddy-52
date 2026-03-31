@@ -22,6 +22,7 @@ export function AppHeader() {
         </BreadcrumbList>
       </Breadcrumb>
       <div className="ml-auto flex items-center gap-3">
+        <SessionIndicator />
         <NotificationBell />
       </div>
     </header>

@@ -191,7 +191,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const clearMfaFlag = () => setNeedsMfaVerification(false);
 
   return (
-    <AuthContext.Provider value={{ session, user, role, profile, loading, needsMfaVerification, signIn, signUp, signOut, clearMfaFlag }}>
+    <AuthContext.Provider value={{ session, user, role, profile, loading, needsMfaVerification, sessionTimeLeft, signIn, signUp, signOut, clearMfaFlag, extendSession }}>
       {children}
     </AuthContext.Provider>
   );
