@@ -1,44 +1,33 @@
 
 
-## Hide Super Admin from Instance Users List
+## Add Optional Password to ensure-super-admin
 
-### Problem
-When a super admin account is provisioned on an instance via `ensure-super-admin`, it appears in the AdminUsers and ManagerStaff user lists — it should be invisible to instance users.
+### Change
+Update the `ensure-super-admin` case in `supabase/functions/admin-api/index.ts` to accept an optional `password` field in the request body. When provided, the user is created with that password so they can log in via email/password instead of needing a magic link.
 
-### Approach
-Mark super admin accounts with a flag in `user_metadata`, then filter them out in the UI queries.
+### File: `supabase/functions/admin-api/index.ts`
 
-### Changes
+**Line 595** — Destructure `password` from the body alongside `email` and `full_name`.
 
-**1. `supabase/functions/admin-api/index.ts`** — Tag super admin on creation
-- When creating a new user, add `is_super_admin: true` to `user_metadata`
-- When an existing user is promoted, update their metadata via `auth.admin.updateUserById()` to add `is_super_admin: true`
-
-**2. `src/pages/admin/AdminUsers.tsx`** — Filter out super admins
-- After merging roles + profiles, filter out any user whose profile has `is_super_admin` metadata
-- Since we can't read `auth.users` metadata from the client, we'll store the flag on the `profiles` table instead (a new `is_super_admin` boolean column, defaulting to `false`)
-
-**Revised approach — use `profiles.is_super_admin` column:**
-
-**1. New migration** — Add `is_super_admin` column to `profiles`
-```sql
-ALTER TABLE profiles ADD COLUMN is_super_admin boolean NOT NULL DEFAULT false;
+**Line 613-617** — When creating a new user, conditionally include `password` in the `createUser` call:
+```ts
+const createOpts: any = {
+  email,
+  email_confirm: true,
+  user_metadata: { full_name: full_name?.trim() || "Super Admin" },
+};
+if (password && typeof password === "string" && password.length >= 6) {
+  createOpts.password = password;
+}
 ```
 
-**2. `supabase/functions/admin-api/index.ts`** — Set the flag
-- In `ensure-super-admin`, after ensuring admin role, also set `profiles.is_super_admin = true` for that user
+**Line 610 (existing user branch)** — If a password is provided and the user already exists, update the user's password via `auth.admin.updateUserById()`:
+```ts
+if (password && typeof password === "string" && password.length >= 6) {
+  await supabase.auth.admin.updateUserById(userId, { password });
+}
+```
 
-**3. `src/pages/admin/AdminUsers.tsx`** — Filter out super admins
-- Update the profiles query to include `is_super_admin`
-- Filter: `merged.filter(u => !u.is_super_admin)`
-
-**4. `src/pages/manager/ManagerStaff.tsx`** — Same filter
-- Include `is_super_admin` in profiles select
-- Filter out super admin entries
-
-### Files to modify
-- New migration file (add `is_super_admin` column)
-- `supabase/functions/admin-api/index.ts` (set flag in `ensure-super-admin`)
-- `src/pages/admin/AdminUsers.tsx` (filter out)
-- `src/pages/manager/ManagerStaff.tsx` (filter out)
+### No other files need changes
+The rest of the flow (role assignment, `is_super_admin` flag, response shape) stays the same.
 
