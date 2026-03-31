@@ -1,5 +1,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { usePagination, PAGE_SIZE } from "@/hooks/usePagination";
+import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import { useNavigate } from "react-router-dom";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Card, CardContent } from "@/components/ui/card";
@@ -26,6 +28,7 @@ type ClientRow = {
 
 export default function AdminClients() {
   const [clients, setClients] = useState<ClientRow[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -36,6 +39,7 @@ export default function AdminClients() {
   const [newPhone, setNewPhone] = useState("");
   const [newAddress, setNewAddress] = useState("");
   const [adding, setAdding] = useState(false);
+  const { page, setPage, from, to, reset: resetPage } = usePagination();
 
   // Inline editing state
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -46,9 +50,10 @@ export default function AdminClients() {
 
   const fetchClients = async () => {
     const { data: roles } = await supabase.from("user_roles").select("user_id").eq("role", "client");
-    if (!roles?.length) { setClients([]); return; }
+    if (!roles?.length) { setClients([]); setTotalCount(0); return; }
     const ids = roles.map((r) => r.user_id);
-    const { data: profiles } = await supabase.from("profiles").select("id, full_name, phone, created_at, is_active, company_name, contact_person, address" as any).in("id", ids);
+    const { data: profiles, count } = await supabase.from("profiles").select("id, full_name, phone, created_at, is_active, company_name, contact_person, address" as any, { count: "exact" }).in("id", ids).range(from, to);
+    setTotalCount(count ?? 0);
     setClients((profiles || []).map((p: any) => ({
       user_id: p.id,
       full_name: p.full_name,
@@ -61,7 +66,7 @@ export default function AdminClients() {
     })));
   };
 
-  useEffect(() => { fetchClients(); }, []);
+  useEffect(() => { fetchClients(); }, [page]);
 
   const filtered = useMemo(() => {
     return clients.filter((c) => {
@@ -248,6 +253,28 @@ export default function AdminClients() {
             </Card>
           ))}
         </div>
+
+        {/* Pagination */}
+        {totalCount > PAGE_SIZE && (() => {
+          const totalPages = Math.ceil(totalCount / PAGE_SIZE);
+          return (
+            <Pagination>
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious onClick={() => setPage(Math.max(0, page - 1))} className={page === 0 ? "pointer-events-none opacity-50" : "cursor-pointer"} />
+                </PaginationItem>
+                {Array.from({ length: totalPages }, (_, i) => (
+                  <PaginationItem key={i}>
+                    <PaginationLink isActive={page === i} onClick={() => setPage(i)} className="cursor-pointer">{i + 1}</PaginationLink>
+                  </PaginationItem>
+                ))}
+                <PaginationItem>
+                  <PaginationNext onClick={() => setPage(Math.min(totalPages - 1, page + 1))} className={page >= totalPages - 1 ? "pointer-events-none opacity-50" : "cursor-pointer"} />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+          );
+        })()}
       </div>
     </DashboardLayout>
   );
