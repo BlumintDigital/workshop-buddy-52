@@ -14,6 +14,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Plus, MoreHorizontal, Briefcase, Download } from "lucide-react";
+import { DatePickerInput } from "@/components/ui/date-picker-input";
 import { generateICS, downloadICS } from "@/lib/ical";
 import { toast } from "sonner";
 import { Pagination, PaginationContent, PaginationItem, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
@@ -328,7 +329,7 @@ export default function AdminAppointments() {
               </Select>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <div><Label>Date *</Label><Input type="date" value={form.appointment_date} onChange={(e) => setForm({ ...form, appointment_date: e.target.value })} className="mt-1" /></div>
+              <div><Label>Date *</Label><DatePickerInput value={form.appointment_date} onChange={(v) => setForm({ ...form, appointment_date: v })} className="mt-1" /></div>
               <div><Label>Time *</Label><Input type="time" value={form.appointment_time} onChange={(e) => setForm({ ...form, appointment_time: e.target.value })} className="mt-1" /></div>
             </div>
             <div className="grid grid-cols-2 gap-4">

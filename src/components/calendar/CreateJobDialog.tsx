@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { format, parseISO } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -8,11 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "@/components/ui/input-group";
-import { FileText, CalendarIcon } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { DatePickerInput } from "@/components/ui/date-picker-input";
+import { FileText } from "lucide-react";
 import { toast } from "sonner";
 
 interface UserOption {
@@ -31,8 +27,6 @@ export default function CreateJobDialog({ open, onOpenChange, defaultDate, onCre
   const [form, setForm] = useState({ title: "", description: "", priority: "medium", assigned_staff_id: "", client_id: "", isQuote: false, due_date: defaultDate });
   const [staffUsers, setStaffUsers] = useState<UserOption[]>([]);
   const [clientUsers, setClientUsers] = useState<UserOption[]>([]);
-  const [datePickerOpen, setDatePickerOpen] = useState(false);
-  const [datePickerMonth, setDatePickerMonth] = useState<Date | undefined>(defaultDate ? parseISO(defaultDate) : new Date());
 
   useEffect(() => {
     setForm((f) => ({ ...f, due_date: defaultDate }));
@@ -106,46 +100,7 @@ export default function CreateJobDialog({ open, onOpenChange, defaultDate, onCre
           </div>
           <div>
             <Label>Due Date</Label>
-            <InputGroup className="mt-1">
-              <InputGroupInput
-                value={form.due_date ? format(parseISO(form.due_date), "MMMM dd, yyyy") : ""}
-                placeholder="Pick a date"
-                onChange={(e) => {
-                  const parsed = new Date(e.target.value);
-                  if (!isNaN(parsed.getTime())) {
-                    setForm({ ...form, due_date: format(parsed, "yyyy-MM-dd") });
-                  }
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === "ArrowDown") {
-                    e.preventDefault();
-                    setDatePickerOpen(true);
-                  }
-                }}
-              />
-              <InputGroupAddon align="inline-end">
-                <Popover open={datePickerOpen} onOpenChange={setDatePickerOpen}>
-                  <PopoverTrigger asChild>
-                    <InputGroupButton variant="ghost" size="icon" aria-label="Select date">
-                      <CalendarIcon className="h-4 w-4" />
-                    </InputGroupButton>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto overflow-hidden p-0" align="end" alignOffset={-8} sideOffset={10}>
-                    <Calendar
-                      mode="single"
-                      selected={form.due_date ? parseISO(form.due_date) : undefined}
-                      month={datePickerMonth}
-                      onMonthChange={setDatePickerMonth}
-                      onSelect={(date) => {
-                        setForm({ ...form, due_date: date ? format(date, "yyyy-MM-dd") : "" });
-                        setDatePickerOpen(false);
-                      }}
-                      className={cn("p-3 pointer-events-auto")}
-                    />
-                  </PopoverContent>
-                </Popover>
-              </InputGroupAddon>
-            </InputGroup>
+            <DatePickerInput value={form.due_date} onChange={(v) => setForm({ ...form, due_date: v })} className="mt-1" />
           </div>
           <div className="flex items-center gap-2 pt-1">
             <Checkbox id="calIsQuote" checked={form.isQuote} onCheckedChange={(v) => setForm({ ...form, isQuote: !!v })} />

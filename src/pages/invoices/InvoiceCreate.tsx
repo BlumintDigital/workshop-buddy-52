@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Plus, Trash2 } from "lucide-react";
+import { DatePickerInput } from "@/components/ui/date-picker-input";
 import { toast } from "sonner";
 
 interface LineItem {
@@ -136,7 +137,7 @@ export default function InvoiceCreate() {
               </div>
               <div>
                 <Label>Due Date</Label>
-                <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+                <DatePickerInput value={dueDate} onChange={setDueDate} />
               </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

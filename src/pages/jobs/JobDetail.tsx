@@ -18,6 +18,7 @@ import {
   FileUp, FileText, Download, MessageSquare, Paperclip, Package, Star,
   CheckCircle2, XCircle,
 } from "lucide-react";
+import { DatePickerInput } from "@/components/ui/date-picker-input";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { sendNotifications } from "@/lib/notifications";
@@ -854,7 +855,7 @@ export default function JobDetail() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div><Label>Due Date</Label><Input type="date" value={editForm.due_date || ""} onChange={(e) => setEditForm({ ...editForm, due_date: e.target.value })} className="mt-1" /></div>
+                <div><Label>Due Date</Label><DatePickerInput value={editForm.due_date || ""} onChange={(v) => setEditForm({ ...editForm, due_date: v })} className="mt-1" /></div>
               </div>
               <div>
                 <Label>Estimated Hours</Label>
