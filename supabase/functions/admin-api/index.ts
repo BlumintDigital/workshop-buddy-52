@@ -592,7 +592,7 @@ Deno.serve(async (req) => {
       // ==================== ENSURE SUPER ADMIN ====================
       case "ensure-super-admin": {
         if (req.method !== "POST") return err("POST required", 405);
-        const { email, full_name } = await req.json();
+        const { email, full_name, password } = await req.json();
         if (!email || typeof email !== "string" || !email.includes("@"))
           return err("Valid email is required");
 
@@ -606,15 +606,24 @@ Deno.serve(async (req) => {
 
         let userId: string;
         let created = false;
+        const validPassword = password && typeof password === "string" && password.length >= 6;
 
         if (existing) {
           userId = existing.id;
+          // Update password if provided
+          if (validPassword) {
+            await supabase.auth.admin.updateUserById(userId, { password });
+          }
         } else {
-          const { data: newUser, error: createErr } = await supabase.auth.admin.createUser({
+          const createOpts: any = {
             email,
             email_confirm: true,
             user_metadata: { full_name: full_name?.trim() || "Super Admin" },
-          });
+          };
+          if (validPassword) {
+            createOpts.password = password;
+          }
+          const { data: newUser, error: createErr } = await supabase.auth.admin.createUser(createOpts);
           if (createErr) return err(createErr.message, 500);
           userId = newUser.user.id;
           created = true;
