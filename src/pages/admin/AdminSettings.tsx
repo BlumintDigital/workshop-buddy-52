@@ -285,7 +285,7 @@ export default function AdminSettings() {
             <Card>
               <CardHeader>
                 <CardTitle>Workshop Logo</CardTitle>
-                <CardDescription>Upload a logo displayed on the login page (recommended: square, e.g. 200×200)</CardDescription>
+                <CardDescription>Upload a square logo for the login page. Recommended: 512×512 px PNG with transparent background. Minimum 128×128 px.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 {settings.logo_url ? (
