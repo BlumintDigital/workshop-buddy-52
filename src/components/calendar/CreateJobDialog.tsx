@@ -31,6 +31,8 @@ export default function CreateJobDialog({ open, onOpenChange, defaultDate, onCre
   const [form, setForm] = useState({ title: "", description: "", priority: "medium", assigned_staff_id: "", client_id: "", isQuote: false, due_date: defaultDate });
   const [staffUsers, setStaffUsers] = useState<UserOption[]>([]);
   const [clientUsers, setClientUsers] = useState<UserOption[]>([]);
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
+  const [datePickerMonth, setDatePickerMonth] = useState<Date | undefined>(defaultDate ? parseISO(defaultDate) : new Date());
 
   useEffect(() => {
     setForm((f) => ({ ...f, due_date: defaultDate }));
