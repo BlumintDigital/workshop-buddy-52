@@ -135,9 +135,15 @@ export default function Auth() {
                 </CardHeader>
                 <CardContent>
                   <form onSubmit={handleSignup} className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="signup-name">Full Name</Label>
-                      <Input id="signup-name" value={signupName} onChange={(e) => setSignupName(e.target.value)} required placeholder="John Doe" />
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-2">
+                        <Label htmlFor="signup-first-name">First Name</Label>
+                        <Input id="signup-first-name" value={signupFirstName} onChange={(e) => setSignupFirstName(e.target.value)} required placeholder="John" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="signup-last-name">Last Name</Label>
+                        <Input id="signup-last-name" value={signupLastName} onChange={(e) => setSignupLastName(e.target.value)} required placeholder="Doe" />
+                      </div>
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="signup-email">Email</Label>
@@ -146,6 +152,10 @@ export default function Auth() {
                     <div className="space-y-2">
                       <Label htmlFor="signup-password">Password</Label>
                       <Input id="signup-password" type="password" value={signupPassword} onChange={(e) => setSignupPassword(e.target.value)} required minLength={6} placeholder="••••••••" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="signup-confirm-password">Confirm Password</Label>
+                      <Input id="signup-confirm-password" type="password" value={signupConfirmPassword} onChange={(e) => setSignupConfirmPassword(e.target.value)} required minLength={6} placeholder="••••••••" />
                     </div>
                     <Button type="submit" className="w-full" disabled={submitting}>
                       {submitting ? "Creating account..." : "Create Account"}
