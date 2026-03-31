@@ -5,7 +5,7 @@ import { toast } from "sonner";
 
 type AppRole = "admin" | "manager" | "staff" | "client";
 
-const SESSION_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
+export const SESSION_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
 
 interface AuthContextType {
   session: Session | null;
@@ -14,10 +14,12 @@ interface AuthContextType {
   profile: { full_name: string; avatar_url: string | null } | null;
   loading: boolean;
   needsMfaVerification: boolean;
+  sessionTimeLeft: number;
   signIn: (email: string, password: string) => Promise<{ role: AppRole | null; needsMfa: boolean; factorId?: string }>;
   signUp: (email: string, password: string, fullName: string) => Promise<void>;
   signOut: () => Promise<void>;
   clearMfaFlag: () => void;
+  extendSession: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);

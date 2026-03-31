@@ -2,6 +2,7 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbList, BreadcrumbPage } from "@/components/ui/breadcrumb";
 import { NotificationBell } from "@/components/NotificationBell";
+import { SessionIndicator } from "@/components/SessionIndicator";
 import { useLocation } from "react-router-dom";
 
 export function AppHeader() {
