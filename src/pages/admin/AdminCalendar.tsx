@@ -253,13 +253,17 @@ export default function AdminCalendar() {
                 const jobCount = dayEvents.filter((e) => e.type === "job").length;
                 const apptCount = dayEvents.filter((e) => e.type === "appointment").length;
                 return (
-                  <button
+                  <div
                     key={day.toISOString()}
                     onClick={() => setSelectedDate(day)}
+                    onDragOver={(e) => handleDragOver(e, day)}
+                    onDragLeave={handleDragLeave}
+                    onDrop={(e) => handleDrop(e, day)}
                     className={cn(
-                      "min-h-[80px] p-1 border rounded-md text-left transition-colors hover:bg-muted/50",
+                      "min-h-[80px] p-1 border rounded-md text-left transition-colors hover:bg-muted/50 cursor-pointer",
                       isSelected && "ring-2 ring-primary",
-                      isToday && "bg-accent/30"
+                      isToday && "bg-accent/30",
+                      dragOverDate && isSameDay(day, dragOverDate) && "bg-primary/10 ring-2 ring-primary/30"
                     )}
                   >
                     <div className="flex items-center justify-between">
@@ -275,11 +279,14 @@ export default function AdminCalendar() {
                       {dayEvents.slice(0, 3).map((ev) => (
                         <div
                           key={ev.id}
+                          draggable={ev.type === "job"}
+                          onDragStart={ev.type === "job" ? (e) => { e.stopPropagation(); handleDragStart(e, ev.id); } : undefined}
                           className={cn(
                             "text-[10px] leading-tight px-1 py-0.5 rounded truncate border-l-2",
                             ev.type === "appointment"
                               ? "bg-primary/10 text-primary border-l-blue-500"
-                              : cn("bg-secondary text-secondary-foreground", priorityColors[ev.priority || "medium"])
+                              : cn("bg-secondary text-secondary-foreground cursor-grab active:cursor-grabbing", priorityColors[ev.priority || "medium"]),
+                            draggedEventId === ev.id && "opacity-50"
                           )}
                         >
                           {ev.title}
@@ -289,7 +296,7 @@ export default function AdminCalendar() {
                         <span className="text-[10px] text-muted-foreground px-1">+{dayEvents.length - 3} more</span>
                       )}
                     </div>
-                  </button>
+                  </div>
                 );
               })}
             </div>
