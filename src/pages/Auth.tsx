@@ -8,11 +8,12 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Wrench } from "lucide-react";
+import { Wrench, ShieldCheck } from "lucide-react";
 import LoadingScreen from "@/components/LoadingScreen";
+import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 
 export default function Auth() {
-  const { signIn, signUp, user, role, loading } = useAuth();
+  const { signIn, signUp, user, role, loading, needsMfaVerification, clearMfaFlag } = useAuth();
   const navigate = useNavigate();
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
@@ -26,11 +27,18 @@ export default function Auth() {
   const [workshopName, setWorkshopName] = useState<string>("Workshop Manager");
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
 
+  // MFA state
+  const [mfaStep, setMfaStep] = useState(false);
+  const [mfaFactorId, setMfaFactorId] = useState<string | null>(null);
+  const [mfaCode, setMfaCode] = useState("");
+  const [mfaSubmitting, setMfaSubmitting] = useState(false);
+  const [pendingRole, setPendingRole] = useState<string | null>(null);
+
   useEffect(() => {
-    if (!loading && user && role) {
+    if (!loading && user && role && !needsMfaVerification && !mfaStep) {
       navigate(getRoleDashboardPath(role), { replace: true });
     }
-  }, [user, role, loading, navigate]);
+  }, [user, role, loading, navigate, needsMfaVerification, mfaStep]);
 
   useEffect(() => {
     supabase
@@ -52,15 +60,50 @@ export default function Auth() {
     e.preventDefault();
     setSubmitting(true);
     try {
-      const nextRole = await signIn(loginEmail, loginPassword);
-      toast.success("Signed in successfully");
-      if (nextRole) {
-        navigate(getRoleDashboardPath(nextRole), { replace: true });
+      const result = await signIn(loginEmail, loginPassword);
+      if (result.needsMfa && result.factorId) {
+        setMfaStep(true);
+        setMfaFactorId(result.factorId);
+        setPendingRole(result.role);
+        toast.info("Please enter your 2FA code");
+      } else {
+        toast.success("Signed in successfully");
+        if (result.role) {
+          navigate(getRoleDashboardPath(result.role), { replace: true });
+        }
       }
     } catch (err: any) {
       toast.error(err.message || "Failed to sign in");
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleMfaVerify = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!mfaFactorId || mfaCode.length !== 6) return;
+    setMfaSubmitting(true);
+    try {
+      const { data: challengeData, error: challengeError } = await supabase.auth.mfa.challenge({ factorId: mfaFactorId });
+      if (challengeError) throw challengeError;
+
+      const { error: verifyError } = await supabase.auth.mfa.verify({
+        factorId: mfaFactorId,
+        challengeId: challengeData.id,
+        code: mfaCode,
+      });
+      if (verifyError) throw verifyError;
+
+      clearMfaFlag();
+      setMfaStep(false);
+      setMfaCode("");
+      toast.success("Signed in successfully");
+      navigate(getRoleDashboardPath(pendingRole as any), { replace: true });
+    } catch (err: any) {
+      toast.error(err.message || "Invalid verification code");
+      setMfaCode("");
+    } finally {
+      setMfaSubmitting(false);
     }
   };
 
@@ -85,6 +128,57 @@ export default function Auth() {
       setSubmitting(false);
     }
   };
+
+  // MFA verification screen
+  if (mfaStep) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background p-6">
+        <div className="w-full max-w-md space-y-6">
+          <div className="flex flex-col items-center gap-2">
+            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+              <ShieldCheck className="h-6 w-6" />
+            </div>
+            <h1 className="text-2xl font-bold tracking-tight">Two-Factor Authentication</h1>
+            <p className="text-sm text-muted-foreground">Enter the 6-digit code from your authenticator app</p>
+          </div>
+          <Card>
+            <CardContent className="pt-6">
+              <form onSubmit={handleMfaVerify} className="space-y-6">
+                <div className="flex justify-center">
+                  <InputOTP maxLength={6} value={mfaCode} onChange={setMfaCode}>
+                    <InputOTPGroup>
+                      <InputOTPSlot index={0} />
+                      <InputOTPSlot index={1} />
+                      <InputOTPSlot index={2} />
+                      <InputOTPSlot index={3} />
+                      <InputOTPSlot index={4} />
+                      <InputOTPSlot index={5} />
+                    </InputOTPGroup>
+                  </InputOTP>
+                </div>
+                <Button type="submit" className="w-full" disabled={mfaSubmitting || mfaCode.length !== 6}>
+                  {mfaSubmitting ? "Verifying..." : "Verify"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="w-full"
+                  onClick={() => {
+                    setMfaStep(false);
+                    setMfaCode("");
+                    clearMfaFlag();
+                    supabase.auth.signOut();
+                  }}
+                >
+                  Cancel
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen">
