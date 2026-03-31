@@ -65,6 +65,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     resetInactivityTimer();
   }, [resetInactivityTimer]);
 
+  // Countdown interval
+  useEffect(() => {
+    if (!user) return;
+    const interval = setInterval(() => {
+      setSessionTimeLeft(Math.max(0, sessionDeadline.current - Date.now()));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [user]);
+
   useEffect(() => {
     if (!user) return;
 
