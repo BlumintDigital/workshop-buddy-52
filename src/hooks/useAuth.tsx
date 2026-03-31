@@ -115,8 +115,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return false;
   };
 
+  const currentUserIdRef = useRef<string | null>(null);
+
   useEffect(() => {
-    const handleSession = (session: Session | null) => {
+    const handleSession = (session: Session | null, isRefresh = false) => {
       setSession(session);
       setUser(session?.user ?? null);
 
@@ -127,11 +129,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return;
         }
 
+        // Skip re-fetching if same user (e.g. token refresh on tab focus)
+        if (isRefresh && currentUserIdRef.current === session.user.id) {
+          return;
+        }
+
+        currentUserIdRef.current = session.user.id;
         setLoading(true);
         Promise.all([fetchUserData(session.user.id), checkMfaStatus()]).finally(() =>
           setLoading(false)
         );
       } else {
+        currentUserIdRef.current = null;
         setRole(null);
         setProfile(null);
         setNeedsMfaVerification(false);
@@ -139,8 +148,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     };
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      handleSession(session);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      const isRefresh = event === "TOKEN_REFRESHED" || event === "INITIAL_SESSION";
+      handleSession(session, isRefresh);
     });
 
     supabase.auth.getSession().then(({ data: { session } }) => {
