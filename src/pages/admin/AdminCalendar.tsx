@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ChevronLeft, ChevronRight, Briefcase, CalendarDays, AlertTriangle, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Link } from "react-router-dom";
+import { toast } from "sonner";
 
 type CalendarEvent = {
   id: string;
@@ -50,6 +51,47 @@ export default function AdminCalendar() {
   const [showTypes, setShowTypes] = useState<string[]>(["appointment", "job"]);
   const [statusFilter, setStatusFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
+  const [draggedEventId, setDraggedEventId] = useState<string | null>(null);
+  const [dragOverDate, setDragOverDate] = useState<Date | null>(null);
+
+  const handleDragStart = (e: React.DragEvent, eventId: string) => {
+    e.dataTransfer.setData("text/plain", eventId);
+    e.dataTransfer.effectAllowed = "move";
+    setDraggedEventId(eventId);
+  };
+
+  const handleDragOver = (e: React.DragEvent, date: Date) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    setDragOverDate(date);
+  };
+
+  const handleDragLeave = () => {
+    setDragOverDate(null);
+  };
+
+  const handleDrop = async (e: React.DragEvent, targetDate: Date) => {
+    e.preventDefault();
+    setDragOverDate(null);
+    const eventId = e.dataTransfer.getData("text/plain");
+    setDraggedEventId(null);
+    const event = events.find((ev) => ev.id === eventId);
+    if (!event || event.type !== "job") return;
+    const newDate = format(targetDate, "yyyy-MM-dd");
+    if (event.date === newDate) return;
+
+    // Optimistic update
+    setEvents((prev) => prev.map((ev) => (ev.id === eventId ? { ...ev, date: newDate } : ev)));
+
+    const { error } = await supabase.from("jobs").update({ due_date: newDate }).eq("id", eventId);
+    if (error) {
+      // Revert on failure
+      setEvents((prev) => prev.map((ev) => (ev.id === eventId ? { ...ev, date: event.date } : ev)));
+      toast.error("Failed to reschedule job");
+    } else {
+      toast.success(`"${event.title}" moved to ${format(targetDate, "MMM d")}`);
+    }
+  };
 
   useEffect(() => {
     const start = format(startOfMonth(currentMonth), "yyyy-MM-dd");
@@ -211,13 +253,17 @@ export default function AdminCalendar() {
                 const jobCount = dayEvents.filter((e) => e.type === "job").length;
                 const apptCount = dayEvents.filter((e) => e.type === "appointment").length;
                 return (
-                  <button
+                  <div
                     key={day.toISOString()}
                     onClick={() => setSelectedDate(day)}
+                    onDragOver={(e) => handleDragOver(e, day)}
+                    onDragLeave={handleDragLeave}
+                    onDrop={(e) => handleDrop(e, day)}
                     className={cn(
-                      "min-h-[80px] p-1 border rounded-md text-left transition-colors hover:bg-muted/50",
+                      "min-h-[80px] p-1 border rounded-md text-left transition-colors hover:bg-muted/50 cursor-pointer",
                       isSelected && "ring-2 ring-primary",
-                      isToday && "bg-accent/30"
+                      isToday && "bg-accent/30",
+                      dragOverDate && isSameDay(day, dragOverDate) && "bg-primary/10 ring-2 ring-primary/30"
                     )}
                   >
                     <div className="flex items-center justify-between">
@@ -233,11 +279,14 @@ export default function AdminCalendar() {
                       {dayEvents.slice(0, 3).map((ev) => (
                         <div
                           key={ev.id}
+                          draggable={ev.type === "job"}
+                          onDragStart={ev.type === "job" ? (e) => { e.stopPropagation(); handleDragStart(e, ev.id); } : undefined}
                           className={cn(
                             "text-[10px] leading-tight px-1 py-0.5 rounded truncate border-l-2",
                             ev.type === "appointment"
                               ? "bg-primary/10 text-primary border-l-blue-500"
-                              : cn("bg-secondary text-secondary-foreground", priorityColors[ev.priority || "medium"])
+                              : cn("bg-secondary text-secondary-foreground cursor-grab active:cursor-grabbing", priorityColors[ev.priority || "medium"]),
+                            draggedEventId === ev.id && "opacity-50"
                           )}
                         >
                           {ev.title}
@@ -247,7 +296,7 @@ export default function AdminCalendar() {
                         <span className="text-[10px] text-muted-foreground px-1">+{dayEvents.length - 3} more</span>
                       )}
                     </div>
-                  </button>
+                  </div>
                 );
               })}
             </div>
