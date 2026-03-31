@@ -91,6 +91,21 @@ export function AppSidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { role, profile, signOut } = useAuth();
+  const [workshopName, setWorkshopName] = useState("Workshop Manager");
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    supabase
+      .from("workshop_settings")
+      .select("workshop_name, logo_url")
+      .eq("id", 1)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!data) return;
+        if ((data as any)?.workshop_name) setWorkshopName((data as any).workshop_name);
+        if ((data as any)?.logo_url) setLogoUrl((data as any).logo_url);
+      });
+  }, []);
 
   const groups = navGroups[role || "client"];
   const initials = (profile?.full_name || "U").split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
