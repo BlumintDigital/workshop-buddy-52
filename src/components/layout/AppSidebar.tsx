@@ -1,9 +1,11 @@
+import { useEffect, useState } from "react";
 import {
   LayoutDashboard, Briefcase, Calendar, Package, FileText, Users, Settings, LogOut, Wrench, ChevronDown, BarChart3, Columns3, UserCheck, CalendarDays, User, Activity,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 import {
   Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
   SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarSeparator, useSidebar,
@@ -89,6 +91,21 @@ export function AppSidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { role, profile, signOut } = useAuth();
+  const [workshopName, setWorkshopName] = useState("Workshop Manager");
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    supabase
+      .from("workshop_settings")
+      .select("workshop_name, logo_url")
+      .eq("id", 1)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!data) return;
+        if ((data as any)?.workshop_name) setWorkshopName((data as any).workshop_name);
+        if ((data as any)?.logo_url) setLogoUrl((data as any).logo_url);
+      });
+  }, []);
 
   const groups = navGroups[role || "client"];
   const initials = (profile?.full_name || "U").split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
@@ -108,12 +125,16 @@ export function AppSidebar() {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" className="cursor-default hover:bg-transparent">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/15 text-white">
-                <Wrench className="h-4 w-4" />
-              </div>
+              {logoUrl ? (
+                <img src={logoUrl} alt={workshopName} className="h-8 w-8 shrink-0 rounded-lg object-contain" />
+              ) : (
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/15 text-white">
+                  <Wrench className="h-4 w-4" />
+                </div>
+              )}
               {!collapsed && (
                 <div className="flex flex-col gap-0.5 leading-none">
-                  <span className="font-semibold text-sidebar-accent-foreground">Workshop Manager</span>
+                  <span className="font-semibold text-sidebar-accent-foreground">{workshopName}</span>
                   <span className="text-xs text-sidebar-foreground capitalize">{role || "user"}</span>
                 </div>
               )}
