@@ -13,6 +13,7 @@ import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowLeft, Plus, Trash2, FileDown } from "lucide-react";
+import { DatePickerInput } from "@/components/ui/date-picker-input";
 import { toast } from "sonner";
 import { generateInvoicePDF } from "@/lib/invoicePdf";
 
