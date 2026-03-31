@@ -618,6 +618,8 @@ export type Database = {
           contact_email: string | null
           currency: string | null
           default_tax_rate: number | null
+          email_notifications_enabled: boolean | null
+          from_email: string | null
           id: number
           login_image_url: string | null
           notify_job_status: boolean | null
@@ -631,6 +633,8 @@ export type Database = {
           contact_email?: string | null
           currency?: string | null
           default_tax_rate?: number | null
+          email_notifications_enabled?: boolean | null
+          from_email?: string | null
           id?: number
           login_image_url?: string | null
           notify_job_status?: boolean | null
@@ -644,6 +648,8 @@ export type Database = {
           contact_email?: string | null
           currency?: string | null
           default_tax_rate?: number | null
+          email_notifications_enabled?: boolean | null
+          from_email?: string | null
           id?: number
           login_image_url?: string | null
           notify_job_status?: boolean | null
