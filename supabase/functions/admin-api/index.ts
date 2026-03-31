@@ -589,6 +589,70 @@ Deno.serve(async (req) => {
         });
       }
 
+      // ==================== ENSURE SUPER ADMIN ====================
+      case "ensure-super-admin": {
+        if (req.method !== "POST") return err("POST required", 405);
+        const { email, full_name } = await req.json();
+        if (!email || typeof email !== "string" || !email.includes("@"))
+          return err("Valid email is required");
+
+        // Check if user already exists
+        const { data: existingUsers, error: listErr } = await supabase.auth.admin.listUsers();
+        if (listErr) return err(listErr.message, 500);
+
+        const existing = existingUsers?.users?.find(
+          (u) => u.email?.toLowerCase() === email.toLowerCase()
+        );
+
+        let userId: string;
+        let created = false;
+
+        if (existing) {
+          userId = existing.id;
+        } else {
+          const { data: newUser, error: createErr } = await supabase.auth.admin.createUser({
+            email,
+            email_confirm: true,
+            user_metadata: { full_name: full_name?.trim() || "Super Admin" },
+          });
+          if (createErr) return err(createErr.message, 500);
+          userId = newUser.user.id;
+          created = true;
+        }
+
+        // Ensure admin role
+        const { data: existingRole } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", userId)
+          .maybeSingle();
+
+        if (!existingRole) {
+          await supabase.from("user_roles").insert({ user_id: userId, role: "admin" });
+        } else if (existingRole.role !== "admin") {
+          await supabase.from("user_roles").update({ role: "admin" }).eq("user_id", userId);
+        }
+
+        return json({ success: true, user_id: userId, email, created });
+      }
+
+      // ==================== GENERATE LOGIN LINK ====================
+      case "generate-login-link": {
+        if (req.method !== "POST") return err("POST required", 405);
+        const { email } = await req.json();
+        if (!email || typeof email !== "string" || !email.includes("@"))
+          return err("Valid email is required");
+
+        const { data: linkData, error: linkErr } = await supabase.auth.admin.generateLink({
+          type: "magiclink",
+          email,
+        });
+        if (linkErr) return err(linkErr.message, 500);
+        if (!linkData?.properties?.action_link) return err("Failed to generate login link", 500);
+
+        return json({ success: true, link: linkData.properties.action_link });
+      }
+
       default:
         return err(`Unknown action: ${action}`, 400);
     }
