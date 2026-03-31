@@ -105,6 +105,23 @@ export function AppSidebar() {
         if ((data as any)?.workshop_name) setWorkshopName((data as any).workshop_name);
         if ((data as any)?.logo_url) setLogoUrl((data as any).logo_url);
       });
+
+    const channel = supabase
+      .channel("sidebar-workshop-settings")
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "workshop_settings" },
+        (payload) => {
+          const row = payload.new as any;
+          if (row?.workshop_name) setWorkshopName(row.workshop_name);
+          setLogoUrl(row?.logo_url ?? null);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const groups = navGroups[role || "client"];
