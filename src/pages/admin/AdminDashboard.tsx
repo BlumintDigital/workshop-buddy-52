@@ -5,6 +5,7 @@ import DashboardLayout from "@/components/layout/DashboardLayout";
 import { StatCard } from "@/components/dashboard/StatsCards";
 import { RecentActivity } from "@/components/dashboard/RecentActivity";
 import { JobStatusChart } from "@/components/dashboard/JobStatusChart";
+import { ActivityFeed } from "@/components/dashboard/ActivityFeed";
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState({ jobs: 0, appointments: 0, inventory: 0, invoices: 0, users: 0, lowStock: 0 });
@@ -107,6 +108,8 @@ export default function AdminDashboard() {
           <JobStatusChart data={statusData} />
           <RecentActivity activities={recentJobs} title="Recent Jobs" />
         </div>
+
+        <ActivityFeed />
       </div>
     </DashboardLayout>
   );
