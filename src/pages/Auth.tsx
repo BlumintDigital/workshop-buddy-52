@@ -188,8 +188,12 @@ export default function Auth() {
         ) : (
           <div className="absolute inset-0 bg-gradient-to-br from-primary/80 via-primary/60 to-primary/90 flex items-center justify-center">
             <div className="text-center space-y-4 px-12">
-              <Wrench className="h-16 w-16 text-primary-foreground/80 mx-auto" />
-              <h2 className="text-3xl font-bold text-primary-foreground">Workshop Manager</h2>
+              {logoUrl ? (
+                <img src={logoUrl} alt={workshopName} className="h-16 w-16 rounded-lg object-contain mx-auto" />
+              ) : (
+                <Wrench className="h-16 w-16 text-primary-foreground/80 mx-auto" />
+              )}
+              <h2 className="text-3xl font-bold text-primary-foreground">{workshopName}</h2>
               <p className="text-primary-foreground/70 text-lg max-w-sm mx-auto">
                 Streamline your manufacturing & fabrication workflow with powerful job tracking, inventory management, and client collaboration.
               </p>
