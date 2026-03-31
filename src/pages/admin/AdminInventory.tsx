@@ -61,6 +61,14 @@ export default function AdminInventory() {
     setAdjustOpen(true);
   };
 
+  const handleDelete = async (item: any) => {
+    if (!confirm(`Delete "${item.name}"? This cannot be undone.`)) return;
+    const { error } = await supabase.from("inventory_items").delete().eq("id", item.id);
+    if (error) { toast.error("Failed to delete: " + error.message); return; }
+    toast.success("Item deleted");
+    fetchItems(page);
+  };
+
   const handleAdjust = async () => {
     if (!adjustItem) return;
     if (!user) { toast.error("You must be logged in"); return; }
@@ -166,6 +174,7 @@ export default function AdminInventory() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem onClick={() => handleOpenAdjust(item)}>Adjust Stock</DropdownMenuItem>
+                          <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(item)}>Delete Item</DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
