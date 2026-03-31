@@ -1,42 +1,90 @@
 
 
-# Session Activity Indicator + Warning Dialog
+## Fix Inventory Stock Operations
 
-## What this delivers
-A live countdown timer in the header showing remaining session time, plus an alert dialog that appears 2 minutes before auto-logout giving users the option to extend their session.
+### Problem
+Stock in, stock out, and set exact quantity operations appear to complete but don't actually persist. The most likely causes:
 
-## Plan
+1. **Silent RLS failures**: Supabase returns `{ error: null, data: [] }` when an UPDATE is blocked by RLS (0 rows affected, no error). The code only checks `error`, so it shows "Stock updated" even when nothing changed.
+2. **Missing WITH CHECK on ALL policies**: The admin/manager ALL policies on `inventory_items` only have a USING clause. While Postgres should default WITH CHECK to USING, explicitly adding it ensures UPDATE/INSERT operations pass the policy check.
+3. **Silent early return**: If `user` is null (e.g. due to auth state flicker), `handleAdjust` returns silently with no feedback.
 
-### 1. Expose session timer state from AuthContext
+### Plan
 
-**File: `src/hooks/useAuth.tsx`**
-- Add `sessionTimeLeft` (number, ms remaining) to context
-- Add a 1-second interval that decrements `sessionTimeLeft` from `SESSION_TIMEOUT_MS`
-- Reset `sessionTimeLeft` to `SESSION_TIMEOUT_MS` whenever the inactivity timer resets (user activity)
-- Add `extendSession()` method that resets the inactivity timer (for the warning dialog's "Stay Logged In" button)
-- Export `SESSION_TIMEOUT_MS` so components can reference it
+**Step 1 — Add explicit WITH CHECK to inventory RLS policies (migration)**
 
-### 2. Create SessionIndicator component
+Add WITH CHECK expressions to the existing ALL policies for `inventory_items`:
 
-**New file: `src/components/SessionIndicator.tsx`**
-- Reads `sessionTimeLeft` and `extendSession` from `useAuth()`
-- Displays a compact timer in the header (e.g., `🕐 28:45`) with a circular progress or simple text
-- Color changes: green > 5 min, yellow 2-5 min, red < 2 min
-- When `sessionTimeLeft <= 120000` (2 min), opens an `AlertDialog` with:
-  - Title: "Session Expiring Soon"
-  - Description: "Your session will expire in X:XX due to inactivity."
-  - Actions: "Stay Logged In" (calls `extendSession()`) and "Log Out" (calls `signOut()`)
-- Dialog auto-closes when user clicks "Stay Logged In"
+```sql
+DROP POLICY "Admins can manage inventory" ON public.inventory_items;
+CREATE POLICY "Admins can manage inventory" ON public.inventory_items
+  FOR ALL TO authenticated
+  USING (public.has_role(auth.uid(), 'admin'))
+  WITH CHECK (public.has_role(auth.uid(), 'admin'));
 
-### 3. Add to AppHeader
+DROP POLICY "Managers can manage inventory" ON public.inventory_items;
+CREATE POLICY "Managers can manage inventory" ON public.inventory_items
+  FOR ALL TO authenticated
+  USING (public.has_role(auth.uid(), 'manager'))
+  WITH CHECK (public.has_role(auth.uid(), 'manager'));
+```
 
-**File: `src/components/layout/AppHeader.tsx`**
-- Add `<SessionIndicator />` next to `<NotificationBell />` in the header's right section
+Same for `inventory_transactions`:
+```sql
+DROP POLICY "Admins can manage inventory transactions" ON public.inventory_transactions;
+CREATE POLICY "Admins can manage inventory transactions" ON public.inventory_transactions
+  FOR ALL TO authenticated
+  USING (public.has_role(auth.uid(), 'admin'))
+  WITH CHECK (public.has_role(auth.uid(), 'admin'));
 
-### Files modified
-| File | Change |
-|------|--------|
-| `src/hooks/useAuth.tsx` | Add `sessionTimeLeft`, countdown interval, `extendSession()` to context |
-| `src/components/SessionIndicator.tsx` | New component with timer display + warning dialog |
-| `src/components/layout/AppHeader.tsx` | Add SessionIndicator to header |
+DROP POLICY "Managers can manage inventory transactions" ON public.inventory_transactions;
+CREATE POLICY "Managers can manage inventory transactions" ON public.inventory_transactions
+  FOR ALL TO authenticated
+  USING (public.has_role(auth.uid(), 'manager'))
+  WITH CHECK (public.has_role(auth.uid(), 'manager'));
+```
+
+Also add a staff UPDATE policy on `inventory_items` so staff can update quantity when logging usage:
+```sql
+CREATE POLICY "Staff can update inventory quantity" ON public.inventory_items
+  FOR UPDATE TO authenticated
+  USING (public.has_role(auth.uid(), 'staff'))
+  WITH CHECK (public.has_role(auth.uid(), 'staff'));
+```
+
+**Step 2 — Fix error handling in AdminInventory.tsx and StaffInventory.tsx**
+
+Update `handleAdjust` in both files to:
+- Show a toast when `user` is null instead of silently returning
+- Use `.select()` on the update call to verify rows were actually affected
+- Show an error if 0 rows were updated
+
+```ts
+const handleAdjust = async () => {
+  if (!adjustItem) return;
+  if (!user) { toast.error("You must be logged in"); return; }
+  
+  // ... quantity calc unchanged ...
+
+  const { error: txError } = await supabase.from("inventory_transactions").insert({...});
+  if (txError) { toast.error("Failed to log transaction: " + txError.message); return; }
+
+  const { data: updated, error: updateError } = await supabase
+    .from("inventory_items")
+    .update({ quantity: newQuantity })
+    .eq("id", adjustItem.id)
+    .select();
+  
+  if (updateError) { toast.error("Failed to update stock: " + updateError.message); return; }
+  if (!updated || updated.length === 0) { toast.error("Stock update was blocked. Please try again."); return; }
+
+  toast.success("Stock updated");
+  // ... rest unchanged
+};
+```
+
+### Files changed
+- `supabase/migrations/` — new migration for RLS policy updates
+- `src/pages/admin/AdminInventory.tsx` — improved error handling in `handleAdjust`
+- `src/pages/staff/StaffInventory.tsx` — same error handling fix
 
