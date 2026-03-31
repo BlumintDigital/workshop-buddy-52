@@ -153,10 +153,9 @@ export default function InvoiceDetail() {
             <div>
               <Label className="text-xs text-muted-foreground">Due Date</Label>
               {canEdit ? (
-                <Input
-                  type="date"
+                <DatePickerInput
                   value={invoice.due_date || ""}
-                  onChange={(e) => setInvoice({ ...invoice, due_date: e.target.value })}
+                  onChange={(v) => setInvoice({ ...invoice, due_date: v })}
                   className="mt-1"
                 />
               ) : (

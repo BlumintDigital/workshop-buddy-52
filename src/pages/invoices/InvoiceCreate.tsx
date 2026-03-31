@@ -137,7 +137,7 @@ export default function InvoiceCreate() {
               </div>
               <div>
                 <Label>Due Date</Label>
-                <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+                <DatePickerInput value={dueDate} onChange={setDueDate} />
               </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
