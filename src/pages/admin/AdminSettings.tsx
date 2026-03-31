@@ -46,6 +46,7 @@ const defaultSettings = {
   email_notifications_enabled: false,
   from_email: "",
   login_image_url: "",
+  logo_url: "",
 };
 
 type Settings = typeof defaultSettings;
