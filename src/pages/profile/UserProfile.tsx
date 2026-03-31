@@ -12,7 +12,7 @@ import { User, ShieldCheck, ShieldOff, Copy, Loader2 } from "lucide-react";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 
 export default function UserProfile() {
-  const { user, profile, role } = useAuth();
+  const { user, profile, role, refreshMfaStatus } = useAuth();
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
   const [saving, setSaving] = useState(false);
@@ -105,6 +105,7 @@ export default function UserProfile() {
       setQrCode(null);
       setSecret(null);
       setVerifyCode("");
+      await refreshMfaStatus();
       toast.success("Two-factor authentication enabled");
     } catch (err: any) {
       toast.error(err.message || "Invalid verification code");
@@ -122,6 +123,7 @@ export default function UserProfile() {
       if (error) throw error;
       setMfaEnabled(false);
       setFactorId(null);
+      await refreshMfaStatus();
       toast.success("Two-factor authentication disabled");
     } catch (err: any) {
       toast.error(err.message || "Failed to disable 2FA");

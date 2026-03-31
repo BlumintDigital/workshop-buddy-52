@@ -14,12 +14,14 @@ interface AuthContextType {
   profile: { full_name: string; avatar_url: string | null } | null;
   loading: boolean;
   needsMfaVerification: boolean;
+  mfaEnabled: boolean;
   sessionTimeLeft: number;
   signIn: (email: string, password: string) => Promise<{ role: AppRole | null; needsMfa: boolean; factorId?: string }>;
   signUp: (email: string, password: string, fullName: string) => Promise<void>;
   signOut: () => Promise<void>;
   clearMfaFlag: () => void;
   extendSession: () => void;
+  refreshMfaStatus: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -31,6 +33,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<{ full_name: string; avatar_url: string | null } | null>(null);
   const [loading, setLoading] = useState(true);
   const [needsMfaVerification, setNeedsMfaVerification] = useState(false);
+  const [mfaEnabled, setMfaEnabled] = useState(false);
   const [sessionTimeLeft, setSessionTimeLeft] = useState(SESSION_TIMEOUT_MS);
   const inactivityTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sessionDeadline = useRef<number>(Date.now() + SESSION_TIMEOUT_MS);
@@ -44,6 +47,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setRole(null);
     setProfile(null);
     setNeedsMfaVerification(false);
+    setMfaEnabled(false);
     if (reason) {
       toast.info(reason);
     }
@@ -74,23 +78,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => clearInterval(interval);
   }, [user]);
 
+  // Start 30-minute session timer on login. Only extendSession() (explicit user action) resets it.
   useEffect(() => {
     if (!user) return;
-
-    const events = ["mousemove", "keydown", "click", "touchstart", "scroll"];
-    const handler = () => resetInactivityTimer();
-
-    events.forEach((e) => window.addEventListener(e, handler, { passive: true }));
     resetInactivityTimer();
-
     return () => {
-      events.forEach((e) => window.removeEventListener(e, handler));
       if (inactivityTimer.current) {
         clearTimeout(inactivityTimer.current);
         inactivityTimer.current = null;
       }
     };
   }, [user, resetInactivityTimer]);
+
+  const refreshMfaStatus = useCallback(async () => {
+    const { data } = await supabase.auth.mfa.listFactors();
+    setMfaEnabled(!!(data?.totp?.find((f) => f.status === "verified")));
+  }, []);
 
   const fetchUserData = async (userId: string): Promise<AppRole | null> => {
     const [roleRes, profileRes] = await Promise.all([
@@ -101,6 +104,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const nextRole = (roleRes.data?.role as AppRole | undefined) ?? null;
     setRole(nextRole);
     setProfile(profileRes.data ?? null);
+
+    // Check if user has 2FA enrolled
+    const { data: mfaData } = await supabase.auth.mfa.listFactors();
+    setMfaEnabled(!!(mfaData?.totp?.find((f) => f.status === "verified")));
 
     return nextRole;
   };
@@ -118,10 +125,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const currentUserIdRef = useRef<string | null>(null);
 
   useEffect(() => {
-    const handleSession = (session: Session | null, isRefresh = false) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-
+    const handleSession = (session: Session | null) => {
       if (session?.user) {
         // Check JWT expiry
         if (session.expires_at && session.expires_at * 1000 < Date.now()) {
@@ -129,33 +133,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return;
         }
 
-        // Skip re-fetching if same user (e.g. token refresh on tab focus)
-        if (isRefresh && currentUserIdRef.current === session.user.id) {
+        // Same user already loaded — skip entirely to avoid re-triggering useEffects (timer, etc.)
+        if (currentUserIdRef.current === session.user.id) {
           return;
         }
 
+        // New user login or initial load
         currentUserIdRef.current = session.user.id;
+        setSession(session);
+        setUser(session.user);
         setLoading(true);
         Promise.all([fetchUserData(session.user.id), checkMfaStatus()]).finally(() =>
           setLoading(false)
         );
       } else {
         currentUserIdRef.current = null;
+        setSession(null);
+        setUser(null);
         setRole(null);
         setProfile(null);
         setNeedsMfaVerification(false);
+        setMfaEnabled(false);
         setLoading(false);
       }
     };
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      const isRefresh = event === "TOKEN_REFRESHED" || event === "INITIAL_SESSION";
-      handleSession(session, isRefresh);
-    });
-
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       handleSession(session);
     });
+
+    supabase.auth.getSession().then(({ data: { session } }) => handleSession(session));
 
     return () => subscription.unsubscribe();
   }, []);
@@ -201,7 +208,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const clearMfaFlag = () => setNeedsMfaVerification(false);
 
   return (
-    <AuthContext.Provider value={{ session, user, role, profile, loading, needsMfaVerification, sessionTimeLeft, signIn, signUp, signOut, clearMfaFlag, extendSession }}>
+    <AuthContext.Provider value={{ session, user, role, profile, loading, needsMfaVerification, mfaEnabled, sessionTimeLeft, signIn, signUp, signOut, clearMfaFlag, extendSession, refreshMfaStatus }}>
       {children}
     </AuthContext.Provider>
   );
