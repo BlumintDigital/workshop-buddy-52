@@ -133,6 +133,26 @@ export default function AdminSettings() {
     set("login_image_url", "");
   };
 
+  const handleUploadLogo = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) { toast.error("Please select an image file"); return; }
+    setUploadingLogo(true);
+    const ext = file.name.split(".").pop();
+    const path = `logo-${Date.now()}.${ext}`;
+    const { error: uploadErr } = await supabase.storage.from("workshop-assets").upload(path, file, { upsert: true });
+    if (uploadErr) { toast.error(uploadErr.message); setUploadingLogo(false); return; }
+    const { data: urlData } = supabase.storage.from("workshop-assets").getPublicUrl(path);
+    set("logo_url", urlData.publicUrl);
+    setUploadingLogo(false);
+    toast.success("Logo uploaded — remember to save settings");
+    e.target.value = "";
+  };
+
+  const handleRemoveLogo = () => {
+    set("logo_url", "");
+  };
+
   const handleSeedData = async () => {
     setSeeding(true);
     const { data, error } = await supabase.functions.invoke("seed-data");
