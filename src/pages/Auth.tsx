@@ -41,17 +41,20 @@ export default function Auth() {
   }, [user, role, loading, navigate, needsMfaVerification, mfaStep]);
 
   useEffect(() => {
-    supabase
-      .from("workshop_settings")
-      .select("login_image_url, workshop_name, logo_url")
-      .eq("id", 1)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (!data) return;
-        if ((data as any)?.login_image_url) setLoginImageUrl((data as any).login_image_url);
-        if ((data as any)?.workshop_name) setWorkshopName((data as any).workshop_name);
-        if ((data as any)?.logo_url) setLogoUrl((data as any).logo_url);
-      });
+    const loadBranding = async () => {
+      const { data, error } = await supabase
+        .from("workshop_settings_public")
+        .select("login_image_url, workshop_name, logo_url")
+        .eq("id", 1)
+        .maybeSingle();
+
+      if (error || !data) return;
+      if (data.login_image_url) setLoginImageUrl(data.login_image_url);
+      if (data.workshop_name) setWorkshopName(data.workshop_name);
+      if (data.logo_url) setLogoUrl(data.logo_url);
+    };
+
+    void loadBranding();
   }, []);
 
   if (loading) return <LoadingScreen />;
