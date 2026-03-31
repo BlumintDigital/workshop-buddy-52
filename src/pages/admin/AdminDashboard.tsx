@@ -108,6 +108,8 @@ export default function AdminDashboard() {
           <JobStatusChart data={statusData} />
           <RecentActivity activities={recentJobs} title="Recent Jobs" />
         </div>
+
+        <ActivityFeed />
       </div>
     </DashboardLayout>
   );
