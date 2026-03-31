@@ -31,7 +31,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<{ full_name: string; avatar_url: string | null } | null>(null);
   const [loading, setLoading] = useState(true);
   const [needsMfaVerification, setNeedsMfaVerification] = useState(false);
+  const [sessionTimeLeft, setSessionTimeLeft] = useState(SESSION_TIMEOUT_MS);
   const inactivityTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const sessionDeadline = useRef<number>(Date.now() + SESSION_TIMEOUT_MS);
 
   const performSignOut = useCallback(async (reason?: string) => {
     if (inactivityTimer.current) {
