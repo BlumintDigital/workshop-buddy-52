@@ -452,6 +452,143 @@ Deno.serve(async (req) => {
         return json(result, resp.status);
       }
 
+      // ==================== ENVIRONMENT / TROUBLESHOOT ====================
+      case "environment": {
+        // Collect environment variable names (never values) for troubleshooting
+        const envKeys = Object.keys(Deno.env.toObject()).sort();
+
+        // Check DB connectivity + table row counts
+        const tables = [
+          "jobs", "invoices", "appointments", "inventory_items",
+          "profiles", "user_roles", "activity_logs", "notifications",
+          "job_tasks", "job_attachments", "job_ratings", "job_updates",
+          "job_task_notes", "inventory_transactions", "invoice_items",
+          "workshop_settings",
+        ];
+        const tableCountResults: Record<string, number | string> = {};
+        let dbConnected = true;
+        try {
+          const countPromises = tables.map(async (t) => {
+            const { count, error } = await supabase
+              .from(t)
+              .select("id", { count: "exact", head: true });
+            return { table: t, count: error ? `error: ${error.message}` : (count ?? 0) };
+          });
+          const counts = await Promise.all(countPromises);
+          for (const c of counts) tableCountResults[c.table] = c.count;
+        } catch {
+          dbConnected = false;
+        }
+
+        // Check auth service
+        let authStatus = "unknown";
+        let totalAuthUsers = 0;
+        try {
+          const { data: authList, error: authErr } = await supabase.auth.admin.listUsers({ page: 1, perPage: 1 });
+          if (authErr) {
+            authStatus = `error: ${authErr.message}`;
+          } else {
+            authStatus = "ok";
+            // listUsers returns total count in the response
+            totalAuthUsers = (authList as any)?.total ?? (authList?.users?.length ?? 0);
+          }
+        } catch (e) {
+          authStatus = `error: ${(e as Error).message}`;
+        }
+
+        // Check storage buckets
+        let storageBuckets: { name: string; public: boolean }[] = [];
+        let storageStatus = "unknown";
+        try {
+          const { data: buckets, error: bErr } = await supabase.storage.listBuckets();
+          if (bErr) {
+            storageStatus = `error: ${bErr.message}`;
+          } else {
+            storageStatus = "ok";
+            storageBuckets = (buckets || []).map((b) => ({ name: b.name, public: b.public }));
+          }
+        } catch (e) {
+          storageStatus = `error: ${(e as Error).message}`;
+        }
+
+        // Check edge function reachability (self-ping)
+        let edgeFunctionStatus = "ok";
+        try {
+          const selfUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/admin-api?action=health`;
+          const selfResp = await fetch(selfUrl, {
+            headers: {
+              Authorization: `Bearer ${secret}`,
+              apikey: Deno.env.get("SUPABASE_ANON_KEY")!,
+            },
+          });
+          if (!selfResp.ok) edgeFunctionStatus = `error: status ${selfResp.status}`;
+        } catch (e) {
+          edgeFunctionStatus = `error: ${(e as Error).message}`;
+        }
+
+        // Workshop settings snapshot
+        const { data: wsSettings } = await supabase
+          .from("workshop_settings")
+          .select("*")
+          .limit(1)
+          .maybeSingle();
+
+        // RLS policy check — try a query as anon to see if RLS is enforced
+        const anonClient = createClient(
+          Deno.env.get("SUPABASE_URL")!,
+          Deno.env.get("SUPABASE_ANON_KEY")!
+        );
+        let rlsEnforced = "unknown";
+        try {
+          const { data: rlsTest, error: rlsErr } = await anonClient
+            .from("jobs")
+            .select("id", { count: "exact", head: true });
+          if (rlsErr) {
+            rlsEnforced = "yes (query blocked)";
+          } else {
+            // Service role sees all rows; anon should see 0 if RLS is on
+            const serviceCount = typeof tableCountResults["jobs"] === "number" ? tableCountResults["jobs"] : 0;
+            const anonCount = rlsTest ?? 0;
+            rlsEnforced = serviceCount > 0 && anonCount === 0
+              ? "yes"
+              : serviceCount === 0
+                ? "no data to verify"
+                : "possibly not enforced";
+          }
+        } catch {
+          rlsEnforced = "yes (error)";
+        }
+
+        return json({
+          timestamp: new Date().toISOString(),
+          runtime: {
+            deno_version: Deno.version?.deno ?? "unknown",
+            v8_version: Deno.version?.v8 ?? "unknown",
+            typescript_version: Deno.version?.typescript ?? "unknown",
+          },
+          supabase: {
+            url: Deno.env.get("SUPABASE_URL") ?? "not set",
+            project_ref: (Deno.env.get("SUPABASE_URL") ?? "").match(/https:\/\/([^.]+)/)?.[1] ?? "unknown",
+          },
+          services: {
+            database: dbConnected ? "ok" : "error",
+            auth: authStatus,
+            auth_total_users: totalAuthUsers,
+            storage: storageStatus,
+            storage_buckets: storageBuckets,
+            edge_functions: edgeFunctionStatus,
+          },
+          security: {
+            rls_enforced_on_jobs: rlsEnforced,
+            global_admin_secret_set: !!Deno.env.get("GLOBAL_ADMIN_SECRET"),
+            service_role_key_set: !!Deno.env.get("SUPABASE_SERVICE_ROLE_KEY"),
+          },
+          environment_variables: envKeys,
+          table_row_counts: tableCountResults,
+          workshop_settings: wsSettings,
+        });
+      }
+
       default:
         return err(`Unknown action: ${action}`, 400);
     }
