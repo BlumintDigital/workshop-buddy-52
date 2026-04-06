@@ -16,6 +16,7 @@ import { ArrowLeft, Plus, Trash2, FileDown } from "lucide-react";
 import { DatePickerInput } from "@/components/ui/date-picker-input";
 import { toast } from "sonner";
 import { generateInvoicePDF } from "@/lib/invoicePdf";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
 const statusColors: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
   draft: "outline", sent: "secondary", paid: "default", overdue: "destructive", cancelled: "destructive",
@@ -38,6 +39,7 @@ export default function InvoiceDetail() {
   const [items, setItems] = useState<LineItem[]>([]);
   const [saving, setSaving] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const canEdit = (role === "admin" || role === "manager") && invoice?.status === "draft";
   const canManage = role === "admin" || role === "manager";
@@ -109,6 +111,17 @@ export default function InvoiceDetail() {
     setInvoice({ ...invoice, subtotal, tax_amount: taxAmount, total });
   };
 
+  const handleDelete = async () => {
+    if (!invoice) return;
+    setDeleting(true);
+    await supabase.from("invoice_items").delete().eq("invoice_id", invoice.id);
+    const { error } = await supabase.from("invoices").delete().eq("id", invoice.id);
+    if (error) { toast.error(error.message); setDeleting(false); return; }
+    toast.success("Invoice deleted");
+    const path = role === "client" ? "/client/invoices" : role === "manager" ? "/manager/invoices" : "/admin/invoices";
+    navigate(path);
+  };
+
   const handleDownloadPDF = async () => {
     if (!invoice) return;
     setDownloading(true);
@@ -144,6 +157,29 @@ export default function InvoiceDetail() {
             <Button variant="outline" size="sm" onClick={handleDownloadPDF} disabled={downloading}>
               <FileDown className="mr-2 h-4 w-4" />{downloading ? "Generating..." : "PDF"}
             </Button>
+            {role === "admin" && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="destructive" size="sm" disabled={deleting}>
+                    <Trash2 className="mr-2 h-4 w-4" />{deleting ? "Deleting..." : "Delete"}
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete Invoice?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will permanently delete {invoice.invoice_number}. This action cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                      Delete
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
           </div>
         </div>
 

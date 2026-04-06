@@ -6,9 +6,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { useAuth } from "@/hooks/useAuth";
 import { Pagination, PaginationContent, PaginationItem, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import { usePagination, PAGE_SIZE } from "@/hooks/usePagination";
 
@@ -21,6 +23,7 @@ export default function AdminInvoices() {
   const [totalCount, setTotalCount] = useState(0);
   const [clientNames, setClientNames] = useState<Record<string, string>>({});
   const { page, setPage } = usePagination();
+  const { role } = useAuth();
 
   const fetchInvoices = async (currentPage = page) => {
     const { data, count } = await supabase
@@ -45,6 +48,14 @@ export default function AdminInvoices() {
   };
 
   useEffect(() => { fetchInvoices(page); }, [page]);
+
+  const handleDelete = async (id: string) => {
+    await supabase.from("invoice_items").delete().eq("invoice_id", id);
+    const { error } = await supabase.from("invoices").delete().eq("id", id);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Invoice deleted");
+    fetchInvoices(page);
+  };
 
   const handleStatusChange = async (id: string, status: string) => {
     const update: any = { status };
@@ -78,11 +89,12 @@ export default function AdminInvoices() {
                   <TableHead>Total</TableHead>
                   <TableHead className="hidden sm:table-cell">Due Date</TableHead>
                   <TableHead className="hidden sm:table-cell">Created</TableHead>
+                  {role === "admin" && <TableHead className="w-10" />}
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {invoices.length === 0 ? (
-                  <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No invoices</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={role === "admin" ? 7 : 6} className="text-center py-8 text-muted-foreground">No invoices</TableCell></TableRow>
                 ) : invoices.map((inv) => (
                   <TableRow key={inv.id}>
                     <TableCell>
@@ -108,6 +120,31 @@ export default function AdminInvoices() {
                     <TableCell>${Number(inv.total).toFixed(2)}</TableCell>
                     <TableCell className="hidden sm:table-cell">{inv.due_date || "—"}</TableCell>
                     <TableCell className="hidden sm:table-cell">{new Date(inv.created_at).toLocaleDateString()}</TableCell>
+                    {role === "admin" && (
+                      <TableCell>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive">
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Delete Invoice?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This will permanently delete {inv.invoice_number}. This action cannot be undone.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => handleDelete(inv.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                Delete
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))}
               </TableBody>
