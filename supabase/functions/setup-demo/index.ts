@@ -57,25 +57,23 @@ serve(async (req) => {
       { auth: { autoRefreshToken: false, persistSession: false } }
     );
 
-    const results: { email: string; role: string; created: boolean }[] = [];
+    const results: { email: string; role: string; created: boolean; roleSet: boolean }[] = [];
+
+    // Fetch all users once
+    const { data: allUsers } = await adminClient.auth.admin.listUsers();
 
     for (const demo of DEMO_USERS) {
-      // Check if user already exists
-      const { data: existing } = await adminClient.auth.admin.listUsers();
-      const existingUser = existing?.users?.find(u => u.email === demo.email);
+      const existingUser = allUsers?.users?.find(u => u.email === demo.email);
+      let userId: string;
+      let created = false;
 
       if (existingUser) {
-        // Update password to ensure it's correct
-        await adminClient.auth.admin.updateUserById(existingUser.id, {
+        userId = existingUser.id;
+        // Reset password
+        await adminClient.auth.admin.updateUserById(userId, {
           password: demo.password,
           email_confirm: true,
         });
-        // Ensure role is correct
-        await adminClient.from("user_roles").upsert(
-          { user_id: existingUser.id, role: demo.role },
-          { onConflict: "user_id" }
-        );
-        results.push({ email: demo.email, role: demo.role, created: false });
       } else {
         // Create new user
         const { data: newUser, error: createError } = await adminClient.auth.admin.createUser({
@@ -90,17 +88,18 @@ serve(async (req) => {
           continue;
         }
 
-        // Update profile
-        await adminClient.from("profiles").update({ full_name: demo.full_name }).eq("id", newUser.user.id);
+        userId = newUser.user.id;
+        created = true;
 
-        // Assign role
-        await adminClient.from("user_roles").upsert(
-          { user_id: newUser.user.id, role: demo.role },
-          { onConflict: "user_id" }
-        );
-
-        results.push({ email: demo.email, role: demo.role, created: true });
+        // Update profile name
+        await adminClient.from("profiles").update({ full_name: demo.full_name }).eq("id", userId);
       }
+
+      // Force-set role: delete existing row then insert correct one
+      await adminClient.from("user_roles").delete().eq("user_id", userId);
+      const { error: roleError } = await adminClient.from("user_roles").insert({ user_id: userId, role: demo.role });
+
+      results.push({ email: demo.email, role: demo.role, created, roleSet: !roleError });
     }
 
     return new Response(
