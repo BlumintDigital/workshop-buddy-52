@@ -166,6 +166,8 @@ export default function AdminSettings() {
 
   const handleSetupDemo = async () => {
     setSettingUpDemo(true);
+
+    // 1. Create / reset demo user accounts via edge function
     const { data, error } = await supabase.functions.invoke("setup-demo");
     if (error || data?.error) {
       setSettingUpDemo(false);
@@ -173,8 +175,7 @@ export default function AdminSettings() {
       return;
     }
 
-    // Force-set roles directly from the frontend (edge function may be running
-    // an older version that races against the auto-assign trigger)
+    // 2. Force-set roles (edge function may race against the auto-assign trigger)
     const DEMO_ROLE_MAP: Record<string, string> = {
       "Demo Admin": "admin",
       "Demo Manager": "manager",
@@ -185,19 +186,143 @@ export default function AdminSettings() {
       .from("profiles")
       .select("id, full_name")
       .in("full_name", Object.keys(DEMO_ROLE_MAP));
+
+    const profileMap: Record<string, string> = {}; // full_name -> id
     for (const profile of demoProfiles || []) {
       const role = DEMO_ROLE_MAP[profile.full_name];
-      if (role) await supabase.from("user_roles").update({ role } as any).eq("user_id", profile.id);
+      if (role) {
+        await supabase.from("user_roles").update({ role } as any).eq("user_id", profile.id);
+        profileMap[profile.full_name] = profile.id;
+      }
     }
 
+    const staffId = profileMap["Demo Staff"];
+    const clientId = profileMap["Demo Client"];
+    const managerId = profileMap["Demo Manager"];
+    const adminId = profileMap["Demo Admin"];
+
+    if (!staffId || !clientId) {
+      setSettingUpDemo(false);
+      toast.success("Demo users ready! Roles updated. Visit /demo to log in.", { duration: 6000 });
+      return;
+    }
+
+    // 3. Clear any existing demo-tagged data so re-runs are idempotent
+    await supabase.from("jobs").delete().like("title", "[DEMO]%");
+    await supabase.from("appointments").delete().like("title", "[DEMO]%");
+    await supabase.from("invoices").delete().like("invoice_number", "DEMO-%");
+
+    const today = new Date();
+    const d = (offsetDays: number) => {
+      const dt = new Date(today);
+      dt.setDate(dt.getDate() + offsetDays);
+      return dt.toISOString().split("T")[0];
+    };
+
+    // 4. Jobs — assigned to Demo Staff, client is Demo Client
+    const { data: insertedJobs } = await supabase.from("jobs").insert([
+      { title: "[DEMO] Full Brake Service", description: "Replace front & rear brake pads, resurface rotors. Vehicle: 2019 Toyota Camry.", status: "completed", priority: "high", client_id: clientId, assigned_staff_id: staffId, estimated_hours: 4, actual_hours: 3.5, due_date: d(-5) },
+      { title: "[DEMO] Engine Diagnostics", description: "Check engine light on. Run full OBD-II scan and report findings to client.", status: "in_progress", priority: "high", client_id: clientId, assigned_staff_id: staffId, estimated_hours: 2, due_date: d(1) },
+      { title: "[DEMO] Tire Rotation & Balance", description: "Rotate all four tires and rebalance. Check tread depth.", status: "in_progress", priority: "medium", client_id: clientId, assigned_staff_id: staffId, estimated_hours: 1.5, due_date: d(2) },
+      { title: "[DEMO] Transmission Flush", description: "Full transmission fluid flush and refill. Inspect filter.", status: "pending", priority: "medium", client_id: clientId, assigned_staff_id: staffId, estimated_hours: 3, due_date: d(5) },
+      { title: "[DEMO] A/C Recharge", description: "Recharge A/C system. Check for leaks and inspect compressor.", status: "pending", priority: "low", client_id: clientId, assigned_staff_id: staffId, estimated_hours: 2, due_date: d(8) },
+    ]).select("id, status, client_id");
+
+    // 5. Job tasks for each job
+    const taskMap: Record<string, string[]> = {
+      "completed": ["Inspect components", "Order parts", "Perform service", "Quality check"],
+      "in_progress": ["Inspect components", "Perform service", "Quality check"],
+      "pending": ["Inspect components", "Perform service"],
+    };
+    const jobTasks: any[] = [];
+    for (const job of insertedJobs || []) {
+      const tasks = taskMap[job.status] || taskMap["pending"];
+      tasks.forEach((title, i) => {
+        jobTasks.push({
+          job_id: job.id,
+          title,
+          status: job.status === "completed" ? "completed" : i === 0 ? "in_progress" : "pending",
+          assigned_to: staffId,
+        });
+      });
+    }
+    if (jobTasks.length) await supabase.from("job_tasks").insert(jobTasks);
+
+    // 6. Appointments — linked to Demo Client
+    await supabase.from("appointments").insert([
+      { title: "[DEMO] Annual Vehicle Inspection", client_id: clientId, appointment_date: d(1), appointment_time: "09:00", duration_minutes: 60, type: "inspection", status: "confirmed", description: "Annual safety inspection for 2019 Toyota Camry." },
+      { title: "[DEMO] Oil Change Service", client_id: clientId, appointment_date: d(3), appointment_time: "10:30", duration_minutes: 30, type: "service", status: "pending", description: "Synthetic oil change and filter replacement." },
+      { title: "[DEMO] Brake Noise Consultation", client_id: clientId, appointment_date: d(6), appointment_time: "14:00", duration_minutes: 45, type: "consultation", status: "confirmed", description: "Client reports squealing from front brakes." },
+    ]);
+
+    // 7. Invoices — for Demo Client
+    const completedJob = (insertedJobs || []).find(j => j.status === "completed");
+    const invoicesToInsert: any[] = [
+      {
+        invoice_number: "DEMO-001",
+        client_id: clientId,
+        job_id: completedJob?.id || null,
+        status: "paid",
+        subtotal: 310.00,
+        tax_rate: 8.5,
+        tax_amount: 26.35,
+        total: 336.35,
+        due_date: d(-10),
+        paid_at: new Date(today.getTime() - 8 * 86400000).toISOString(),
+        notes: "Full brake service completed. Parts and labor included.",
+      },
+      {
+        invoice_number: "DEMO-002",
+        client_id: clientId,
+        job_id: null,
+        status: "sent",
+        subtotal: 185.00,
+        tax_rate: 8.5,
+        tax_amount: 15.73,
+        total: 200.73,
+        due_date: d(15),
+        paid_at: null,
+        notes: "Engine diagnostic report and initial repair estimate.",
+      },
+      {
+        invoice_number: "DEMO-003",
+        client_id: clientId,
+        job_id: null,
+        status: "draft",
+        subtotal: 450.00,
+        tax_rate: 8.5,
+        tax_amount: 38.25,
+        total: 488.25,
+        due_date: d(30),
+        paid_at: null,
+        notes: "Upcoming transmission flush — awaiting client approval.",
+      },
+    ];
+    const { data: insertedInvoices } = await supabase.from("invoices").insert(invoicesToInsert).select("id");
+
+    // 8. Invoice line items
+    const lineItems = [
+      [{ description: "Brake pads (front & rear)", quantity: 2, unit_price: 65, total: 130 }, { description: "Labor — brake service (3.5 hrs)", quantity: 1, unit_price: 140, total: 140 }, { description: "Shop supplies", quantity: 1, unit_price: 40, total: 40 }],
+      [{ description: "OBD-II diagnostic scan", quantity: 1, unit_price: 95, total: 95 }, { description: "Technician labor (1 hr)", quantity: 1, unit_price: 75, total: 75 }, { description: "Written report", quantity: 1, unit_price: 15, total: 15 }],
+      [{ description: "Transmission fluid flush", quantity: 1, unit_price: 220, total: 220 }, { description: "Fluid & filter", quantity: 1, unit_price: 155, total: 155 }, { description: "Labor (3 hrs)", quantity: 1, unit_price: 75, total: 75 }],
+    ];
+    for (let i = 0; i < (insertedInvoices || []).length; i++) {
+      const items = lineItems[i] || lineItems[0];
+      await supabase.from("invoice_items").insert(items.map(item => ({ ...item, invoice_id: insertedInvoices![i].id })));
+    }
+
+    // 9. Notifications for demo users
+    const notifications = [
+      { user_id: clientId, title: "Invoice Ready", message: "Invoice DEMO-002 has been sent. Total due: $200.73.", read: false, link: "/client/invoices" },
+      { user_id: clientId, title: "Appointment Confirmed", message: "Your Annual Vehicle Inspection on ${d(1)} at 9:00 AM is confirmed.", read: false, link: "/client/appointments" },
+      { user_id: staffId, title: "New Job Assigned", message: "You have been assigned: Engine Diagnostics. Due tomorrow.", read: false, link: "/staff/jobs" },
+      { user_id: staffId, title: "Job Due Soon", message: "Tire Rotation & Balance is due in 2 days.", read: true, link: "/staff/jobs" },
+      { user_id: managerId, title: "Invoice Overdue", message: "Check pending invoices — DEMO-002 is awaiting client payment.", read: false, link: "/manager/invoices" },
+    ];
+    await supabase.from("notifications").insert(notifications);
+
     setSettingUpDemo(false);
-    const created = (data?.users || []).filter((u: any) => u.created).length;
-    toast.success(
-      created > 0
-        ? `Demo users ready! ${created} account(s) created. Visit /demo to log in.`
-        : "Demo users ready! Roles updated. Visit /demo to log in.",
-      { duration: 6000 }
-    );
+    toast.success("Demo environment ready! Users, roles, jobs, invoices & appointments all set. Visit /demo to log in.", { duration: 8000 });
   };
 
   const handleDeleteData = async () => {
