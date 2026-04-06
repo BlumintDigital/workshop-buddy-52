@@ -34,7 +34,7 @@ const taskStatusColors: Record<string, "default" | "secondary" | "outline"> = {
 
 interface UserOption { id: string; full_name: string; }
 
-const emptyTaskForm = { title: "", description: "", assigned_to: "", status: "pending" };
+const emptyTaskForm = { title: "", description: "", assigned_to: "", status: "pending", due_date: "" };
 
 export default function JobDetail() {
   const { id } = useParams<{ id: string }>();
@@ -390,13 +390,13 @@ export default function JobDetail() {
   const handleOpenAddTask = () => { setEditingTask(null); setTaskForm({ ...emptyTaskForm }); setTaskPendingFiles([]); setTaskOpen(true); };
   const handleOpenEditTask = (task: any) => {
     setEditingTask(task);
-    setTaskForm({ title: task.title, description: task.description || "", assigned_to: task.assigned_to || "", status: task.status });
+    setTaskForm({ title: task.title, description: task.description || "", assigned_to: task.assigned_to || "", status: task.status, due_date: task.due_date || "" });
     setTaskOpen(true);
   };
 
   const handleSaveTask = async () => {
     if (!taskForm.title.trim()) { toast.error("Task title is required"); return; }
-    const payload = { job_id: id!, title: taskForm.title.trim(), description: taskForm.description || null, assigned_to: taskForm.assigned_to || null, status: taskForm.status };
+    const payload: any = { job_id: id!, title: taskForm.title.trim(), description: taskForm.description || null, assigned_to: taskForm.assigned_to || null, status: taskForm.status, due_date: taskForm.due_date || null };
     let newTaskId: string | null = null;
     if (editingTask) {
       const { error } = await supabase.from("job_tasks").update(payload).eq("id", editingTask.id);
@@ -430,7 +430,26 @@ export default function JobDetail() {
   const handleTaskStatusChange = async (taskId: string, status: string) => {
     const { error } = await supabase.from("job_tasks").update({ status }).eq("id", taskId);
     if (error) { toast.error(error.message); return; }
-    setTasks(prev => prev.map(t => t.id === taskId ? { ...t, status } : t));
+    const updatedTasks = tasks.map(t => t.id === taskId ? { ...t, status } : t);
+    setTasks(updatedTasks);
+
+    // When a task is completed, notify the next incomplete task's assignee
+    if (status === "completed") {
+      const completedTask = tasks.find(t => t.id === taskId);
+      const nextTask = updatedTasks
+        .filter(t => t.id !== taskId && t.status !== "completed")
+        .sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0) || new Date(a.created_at).getTime() - new Date(b.created_at).getTime())[0];
+
+      if (nextTask?.assigned_to && nextTask.assigned_to !== user?.id) {
+        await sendNotifications([{
+          user_id: nextTask.assigned_to,
+          title: "Your task is ready to start",
+          message: `"${completedTask?.title}" is done. Your task "${nextTask.title}" on job "${job?.title}" is next.`,
+          link: `/jobs/${id}`,
+          role: "staff",
+        }]);
+      }
+    }
   };
 
   const handleDeleteTask = async (taskId: string) => {
@@ -628,9 +647,16 @@ export default function JobDetail() {
                             )}
                           </div>
                           {task.description && <p className="text-xs text-muted-foreground mt-0.5">{task.description}</p>}
-                          <p className="text-xs text-muted-foreground mt-0.5">
-                            {task.assignee_name ? `Assigned to ${task.assignee_name}` : "Unassigned"}
-                          </p>
+                          <div className="flex items-center gap-3 mt-0.5 flex-wrap">
+                            <p className="text-xs text-muted-foreground">
+                              {task.assignee_name ? `Assigned to ${task.assignee_name}` : "Unassigned"}
+                            </p>
+                            {task.due_date && (
+                              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                                <CalendarDays className="h-3 w-3" />Due {task.due_date}
+                              </p>
+                            )}
+                          </div>
                         </div>
                         {canEdit && (
                           <div className="flex gap-1 shrink-0">
@@ -919,6 +945,10 @@ export default function JobDetail() {
                     <SelectItem value="completed">Completed</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+              <div>
+                <Label>Due Date <span className="text-muted-foreground text-xs">(optional)</span></Label>
+                <DatePickerInput value={taskForm.due_date} onChange={(v) => setTaskForm({ ...taskForm, due_date: v })} className="mt-1" />
               </div>
               {!editingTask && (
                 <div>

@@ -13,8 +13,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, MoreHorizontal, Briefcase, Download } from "lucide-react";
+import { Plus, MoreHorizontal, Briefcase, Download, FileText } from "lucide-react";
 import { DatePickerInput } from "@/components/ui/date-picker-input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { generateICS, downloadICS } from "@/lib/ical";
 import { toast } from "sonner";
 import { Pagination, PaginationContent, PaginationItem, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
@@ -35,7 +36,7 @@ const emptyForm = {
 };
 
 const emptyJobForm = {
-  title: "", description: "", priority: "medium", assigned_staff_id: "",
+  title: "", description: "", priority: "medium", assigned_staff_id: "", due_date: "", isQuote: false,
 };
 
 export default function AdminAppointments() {
@@ -178,10 +179,11 @@ export default function AdminAppointments() {
       title: jobForm.title,
       description: jobForm.description || null,
       priority: jobForm.priority,
-      status: "pending",
+      status: jobForm.isQuote ? "quote" : "pending",
       client_id: jobDialogAppt.client_id,
     };
     if (jobForm.assigned_staff_id) jobPayload.assigned_staff_id = jobForm.assigned_staff_id;
+    if (jobForm.due_date) jobPayload.due_date = jobForm.due_date;
 
     const { data: newJob, error: jobError } = await supabase.from("jobs").insert(jobPayload).select("id").single();
     if (jobError) { toast.error(jobError.message); setCreatingJob(false); return; }
@@ -192,7 +194,7 @@ export default function AdminAppointments() {
     setCreatingJob(false);
     setJobDialogAppt(null);
     fetchAppointments(page);
-    toast.success("Job created — appointment marked as confirmed");
+    toast.success(jobForm.isQuote ? "Quote created — appointment marked as confirmed" : "Job created — appointment marked as confirmed");
     navigate(`/jobs/${newJob.id}`);
   };
 
@@ -392,9 +394,25 @@ export default function AdminAppointments() {
                 </Select>
               </div>
             </div>
+            <div>
+              <Label>Due Date</Label>
+              <DatePickerInput value={jobForm.due_date} onChange={(v) => setJobForm({ ...jobForm, due_date: v })} className="mt-1" />
+            </div>
+            <div className="flex items-center gap-2 pt-1">
+              <Checkbox
+                id="jobIsQuote"
+                checked={jobForm.isQuote}
+                onCheckedChange={(v) => setJobForm({ ...jobForm, isQuote: !!v })}
+              />
+              <label htmlFor="jobIsQuote" className="text-sm cursor-pointer select-none">
+                <span className="font-medium">Save as quote</span>
+                <span className="text-muted-foreground ml-1">— client must approve before work begins</span>
+              </label>
+            </div>
             <Button onClick={handleCreateJob} disabled={creatingJob} className="w-full">
-              <Briefcase className="mr-2 h-4 w-4" />
-              {creatingJob ? "Creating..." : "Create Job"}
+              {jobForm.isQuote
+                ? <><FileText className="mr-2 h-4 w-4" />{creatingJob ? "Creating..." : "Create Quote"}</>
+                : <><Briefcase className="mr-2 h-4 w-4" />{creatingJob ? "Creating..." : "Create Job"}</>}
             </Button>
           </div>
         </DialogContent>
