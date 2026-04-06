@@ -13,7 +13,7 @@ import {
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { Database, Trash2, Loader2, Upload, ImageIcon, X } from "lucide-react";
+import { Database, Trash2, Loader2, Upload, ImageIcon, X, Users } from "lucide-react";
 
 const currencies = [
   { value: "USD", label: "USD — US Dollar" },
@@ -56,6 +56,7 @@ export default function AdminSettings() {
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [seeding, setSeeding] = useState(false);
+  const [settingUpDemo, setSettingUpDemo] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
@@ -161,6 +162,20 @@ export default function AdminSettings() {
     const counts = data?.counts || {};
     const total = Object.values(counts).reduce((a: number, b: any) => a + (b as number), 0);
     toast.success(`Generated ${total} sample records across ${Object.keys(counts).length} tables`);
+  };
+
+  const handleSetupDemo = async () => {
+    setSettingUpDemo(true);
+    const { data, error } = await supabase.functions.invoke("setup-demo");
+    setSettingUpDemo(false);
+    if (error || data?.error) { toast.error(data?.error || error?.message || "Failed to set up demo users"); return; }
+    const created = (data?.users || []).filter((u: any) => u.created).length;
+    toast.success(
+      created > 0
+        ? `Demo users ready! ${created} account(s) created. Visit /demo to log in.`
+        : "Demo users already exist. Visit /demo to log in.",
+      { duration: 6000 }
+    );
   };
 
   const handleDeleteData = async () => {
@@ -369,6 +384,20 @@ export default function AdminSettings() {
           </TabsContent>
 
           <TabsContent value="data" className="mt-4 space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2"><Users className="h-5 w-5" />Setup Demo Users</CardTitle>
+                <CardDescription>Create one demo account for each role (admin, manager, staff, client) with a shared password.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button onClick={handleSetupDemo} disabled={settingUpDemo} variant="outline">
+                  {settingUpDemo ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Setting up...</> : <><Users className="mr-2 h-4 w-4" />Setup Demo Users</>}
+                </Button>
+                <p className="text-xs text-muted-foreground mt-2">
+                  Accounts use password <span className="font-mono">Demo1234!</span>. Visit <span className="font-mono">/demo</span> to log in as any role.
+                </p>
+              </CardContent>
+            </Card>
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2"><Database className="h-5 w-5" />Generate Sample Data</CardTitle>
