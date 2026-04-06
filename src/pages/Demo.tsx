@@ -1,15 +1,14 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { useAuth, getRoleDashboardPath } from "@/hooks/useAuth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Loader2, ShieldCheck, Briefcase, Wrench, User } from "lucide-react";
 
 const DEMO_PASSWORD = "Demo1234!";
 
-const ROLES = [
+export const ROLES = [
   {
     role: "admin",
     email: "demo.admin@workshop.demo",
@@ -48,30 +47,24 @@ const ROLES = [
   },
 ];
 
-const ROLE_DASHBOARDS: Record<string, string> = {
-  admin: "/admin/dashboard",
-  manager: "/manager/dashboard",
-  staff: "/staff/dashboard",
-  client: "/client/dashboard",
-};
-
 export default function Demo() {
   const navigate = useNavigate();
+  const { signIn } = useAuth();
   const [loadingRole, setLoadingRole] = useState<string | null>(null);
 
-  const loginAs = async (email: string, role: string) => {
-    setLoadingRole(role);
-    const { error } = await supabase.auth.signInWithPassword({ email, password: DEMO_PASSWORD });
-    if (error) {
+  const loginAs = async (email: string) => {
+    setLoadingRole(email);
+    try {
+      const result = await signIn(email, DEMO_PASSWORD);
+      navigate(getRoleDashboardPath(result.role));
+    } catch (err: any) {
       toast.error(
-        error.message.includes("Invalid login")
+        err?.message?.includes("Invalid login")
           ? "Demo users not set up yet. Ask an admin to run Setup Demo Users in Settings → Data."
-          : error.message
+          : err?.message || "Failed to sign in"
       );
       setLoadingRole(null);
-      return;
     }
-    navigate(ROLE_DASHBOARDS[role]);
   };
 
   return (
@@ -110,10 +103,10 @@ export default function Demo() {
                   <p className="text-xs text-muted-foreground font-mono truncate" title={email}>{email}</p>
                   <Button
                     className="w-full"
-                    onClick={() => loginAs(email, role)}
+                    onClick={() => loginAs(email)}
                     disabled={loadingRole !== null}
                   >
-                    {loadingRole === role
+                    {loadingRole === email
                       ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Signing in...</>
                       : `Login as ${label}`}
                   </Button>
