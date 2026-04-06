@@ -5,7 +5,7 @@ import { Link } from "react-router-dom";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 const statusColors: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
@@ -15,25 +15,30 @@ const statusColors: Record<string, "default" | "secondary" | "outline" | "destru
 export default function StaffJobs() {
   const { user } = useAuth();
   const [jobs, setJobs] = useState<any[]>([]);
-  const [filter, setFilter] = useState("all");
+  const [filter, setFilter] = useState("mine");
 
   useEffect(() => {
     if (!user) return;
-    supabase.from("jobs").select("*").eq("assigned_staff_id", user.id).order("created_at", { ascending: false }).then(({ data }) => setJobs(data || []));
+    supabase.from("jobs").select("*").order("created_at", { ascending: false }).then(({ data }) => setJobs(data || []));
   }, [user]);
 
-  const filtered = filter === "all" ? jobs : jobs.filter((j) => j.status === filter);
+  const filtered = jobs.filter((j) => {
+    if (filter === "mine") return j.assigned_staff_id === user?.id;
+    if (filter === "all") return true;
+    return j.status === filter;
+  });
 
   return (
     <DashboardLayout>
       <div className="space-y-6">
         <div>
-          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">My Jobs</h2>
-          <p className="text-muted-foreground">Jobs assigned to you</p>
+          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Jobs</h2>
+          <p className="text-muted-foreground">View all organisation jobs. You can only update jobs assigned to you.</p>
         </div>
         <Tabs value={filter} onValueChange={setFilter}>
           <TabsList className="flex overflow-x-auto flex-nowrap">
-            <TabsTrigger value="all">All</TabsTrigger>
+            <TabsTrigger value="mine">Assigned to Me</TabsTrigger>
+            <TabsTrigger value="all">All Jobs</TabsTrigger>
             <TabsTrigger value="pending">Pending</TabsTrigger>
             <TabsTrigger value="in_progress">In Progress</TabsTrigger>
             <TabsTrigger value="completed">Completed</TabsTrigger>
@@ -48,11 +53,12 @@ export default function StaffJobs() {
                   <TableHead>Status</TableHead>
                   <TableHead className="hidden sm:table-cell">Priority</TableHead>
                   <TableHead className="hidden sm:table-cell">Due Date</TableHead>
+                  <TableHead className="hidden md:table-cell">Assignment</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filtered.length === 0 ? (
-                  <TableRow><TableCell colSpan={4} className="text-center py-8 text-muted-foreground">No jobs</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">No jobs</TableCell></TableRow>
                 ) : filtered.map((job) => (
                   <TableRow key={job.id} className="cursor-pointer hover:bg-muted/50">
                     <TableCell>
@@ -63,6 +69,11 @@ export default function StaffJobs() {
                     <TableCell><Badge variant={statusColors[job.status]}>{job.status.replace("_", " ")}</Badge></TableCell>
                     <TableCell className="capitalize hidden sm:table-cell">{job.priority}</TableCell>
                     <TableCell className="hidden sm:table-cell">{job.due_date || "—"}</TableCell>
+                    <TableCell className="hidden md:table-cell">
+                      {job.assigned_staff_id === user?.id
+                        ? <Badge variant="secondary">Assigned to me</Badge>
+                        : <span className="text-xs text-muted-foreground">Other staff</span>}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
