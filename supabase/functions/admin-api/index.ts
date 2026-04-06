@@ -540,7 +540,7 @@ Deno.serve(async (req) => {
         );
         let rlsEnforced = "unknown";
         try {
-          const { data: rlsTest, error: rlsErr } = await anonClient
+          const { count: rlsCount, error: rlsErr } = await anonClient
             .from("jobs")
             .select("id", { count: "exact", head: true });
           if (rlsErr) {
@@ -548,7 +548,7 @@ Deno.serve(async (req) => {
           } else {
             // Service role sees all rows; anon should see 0 if RLS is on
             const serviceCount = typeof tableCountResults["jobs"] === "number" ? tableCountResults["jobs"] : 0;
-            const anonCount = rlsTest ?? 0;
+            const anonCount = rlsCount ?? 0;
             rlsEnforced = serviceCount > 0 && anonCount === 0
               ? "yes"
               : serviceCount === 0
