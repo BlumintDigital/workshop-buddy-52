@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { useAuth, getRoleDashboardPath } from "@/hooks/useAuth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -48,7 +47,6 @@ export const ROLES = [
 ];
 
 export default function Demo() {
-  const navigate = useNavigate();
   const { signIn } = useAuth();
   const [loadingRole, setLoadingRole] = useState<string | null>(null);
 
@@ -56,7 +54,7 @@ export default function Demo() {
     setLoadingRole(email);
     try {
       const result = await signIn(email, DEMO_PASSWORD);
-      navigate(getRoleDashboardPath(result.role));
+      window.location.href = getRoleDashboardPath(result.role);
     } catch (err: any) {
       toast.error(
         err?.message?.includes("Invalid login")
