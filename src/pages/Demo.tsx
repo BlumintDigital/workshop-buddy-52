@@ -5,12 +5,11 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Loader2, ShieldCheck, Briefcase, Wrench, User } from "lucide-react";
 
-const DEMO_PASSWORD = "Demo1234!";
-
 export const ROLES = [
   {
     role: "admin",
     email: "demo.admin@workshop.demo",
+    password: "Admin1234",
     label: "Admin",
     icon: ShieldCheck,
     color: "bg-violet-500/10 text-violet-600 border-violet-200",
@@ -20,6 +19,7 @@ export const ROLES = [
   {
     role: "manager",
     email: "demo.manager@workshop.demo",
+    password: "Manager1234",
     label: "Manager",
     icon: Briefcase,
     color: "bg-blue-500/10 text-blue-600 border-blue-200",
@@ -29,6 +29,7 @@ export const ROLES = [
   {
     role: "staff",
     email: "demo.staff@workshop.demo",
+    password: "Staff1234",
     label: "Staff",
     icon: Wrench,
     color: "bg-amber-500/10 text-amber-600 border-amber-200",
@@ -38,6 +39,7 @@ export const ROLES = [
   {
     role: "client",
     email: "demo.client@workshop.demo",
+    password: "Client1234",
     label: "Client",
     icon: User,
     color: "bg-emerald-500/10 text-emerald-600 border-emerald-200",
@@ -50,10 +52,10 @@ export default function Demo() {
   const { signIn } = useAuth();
   const [loadingRole, setLoadingRole] = useState<string | null>(null);
 
-  const loginAs = async (email: string) => {
+  const loginAs = async (email: string, password: string) => {
     setLoadingRole(email);
     try {
-      const result = await signIn(email, DEMO_PASSWORD);
+      const result = await signIn(email, password);
       window.location.href = getRoleDashboardPath(result.role);
     } catch (err: any) {
       toast.error(
@@ -74,12 +76,12 @@ export default function Demo() {
             Choose a role to explore the app. Each role has a different level of access.
           </p>
           <p className="text-sm text-muted-foreground">
-            Password for all accounts: <span className="font-mono font-medium text-foreground">{DEMO_PASSWORD}</span>
+            Each role has its own password shown on its card.
           </p>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {ROLES.map(({ role, email, label, icon: Icon, color, description, capabilities }) => (
+          {ROLES.map(({ role, email, password, label, icon: Icon, color, description, capabilities }) => (
             <Card key={role} className="flex flex-col">
               <CardHeader className="pb-3">
                 <div className={`w-10 h-10 rounded-lg border flex items-center justify-center mb-3 ${color}`}>
@@ -99,9 +101,10 @@ export default function Demo() {
                 </ul>
                 <div className="space-y-2">
                   <p className="text-xs text-muted-foreground font-mono truncate" title={email}>{email}</p>
+                  <p className="text-xs text-muted-foreground">Password: <span className="font-mono font-medium text-foreground">{password}</span></p>
                   <Button
                     className="w-full"
-                    onClick={() => loginAs(email)}
+                    onClick={() => loginAs(email, password)}
                     disabled={loadingRole !== null}
                   >
                     {loadingRole === email

@@ -7,13 +7,11 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const DEMO_PASSWORD = "Demo1234!";
-
 const DEMO_USERS = [
-  { email: "demo.admin@workshop.demo", full_name: "Demo Admin", role: "admin" },
-  { email: "demo.manager@workshop.demo", full_name: "Demo Manager", role: "manager" },
-  { email: "demo.staff@workshop.demo", full_name: "Demo Staff", role: "staff" },
-  { email: "demo.client@workshop.demo", full_name: "Demo Client", role: "client" },
+  { email: "demo.admin@workshop.demo", full_name: "Demo Admin", role: "admin", password: "Admin1234" },
+  { email: "demo.manager@workshop.demo", full_name: "Demo Manager", role: "manager", password: "Manager1234" },
+  { email: "demo.staff@workshop.demo", full_name: "Demo Staff", role: "staff", password: "Staff1234" },
+  { email: "demo.client@workshop.demo", full_name: "Demo Client", role: "client", password: "Client1234" },
 ] as const;
 
 serve(async (req) => {
@@ -69,7 +67,7 @@ serve(async (req) => {
       if (existingUser) {
         // Update password to ensure it's correct
         await adminClient.auth.admin.updateUserById(existingUser.id, {
-          password: DEMO_PASSWORD,
+          password: demo.password,
           email_confirm: true,
         });
         // Ensure role is correct
@@ -82,7 +80,7 @@ serve(async (req) => {
         // Create new user
         const { data: newUser, error: createError } = await adminClient.auth.admin.createUser({
           email: demo.email,
-          password: DEMO_PASSWORD,
+          password: demo.password,
           email_confirm: true,
           user_metadata: { full_name: demo.full_name },
         });
@@ -106,7 +104,7 @@ serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ success: true, password: DEMO_PASSWORD, users: results }),
+      JSON.stringify({ success: true, users: results }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {
