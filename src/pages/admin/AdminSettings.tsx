@@ -167,13 +167,35 @@ export default function AdminSettings() {
   const handleSetupDemo = async () => {
     setSettingUpDemo(true);
     const { data, error } = await supabase.functions.invoke("setup-demo");
+    if (error || data?.error) {
+      setSettingUpDemo(false);
+      toast.error(data?.error || error?.message || "Failed to set up demo users");
+      return;
+    }
+
+    // Force-set roles directly from the frontend (edge function may be running
+    // an older version that races against the auto-assign trigger)
+    const DEMO_ROLE_MAP: Record<string, string> = {
+      "Demo Admin": "admin",
+      "Demo Manager": "manager",
+      "Demo Staff": "staff",
+      "Demo Client": "client",
+    };
+    const { data: demoProfiles } = await supabase
+      .from("profiles")
+      .select("id, full_name")
+      .in("full_name", Object.keys(DEMO_ROLE_MAP));
+    for (const profile of demoProfiles || []) {
+      const role = DEMO_ROLE_MAP[profile.full_name];
+      if (role) await supabase.from("user_roles").update({ role } as any).eq("user_id", profile.id);
+    }
+
     setSettingUpDemo(false);
-    if (error || data?.error) { toast.error(data?.error || error?.message || "Failed to set up demo users"); return; }
     const created = (data?.users || []).filter((u: any) => u.created).length;
     toast.success(
       created > 0
         ? `Demo users ready! ${created} account(s) created. Visit /demo to log in.`
-        : "Demo users already exist. Visit /demo to log in.",
+        : "Demo users ready! Roles updated. Visit /demo to log in.",
       { duration: 6000 }
     );
   };
