@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import {
-  LayoutDashboard, Briefcase, Calendar, Package, FileText, Users, Settings, LogOut, Wrench, ChevronDown, BarChart3, Columns3, UserCheck, CalendarDays, User, Activity,
+  LayoutDashboard, Briefcase, Calendar, Package, FileText, Users, Settings, LogOut, Wrench, ChevronDown, BarChart3, Columns3, UserCheck, CalendarDays, User, Activity, Target,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -33,6 +33,7 @@ const navGroups: Record<AppRole, NavGroup[]> = {
       { title: "Inventory", url: "/admin/inventory", icon: Package },
       { title: "Invoices", url: "/admin/invoices", icon: FileText },
       { title: "Reports", url: "/admin/reports", icon: BarChart3 },
+      { title: "Goals", url: "/goals", icon: Target },
     ]},
     { label: "People", items: [
       { title: "Users", url: "/admin/users", icon: Users },
@@ -55,6 +56,7 @@ const navGroups: Record<AppRole, NavGroup[]> = {
     { label: "Management", items: [
       { title: "Inventory", url: "/manager/inventory", icon: Package },
       { title: "Invoices", url: "/manager/invoices", icon: FileText },
+      { title: "Goals", url: "/goals", icon: Target },
     ]},
     { label: "People", items: [
       { title: "Staff", url: "/manager/staff", icon: Users },
@@ -71,6 +73,7 @@ const navGroups: Record<AppRole, NavGroup[]> = {
     ]},
     { label: "Resources", items: [
       { title: "Inventory", url: "/staff/inventory", icon: Package },
+      { title: "Goals", url: "/goals", icon: Target },
     ]},
   ],
   client: [

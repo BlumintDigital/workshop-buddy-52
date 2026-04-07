@@ -34,7 +34,7 @@ const taskStatusColors: Record<string, "default" | "secondary" | "outline"> = {
 
 interface UserOption { id: string; full_name: string; }
 
-const emptyTaskForm = { title: "", description: "", assigned_to: "", status: "pending", due_date: "" };
+const emptyTaskForm = { title: "", description: "", assigned_to: "", status: "pending", due_date: "", value: "" };
 
 export default function JobDetail() {
   const { id } = useParams<{ id: string }>();
@@ -390,13 +390,13 @@ export default function JobDetail() {
   const handleOpenAddTask = () => { setEditingTask(null); setTaskForm({ ...emptyTaskForm }); setTaskPendingFiles([]); setTaskOpen(true); };
   const handleOpenEditTask = (task: any) => {
     setEditingTask(task);
-    setTaskForm({ title: task.title, description: task.description || "", assigned_to: task.assigned_to || "", status: task.status, due_date: task.due_date || "" });
+    setTaskForm({ title: task.title, description: task.description || "", assigned_to: task.assigned_to || "", status: task.status, due_date: task.due_date || "", value: task.value?.toString() || "" });
     setTaskOpen(true);
   };
 
   const handleSaveTask = async () => {
     if (!taskForm.title.trim()) { toast.error("Task title is required"); return; }
-    const payload: any = { job_id: id!, title: taskForm.title.trim(), description: taskForm.description || null, assigned_to: taskForm.assigned_to || null, status: taskForm.status, due_date: taskForm.due_date || null };
+    const payload: any = { job_id: id!, title: taskForm.title.trim(), description: taskForm.description || null, assigned_to: taskForm.assigned_to || null, status: taskForm.status, due_date: taskForm.due_date || null, value: parseFloat(taskForm.value) || 0 };
     let newTaskId: string | null = null;
     if (editingTask) {
       const { error } = await supabase.from("job_tasks").update(payload).eq("id", editingTask.id);
@@ -464,6 +464,8 @@ export default function JobDetail() {
   const hoursProgress = job.estimated_hours && job.actual_hours
     ? Math.min(100, (parseFloat(job.actual_hours) / parseFloat(job.estimated_hours)) * 100) : null;
   const completedTasks = tasks.filter(t => t.status === "completed").length;
+  const totalJobValue = tasks.reduce((sum, t) => sum + (parseFloat(t.value) || 0), 0);
+  const completedJobValue = tasks.filter(t => t.status === "completed").reduce((sum, t) => sum + (parseFloat(t.value) || 0), 0);
   const taskProgress = tasks.length > 0 ? Math.round((completedTasks / tasks.length) * 100) : null;
   const matTotal = materials.reduce((sum, m) => sum + m.quantity * Number((m as any).inventory_items?.unit_cost || 0), 0);
 
@@ -600,6 +602,9 @@ export default function JobDetail() {
               {tasks.length > 0 && (
                 <p className="text-sm text-muted-foreground mt-0.5">
                   {completedTasks} of {tasks.length} completed{taskProgress !== null && ` · ${taskProgress}%`}
+                  {totalJobValue > 0 && role !== "client" && (
+                    <span className="ml-2 font-medium text-foreground">${completedJobValue.toFixed(2)} / ${totalJobValue.toFixed(2)}</span>
+                  )}
                 </p>
               )}
             </div>
@@ -655,6 +660,9 @@ export default function JobDetail() {
                               <p className="text-xs text-muted-foreground flex items-center gap-1">
                                 <CalendarDays className="h-3 w-3" />Due {task.due_date}
                               </p>
+                            )}
+                            {parseFloat(task.value) > 0 && role !== "client" && (
+                              <Badge variant="outline" className="text-xs font-mono">${parseFloat(task.value).toFixed(2)}</Badge>
                             )}
                           </div>
                         </div>
@@ -950,6 +958,13 @@ export default function JobDetail() {
                 <Label>Due Date <span className="text-muted-foreground text-xs">(optional)</span></Label>
                 <DatePickerInput value={taskForm.due_date} onChange={(v) => setTaskForm({ ...taskForm, due_date: v })} className="mt-1" />
               </div>
+              {canEdit && (
+                <div>
+                  <Label>Task Value ($) <span className="text-muted-foreground text-xs">(optional)</span></Label>
+                  <Input type="number" min="0" step="0.01" value={taskForm.value} onChange={(e) => setTaskForm({ ...taskForm, value: e.target.value })} className="mt-1 w-32" placeholder="0.00" />
+                  <p className="text-xs text-muted-foreground mt-1">Counts toward the monthly company goal when completed.</p>
+                </div>
+              )}
               {!editingTask && (
                 <div>
                   <Label>Attachments <span className="text-muted-foreground text-xs">(optional)</span></Label>

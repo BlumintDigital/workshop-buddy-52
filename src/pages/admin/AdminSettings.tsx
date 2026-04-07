@@ -39,6 +39,7 @@ const defaultSettings = {
   phone: "",
   address: "",
   default_tax_rate: "0",
+  monthly_goal: "",
   currency: "USD",
   notify_job_status: true,
   notify_new_appointment: true,
@@ -77,6 +78,7 @@ export default function AdminSettings() {
             phone: data.phone ?? "",
             address: data.address ?? "",
             default_tax_rate: data.default_tax_rate?.toString() ?? "0",
+            monthly_goal: (data as any).monthly_goal?.toString() ?? "",
             currency: data.currency ?? "USD",
             notify_job_status: data.notify_job_status ?? true,
             notify_new_appointment: data.notify_new_appointment ?? true,
@@ -100,6 +102,7 @@ export default function AdminSettings() {
       phone: settings.phone || null,
       address: settings.address || null,
       default_tax_rate: parseFloat(settings.default_tax_rate) || 0,
+      monthly_goal: parseFloat(settings.monthly_goal) || null,
       currency: settings.currency || "USD",
       notify_job_status: settings.notify_job_status,
       notify_new_appointment: settings.notify_new_appointment,
@@ -406,6 +409,11 @@ export default function AdminSettings() {
                       ))}
                     </SelectContent>
                   </Select>
+                </div>
+                <div>
+                  <Label htmlFor="monthly_goal">Monthly Revenue Goal</Label>
+                  <p className="text-xs text-muted-foreground mb-1">Visible to all staff on the Goals page as a progress target.</p>
+                  <Input id="monthly_goal" type="number" min="0" step="100" value={settings.monthly_goal} onChange={(e) => set("monthly_goal", e.target.value)} className="mt-1 w-full sm:w-40" placeholder="e.g. 10000" />
                 </div>
               </CardContent>
             </Card>
