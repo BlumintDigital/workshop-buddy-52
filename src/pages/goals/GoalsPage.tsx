@@ -6,7 +6,10 @@ import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Trophy, Target, TrendingUp, RefreshCw, Maximize2, Minimize2, CalendarDays, Wrench } from "lucide-react";
+import {
+  Trophy, Target, TrendingUp, RefreshCw, Maximize2, Minimize2,
+  CalendarDays, Wrench, Flag, Zap, Star,
+} from "lucide-react";
 import { GoalsBackground } from "./GoalsAnimations";
 
 interface LeaderboardEntry {
@@ -14,6 +17,57 @@ interface LeaderboardEntry {
   full_name: string;
   tasks_completed: number;
   total_value: number;
+}
+
+const SLOGANS = [
+  { top: "EVERY TASK COUNTS.", bottom: "LET'S MAKE IT HAPPEN!" },
+  { top: "TOGETHER WE CAN DO IT.", bottom: "FINISH STRONG & WIN!" },
+  { top: "GREAT TEAMS ACHIEVE", bottom: "GREAT THINGS!" },
+  { top: "KEEP PUSHING.", bottom: "THE GOAL IS IN SIGHT!" },
+  { top: "ONE TASK AT A TIME.", bottom: "ONE STEP CLOSER!" },
+];
+
+// Mini animated bar chart showing monthly progress visually
+function ProgressBars({ pct, color }: { pct: number; color: string }) {
+  const bars = 12;
+  const filled = Math.round((pct / 100) * bars);
+  return (
+    <div className="flex items-end gap-1 h-16">
+      {Array.from({ length: bars }).map((_, i) => {
+        const height = 20 + (i / bars) * 80; // rising heights
+        const isFilled = i < filled;
+        return (
+          <div
+            key={i}
+            className="flex-1 rounded-t transition-all duration-700"
+            style={{
+              height: `${height}%`,
+              backgroundColor: isFilled ? color : "rgba(255,255,255,0.08)",
+              boxShadow: isFilled ? `0 0 8px ${color}60` : "none",
+            }}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
+// Upward trend arrow SVG
+function TrendArrow({ color }: { color: string }) {
+  return (
+    <svg viewBox="0 0 120 60" className="w-20 h-10" fill="none">
+      <polyline
+        points="5,55 25,40 45,45 65,25 85,30 115,5"
+        stroke={color}
+        strokeWidth="3"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="none"
+        opacity="0.8"
+      />
+      <polygon points="115,5 105,8 110,15" fill={color} opacity="0.9" />
+    </svg>
+  );
 }
 
 export default function GoalsPage() {
@@ -29,12 +83,27 @@ export default function GoalsPage() {
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [sloganIdx, setSloganIdx] = useState(0);
+  const [sloganVisible, setSloganVisible] = useState(true);
 
   const now = new Date();
   const monthLabel = now.toLocaleString("default", { month: "long", year: "numeric" });
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
   const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
   const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+
+  // Rotate slogans every 6 seconds with a fade
+  useEffect(() => {
+    if (!isFullscreen) return;
+    const interval = setInterval(() => {
+      setSloganVisible(false);
+      setTimeout(() => {
+        setSloganIdx(i => (i + 1) % SLOGANS.length);
+        setSloganVisible(true);
+      }, 500);
+    }, 6000);
+    return () => clearInterval(interval);
+  }, [isFullscreen]);
 
   const load = useCallback(async () => {
     setRefreshing(true);
@@ -133,215 +202,138 @@ export default function GoalsPage() {
   const dailyProgress = dailyTarget ? Math.min(100, (dailyCompleted / dailyTarget) * 100) : 0;
   const dailyPct = Math.round(dailyProgress);
   const medals = ["🥇", "🥈", "🥉"];
+  const goalReached = monthlyGoal != null && monthlyGoal > 0 && totalCompleted >= monthlyGoal;
+  const slogan = SLOGANS[sloganIdx];
 
-  const controls = (dark?: boolean) => (
+  // ── Normal (non-fullscreen) layout ──────────────────────────────────────────
+  const controls = (
     <div className="flex items-center gap-2">
       {lastRefreshed && (
-        <span className={`text-xs ${dark ? "text-slate-400" : "text-muted-foreground"}`}>
-          Updated {lastRefreshed.toLocaleTimeString()}
-        </span>
+        <span className="text-xs text-muted-foreground">Updated {lastRefreshed.toLocaleTimeString()}</span>
       )}
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={load}
-        disabled={refreshing}
-        className={dark ? "border-slate-600 text-slate-300 hover:bg-slate-700 hover:text-white bg-transparent" : ""}
-      >
+      <Button variant="outline" size="sm" onClick={load} disabled={refreshing}>
         <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
         <span className="ml-1">Refresh</span>
       </Button>
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={toggleFullscreen}
-        className={dark ? "border-slate-600 text-slate-300 hover:bg-slate-700 hover:text-white bg-transparent" : ""}
-      >
-        {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-        <span className="ml-1">{isFullscreen ? "Exit" : "Fullscreen"}</span>
+      <Button variant="outline" size="sm" onClick={toggleFullscreen}>
+        <Maximize2 className="h-4 w-4" /><span className="ml-1">Fullscreen</span>
       </Button>
     </div>
   );
 
-  const logoBlock = (dark?: boolean) => (
-    <div className="flex items-center gap-4">
-      {logoUrl ? (
-        <img
-          src={logoUrl}
-          alt={workshopName}
-          className={`shrink-0 rounded-2xl object-contain drop-shadow-lg ${dark ? "h-24 w-24" : "h-20 w-20"}`}
-        />
-      ) : (
-        <div className={`shrink-0 rounded-2xl flex items-center justify-center ${dark ? "h-24 w-24 bg-white/10" : "h-20 w-20 bg-primary/10"}`}>
-          <Wrench className={dark ? "h-10 w-10 text-white/60" : "h-8 w-8 text-primary"} />
-        </div>
-      )}
-      <div>
-        <h1 className={`font-bold leading-tight ${dark ? "text-4xl text-white tracking-tight" : "text-2xl"}`}>
-          {workshopName}
-        </h1>
-        <p className={`mt-0.5 ${dark ? "text-slate-400 text-base" : "text-muted-foreground text-sm"}`}>
-          {monthLabel} · Production Goals
-          {!loading && (
-            <span className={`ml-2 inline-flex items-center gap-1 ${dark ? "text-emerald-400" : "text-emerald-600"}`}>
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
-              </span>
-              Live
-            </span>
-          )}
-        </p>
-      </div>
-    </div>
-  );
-
-  const pageHeader = (dark?: boolean) => (
-    <div className="flex items-center justify-between flex-wrap gap-4">
-      {logoBlock(dark)}
-      {controls(dark)}
-    </div>
-  );
-
-  const statCards = (dark?: boolean) => (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-      {/* Daily */}
-      <div className={`rounded-2xl border p-6 space-y-3 ${dark ? "bg-white/5 border-white/10 backdrop-blur-sm" : "bg-card border"}`}>
-        <div className="flex items-center gap-2">
-          <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${dark ? "bg-sky-500/20 text-sky-400" : "bg-sky-500/10 text-sky-600 border border-sky-200"}`}>
-            <CalendarDays className="h-4 w-4" />
-          </div>
-          <div>
-            <p className={`text-xs font-medium uppercase tracking-wider ${dark ? "text-slate-400" : "text-muted-foreground"}`}>Today</p>
-            <p className={`text-xs ${dark ? "text-slate-500" : "text-muted-foreground/70"}`}>
-              {dailyTarget ? `Target ${fmt(dailyTarget)}` : "No daily target"}
-            </p>
-          </div>
-        </div>
-        <p className={`font-bold tabular-nums ${dark ? "text-5xl text-white" : "text-4xl"}`}>{fmt(dailyCompleted)}</p>
-        {dailyTarget && dailyTarget > 0 && (
-          <>
-            <Progress value={dailyPct} className={`h-3 ${dark ? "[&>div]:bg-sky-400" : ""}`} />
-            <div className="flex justify-between items-center">
-              <span className={`text-sm ${dark ? "text-slate-400" : "text-muted-foreground"}`}>{dailyPct}% of daily target</span>
-              {dailyCompleted >= dailyTarget && (
-                <span className={`text-sm font-semibold flex items-center gap-1 ${dark ? "text-emerald-400" : "text-emerald-600"}`}>
-                  <Trophy className="h-3.5 w-3.5" /> Done!
-                </span>
-              )}
+  const normalView = (
+    <DashboardLayout>
+      <div className="space-y-6 max-w-3xl">
+        {/* Header */}
+        <div className="flex items-center justify-between flex-wrap gap-4">
+          <div className="flex items-center gap-4">
+            {logoUrl ? (
+              <img src={logoUrl} alt={workshopName} className="h-20 w-20 shrink-0 rounded-2xl object-contain drop-shadow-lg" />
+            ) : (
+              <div className="h-20 w-20 shrink-0 rounded-2xl flex items-center justify-center bg-primary/10">
+                <Wrench className="h-8 w-8 text-primary" />
+              </div>
+            )}
+            <div>
+              <h2 className="text-2xl font-bold tracking-tight">{workshopName}</h2>
+              <p className="text-muted-foreground text-sm">{monthLabel} · Production Goals</p>
             </div>
-          </>
-        )}
-      </div>
-
-      {/* Monthly */}
-      <div className={`rounded-2xl border p-6 space-y-3 ${dark ? "bg-white/5 border-white/10 backdrop-blur-sm" : "bg-card border"}`}>
-        <div className="flex items-center gap-2">
-          <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${dark ? "bg-violet-500/20 text-violet-400" : "bg-violet-500/10 text-violet-600 border border-violet-200"}`}>
-            <Target className="h-4 w-4" />
           </div>
-          <div>
-            <p className={`text-xs font-medium uppercase tracking-wider ${dark ? "text-slate-400" : "text-muted-foreground"}`}>This Month</p>
-            <p className={`text-xs ${dark ? "text-slate-500" : "text-muted-foreground/70"}`}>
-              {monthlyGoal ? `Goal ${fmt(monthlyGoal)}` : "No goal set"}
-            </p>
-          </div>
+          {controls}
         </div>
-        <p className={`font-bold tabular-nums ${dark ? "text-5xl text-white" : "text-4xl"}`}>{fmt(totalCompleted)}</p>
-        {monthlyGoal && monthlyGoal > 0 && (
-          <>
-            <Progress value={monthlyPct} className={`h-3 ${dark ? "[&>div]:bg-violet-400" : ""}`} />
-            <div className="flex justify-between items-center">
-              <span className={`text-sm ${dark ? "text-slate-400" : "text-muted-foreground"}`}>{monthlyPct}% of monthly goal</span>
-              {totalCompleted >= monthlyGoal && (
-                <span className={`text-sm font-semibold flex items-center gap-1 ${dark ? "text-emerald-400" : "text-emerald-600"}`}>
-                  <Trophy className="h-3.5 w-3.5" /> Goal reached!
-                </span>
-              )}
+
+        {/* Stats */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="rounded-2xl border bg-card p-6 space-y-3">
+            <div className="flex items-center gap-2">
+              <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-sky-500/10 text-sky-600 border border-sky-200">
+                <CalendarDays className="h-4 w-4" />
+              </div>
+              <div>
+                <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Today</p>
+                <p className="text-xs text-muted-foreground/70">{dailyTarget ? `Target ${fmt(dailyTarget)}` : "No daily target"}</p>
+              </div>
             </div>
-          </>
-        )}
-      </div>
-    </div>
-  );
-
-  const leaderboardCard = (dark?: boolean) => (
-    <div className={`rounded-2xl border ${dark ? "bg-white/5 border-white/10 backdrop-blur-sm" : "bg-card border"}`}>
-      <div className={`flex items-center gap-3 p-6 pb-4 border-b ${dark ? "border-white/10" : ""}`}>
-        <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${dark ? "bg-amber-500/20 text-amber-400" : "bg-amber-500/10 text-amber-600 border border-amber-200"}`}>
-          <TrendingUp className="h-4 w-4" />
-        </div>
-        <div>
-          <p className={`font-semibold ${dark ? "text-white" : ""}`}>Leaderboard</p>
-          <p className={`text-xs ${dark ? "text-slate-400" : "text-muted-foreground"}`}>
-            Completed task value this month · highest first
-          </p>
-        </div>
-      </div>
-      <div className="p-4">
-        {loading ? (
-          <p className={`text-sm py-8 text-center ${dark ? "text-slate-400" : "text-muted-foreground"}`}>Loading…</p>
-        ) : leaderboard.length === 0 ? (
-          <p className={`text-sm py-8 text-center ${dark ? "text-slate-400" : "text-muted-foreground"}`}>
-            No completed tasks with a monetary value this month yet.
-          </p>
-        ) : (
-          <div className="space-y-2">
-            {leaderboard.map((entry, idx) => {
-              const isMe = entry.user_id === user?.id;
-              const isTop3 = idx < 3;
-              return (
-                <div
-                  key={entry.user_id}
-                  className={`flex items-center justify-between rounded-xl px-4 py-3 transition-colors
-                    ${dark
-                      ? isMe
-                        ? "bg-violet-500/20 border border-violet-500/30"
-                        : isTop3
-                          ? "bg-amber-500/10 border border-amber-500/10"
-                          : "bg-white/5 border border-white/5"
-                      : isMe
-                        ? "bg-primary/5 border border-primary/20"
-                        : "bg-muted/30 border border-transparent"
-                    }`}
-                >
-                  <div className="flex items-center gap-4">
-                    <span className={`text-center shrink-0 ${dark ? "text-2xl w-8" : "text-lg w-6"}`}>
-                      {medals[idx] ?? (
-                        <span className={`font-mono font-medium ${dark ? "text-slate-400 text-sm" : "text-muted-foreground text-sm"}`}>
-                          #{idx + 1}
-                        </span>
-                      )}
-                    </span>
-                    <div>
-                      <p className={`font-semibold ${dark ? "text-lg text-white" : "text-sm"}`}>
-                        {entry.full_name}
-                        {isMe && (
-                          <Badge variant="secondary" className={`ml-2 text-xs ${dark ? "bg-violet-500/30 text-violet-300 border-violet-500/30" : ""}`}>
-                            You
-                          </Badge>
-                        )}
-                      </p>
-                      <p className={`${dark ? "text-sm text-slate-400" : "text-xs text-muted-foreground"}`}>
-                        {entry.tasks_completed} task{entry.tasks_completed !== 1 ? "s" : ""} completed
-                      </p>
-                    </div>
-                  </div>
-                  <p className={`font-bold font-mono tabular-nums ${dark ? "text-2xl text-white" : "text-base"}`}>
-                    {fmt(entry.total_value)}
-                  </p>
+            <p className="text-4xl font-bold tabular-nums">{fmt(dailyCompleted)}</p>
+            {dailyTarget && dailyTarget > 0 && (
+              <>
+                <Progress value={dailyPct} className="h-3" />
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">{dailyPct}% of daily target</span>
+                  {dailyCompleted >= dailyTarget && (
+                    <span className="text-sm font-semibold text-emerald-600 flex items-center gap-1"><Trophy className="h-3.5 w-3.5" /> Done!</span>
+                  )}
                 </div>
-              );
-            })}
+              </>
+            )}
           </div>
-        )}
+          <div className="rounded-2xl border bg-card p-6 space-y-3">
+            <div className="flex items-center gap-2">
+              <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-violet-500/10 text-violet-600 border border-violet-200">
+                <Target className="h-4 w-4" />
+              </div>
+              <div>
+                <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">This Month</p>
+                <p className="text-xs text-muted-foreground/70">{monthlyGoal ? `Goal ${fmt(monthlyGoal)}` : "No goal set"}</p>
+              </div>
+            </div>
+            <p className="text-4xl font-bold tabular-nums">{fmt(totalCompleted)}</p>
+            {monthlyGoal && monthlyGoal > 0 && (
+              <>
+                <Progress value={monthlyPct} className="h-3" />
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">{monthlyPct}% of monthly goal</span>
+                  {goalReached && (
+                    <span className="text-sm font-semibold text-emerald-600 flex items-center gap-1"><Trophy className="h-3.5 w-3.5" /> Goal reached!</span>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Leaderboard */}
+        <div className="rounded-2xl border bg-card">
+          <div className="flex items-center gap-3 p-6 pb-4 border-b">
+            <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-amber-500/10 text-amber-600 border border-amber-200">
+              <TrendingUp className="h-4 w-4" />
+            </div>
+            <div>
+              <p className="font-semibold">Leaderboard</p>
+              <p className="text-xs text-muted-foreground">Completed task value this month · highest first</p>
+            </div>
+          </div>
+          <div className="p-4">
+            {loading ? (
+              <p className="text-sm py-8 text-center text-muted-foreground">Loading…</p>
+            ) : leaderboard.length === 0 ? (
+              <p className="text-sm py-8 text-center text-muted-foreground">No completed tasks with a monetary value this month yet.</p>
+            ) : (
+              <div className="space-y-2">
+                {leaderboard.map((entry, idx) => (
+                  <div key={entry.user_id} className={`flex items-center justify-between rounded-xl px-4 py-3 ${entry.user_id === user?.id ? "bg-primary/5 border border-primary/20" : "bg-muted/30"}`}>
+                    <div className="flex items-center gap-3">
+                      <span className="text-lg w-6 text-center">{medals[idx] ?? <span className="text-sm font-mono text-muted-foreground">#{idx + 1}</span>}</span>
+                      <div>
+                        <p className="font-medium text-sm">{entry.full_name}{entry.user_id === user?.id && <Badge variant="secondary" className="ml-2 text-xs">You</Badge>}</p>
+                        <p className="text-xs text-muted-foreground">{entry.tasks_completed} task{entry.tasks_completed !== 1 ? "s" : ""}</p>
+                      </div>
+                    </div>
+                    <p className="font-bold text-base font-mono">{fmt(entry.total_value)}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
-    </div>
+    </DashboardLayout>
   );
 
-  // Fullscreen overlay
+  // ── Fullscreen scoreboard layout ─────────────────────────────────────────────
   const fullscreenContent = (
-    <div className="fixed inset-0 z-50 bg-slate-900 overflow-auto">
+    <div className="fixed inset-0 z-50 overflow-hidden" style={{ background: "#050d1a" }}>
+
       {/* Remotion animated background */}
       <div className="fixed inset-0 z-0 pointer-events-none">
         <Player
@@ -357,28 +349,265 @@ export default function GoalsPage() {
         />
       </div>
 
-      {/* Dark gradient overlay on top of animation for readability */}
-      <div className="fixed inset-0 z-10 pointer-events-none bg-gradient-to-b from-slate-900/60 via-slate-900/40 to-slate-900/70" />
+      {/* Gradient overlay for readability */}
+      <div className="fixed inset-0 z-10 pointer-events-none" style={{
+        background: "linear-gradient(135deg, rgba(5,13,26,0.82) 0%, rgba(10,18,38,0.65) 50%, rgba(5,13,26,0.82) 100%)"
+      }} />
 
-      {/* Content */}
-      <div className="relative z-20 min-h-full p-8 space-y-6 max-w-5xl mx-auto">
-        {pageHeader(true)}
-        {statCards(true)}
-        {leaderboardCard(true)}
+      {/* Goal achieved celebration overlay */}
+      {goalReached && (
+        <div className="fixed inset-0 z-10 pointer-events-none overflow-hidden">
+          {/* Corner flag banners */}
+          <div className="absolute top-0 left-0 w-48 h-48 opacity-20"
+            style={{ background: "radial-gradient(circle at 0% 0%, #f59e0b, transparent)" }} />
+          <div className="absolute top-0 right-0 w-48 h-48 opacity-20"
+            style={{ background: "radial-gradient(circle at 100% 0%, #f59e0b, transparent)" }} />
+          {/* Shimmer stripe */}
+          <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-transparent via-yellow-400 to-transparent opacity-70"
+            style={{ animation: "shimmer 2s ease-in-out infinite" }} />
+          <div className="absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r from-transparent via-yellow-400 to-transparent opacity-70"
+            style={{ animation: "shimmer 2s ease-in-out infinite 1s" }} />
+        </div>
+      )}
+
+      {/* Main content */}
+      <div className="relative z-20 h-full flex flex-col p-6 gap-4 overflow-hidden">
+
+        {/* ── TOP BAR: Logo + slogan + controls ── */}
+        <div className="flex items-center justify-between gap-6 shrink-0">
+          {/* Logo + name */}
+          <div className="flex items-center gap-4">
+            {logoUrl ? (
+              <img src={logoUrl} alt={workshopName}
+                className="h-20 w-20 shrink-0 rounded-2xl object-contain drop-shadow-2xl ring-2 ring-white/10" />
+            ) : (
+              <div className="h-20 w-20 shrink-0 rounded-2xl flex items-center justify-center bg-white/10">
+                <Wrench className="h-9 w-9 text-white/60" />
+              </div>
+            )}
+            <div>
+              <p className="text-white/60 text-sm font-medium uppercase tracking-widest">{monthLabel}</p>
+              <h1 className="text-3xl font-black text-white leading-tight tracking-tight">{workshopName}</h1>
+            </div>
+          </div>
+
+          {/* Goal achieved badge */}
+          {goalReached && (
+            <div className="flex-1 flex justify-center">
+              <div className="flex items-center gap-3 px-6 py-3 rounded-2xl border border-yellow-400/40 bg-yellow-400/10 backdrop-blur-sm">
+                <Flag className="h-6 w-6 text-yellow-400" />
+                <span className="text-yellow-300 font-black text-xl tracking-widest uppercase">Goal Achieved!</span>
+                <Trophy className="h-6 w-6 text-yellow-400" />
+              </div>
+            </div>
+          )}
+
+          {/* Controls */}
+          <div className="flex items-center gap-2 shrink-0">
+            {lastRefreshed && (
+              <span className="text-slate-500 text-xs hidden lg:block">Updated {lastRefreshed.toLocaleTimeString()}</span>
+            )}
+            <button
+              onClick={load}
+              disabled={refreshing}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/15 bg-white/5 text-white/70 text-sm hover:bg-white/10 transition-colors"
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
+              Refresh
+            </button>
+            <button
+              onClick={toggleFullscreen}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/15 bg-white/5 text-white/70 text-sm hover:bg-white/10 transition-colors"
+            >
+              <Minimize2 className="h-3.5 w-3.5" />
+              Exit
+            </button>
+          </div>
+        </div>
+
+        {/* ── MAIN BODY: Left stats + Right leaderboard ── */}
+        <div className="flex-1 grid grid-cols-5 gap-5 min-h-0">
+
+          {/* LEFT PANEL — 3/5 */}
+          <div className="col-span-3 flex flex-col gap-4">
+
+            {/* Motivational slogan */}
+            <div
+              className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm px-8 py-5 flex flex-col justify-center"
+              style={{
+                transition: "opacity 0.5s ease",
+                opacity: sloganVisible ? 1 : 0,
+                minHeight: "5rem",
+              }}
+            >
+              <p className="text-yellow-400 text-sm font-bold uppercase tracking-[0.25em] mb-1">
+                {slogan.top}
+              </p>
+              <p className="text-white text-2xl font-black uppercase tracking-tight leading-tight">
+                {slogan.bottom}
+              </p>
+              <p className="text-slate-500 text-xs mt-2 uppercase tracking-widest">Every effort counts</p>
+            </div>
+
+            {/* Stats row */}
+            <div className="grid grid-cols-2 gap-4 flex-1">
+
+              {/* TODAY */}
+              <div className="rounded-2xl border border-sky-500/20 bg-sky-500/5 backdrop-blur-sm p-5 flex flex-col gap-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sky-400 text-xs font-bold uppercase tracking-widest">Today</p>
+                    <p className="text-white/40 text-xs mt-0.5">
+                      {dailyTarget ? `Target ${fmt(dailyTarget)}` : "Production"}
+                    </p>
+                  </div>
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-sky-500/20">
+                    <Zap className="h-4 w-4 text-sky-400" />
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-white font-black tabular-nums leading-none" style={{ fontSize: "clamp(2rem, 4vw, 3.5rem)" }}>
+                    {fmt(dailyCompleted)}
+                  </p>
+                  {dailyTarget && (
+                    <p className="text-sky-400 text-sm font-bold mt-1">{dailyPct}% complete</p>
+                  )}
+                </div>
+
+                <div className="mt-auto space-y-2">
+                  <ProgressBars pct={dailyPct} color="#38bdf8" />
+                  <TrendArrow color="#38bdf8" />
+                </div>
+              </div>
+
+              {/* THIS MONTH */}
+              <div className={`rounded-2xl backdrop-blur-sm p-5 flex flex-col gap-3 ${goalReached
+                ? "border border-yellow-400/30 bg-yellow-400/5"
+                : "border border-violet-500/20 bg-violet-500/5"}`}>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className={`text-xs font-bold uppercase tracking-widest ${goalReached ? "text-yellow-400" : "text-violet-400"}`}>
+                      This Month
+                    </p>
+                    <p className="text-white/40 text-xs mt-0.5">
+                      {monthlyGoal ? `Goal ${fmt(monthlyGoal)}` : "No goal set"}
+                    </p>
+                  </div>
+                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${goalReached ? "bg-yellow-400/20" : "bg-violet-500/20"}`}>
+                    {goalReached
+                      ? <Trophy className="h-4 w-4 text-yellow-400" />
+                      : <Target className="h-4 w-4 text-violet-400" />
+                    }
+                  </div>
+                </div>
+
+                <div>
+                  <p className={`font-black tabular-nums leading-none ${goalReached ? "text-yellow-300" : "text-white"}`}
+                    style={{ fontSize: "clamp(2rem, 4vw, 3.5rem)" }}>
+                    {fmt(totalCompleted)}
+                  </p>
+                  <p className={`text-sm font-bold mt-1 ${goalReached ? "text-yellow-400" : "text-violet-400"}`}>
+                    {monthlyPct}% {goalReached ? "— GOAL REACHED!" : "of goal"}
+                  </p>
+                </div>
+
+                <div className="mt-auto space-y-2">
+                  <ProgressBars pct={monthlyPct} color={goalReached ? "#fbbf24" : "#a78bfa"} />
+                  <TrendArrow color={goalReached ? "#fbbf24" : "#a78bfa"} />
+                </div>
+              </div>
+            </div>
+
+            {/* Live indicator bar */}
+            <div className="flex items-center justify-between rounded-xl border border-white/5 bg-white/3 px-5 py-3 shrink-0">
+              <div className="flex items-center gap-2">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                </span>
+                <span className="text-emerald-400 text-xs font-semibold uppercase tracking-widest">Live · Auto-updates</span>
+              </div>
+              <div className="flex items-center gap-1">
+                {[...Array(5)].map((_, i) => (
+                  <Star key={i} className={`h-3 w-3 ${i < Math.min(5, Math.ceil(monthlyPct / 20)) ? "text-yellow-400" : "text-white/10"}`} fill={i < Math.min(5, Math.ceil(monthlyPct / 20)) ? "currentColor" : "none"} />
+                ))}
+                <span className="text-white/30 text-xs ml-2">{monthlyPct}% to goal</span>
+              </div>
+            </div>
+          </div>
+
+          {/* RIGHT PANEL — 2/5 leaderboard */}
+          <div className="col-span-2 flex flex-col rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm overflow-hidden">
+            {/* Header */}
+            <div className="flex items-center gap-3 px-5 py-4 border-b border-white/10 shrink-0"
+              style={{ background: "linear-gradient(90deg, rgba(245,158,11,0.12), transparent)" }}>
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-amber-500/20">
+                <TrendingUp className="h-4 w-4 text-amber-400" />
+              </div>
+              <div>
+                <p className="font-black text-white uppercase tracking-widest text-sm">Leaderboard</p>
+                <p className="text-xs text-slate-400">Top performers · {monthLabel}</p>
+              </div>
+            </div>
+
+            {/* Entries */}
+            <div className="flex-1 overflow-y-auto p-3 space-y-2">
+              {loading ? (
+                <p className="text-slate-400 text-sm py-8 text-center">Loading…</p>
+              ) : leaderboard.length === 0 ? (
+                <p className="text-slate-400 text-sm py-8 text-center">No completed tasks yet this month.</p>
+              ) : (
+                leaderboard.map((entry, idx) => {
+                  const isMe = entry.user_id === user?.id;
+                  const rankColors = ["from-yellow-500/20 border-yellow-400/30", "from-slate-400/15 border-slate-400/20", "from-amber-700/20 border-amber-600/20"];
+                  const valueColors = ["text-yellow-300", "text-slate-200", "text-amber-400"];
+                  return (
+                    <div
+                      key={entry.user_id}
+                      className={`flex items-center justify-between rounded-xl px-4 py-3 border bg-gradient-to-r ${isMe
+                        ? "from-violet-500/20 border-violet-400/30"
+                        : rankColors[idx] ?? "from-white/5 border-white/5"
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="text-xl w-8 text-center shrink-0">
+                          {medals[idx] ?? <span className="text-slate-500 text-sm font-mono">#{idx + 1}</span>}
+                        </span>
+                        <div>
+                          <p className="text-white font-bold text-base leading-tight">
+                            {entry.full_name}
+                            {isMe && <span className="ml-2 text-xs text-violet-300 font-normal">(you)</span>}
+                          </p>
+                          <p className="text-slate-400 text-xs">{entry.tasks_completed} task{entry.tasks_completed !== 1 ? "s" : ""}</p>
+                        </div>
+                      </div>
+                      <p className={`font-black font-mono tabular-nums text-xl ${isMe ? "text-violet-300" : valueColors[idx] ?? "text-white"}`}>
+                        {fmt(entry.total_value)}
+                      </p>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </div>
       </div>
+
+      {/* CSS for shimmer animation */}
+      <style>{`
+        @keyframes shimmer {
+          0%, 100% { opacity: 0.3; }
+          50% { opacity: 0.9; }
+        }
+      `}</style>
     </div>
   );
 
   return (
     <>
       {isFullscreen && fullscreenContent}
-      <DashboardLayout>
-        <div className="space-y-6 max-w-3xl">
-          {pageHeader(false)}
-          {statCards(false)}
-          {leaderboardCard(false)}
-        </div>
-      </DashboardLayout>
+      {normalView}
     </>
   );
 }
