@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
+import { Player } from "@remotion/player";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import DashboardLayout from "@/components/layout/DashboardLayout";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Trophy, Target, TrendingUp, RefreshCw, Maximize2, Minimize2, CalendarDays, Wrench } from "lucide-react";
+import { GoalsBackground } from "./GoalsAnimations";
 
 interface LeaderboardEntry {
   user_id: string;
@@ -78,9 +79,7 @@ export default function GoalsPage() {
       grouped[t.assigned_to].tasks += 1;
       grouped[t.assigned_to].value += v;
       total += v;
-      if (t.updated_at && t.updated_at >= startOfDay) {
-        daily += v;
-      }
+      if (t.updated_at && t.updated_at >= startOfDay) daily += v;
     }
 
     setTotalCompleted(total);
@@ -123,11 +122,8 @@ export default function GoalsPage() {
   }, []);
 
   const toggleFullscreen = () => {
-    if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen();
-    } else {
-      document.exitFullscreen();
-    }
+    if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+    else document.exitFullscreen();
   };
 
   const fmt = (n: number) => n.toLocaleString("en-US", { style: "currency", currency, minimumFractionDigits: 2 });
@@ -146,20 +142,20 @@ export default function GoalsPage() {
         </span>
       )}
       <Button
-        variant={dark ? "outline" : "outline"}
+        variant="outline"
         size="sm"
         onClick={load}
         disabled={refreshing}
-        className={dark ? "border-slate-600 text-slate-300 hover:bg-slate-700 hover:text-white" : ""}
+        className={dark ? "border-slate-600 text-slate-300 hover:bg-slate-700 hover:text-white bg-transparent" : ""}
       >
         <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
         <span className="ml-1">Refresh</span>
       </Button>
       <Button
-        variant={dark ? "outline" : "outline"}
+        variant="outline"
         size="sm"
         onClick={toggleFullscreen}
-        className={dark ? "border-slate-600 text-slate-300 hover:bg-slate-700 hover:text-white" : ""}
+        className={dark ? "border-slate-600 text-slate-300 hover:bg-slate-700 hover:text-white bg-transparent" : ""}
       >
         {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
         <span className="ml-1">{isFullscreen ? "Exit" : "Fullscreen"}</span>
@@ -167,30 +163,42 @@ export default function GoalsPage() {
     </div>
   );
 
-  const pageHeader = (dark?: boolean) => (
-    <div className="flex items-center justify-between">
-      <div className="flex items-center gap-3">
-        {logoUrl ? (
-          <img src={logoUrl} alt={workshopName} className={`shrink-0 rounded-xl object-contain ${dark ? "h-14 w-14" : "h-10 w-10"}`} />
-        ) : (
-          <div className={`shrink-0 rounded-xl flex items-center justify-center ${dark ? "h-14 w-14 bg-white/10" : "h-10 w-10 bg-primary/10"}`}>
-            <Wrench className={dark ? "h-7 w-7 text-white/70" : "h-5 w-5 text-primary"} />
-          </div>
-        )}
-        <div>
-          <h1 className={`font-bold leading-tight ${dark ? "text-3xl text-white" : "text-2xl"}`}>{workshopName}</h1>
-          <p className={`${dark ? "text-slate-400 text-sm" : "text-muted-foreground text-sm"}`}>
-            {monthLabel} · Production Goals
-            {!loading && <span className={`ml-2 inline-flex items-center gap-1 ${dark ? "text-emerald-400" : "text-emerald-600"}`}>
+  const logoBlock = (dark?: boolean) => (
+    <div className="flex items-center gap-4">
+      {logoUrl ? (
+        <img
+          src={logoUrl}
+          alt={workshopName}
+          className={`shrink-0 rounded-2xl object-contain drop-shadow-lg ${dark ? "h-24 w-24" : "h-20 w-20"}`}
+        />
+      ) : (
+        <div className={`shrink-0 rounded-2xl flex items-center justify-center ${dark ? "h-24 w-24 bg-white/10" : "h-20 w-20 bg-primary/10"}`}>
+          <Wrench className={dark ? "h-10 w-10 text-white/60" : "h-8 w-8 text-primary"} />
+        </div>
+      )}
+      <div>
+        <h1 className={`font-bold leading-tight ${dark ? "text-4xl text-white tracking-tight" : "text-2xl"}`}>
+          {workshopName}
+        </h1>
+        <p className={`mt-0.5 ${dark ? "text-slate-400 text-base" : "text-muted-foreground text-sm"}`}>
+          {monthLabel} · Production Goals
+          {!loading && (
+            <span className={`ml-2 inline-flex items-center gap-1 ${dark ? "text-emerald-400" : "text-emerald-600"}`}>
               <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
               </span>
               Live
-            </span>}
-          </p>
-        </div>
+            </span>
+          )}
+        </p>
       </div>
+    </div>
+  );
+
+  const pageHeader = (dark?: boolean) => (
+    <div className="flex items-center justify-between flex-wrap gap-4">
+      {logoBlock(dark)}
       {controls(dark)}
     </div>
   );
@@ -198,7 +206,7 @@ export default function GoalsPage() {
   const statCards = (dark?: boolean) => (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
       {/* Daily */}
-      <div className={`rounded-2xl border p-6 space-y-3 ${dark ? "bg-white/5 border-white/10" : "bg-card border"}`}>
+      <div className={`rounded-2xl border p-6 space-y-3 ${dark ? "bg-white/5 border-white/10 backdrop-blur-sm" : "bg-card border"}`}>
         <div className="flex items-center gap-2">
           <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${dark ? "bg-sky-500/20 text-sky-400" : "bg-sky-500/10 text-sky-600 border border-sky-200"}`}>
             <CalendarDays className="h-4 w-4" />
@@ -210,14 +218,12 @@ export default function GoalsPage() {
             </p>
           </div>
         </div>
-        <p className={`font-bold ${dark ? "text-5xl text-white" : "text-4xl"}`}>{fmt(dailyCompleted)}</p>
+        <p className={`font-bold tabular-nums ${dark ? "text-5xl text-white" : "text-4xl"}`}>{fmt(dailyCompleted)}</p>
         {dailyTarget && dailyTarget > 0 && (
           <>
             <Progress value={dailyPct} className={`h-3 ${dark ? "[&>div]:bg-sky-400" : ""}`} />
             <div className="flex justify-between items-center">
-              <span className={`text-sm ${dark ? "text-slate-400" : "text-muted-foreground"}`}>
-                {dailyPct}% of daily target
-              </span>
+              <span className={`text-sm ${dark ? "text-slate-400" : "text-muted-foreground"}`}>{dailyPct}% of daily target</span>
               {dailyCompleted >= dailyTarget && (
                 <span className={`text-sm font-semibold flex items-center gap-1 ${dark ? "text-emerald-400" : "text-emerald-600"}`}>
                   <Trophy className="h-3.5 w-3.5" /> Done!
@@ -229,7 +235,7 @@ export default function GoalsPage() {
       </div>
 
       {/* Monthly */}
-      <div className={`rounded-2xl border p-6 space-y-3 ${dark ? "bg-white/5 border-white/10" : "bg-card border"}`}>
+      <div className={`rounded-2xl border p-6 space-y-3 ${dark ? "bg-white/5 border-white/10 backdrop-blur-sm" : "bg-card border"}`}>
         <div className="flex items-center gap-2">
           <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${dark ? "bg-violet-500/20 text-violet-400" : "bg-violet-500/10 text-violet-600 border border-violet-200"}`}>
             <Target className="h-4 w-4" />
@@ -241,14 +247,12 @@ export default function GoalsPage() {
             </p>
           </div>
         </div>
-        <p className={`font-bold ${dark ? "text-5xl text-white" : "text-4xl"}`}>{fmt(totalCompleted)}</p>
+        <p className={`font-bold tabular-nums ${dark ? "text-5xl text-white" : "text-4xl"}`}>{fmt(totalCompleted)}</p>
         {monthlyGoal && monthlyGoal > 0 && (
           <>
             <Progress value={monthlyPct} className={`h-3 ${dark ? "[&>div]:bg-violet-400" : ""}`} />
             <div className="flex justify-between items-center">
-              <span className={`text-sm ${dark ? "text-slate-400" : "text-muted-foreground"}`}>
-                {monthlyPct}% of monthly goal
-              </span>
+              <span className={`text-sm ${dark ? "text-slate-400" : "text-muted-foreground"}`}>{monthlyPct}% of monthly goal</span>
               {totalCompleted >= monthlyGoal && (
                 <span className={`text-sm font-semibold flex items-center gap-1 ${dark ? "text-emerald-400" : "text-emerald-600"}`}>
                   <Trophy className="h-3.5 w-3.5" /> Goal reached!
@@ -262,7 +266,7 @@ export default function GoalsPage() {
   );
 
   const leaderboardCard = (dark?: boolean) => (
-    <div className={`rounded-2xl border ${dark ? "bg-white/5 border-white/10" : "bg-card border"}`}>
+    <div className={`rounded-2xl border ${dark ? "bg-white/5 border-white/10 backdrop-blur-sm" : "bg-card border"}`}>
       <div className={`flex items-center gap-3 p-6 pb-4 border-b ${dark ? "border-white/10" : ""}`}>
         <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${dark ? "bg-amber-500/20 text-amber-400" : "bg-amber-500/10 text-amber-600 border border-amber-200"}`}>
           <TrendingUp className="h-4 w-4" />
@@ -276,7 +280,7 @@ export default function GoalsPage() {
       </div>
       <div className="p-4">
         {loading ? (
-          <p className={`text-sm py-8 text-center ${dark ? "text-slate-400" : "text-muted-foreground"}`}>Loading...</p>
+          <p className={`text-sm py-8 text-center ${dark ? "text-slate-400" : "text-muted-foreground"}`}>Loading…</p>
         ) : leaderboard.length === 0 ? (
           <p className={`text-sm py-8 text-center ${dark ? "text-slate-400" : "text-muted-foreground"}`}>
             No completed tasks with a monetary value this month yet.
@@ -303,7 +307,11 @@ export default function GoalsPage() {
                 >
                   <div className="flex items-center gap-4">
                     <span className={`text-center shrink-0 ${dark ? "text-2xl w-8" : "text-lg w-6"}`}>
-                      {medals[idx] ?? <span className={`font-mono font-medium ${dark ? "text-slate-400 text-sm" : "text-muted-foreground text-sm"}`}>#{idx + 1}</span>}
+                      {medals[idx] ?? (
+                        <span className={`font-mono font-medium ${dark ? "text-slate-400 text-sm" : "text-muted-foreground text-sm"}`}>
+                          #{idx + 1}
+                        </span>
+                      )}
                     </span>
                     <div>
                       <p className={`font-semibold ${dark ? "text-lg text-white" : "text-sm"}`}>
@@ -319,7 +327,7 @@ export default function GoalsPage() {
                       </p>
                     </div>
                   </div>
-                  <p className={`font-bold font-mono ${dark ? "text-2xl text-white" : "text-base"}`}>
+                  <p className={`font-bold font-mono tabular-nums ${dark ? "text-2xl text-white" : "text-base"}`}>
                     {fmt(entry.total_value)}
                   </p>
                 </div>
@@ -333,8 +341,27 @@ export default function GoalsPage() {
 
   // Fullscreen overlay
   const fullscreenContent = (
-    <div className="fixed inset-0 z-50 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 overflow-auto">
-      <div className="min-h-full p-8 space-y-6 max-w-5xl mx-auto">
+    <div className="fixed inset-0 z-50 bg-slate-900 overflow-auto">
+      {/* Remotion animated background */}
+      <div className="fixed inset-0 z-0 pointer-events-none">
+        <Player
+          component={GoalsBackground}
+          durationInFrames={360}
+          compositionWidth={window.innerWidth || 1920}
+          compositionHeight={window.innerHeight || 1080}
+          fps={30}
+          loop
+          autoPlay
+          controls={false}
+          style={{ width: "100%", height: "100%" }}
+        />
+      </div>
+
+      {/* Dark gradient overlay on top of animation for readability */}
+      <div className="fixed inset-0 z-10 pointer-events-none bg-gradient-to-b from-slate-900/60 via-slate-900/40 to-slate-900/70" />
+
+      {/* Content */}
+      <div className="relative z-20 min-h-full p-8 space-y-6 max-w-5xl mx-auto">
         {pageHeader(true)}
         {statCards(true)}
         {leaderboardCard(true)}
