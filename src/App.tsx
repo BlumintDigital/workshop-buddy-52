@@ -55,6 +55,8 @@ import InvoiceDetail from "@/pages/invoices/InvoiceDetail";
 import UserProfile from "@/pages/profile/UserProfile";
 import GoalsPage from "@/pages/goals/GoalsPage";
 import AppointmentDetail from "@/pages/appointments/AppointmentDetail";
+import ReportIssue from "@/pages/support/ReportIssue";
+import AdminFeedback from "@/pages/admin/AdminFeedback";
 
 const queryClient = new QueryClient();
 
@@ -115,6 +117,8 @@ const App = () => (
             <Route path="/invoices/:id" element={<ProtectedRoute allowedRoles={["admin", "manager", "client"]}><InvoiceDetail /></ProtectedRoute>} />
             <Route path="/goals" element={<ProtectedRoute allowedRoles={["admin", "manager", "staff"]}><GoalsPage /></ProtectedRoute>} />
             <Route path="/appointments/:id" element={<ProtectedRoute allowedRoles={["admin", "manager", "staff", "client"]}><AppointmentDetail /></ProtectedRoute>} />
+            <Route path="/report-issue" element={<ProtectedRoute allowedRoles={["admin", "manager", "staff", "client"]}><ReportIssue /></ProtectedRoute>} />
+            <Route path="/admin/feedback" element={<ProtectedRoute allowedRoles={["admin"]}><AdminFeedback /></ProtectedRoute>} />
             <Route path="/profile" element={<ProtectedRoute allowedRoles={["admin", "manager", "staff", "client"]}><UserProfile /></ProtectedRoute>} />
 
             <Route path="*" element={<NotFound />} />

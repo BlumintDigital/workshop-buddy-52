@@ -15,6 +15,21 @@ export default function ResetPassword() {
   const [submitting, setSubmitting] = useState(false);
   const [ready, setReady] = useState(false);
 
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [workshopName, setWorkshopName] = useState("Workshop Manager");
+
+  useEffect(() => {
+    supabase
+      .from("workshop_settings_public")
+      .select("logo_url, workshop_name")
+      .eq("id", 1)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data?.logo_url) setLogoUrl(data.logo_url as string);
+        if (data?.workshop_name) setWorkshopName(data.workshop_name as string);
+      });
+  }, []);
+
   useEffect(() => {
     // Check for recovery token in URL hash
     const hashParams = new URLSearchParams(window.location.hash.substring(1));
@@ -64,10 +79,14 @@ export default function ResetPassword() {
     <div className="flex min-h-screen items-center justify-center bg-muted/30 p-4">
       <div className="w-full max-w-md space-y-6">
         <div className="flex flex-col items-center gap-2">
-          <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-            <Wrench className="h-6 w-6" />
-          </div>
-          <h1 className="text-2xl font-bold tracking-tight">Workshop Manager</h1>
+          {logoUrl ? (
+            <img src={logoUrl} alt={workshopName} className="h-40 w-40 rounded-2xl object-contain drop-shadow-md" />
+          ) : (
+            <div className="flex h-40 w-40 items-center justify-center rounded-2xl bg-primary text-primary-foreground">
+              <Wrench className="h-20 w-20" />
+            </div>
+          )}
+          <h1 className="text-2xl font-bold tracking-tight">{workshopName}</h1>
         </div>
 
         <Card>

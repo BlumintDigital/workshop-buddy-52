@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import {
-  LayoutDashboard, Briefcase, Calendar, Package, FileText, Users, Settings, LogOut, Wrench, ChevronDown, BarChart3, Columns3, UserCheck, CalendarDays, User, Activity, Target,
+  LayoutDashboard, Briefcase, Calendar, Package, FileText, Users, Settings, LogOut, Wrench, ChevronDown, BarChart3, Columns3, UserCheck, CalendarDays, User, Activity, Target, AlertCircle, MessageSquare,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -42,6 +42,10 @@ const navGroups: Record<AppRole, NavGroup[]> = {
     { label: "System", items: [
       { title: "Activity Logs", url: "/admin/activity-logs", icon: Activity },
       { title: "Settings", url: "/admin/settings", icon: Settings },
+      { title: "Issue Reports", url: "/admin/feedback", icon: MessageSquare },
+    ]},
+    { label: "Help", items: [
+      { title: "Report Issue", url: "/report-issue", icon: AlertCircle },
     ]},
   ],
   manager: [
@@ -61,6 +65,9 @@ const navGroups: Record<AppRole, NavGroup[]> = {
     { label: "People", items: [
       { title: "Staff", url: "/manager/staff", icon: Users },
     ]},
+    { label: "Help", items: [
+      { title: "Report Issue", url: "/report-issue", icon: AlertCircle },
+    ]},
   ],
   staff: [
     { label: "Overview", items: [
@@ -75,6 +82,9 @@ const navGroups: Record<AppRole, NavGroup[]> = {
       { title: "Inventory", url: "/staff/inventory", icon: Package },
       { title: "Goals", url: "/goals", icon: Target },
     ]},
+    { label: "Help", items: [
+      { title: "Report Issue", url: "/report-issue", icon: AlertCircle },
+    ]},
   ],
   client: [
     { label: "Overview", items: [
@@ -84,6 +94,9 @@ const navGroups: Record<AppRole, NavGroup[]> = {
       { title: "My Jobs", url: "/client/jobs", icon: Briefcase },
       { title: "Appointments", url: "/client/appointments", icon: Calendar },
       { title: "Invoices", url: "/client/invoices", icon: FileText },
+    ]},
+    { label: "Help", items: [
+      { title: "Report Issue", url: "/report-issue", icon: AlertCircle },
     ]},
   ],
 };
