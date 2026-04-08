@@ -190,10 +190,10 @@ export default function Auth() {
         <div className="w-full max-w-md space-y-6">
           <div className="flex flex-col items-center gap-2">
             {logoUrl ? (
-              <img src={logoUrl} alt={workshopName} className="h-12 w-12 rounded-lg object-contain" />
+              <img src={logoUrl} alt={workshopName} className="h-24 w-24 rounded-2xl object-contain drop-shadow-md" />
             ) : (
-              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                <Wrench className="h-6 w-6" />
+              <div className="flex h-24 w-24 items-center justify-center rounded-2xl bg-primary text-primary-foreground">
+                <Wrench className="h-12 w-12" />
               </div>
             )}
             <h1 className="text-2xl font-bold tracking-tight">{workshopName}</h1>
