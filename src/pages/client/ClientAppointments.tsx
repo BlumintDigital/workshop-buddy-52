@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Plus, CalendarIcon, Clock, Download } from "lucide-react";
+import { Link } from "react-router-dom";
 import { generateICS, downloadICS } from "@/lib/ical";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -192,7 +193,9 @@ export default function ClientAppointments() {
                   <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">No appointments</TableCell></TableRow>
                 ) : appointments.map((a) => (
                   <TableRow key={a.id}>
-                    <TableCell className="font-medium">{a.title}</TableCell>
+                    <TableCell className="font-medium">
+                      <Link to={`/appointments/${a.id}`} className="text-primary hover:underline">{a.title}</Link>
+                    </TableCell>
                     <TableCell>{a.appointment_date}</TableCell>
                     <TableCell>{a.appointment_time}</TableCell>
                     <TableCell className="capitalize">{a.type}</TableCell>

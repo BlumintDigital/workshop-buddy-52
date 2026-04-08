@@ -9,10 +9,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Plus, Trash2, FileDown } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, FileDown, ExternalLink, Link2 } from "lucide-react";
 import { DatePickerInput } from "@/components/ui/date-picker-input";
 import { toast } from "sonner";
 import { generateInvoicePDF } from "@/lib/invoicePdf";
@@ -89,6 +88,7 @@ export default function InvoiceDetail() {
       total,
       due_date: invoice.due_date || null,
       notes: invoice.notes || null,
+      stripe_payment_url: invoice.stripe_payment_url || null,
     }).eq("id", invoice.id);
 
     if (invError) { toast.error(invError.message); setSaving(false); return; }
@@ -185,56 +185,92 @@ export default function InvoiceDetail() {
 
         {/* Invoice meta */}
         <Card>
-          <CardContent className="pt-6 grid grid-cols-2 md:grid-cols-3 gap-4">
-            <div>
-              <Label className="text-xs text-muted-foreground">Due Date</Label>
-              {canEdit ? (
-                <DatePickerInput
-                  value={invoice.due_date || ""}
-                  onChange={(v) => setInvoice({ ...invoice, due_date: v })}
-                  className="mt-1"
-                />
-              ) : (
-                <p className="mt-1 text-sm">{invoice.due_date || "—"}</p>
+          <CardContent className="pt-6 space-y-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              <div>
+                <Label className="text-xs text-muted-foreground">Due Date</Label>
+                {canEdit ? (
+                  <DatePickerInput
+                    value={invoice.due_date || ""}
+                    onChange={(v) => setInvoice({ ...invoice, due_date: v })}
+                    className="mt-1"
+                  />
+                ) : (
+                  <p className="mt-1 text-sm">{invoice.due_date || "—"}</p>
+                )}
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground">Tax Rate</Label>
+                {canEdit ? (
+                  <Input
+                    type="number"
+                    min={0}
+                    step={0.5}
+                    value={invoice.tax_rate ?? 0}
+                    onChange={(e) => setInvoice({ ...invoice, tax_rate: Number(e.target.value) })}
+                    className="mt-1 w-24"
+                  />
+                ) : (
+                  <p className="mt-1 text-sm">{invoice.tax_rate ?? 0}%</p>
+                )}
+              </div>
+              {canManage && (
+                <div>
+                  <Label className="text-xs text-muted-foreground">Status</Label>
+                  <Select
+                    value={invoice.status}
+                    onValueChange={async (v) => {
+                      const update: any = { status: v };
+                      if (v === "paid") update.paid_at = new Date().toISOString();
+                      const { error } = await supabase.from("invoices").update(update).eq("id", invoice.id);
+                      if (error) { toast.error(error.message); return; }
+                      setInvoice({ ...invoice, status: v });
+                      toast.success(`Status updated to ${v}`);
+                    }}
+                  >
+                    <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {["draft", "sent", "paid", "overdue", "cancelled"].map((s) => (
+                        <SelectItem key={s} value={s}>{s}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               )}
             </div>
-            <div>
-              <Label className="text-xs text-muted-foreground">Tax Rate</Label>
-              {canEdit ? (
-                <Input
-                  type="number"
-                  min={0}
-                  step={0.5}
-                  value={invoice.tax_rate ?? 0}
-                  onChange={(e) => setInvoice({ ...invoice, tax_rate: Number(e.target.value) })}
-                  className="mt-1 w-24"
-                />
-              ) : (
-                <p className="mt-1 text-sm">{invoice.tax_rate ?? 0}%</p>
-              )}
-            </div>
+
+            {/* Payment link — editable by admin/manager, visible as button to client */}
             {canManage && (
               <div>
-                <Label className="text-xs text-muted-foreground">Status</Label>
-                <Select
-                  value={invoice.status}
-                  onValueChange={async (v) => {
-                    const update: any = { status: v };
-                    if (v === "paid") update.paid_at = new Date().toISOString();
-                    const { error } = await supabase.from("invoices").update(update).eq("id", invoice.id);
-                    if (error) { toast.error(error.message); return; }
-                    setInvoice({ ...invoice, status: v });
-                    toast.success(`Status updated to ${v}`);
-                  }}
-                >
-                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {["draft", "sent", "paid", "overdue", "cancelled"].map((s) => (
-                      <SelectItem key={s} value={s}>{s}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Link2 className="h-3 w-3" />Payment Link
+                </Label>
+                <div className="flex gap-2 mt-1">
+                  <Input
+                    value={invoice.stripe_payment_url || ""}
+                    onChange={(e) => setInvoice({ ...invoice, stripe_payment_url: e.target.value })}
+                    placeholder="https://buy.stripe.com/… or any payment URL"
+                    className="flex-1"
+                  />
+                  {invoice.stripe_payment_url && (
+                    <Button variant="outline" size="sm" asChild>
+                      <a href={invoice.stripe_payment_url} target="_blank" rel="noopener noreferrer">
+                        <ExternalLink className="h-4 w-4" />
+                      </a>
+                    </Button>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">Paste any payment URL — shown to the client as a "Pay Now" button once the invoice is sent.</p>
               </div>
+            )}
+
+            {/* Pay Now button for clients */}
+            {role === "client" && invoice.stripe_payment_url && invoice.status !== "paid" && (
+              <Button asChild className="w-full sm:w-auto">
+                <a href={invoice.stripe_payment_url} target="_blank" rel="noopener noreferrer">
+                  Pay Now <ExternalLink className="ml-2 h-4 w-4" />
+                </a>
+              </Button>
             )}
           </CardContent>
         </Card>
@@ -325,7 +361,7 @@ export default function InvoiceDetail() {
           </Card>
         )}
 
-        {canEdit && (
+        {(canEdit || canManage) && (
           <Button onClick={handleSave} disabled={saving} className="w-full">
             {saving ? "Saving..." : "Save Changes"}
           </Button>

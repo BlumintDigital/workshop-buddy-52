@@ -111,7 +111,7 @@ export default function ClientJobs() {
         )}
 
         <Tabs value={filter} onValueChange={setFilter}>
-          <TabsList className="flex overflow-x-auto flex-nowrap">
+          <TabsList className="h-auto flex-wrap gap-1">
             <TabsTrigger value="all">All</TabsTrigger>
             <TabsTrigger value="pending">Pending</TabsTrigger>
             <TabsTrigger value="in_progress">In Progress</TabsTrigger>

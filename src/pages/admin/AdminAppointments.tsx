@@ -13,7 +13,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, MoreHorizontal, Briefcase, Download, FileText } from "lucide-react";
+import { Plus, MoreHorizontal, Briefcase, Download, FileText, Eye } from "lucide-react";
+import { Link } from "react-router-dom";
 import { DatePickerInput } from "@/components/ui/date-picker-input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { generateICS, downloadICS } from "@/lib/ical";
@@ -250,7 +251,9 @@ export default function AdminAppointments() {
                   <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No appointments</TableCell></TableRow>
                 ) : appointments.map((a) => (
                   <TableRow key={a.id}>
-                    <TableCell className="font-medium">{a.title}</TableCell>
+                    <TableCell className="font-medium">
+                      <Link to={`/appointments/${a.id}`} className="text-primary hover:underline">{a.title}</Link>
+                    </TableCell>
                     <TableCell>{a.client_name}</TableCell>
                     <TableCell>{a.appointment_date}</TableCell>
                     <TableCell className="hidden sm:table-cell">{a.appointment_time}</TableCell>
@@ -277,6 +280,10 @@ export default function AdminAppointments() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => navigate(`/appointments/${a.id}`)}>
+                            <Eye className="mr-2 h-4 w-4" />View Details
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
                           <DropdownMenuItem onClick={() => handleOpenCreateJob(a)}>
                             <Briefcase className="mr-2 h-4 w-4" />Create Job
                           </DropdownMenuItem>

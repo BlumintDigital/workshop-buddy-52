@@ -36,7 +36,7 @@ export default function StaffJobs() {
           <p className="text-muted-foreground">View all organisation jobs. You can only update jobs assigned to you.</p>
         </div>
         <Tabs value={filter} onValueChange={setFilter}>
-          <TabsList className="flex overflow-x-auto flex-nowrap">
+          <TabsList className="h-auto flex-wrap gap-1">
             <TabsTrigger value="mine">Assigned to Me</TabsTrigger>
             <TabsTrigger value="all">All Jobs</TabsTrigger>
             <TabsTrigger value="pending">Pending</TabsTrigger>

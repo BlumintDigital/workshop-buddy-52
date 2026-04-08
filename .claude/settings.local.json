@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node -e \"require\\('./node_modules/remotion/package.json'\\)\")",
+      "Bash(node -e \"require\\('./node_modules/@remotion/player/package.json'\\)\")"
+    ]
+  }
+}

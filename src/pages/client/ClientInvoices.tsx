@@ -19,7 +19,7 @@ export default function ClientInvoices() {
 
   useEffect(() => {
     if (!user) return;
-    supabase.from("invoices").select("*").eq("client_id", user.id).order("created_at", { ascending: false }).then(({ data }) => setInvoices(data || []));
+    supabase.from("invoices").select("*").eq("client_id", user.id).in("status", ["sent", "paid", "overdue"]).order("created_at", { ascending: false }).then(({ data }) => setInvoices(data || []));
   }, [user]);
 
   return (
