@@ -26,6 +26,8 @@ export default function Auth() {
   const [loginImageUrl, setLoginImageUrl] = useState<string | null>(null);
   const [workshopName, setWorkshopName] = useState<string>("Workshop Manager");
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [emailConfirmationSent, setEmailConfirmationSent] = useState(false);
+  const [confirmationEmail, setConfirmationEmail] = useState("");
 
   // MFA state
   const [mfaStep, setMfaStep] = useState(false);
