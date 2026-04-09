@@ -369,6 +369,7 @@ export default function AdminSettings() {
     }, 1500);
   };
 
+  const set = (key: keyof Settings, value: string | boolean) =>
     setSettings(prev => ({ ...prev, [key]: value }));
 
   if (loading) return <DashboardLayout><p className="p-8 text-muted-foreground">Loading...</p></DashboardLayout>;
