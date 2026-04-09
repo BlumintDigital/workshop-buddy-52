@@ -126,7 +126,8 @@ export default function Auth() {
     try {
       const fullName = `${signupFirstName.trim()} ${signupLastName.trim()}`;
       await signUp(signupEmail, signupPassword, fullName);
-      toast.success("Account created! Check your email to verify.");
+      setConfirmationEmail(signupEmail);
+      setEmailConfirmationSent(true);
     } catch (err: any) {
       toast.error(err.message || "Failed to create account");
     } finally {
