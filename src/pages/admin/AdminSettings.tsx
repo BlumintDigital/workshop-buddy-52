@@ -350,7 +350,25 @@ export default function AdminSettings() {
     toast.success(`Deleted ${total} records across ${Object.keys(deleted).length} tables`);
   };
 
-  const set = (key: keyof Settings, value: string | boolean) =>
+  const handleFactoryReset = async () => {
+    setResetting(true);
+    const { data, error } = await supabase.functions.invoke("delete-data", {
+      body: { reset_users: true },
+    });
+    setResetting(false);
+    setResetDialogOpen(false);
+    setResetConfirmText("");
+    if (error || data?.error) {
+      toast.error(data?.error || error?.message || "Factory reset failed");
+      return;
+    }
+    toast.success("Factory reset complete. Signing out...");
+    setTimeout(async () => {
+      await supabase.auth.signOut();
+      navigate("/auth");
+    }, 1500);
+  };
+
     setSettings(prev => ({ ...prev, [key]: value }));
 
   if (loading) return <DashboardLayout><p className="p-8 text-muted-foreground">Loading...</p></DashboardLayout>;
