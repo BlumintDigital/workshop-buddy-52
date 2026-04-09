@@ -34,7 +34,7 @@ export default function ReportIssue() {
     if (!user) return;
 
     setSubmitting(true);
-    const { error } = await supabase.from("bug_reports").insert({
+    const { error } = await (supabase.from("bug_reports" as any) as any).insert({
       user_id: user.id,
       title: title.trim(),
       description: description.trim(),
@@ -59,11 +59,12 @@ export default function ReportIssue() {
     // Send email to contact_email if configured and notifications are enabled
     const { data: settings } = await supabase
       .from("workshop_settings")
-      .select("contact_email, email_notifications_enabled")
+      .select("contact_email, email_notifications_enabled, super_admin_email")
       .eq("id", 1)
       .maybeSingle();
 
-    if ((settings as any)?.contact_email && (settings as any)?.email_notifications_enabled) {
+    const recipientEmail = (settings as any)?.super_admin_email || (settings as any)?.contact_email;
+    if (recipientEmail && (settings as any)?.email_notifications_enabled) {
       const { data: profile } = await supabase
         .from("profiles")
         .select("full_name")
@@ -74,7 +75,7 @@ export default function ReportIssue() {
       const feedbackLink = `${window.location.origin}/admin/feedback`;
 
       await sendEmail(
-        (settings as any).contact_email,
+        recipientEmail,
         `[${severity.toUpperCase()}] Issue Report: ${title.trim()}`,
         bugReportEmailHtml(submitterName, severity, title.trim(), description.trim(), pageUrl.trim(), feedbackLink),
       );

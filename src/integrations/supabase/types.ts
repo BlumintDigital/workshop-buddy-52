@@ -641,6 +641,7 @@ export type Database = {
           notify_low_inventory: boolean | null
           notify_new_appointment: boolean | null
           phone: string | null
+          super_admin_email: string | null
           workshop_name: string | null
         }
         Insert: {
@@ -659,6 +660,7 @@ export type Database = {
           notify_low_inventory?: boolean | null
           notify_new_appointment?: boolean | null
           phone?: string | null
+          super_admin_email?: string | null
           workshop_name?: string | null
         }
         Update: {
@@ -677,6 +679,7 @@ export type Database = {
           notify_low_inventory?: boolean | null
           notify_new_appointment?: boolean | null
           phone?: string | null
+          super_admin_email?: string | null
           workshop_name?: string | null
         }
         Relationships: []

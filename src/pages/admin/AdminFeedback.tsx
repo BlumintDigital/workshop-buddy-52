@@ -28,20 +28,20 @@ export default function AdminFeedback() {
   const { page, setPage } = usePagination();
 
   const fetchReports = async (currentPage = page) => {
-    const { data, count } = await supabase
-      .from("bug_reports")
+    const { data, count } = await (supabase
+      .from("bug_reports" as any)
       .select("*", { count: "exact" })
       .order("created_at", { ascending: false })
-      .range(currentPage * PAGE_SIZE, currentPage * PAGE_SIZE + PAGE_SIZE - 1);
+      .range(currentPage * PAGE_SIZE, currentPage * PAGE_SIZE + PAGE_SIZE - 1)) as any;
 
     setTotalCount(count ?? 0);
     if (!data) { setReports([]); return; }
 
     // Fetch submitter names
-    const userIds = [...new Set(data.map((r: any) => r.user_id).filter(Boolean))];
+    const userIds = [...new Set(data.map((r: any) => r.user_id).filter(Boolean))] as string[];
     let nameMap: Record<string, string> = {};
     if (userIds.length > 0) {
-      const { data: profiles } = await supabase.from("profiles").select("id, full_name").in("id", userIds);
+      const { data: profiles } = await supabase.from("profiles").select("id, full_name").in("id", userIds as string[]);
       if (profiles) profiles.forEach((p: any) => { nameMap[p.id] = p.full_name || "Unknown"; });
     }
 
@@ -51,7 +51,7 @@ export default function AdminFeedback() {
   useEffect(() => { fetchReports(page); }, [page]);
 
   const handleStatusChange = async (id: string, status: string) => {
-    const { error } = await supabase.from("bug_reports").update({ status }).eq("id", id);
+    const { error } = await (supabase.from("bug_reports" as any) as any).update({ status }).eq("id", id);
     if (error) { toast.error(error.message); return; }
     setReports(prev => prev.map(r => r.id === id ? { ...r, status } : r));
   };

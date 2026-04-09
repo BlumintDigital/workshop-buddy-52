@@ -120,12 +120,12 @@ export default function GoalsPage() {
     setWorkshopName((settingsData as any)?.workshop_name ?? "Workshop");
     setLogoUrl((settingsData as any)?.logo_url ?? null);
 
-    const { data: tasks } = await supabase
+    const { data: tasks } = await (supabase
       .from("job_tasks")
       .select("assigned_to, value, updated_at")
       .eq("status", "completed")
       .gte("updated_at", startOfMonth)
-      .gt("value" as any, 0);
+      .gt("value" as any, 0) as any);
 
     if (!tasks || tasks.length === 0) {
       setTotalCompleted(0);
