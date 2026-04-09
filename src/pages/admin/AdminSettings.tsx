@@ -65,8 +65,14 @@ export default function AdminSettings() {
   const [seeding, setSeeding] = useState(false);
   const [settingUpDemo, setSettingUpDemo] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [resetting, setResetting] = useState(false);
+  const [resetConfirmText, setResetConfirmText] = useState("");
+  const [resetDialogOpen, setResetDialogOpen] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const logoInputRef = useRef<HTMLInputElement>(null);
+  const navigate = useNavigate();
   const imageInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
 
