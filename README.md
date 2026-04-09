@@ -1,3 +1,3 @@
-# Welcome to your Lovable project
+# Workshop Buddy
 
-TODO: Document your project here
+A workshop management system for jobs, appointments, inventory, and invoices.
