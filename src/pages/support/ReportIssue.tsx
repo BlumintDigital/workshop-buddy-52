@@ -34,7 +34,7 @@ export default function ReportIssue() {
     if (!user) return;
 
     setSubmitting(true);
-    const { error } = await supabase.from("bug_reports").insert({
+    const { error } = await (supabase.from("bug_reports" as any) as any).insert({
       user_id: user.id,
       title: title.trim(),
       description: description.trim(),

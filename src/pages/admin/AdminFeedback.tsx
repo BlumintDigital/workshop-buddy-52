@@ -28,11 +28,11 @@ export default function AdminFeedback() {
   const { page, setPage } = usePagination();
 
   const fetchReports = async (currentPage = page) => {
-    const { data, count } = await supabase
-      .from("bug_reports")
+    const { data, count } = await (supabase
+      .from("bug_reports" as any)
       .select("*", { count: "exact" })
       .order("created_at", { ascending: false })
-      .range(currentPage * PAGE_SIZE, currentPage * PAGE_SIZE + PAGE_SIZE - 1);
+      .range(currentPage * PAGE_SIZE, currentPage * PAGE_SIZE + PAGE_SIZE - 1) as any;
 
     setTotalCount(count ?? 0);
     if (!data) { setReports([]); return; }
@@ -51,7 +51,7 @@ export default function AdminFeedback() {
   useEffect(() => { fetchReports(page); }, [page]);
 
   const handleStatusChange = async (id: string, status: string) => {
-    const { error } = await supabase.from("bug_reports").update({ status }).eq("id", id);
+    const { error } = await (supabase.from("bug_reports" as any) as any).update({ status }).eq("id", id);
     if (error) { toast.error(error.message); return; }
     setReports(prev => prev.map(r => r.id === id ? { ...r, status } : r));
   };
