@@ -57,14 +57,10 @@ export default function ReportIssue() {
     );
 
     // Send email to contact_email if configured and notifications are enabled
-    const { data: settings } = await supabase
-      .from("workshop_settings")
-      .select("contact_email, email_notifications_enabled, super_admin_email")
-      .eq("id", 1)
-      .maybeSingle();
+    const { data: emailConfig } = await (supabase.rpc as any)("get_email_notification_config").maybeSingle();
 
-    const recipientEmail = (settings as any)?.super_admin_email || (settings as any)?.contact_email;
-    if (recipientEmail && (settings as any)?.email_notifications_enabled) {
+    const recipientEmail = emailConfig?.recipient_email;
+    if (recipientEmail && emailConfig?.email_notifications_enabled) {
       const { data: profile } = await supabase
         .from("profiles")
         .select("full_name")
