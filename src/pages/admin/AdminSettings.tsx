@@ -18,7 +18,7 @@ import { Database, Trash2, Loader2, Upload, ImageIcon, X, Users, AlertTriangle }
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
-import { Database, Trash2, Loader2, Upload, ImageIcon, X, Users } from "lucide-react";
+
 
 const currencies = [
   { value: "USD", label: "USD — US Dollar" },
