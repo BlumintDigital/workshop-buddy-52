@@ -54,3 +54,24 @@ export function invoiceSentEmailHtml(invoiceNumber: string, total: number, curre
   <a href="${invoiceLink}" style="display:inline-block;background:#0f172a;color:#fff;padding:10px 22px;border-radius:6px;text-decoration:none;font-weight:500;font-size:14px;margin-top:16px">View invoice →</a>
 </div>`;
 }
+
+export function bugReportEmailHtml(
+  submitterName: string,
+  severity: string,
+  title: string,
+  description: string,
+  pageUrl: string,
+  feedbackLink: string,
+): string {
+  const severityColor = severity === "high" ? "#dc2626" : severity === "medium" ? "#d97706" : "#16a34a";
+  const severityBg = severity === "high" ? "#fef2f2" : severity === "medium" ? "#fffbeb" : "#f0fdf4";
+  return `<div style="font-family:system-ui,sans-serif;max-width:600px;margin:0 auto;padding:32px 24px;background:#fff">
+  <h2 style="font-size:20px;font-weight:700;margin:0 0 4px">New Issue Report</h2>
+  <p style="color:#888;font-size:13px;margin:0 0 20px">Submitted by <strong style="color:#333">${submitterName}</strong></p>
+  <span style="display:inline-block;background:${severityBg};color:${severityColor};border:1px solid ${severityColor}40;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:16px">${severity} severity</span>
+  <h3 style="font-size:16px;font-weight:600;margin:0 0 8px;color:#111">${title}</h3>
+  <p style="color:#555;margin:0 0 20px;white-space:pre-wrap;line-height:1.6">${description}</p>
+  ${pageUrl ? `<p style="color:#999;font-size:13px;margin:0 0 24px">📍 Reported on: <span style="color:#555">${pageUrl}</span></p>` : ""}
+  <a href="${feedbackLink}" style="display:inline-block;background:#0f172a;color:#fff;padding:10px 22px;border-radius:6px;text-decoration:none;font-weight:500;font-size:14px">View report →</a>
+</div>`;
+}

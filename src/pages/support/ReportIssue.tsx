@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { AlertCircle, CheckCircle2, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import { notifyRole } from "@/lib/notifications";
+import { sendEmail, bugReportEmailHtml } from "@/lib/email";
 
 export default function ReportIssue() {
   const { user } = useAuth();
@@ -47,13 +48,37 @@ export default function ReportIssue() {
       return;
     }
 
-    // Notify all admins
+    // Notify all admins in-app
     await notifyRole(
       "admin",
       "New Issue Report",
       `${severity.toUpperCase()} — ${title.trim()}`,
       "/admin/feedback"
     );
+
+    // Send email to contact_email if configured and notifications are enabled
+    const { data: settings } = await supabase
+      .from("workshop_settings")
+      .select("contact_email, email_notifications_enabled")
+      .eq("id", 1)
+      .maybeSingle();
+
+    if ((settings as any)?.contact_email && (settings as any)?.email_notifications_enabled) {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("full_name")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      const submitterName = profile?.full_name || user.email || "A user";
+      const feedbackLink = `${window.location.origin}/admin/feedback`;
+
+      await sendEmail(
+        (settings as any).contact_email,
+        `[${severity.toUpperCase()}] Issue Report: ${title.trim()}`,
+        bugReportEmailHtml(submitterName, severity, title.trim(), description.trim(), pageUrl.trim(), feedbackLink),
+      );
+    }
 
     setSubmitting(false);
     setSubmitted(true);
