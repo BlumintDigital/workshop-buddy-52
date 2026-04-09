@@ -402,31 +402,40 @@ export type Database = {
           assigned_to: string | null
           created_at: string
           description: string | null
+          due_date: string | null
           id: string
           job_id: string
+          order_index: number | null
           status: string
           title: string
           updated_at: string
+          value: number | null
         }
         Insert: {
           assigned_to?: string | null
           created_at?: string
           description?: string | null
+          due_date?: string | null
           id?: string
           job_id: string
+          order_index?: number | null
           status?: string
           title: string
           updated_at?: string
+          value?: number | null
         }
         Update: {
           assigned_to?: string | null
           created_at?: string
           description?: string | null
+          due_date?: string | null
           id?: string
           job_id?: string
+          order_index?: number | null
           status?: string
           title?: string
           updated_at?: string
+          value?: number | null
         }
         Relationships: [
           {
@@ -627,6 +636,7 @@ export type Database = {
           instance_version: string | null
           login_image_url: string | null
           logo_url: string | null
+          monthly_goal: number | null
           notify_job_status: boolean | null
           notify_low_inventory: boolean | null
           notify_new_appointment: boolean | null
@@ -644,6 +654,7 @@ export type Database = {
           instance_version?: string | null
           login_image_url?: string | null
           logo_url?: string | null
+          monthly_goal?: number | null
           notify_job_status?: boolean | null
           notify_low_inventory?: boolean | null
           notify_new_appointment?: boolean | null
@@ -661,6 +672,7 @@ export type Database = {
           instance_version?: string | null
           login_image_url?: string | null
           logo_url?: string | null
+          monthly_goal?: number | null
           notify_job_status?: boolean | null
           notify_low_inventory?: boolean | null
           notify_new_appointment?: boolean | null
