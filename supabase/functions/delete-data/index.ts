@@ -56,32 +56,115 @@ serve(async (req) => {
       });
     }
 
+    // Parse request body for optional reset_users flag
+    let resetUsers = false;
+    try {
+      const body = await req.json();
+      resetUsers = body?.reset_users === true;
+    } catch {
+      // No body or invalid JSON — default to false
+    }
+
     // Delete in reverse dependency order
     const tables = [
       "inventory_transactions",
       "invoice_items",
       "invoices",
+      "job_task_notes",
+      "job_attachments",
+      "job_ratings",
       "job_updates",
       "job_tasks",
       "jobs",
       "appointments",
       "inventory_items",
       "notifications",
+      "bug_reports",
     ];
 
     const deleted: Record<string, number> = {};
 
     for (const table of tables) {
-      // Select count first, then delete all
       const { data: rows } = await adminClient.from(table).select("id");
       const count = rows?.length || 0;
 
       if (count > 0) {
-        // Delete all rows - use neq on id with impossible value to match all
         await adminClient.from(table).delete().neq("id", "00000000-0000-0000-0000-000000000000");
       }
 
       deleted[table] = count;
+    }
+
+    // If factory reset requested, also delete users, roles, profiles, activity logs, and reset settings
+    if (resetUsers) {
+      // Clear activity logs
+      const { data: logRows } = await adminClient.from("activity_logs").select("id");
+      deleted["activity_logs"] = logRows?.length || 0;
+      if (deleted["activity_logs"] > 0) {
+        await adminClient.from("activity_logs").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+      }
+
+      // Delete user_roles except caller's
+      const { data: roleRows } = await adminClient
+        .from("user_roles")
+        .select("id, user_id")
+        .neq("user_id", callerId);
+      deleted["user_roles"] = roleRows?.length || 0;
+      if (deleted["user_roles"] > 0) {
+        await adminClient.from("user_roles").delete().neq("user_id", callerId);
+      }
+
+      // Delete profiles except caller's
+      const { data: profileRows } = await adminClient
+        .from("profiles")
+        .select("id")
+        .neq("id", callerId);
+      deleted["profiles"] = profileRows?.length || 0;
+      if (deleted["profiles"] > 0) {
+        await adminClient.from("profiles").delete().neq("id", callerId);
+      }
+
+      // Delete auth users except caller
+      let deletedUsers = 0;
+      let page = 1;
+      const perPage = 100;
+      while (true) {
+        const { data: userList, error: listErr } = await adminClient.auth.admin.listUsers({
+          page,
+          perPage,
+        });
+        if (listErr || !userList?.users?.length) break;
+
+        for (const user of userList.users) {
+          if (user.id !== callerId) {
+            await adminClient.auth.admin.deleteUser(user.id);
+            deletedUsers++;
+          }
+        }
+
+        if (userList.users.length < perPage) break;
+        page++;
+      }
+      deleted["auth_users"] = deletedUsers;
+
+      // Reset workshop_settings to defaults (keep the row)
+      await adminClient.from("workshop_settings").update({
+        workshop_name: null,
+        contact_email: null,
+        phone: null,
+        address: null,
+        default_tax_rate: 0,
+        monthly_goal: null,
+        currency: "USD",
+        notify_job_status: true,
+        notify_new_appointment: true,
+        notify_low_inventory: true,
+        email_notifications_enabled: false,
+        from_email: null,
+        super_admin_email: null,
+        login_image_url: null,
+        logo_url: null,
+      }).eq("id", 1);
     }
 
     return new Response(JSON.stringify({ success: true, deleted }), {
