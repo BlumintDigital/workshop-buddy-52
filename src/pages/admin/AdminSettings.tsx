@@ -527,7 +527,7 @@ export default function AdminSettings() {
                   <p className="text-xs text-muted-foreground mt-1">Must be a verified sender domain in Resend</p>
                 </div>
                 <div>
-                  <Label htmlFor="super_admin_email">Super Admin Email</Label>
+                  <Label htmlFor="super_admin_email">Platform Support Email</Label>
                   <Input id="super_admin_email" type="email" value={settings.super_admin_email} onChange={(e) => set("super_admin_email", e.target.value)} placeholder="admin@example.com" className="mt-1" />
                   <p className="text-xs text-muted-foreground mt-1">Issue reports from users will be sent to this address</p>
                 </div>
