@@ -14,7 +14,14 @@ import {
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { Database, Trash2, Loader2, Upload, ImageIcon, X, Users, AlertTriangle } from "lucide-react";
+import { Database, Trash2, Loader2, Upload, ImageIcon, X, Users, AlertTriangle, Copy, Check, Mail } from "lucide-react";
+import {
+  authConfirmSignupEmailHtml,
+  authResetPasswordEmailHtml,
+  authMagicLinkEmailHtml,
+  authChangeEmailEmailHtml,
+  authInviteUserEmailHtml,
+} from "@/lib/email";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
@@ -70,9 +77,18 @@ export default function AdminSettings() {
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [copiedTemplate, setCopiedTemplate] = useState<string | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
+
+  const copyTemplate = (key: string, html: string) => {
+    navigator.clipboard.writeText(html).then(() => {
+      setCopiedTemplate(key);
+      toast.success("Copied! Paste into Supabase Dashboard → Auth → Email Templates");
+      setTimeout(() => setCopiedTemplate(null), 2500);
+    });
+  };
 
   useEffect(() => {
     supabase
@@ -570,6 +586,89 @@ export default function AdminSettings() {
                   <li>Run: <code className="bg-muted px-1 rounded">supabase functions deploy send-email</code></li>
                   <li>Enable the toggle above and set your from address, then save</li>
                 </ol>
+              </CardContent>
+            </Card>
+
+            {/* Auth Email Templates */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2"><Mail className="h-5 w-5" />Auth Email Templates</CardTitle>
+                <CardDescription>
+                  Replace Supabase's default auth emails with your branded templates. Copy each template and paste it into your Supabase Dashboard.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="rounded-lg border bg-muted/40 p-4 space-y-2">
+                  <p className="text-sm font-medium">How to apply these templates</p>
+                  <ol className="text-xs text-muted-foreground space-y-1 list-decimal list-inside">
+                    <li>Click <strong>Copy HTML</strong> on the template you want to update</li>
+                    <li>Go to <strong>Supabase Dashboard → Authentication → Email Templates</strong></li>
+                    <li>Select the matching template type, paste the HTML, and save</li>
+                    <li>Repeat for each template — future emails will use your branding</li>
+                  </ol>
+                </div>
+
+                {(
+                  [
+                    {
+                      key: "confirm_signup",
+                      label: "Confirm Signup",
+                      description: "Sent when a new user registers an account",
+                      html: authConfirmSignupEmailHtml(settings.workshop_name || "Workshop Manager", settings.logo_url || null),
+                    },
+                    {
+                      key: "recovery",
+                      label: "Reset Password",
+                      description: "Sent when a user requests a password reset",
+                      html: authResetPasswordEmailHtml(settings.workshop_name || "Workshop Manager", settings.logo_url || null),
+                    },
+                    {
+                      key: "magic_link",
+                      label: "Magic Link",
+                      description: "Sent when a user requests a magic sign-in link",
+                      html: authMagicLinkEmailHtml(settings.workshop_name || "Workshop Manager", settings.logo_url || null),
+                    },
+                    {
+                      key: "email_change",
+                      label: "Change Email",
+                      description: "Sent to confirm a new email address",
+                      html: authChangeEmailEmailHtml(settings.workshop_name || "Workshop Manager", settings.logo_url || null),
+                    },
+                    {
+                      key: "invite",
+                      label: "Invite User",
+                      description: "Sent when an admin invites a new user",
+                      html: authInviteUserEmailHtml(settings.workshop_name || "Workshop Manager", settings.logo_url || null),
+                    },
+                  ] as { key: string; label: string; description: string; html: string }[]
+                ).map(({ key, label, description, html }) => (
+                  <div key={key} className="rounded-lg border overflow-hidden">
+                    <div className="flex items-center justify-between gap-4 px-4 py-3 bg-muted/30">
+                      <div>
+                        <p className="text-sm font-medium">{label}</p>
+                        <p className="text-xs text-muted-foreground">{description}</p>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="shrink-0"
+                        onClick={() => copyTemplate(key, html)}
+                      >
+                        {copiedTemplate === key ? (
+                          <><Check className="h-3.5 w-3.5 mr-1.5 text-emerald-500" />Copied!</>
+                        ) : (
+                          <><Copy className="h-3.5 w-3.5 mr-1.5" />Copy HTML</>
+                        )}
+                      </Button>
+                    </div>
+                    <div className="relative overflow-hidden bg-slate-50" style={{ height: 220 }}>
+                      <div
+                        style={{ transform: "scale(0.55)", transformOrigin: "top left", width: "182%", pointerEvents: "none" }}
+                        dangerouslySetInnerHTML={{ __html: html }}
+                      />
+                    </div>
+                  </div>
+                ))}
               </CardContent>
             </Card>
           </TabsContent>

@@ -55,6 +55,98 @@ export function invoiceSentEmailHtml(invoiceNumber: string, total: number, curre
 </div>`;
 }
 
+// ── Auth email templates (for Supabase Dashboard → Auth → Email Templates) ──
+// These are static HTML strings with Supabase template variables preserved as
+// literal text (e.g. {{ .ConfirmationURL }}). Supabase substitutes them at send time.
+
+function authEmailWrapper(
+  workshopName: string,
+  logoUrl: string | null,
+  headline: string,
+  body: string,
+  ctaLabel: string,
+  ctaUrl: string,
+  footerNote: string,
+): string {
+  const logoBlock = logoUrl
+    ? `<img src="${logoUrl}" alt="${workshopName}" style="height:64px;width:64px;border-radius:12px;object-fit:contain;display:block;margin:0 auto 12px" />`
+    : `<div style="height:64px;width:64px;border-radius:12px;background:#0f172a;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;font-size:28px;line-height:64px;text-align:center">🔧</div>`;
+  return `<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f1f5f9">
+<div style="font-family:system-ui,-apple-system,sans-serif;max-width:600px;margin:40px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.08)">
+  <div style="background:#0f172a;padding:28px 32px;text-align:center">
+    ${logoBlock}
+    <h1 style="color:#fff;font-size:20px;font-weight:700;margin:0;letter-spacing:-.01em">${workshopName}</h1>
+  </div>
+  <div style="padding:36px 32px">
+    <h2 style="font-size:22px;font-weight:700;color:#0f172a;margin:0 0 12px">${headline}</h2>
+    <p style="color:#555;font-size:15px;line-height:1.6;margin:0 0 28px">${body}</p>
+    <a href="${ctaUrl}" style="display:inline-block;background:#0f172a;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:600;font-size:15px">${ctaLabel}</a>
+    <p style="color:#999;font-size:12px;margin:28px 0 0;line-height:1.5">${footerNote}</p>
+  </div>
+  <div style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:16px 32px;text-align:center">
+    <p style="color:#94a3b8;font-size:12px;margin:0">&copy; ${new Date().getFullYear()} ${workshopName}. All rights reserved.</p>
+  </div>
+</div>
+</body></html>`;
+}
+
+export function authConfirmSignupEmailHtml(workshopName: string, logoUrl: string | null): string {
+  return authEmailWrapper(
+    workshopName, logoUrl,
+    "Verify your email address",
+    "Thanks for signing up! Click the button below to confirm your email address and activate your account.",
+    "Confirm Email →",
+    "{{ .ConfirmationURL }}",
+    "If you didn't create an account with " + workshopName + ", you can safely ignore this email.",
+  );
+}
+
+export function authResetPasswordEmailHtml(workshopName: string, logoUrl: string | null): string {
+  return authEmailWrapper(
+    workshopName, logoUrl,
+    "Reset your password",
+    "We received a request to reset the password for your account. Click the button below to choose a new password. This link expires in 1 hour.",
+    "Reset Password →",
+    "{{ .ConfirmationURL }}",
+    "If you didn't request a password reset, you can safely ignore this email. Your password will not be changed.",
+  );
+}
+
+export function authMagicLinkEmailHtml(workshopName: string, logoUrl: string | null): string {
+  return authEmailWrapper(
+    workshopName, logoUrl,
+    "Your sign-in link",
+    "Click the button below to sign in to your account. This link is valid for 1 hour and can only be used once.",
+    "Sign In →",
+    "{{ .ConfirmationURL }}",
+    "If you didn't request this link, you can safely ignore this email.",
+  );
+}
+
+export function authChangeEmailEmailHtml(workshopName: string, logoUrl: string | null): string {
+  return authEmailWrapper(
+    workshopName, logoUrl,
+    "Confirm your new email address",
+    "We received a request to change the email address on your account. Click the button below to confirm your new email address.",
+    "Confirm New Email →",
+    "{{ .ConfirmationURL }}",
+    "If you didn't request an email change, please contact support immediately.",
+  );
+}
+
+export function authInviteUserEmailHtml(workshopName: string, logoUrl: string | null): string {
+  return authEmailWrapper(
+    workshopName, logoUrl,
+    "You've been invited",
+    `You've been invited to join <strong>${workshopName}</strong>. Click the button below to set up your account and get started.`,
+    "Accept Invitation →",
+    "{{ .InvitationURL }}",
+    "If you weren't expecting an invitation, you can safely ignore this email.",
+  );
+}
+
 export function bugReportEmailHtml(
   submitterName: string,
   severity: string,
