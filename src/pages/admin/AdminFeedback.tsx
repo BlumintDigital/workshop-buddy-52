@@ -32,7 +32,7 @@ export default function AdminFeedback() {
       .from("bug_reports" as any)
       .select("*", { count: "exact" })
       .order("created_at", { ascending: false })
-      .range(currentPage * PAGE_SIZE, currentPage * PAGE_SIZE + PAGE_SIZE - 1) as any;
+      .range(currentPage * PAGE_SIZE, currentPage * PAGE_SIZE + PAGE_SIZE - 1)) as any;
 
     setTotalCount(count ?? 0);
     if (!data) { setReports([]); return; }
