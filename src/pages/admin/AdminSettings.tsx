@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,7 +14,11 @@ import {
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { Database, Trash2, Loader2, Upload, ImageIcon, X, Users } from "lucide-react";
+import { Database, Trash2, Loader2, Upload, ImageIcon, X, Users, AlertTriangle } from "lucide-react";
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
+} from "@/components/ui/dialog";
+
 
 const currencies = [
   { value: "USD", label: "USD — US Dollar" },
@@ -60,10 +65,14 @@ export default function AdminSettings() {
   const [seeding, setSeeding] = useState(false);
   const [settingUpDemo, setSettingUpDemo] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [resetting, setResetting] = useState(false);
+  const [resetConfirmText, setResetConfirmText] = useState("");
+  const [resetDialogOpen, setResetDialogOpen] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     supabase
@@ -341,6 +350,25 @@ export default function AdminSettings() {
     toast.success(`Deleted ${total} records across ${Object.keys(deleted).length} tables`);
   };
 
+  const handleFactoryReset = async () => {
+    setResetting(true);
+    const { data, error } = await supabase.functions.invoke("delete-data", {
+      body: { reset_users: true },
+    });
+    setResetting(false);
+    setResetDialogOpen(false);
+    setResetConfirmText("");
+    if (error || data?.error) {
+      toast.error(data?.error || error?.message || "Factory reset failed");
+      return;
+    }
+    toast.success("Factory reset complete. Signing out...");
+    setTimeout(async () => {
+      await supabase.auth.signOut();
+      navigate("/auth");
+    }, 1500);
+  };
+
   const set = (key: keyof Settings, value: string | boolean) =>
     setSettings(prev => ({ ...prev, [key]: value }));
 
@@ -597,6 +625,40 @@ export default function AdminSettings() {
                   </AlertDialogContent>
                 </AlertDialog>
                 <p className="text-xs text-muted-foreground mt-2">This action is irreversible.</p>
+              </CardContent>
+            </Card>
+            <Card className="border-destructive bg-destructive/5">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-destructive"><AlertTriangle className="h-5 w-5" />Factory Reset</CardTitle>
+                <CardDescription>Completely wipe this environment — deletes <strong>all data AND all user accounts</strong> except yours. Use this to start fresh.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Dialog open={resetDialogOpen} onOpenChange={(open) => { setResetDialogOpen(open); if (!open) setResetConfirmText(""); }}>
+                  <DialogTrigger asChild>
+                    <Button variant="destructive" disabled={resetting}>
+                      {resetting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Resetting...</> : <><AlertTriangle className="mr-2 h-4 w-4" />Factory Reset</>}
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle className="text-destructive">⚠️ Factory Reset</DialogTitle>
+                      <DialogDescription>
+                        This will permanently delete <strong>all business data</strong>, <strong>all user accounts</strong> (except yours), <strong>all activity logs</strong>, and <strong>reset all settings to defaults</strong>. This action cannot be undone.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-2">
+                      <Label>Type <span className="font-mono font-bold">RESET</span> to confirm</Label>
+                      <Input value={resetConfirmText} onChange={(e) => setResetConfirmText(e.target.value)} placeholder="RESET" />
+                    </div>
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => { setResetDialogOpen(false); setResetConfirmText(""); }}>Cancel</Button>
+                      <Button variant="destructive" disabled={resetConfirmText !== "RESET" || resetting} onClick={handleFactoryReset}>
+                        {resetting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Resetting...</> : "Confirm Factory Reset"}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+                <p className="text-xs text-muted-foreground mt-2">Your admin account will be preserved. Everything else will be deleted.</p>
               </CardContent>
             </Card>
           </TabsContent>
