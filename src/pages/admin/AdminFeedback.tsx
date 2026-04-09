@@ -38,10 +38,10 @@ export default function AdminFeedback() {
     if (!data) { setReports([]); return; }
 
     // Fetch submitter names
-    const userIds = [...new Set(data.map((r: any) => r.user_id).filter(Boolean))];
+    const userIds = [...new Set(data.map((r: any) => r.user_id).filter(Boolean))] as string[];
     let nameMap: Record<string, string> = {};
     if (userIds.length > 0) {
-      const { data: profiles } = await supabase.from("profiles").select("id, full_name").in("id", userIds);
+      const { data: profiles } = await supabase.from("profiles").select("id, full_name").in("id", userIds as string[]);
       if (profiles) profiles.forEach((p: any) => { nameMap[p.id] = p.full_name || "Unknown"; });
     }
 
