@@ -73,8 +73,6 @@ export default function AdminSettings() {
   const imageInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
-  const imageInputRef = useRef<HTMLInputElement>(null);
-  const logoInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     supabase
