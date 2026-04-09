@@ -57,9 +57,12 @@ export default function ReportIssue() {
     );
 
     // Send email to contact_email if configured and notifications are enabled
-    const { data: emailConfig } = await (supabase.rpc as any)("get_email_notification_config").maybeSingle();
+    const { data: emailConfig, error: rpcError } = await (supabase.rpc as any)("get_email_notification_config").maybeSingle();
+    console.log("[ReportIssue] emailConfig:", emailConfig, "rpcError:", rpcError);
 
     const recipientEmail = emailConfig?.recipient_email;
+    console.log("[ReportIssue] recipientEmail:", recipientEmail, "notifications enabled:", emailConfig?.email_notifications_enabled);
+
     if (recipientEmail && emailConfig?.email_notifications_enabled) {
       const { data: profile } = await supabase
         .from("profiles")
@@ -70,11 +73,15 @@ export default function ReportIssue() {
       const submitterName = profile?.full_name || user.email || "A user";
       const feedbackLink = `${window.location.origin}/admin/feedback`;
 
-      await sendEmail(
-        recipientEmail,
-        `[${severity.toUpperCase()}] Issue Report: ${title.trim()}`,
-        bugReportEmailHtml(submitterName, severity, title.trim(), description.trim(), pageUrl.trim(), feedbackLink),
-      );
+      console.log("[ReportIssue] calling sendEmail to:", recipientEmail);
+      const { data: fnData, error: fnError } = await supabase.functions.invoke("send-email", {
+        body: {
+          to: recipientEmail,
+          subject: `[${severity.toUpperCase()}] Issue Report: ${title.trim()}`,
+          html: bugReportEmailHtml(submitterName, severity, title.trim(), description.trim(), pageUrl.trim(), feedbackLink),
+        },
+      });
+      console.log("[ReportIssue] send-email result:", fnData, "error:", fnError);
     }
 
     setSubmitting(false);
