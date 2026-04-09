@@ -446,7 +446,6 @@ export default function JobDetail() {
           title: "Your task is ready to start",
           message: `"${completedTask?.title}" is done. Your task "${nextTask.title}" on job "${job?.title}" is next.`,
           link: `/jobs/${id}`,
-          role: "staff",
         }]);
       }
     }

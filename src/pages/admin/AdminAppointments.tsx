@@ -165,6 +165,8 @@ export default function AdminAppointments() {
       description: appt.notes || "",
       priority: "medium",
       assigned_staff_id: "",
+      due_date: "",
+      isQuote: false,
     });
   };
 

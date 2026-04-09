@@ -46,6 +46,7 @@ const defaultSettings = {
   notify_low_inventory: true,
   email_notifications_enabled: false,
   from_email: "",
+  super_admin_email: "",
   login_image_url: "",
   logo_url: "",
 };
@@ -85,6 +86,7 @@ export default function AdminSettings() {
             notify_low_inventory: data.notify_low_inventory ?? true,
             email_notifications_enabled: (data as any).email_notifications_enabled ?? false,
             from_email: (data as any).from_email ?? "",
+            super_admin_email: (data as any).super_admin_email ?? "",
             login_image_url: (data as any).login_image_url ?? "",
             logo_url: (data as any).logo_url ?? "",
           });
@@ -109,6 +111,7 @@ export default function AdminSettings() {
       notify_low_inventory: settings.notify_low_inventory,
       email_notifications_enabled: settings.email_notifications_enabled,
       from_email: settings.from_email || null,
+      super_admin_email: settings.super_admin_email || null,
       login_image_url: settings.login_image_url || null,
       logo_url: settings.logo_url || null,
     });
@@ -522,6 +525,11 @@ export default function AdminSettings() {
                   <Label htmlFor="from_email">From Email Address</Label>
                   <Input id="from_email" type="email" value={settings.from_email} onChange={(e) => set("from_email", e.target.value)} placeholder="noreply@yourworkshop.com" className="mt-1" disabled={!settings.email_notifications_enabled} />
                   <p className="text-xs text-muted-foreground mt-1">Must be a verified sender domain in Resend</p>
+                </div>
+                <div>
+                  <Label htmlFor="super_admin_email">Super Admin Email</Label>
+                  <Input id="super_admin_email" type="email" value={settings.super_admin_email} onChange={(e) => set("super_admin_email", e.target.value)} placeholder="admin@example.com" className="mt-1" />
+                  <p className="text-xs text-muted-foreground mt-1">Issue reports from users will be sent to this address</p>
                 </div>
               </CardContent>
             </Card>
