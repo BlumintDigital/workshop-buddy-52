@@ -135,6 +135,63 @@ export default function Auth() {
     }
   };
 
+  // Email confirmation screen
+  if (emailConfirmationSent) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background p-6">
+        <div className="w-full max-w-md space-y-6">
+          <div className="flex flex-col items-center gap-2">
+            {logoUrl ? (
+              <img src={logoUrl} alt={workshopName} className="h-16 w-16 rounded-lg object-contain" />
+            ) : (
+              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+                <Wrench className="h-6 w-6" />
+              </div>
+            )}
+            <h1 className="text-2xl font-bold tracking-tight">Check your email</h1>
+            <p className="text-sm text-muted-foreground text-center">
+              We've sent a confirmation link to
+            </p>
+            <p className="text-sm font-medium">{confirmationEmail}</p>
+          </div>
+          <Card>
+            <CardContent className="pt-6 space-y-4">
+              <p className="text-sm text-muted-foreground text-center">
+                Click the link in the email to verify your account and sign in. If you don't see it, check your spam folder.
+              </p>
+              <div className="flex flex-col gap-2">
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={async () => {
+                    try {
+                      await supabase.auth.resend({ type: "signup", email: confirmationEmail });
+                      toast.success("Confirmation email resent!");
+                    } catch {
+                      toast.error("Failed to resend email");
+                    }
+                  }}
+                >
+                  Resend confirmation email
+                </Button>
+                <Button
+                  variant="ghost"
+                  className="w-full"
+                  onClick={() => {
+                    setEmailConfirmationSent(false);
+                    setConfirmationEmail("");
+                  }}
+                >
+                  Back to sign in
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
   // MFA verification screen
   if (mfaStep) {
     return (
