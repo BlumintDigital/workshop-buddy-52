@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -5,6 +6,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/hooks/useAuth";
 import ProtectedRoute from "@/components/ProtectedRoute";
+
+// Always-loaded: auth pages are the entry point
 import Auth from "@/pages/Auth";
 import ForgotPassword from "@/pages/ForgotPassword";
 import ResetPassword from "@/pages/ResetPassword";
@@ -12,51 +15,51 @@ import Demo from "@/pages/Demo";
 import NotFound from "./pages/NotFound.tsx";
 
 // Admin pages
-import AdminDashboard from "@/pages/admin/AdminDashboard";
-import AdminJobs from "@/pages/admin/AdminJobs";
-import AdminAppointments from "@/pages/admin/AdminAppointments";
-import AdminInventory from "@/pages/admin/AdminInventory";
-import AdminInvoices from "@/pages/admin/AdminInvoices";
-import AdminReports from "@/pages/admin/AdminReports";
-import AdminUsers from "@/pages/admin/AdminUsers";
-import AdminUserDetail from "@/pages/admin/AdminUserDetail";
-import AdminClients from "@/pages/admin/AdminClients";
-import AdminCalendar from "@/pages/admin/AdminCalendar";
-import AdminSettings from "@/pages/admin/AdminSettings";
-import AdminActivityLogs from "@/pages/admin/AdminActivityLogs";
+const AdminDashboard = lazy(() => import("@/pages/admin/AdminDashboard"));
+const AdminJobs = lazy(() => import("@/pages/admin/AdminJobs"));
+const AdminAppointments = lazy(() => import("@/pages/admin/AdminAppointments"));
+const AdminInventory = lazy(() => import("@/pages/admin/AdminInventory"));
+const AdminInvoices = lazy(() => import("@/pages/admin/AdminInvoices"));
+const AdminReports = lazy(() => import("@/pages/admin/AdminReports"));
+const AdminUsers = lazy(() => import("@/pages/admin/AdminUsers"));
+const AdminUserDetail = lazy(() => import("@/pages/admin/AdminUserDetail"));
+const AdminClients = lazy(() => import("@/pages/admin/AdminClients"));
+const AdminCalendar = lazy(() => import("@/pages/admin/AdminCalendar"));
+const AdminSettings = lazy(() => import("@/pages/admin/AdminSettings"));
+const AdminActivityLogs = lazy(() => import("@/pages/admin/AdminActivityLogs"));
+const AdminFeedback = lazy(() => import("@/pages/admin/AdminFeedback"));
 
 // Manager pages
-import ManagerDashboard from "@/pages/manager/ManagerDashboard";
-import ManagerJobs from "@/pages/manager/ManagerJobs";
-import ManagerAppointments from "@/pages/manager/ManagerAppointments";
-import ManagerInventory from "@/pages/manager/ManagerInventory";
-import ManagerInvoices from "@/pages/manager/ManagerInvoices";
-import ManagerStaff from "@/pages/manager/ManagerStaff";
-import ManagerUserDetail from "@/pages/manager/ManagerUserDetail";
-import ManagerCalendar from "@/pages/manager/ManagerCalendar";
+const ManagerDashboard = lazy(() => import("@/pages/manager/ManagerDashboard"));
+const ManagerJobs = lazy(() => import("@/pages/manager/ManagerJobs"));
+const ManagerAppointments = lazy(() => import("@/pages/manager/ManagerAppointments"));
+const ManagerInventory = lazy(() => import("@/pages/manager/ManagerInventory"));
+const ManagerInvoices = lazy(() => import("@/pages/manager/ManagerInvoices"));
+const ManagerStaff = lazy(() => import("@/pages/manager/ManagerStaff"));
+const ManagerUserDetail = lazy(() => import("@/pages/manager/ManagerUserDetail"));
+const ManagerCalendar = lazy(() => import("@/pages/manager/ManagerCalendar"));
 
 // Staff pages
-import StaffDashboard from "@/pages/staff/StaffDashboard";
-import StaffJobs from "@/pages/staff/StaffJobs";
-import StaffKanban from "@/pages/staff/StaffKanban";
-import StaffSchedule from "@/pages/staff/StaffSchedule";
-import StaffInventory from "@/pages/staff/StaffInventory";
+const StaffDashboard = lazy(() => import("@/pages/staff/StaffDashboard"));
+const StaffJobs = lazy(() => import("@/pages/staff/StaffJobs"));
+const StaffKanban = lazy(() => import("@/pages/staff/StaffKanban"));
+const StaffSchedule = lazy(() => import("@/pages/staff/StaffSchedule"));
+const StaffInventory = lazy(() => import("@/pages/staff/StaffInventory"));
 
 // Client pages
-import ClientDashboard from "@/pages/client/ClientDashboard";
-import ClientJobs from "@/pages/client/ClientJobs";
-import ClientAppointments from "@/pages/client/ClientAppointments";
-import ClientInvoices from "@/pages/client/ClientInvoices";
+const ClientDashboard = lazy(() => import("@/pages/client/ClientDashboard"));
+const ClientJobs = lazy(() => import("@/pages/client/ClientJobs"));
+const ClientAppointments = lazy(() => import("@/pages/client/ClientAppointments"));
+const ClientInvoices = lazy(() => import("@/pages/client/ClientInvoices"));
 
 // Shared pages
-import JobDetail from "@/pages/jobs/JobDetail";
-import InvoiceCreate from "@/pages/invoices/InvoiceCreate";
-import InvoiceDetail from "@/pages/invoices/InvoiceDetail";
-import UserProfile from "@/pages/profile/UserProfile";
-import GoalsPage from "@/pages/goals/GoalsPage";
-import AppointmentDetail from "@/pages/appointments/AppointmentDetail";
-import ReportIssue from "@/pages/support/ReportIssue";
-import AdminFeedback from "@/pages/admin/AdminFeedback";
+const JobDetail = lazy(() => import("@/pages/jobs/JobDetail"));
+const InvoiceCreate = lazy(() => import("@/pages/invoices/InvoiceCreate"));
+const InvoiceDetail = lazy(() => import("@/pages/invoices/InvoiceDetail"));
+const UserProfile = lazy(() => import("@/pages/profile/UserProfile"));
+const GoalsPage = lazy(() => import("@/pages/goals/GoalsPage"));
+const AppointmentDetail = lazy(() => import("@/pages/appointments/AppointmentDetail"));
+const ReportIssue = lazy(() => import("@/pages/support/ReportIssue"));
 
 const queryClient = new QueryClient();
 
@@ -67,6 +70,7 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
+          <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="h-8 w-8 rounded-full border-4 border-primary border-t-transparent animate-spin" /></div>}>
           <Routes>
             <Route path="/" element={<Navigate to="/auth" replace />} />
             <Route path="/auth" element={<Auth />} />
@@ -123,6 +127,7 @@ const App = () => (
 
             <Route path="*" element={<NotFound />} />
           </Routes>
+          </Suspense>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>

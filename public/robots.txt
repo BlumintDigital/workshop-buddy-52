@@ -1,14 +1,22 @@
 User-agent: Googlebot
-Allow: /
+Allow: /auth
+Allow: /forgot-password
+Disallow: /
 
 User-agent: Bingbot
-Allow: /
+Allow: /auth
+Allow: /forgot-password
+Disallow: /
 
 User-agent: Twitterbot
-Allow: /
+Allow: /auth
+Disallow: /
 
 User-agent: facebookexternalhit
-Allow: /
+Allow: /auth
+Disallow: /
 
 User-agent: *
-Allow: /
+Allow: /auth
+Allow: /forgot-password
+Disallow: /

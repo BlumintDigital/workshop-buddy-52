@@ -1,7 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Origin": Deno.env.get("ALLOWED_ORIGIN") ?? "https://ieq.shoplane.uk",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type",
 };
@@ -150,9 +150,18 @@ Deno.serve(async (req) => {
         if (req.method !== "POST") return err("POST required", 405);
         const { user_id, is_active } = await req.json();
         if (!user_id || typeof is_active !== "boolean") return err("user_id and is_active required");
-        const { error } = await supabase
+
+        // Update profile flag
+        const { error: profileErr } = await supabase
           .from("profiles").update({ is_active }).eq("id", user_id);
-        if (error) return err(error.message, 500);
+        if (profileErr) return err(profileErr.message, 500);
+
+        // Enforce via Supabase Auth ban so deactivated users cannot log in
+        const { error: authErr } = await supabase.auth.admin.updateUserById(user_id, {
+          ban_duration: is_active ? "none" : "876600h", // "none" lifts ban; large value = permanent
+        });
+        if (authErr) return err(authErr.message, 500);
+
         return json({ success: true });
       }
 

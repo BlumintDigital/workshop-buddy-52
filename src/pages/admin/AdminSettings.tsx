@@ -662,9 +662,11 @@ export default function AdminSettings() {
                       </Button>
                     </div>
                     <div className="relative overflow-hidden bg-slate-50" style={{ height: 220 }}>
-                      <div
-                        style={{ transform: "scale(0.55)", transformOrigin: "top left", width: "182%", pointerEvents: "none" }}
-                        dangerouslySetInnerHTML={{ __html: html }}
+                      <iframe
+                        srcDoc={html}
+                        sandbox=""
+                        style={{ transform: "scale(0.55)", transformOrigin: "top left", width: "182%", height: "400px", border: "none", pointerEvents: "none" }}
+                        title={`Preview: ${label}`}
                       />
                     </div>
                   </div>

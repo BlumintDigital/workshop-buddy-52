@@ -75,9 +75,6 @@ export default function Demo() {
           <p className="text-muted-foreground text-lg">
             Choose a role to explore the app. Each role has a different level of access.
           </p>
-          <p className="text-sm text-muted-foreground">
-            Each role has its own password shown on its card.
-          </p>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -101,7 +98,6 @@ export default function Demo() {
                 </ul>
                 <div className="space-y-2">
                   <p className="text-xs text-muted-foreground font-mono truncate" title={email}>{email}</p>
-                  <p className="text-xs text-muted-foreground">Password: <span className="font-mono font-medium text-foreground">{password}</span></p>
                   <Button
                     className="w-full"
                     onClick={() => loginAs(email, password)}

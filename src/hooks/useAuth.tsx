@@ -78,11 +78,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => clearInterval(interval);
   }, [user]);
 
-  // Start 30-minute session timer on login. Only extendSession() (explicit user action) resets it.
+  // Reset inactivity timer on user activity (debounced to avoid excessive calls)
   useEffect(() => {
     if (!user) return;
     resetInactivityTimer();
+
+    let debounceHandle: ReturnType<typeof setTimeout> | null = null;
+    const handleActivity = () => {
+      if (debounceHandle) clearTimeout(debounceHandle);
+      debounceHandle = setTimeout(() => resetInactivityTimer(), 500);
+    };
+
+    window.addEventListener("mousemove", handleActivity, { passive: true });
+    window.addEventListener("keydown", handleActivity, { passive: true });
+    window.addEventListener("pointerdown", handleActivity, { passive: true });
+    window.addEventListener("scroll", handleActivity, { passive: true });
+
     return () => {
+      if (debounceHandle) clearTimeout(debounceHandle);
+      window.removeEventListener("mousemove", handleActivity);
+      window.removeEventListener("keydown", handleActivity);
+      window.removeEventListener("pointerdown", handleActivity);
+      window.removeEventListener("scroll", handleActivity);
       if (inactivityTimer.current) {
         clearTimeout(inactivityTimer.current);
         inactivityTimer.current = null;
