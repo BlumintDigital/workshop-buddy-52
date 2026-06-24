@@ -747,7 +747,7 @@ export default function JobDetail() {
                   </TableBody>
                 </Table>
                 <p className="text-sm font-semibold text-right mt-2">
-                  Materials total: ${matTotal.toFixed(2)}
+                  Materials total: {fmt(matTotal)}
                 </p>
               </>
             )}
