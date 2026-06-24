@@ -121,50 +121,38 @@ export function BroadcastBanner() {
   if (!user || visible.length === 0) return null;
 
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-col gap-2 px-3 sm:px-6 pt-3">
       {visible.map((b) => {
-        const styles = severityStyles[b.severity];
+        const cfg = severityConfig[b.severity];
+        const Icon = cfg.Icon;
         const isExternal = b.link_url && /^https?:\/\//i.test(b.link_url);
         return (
-          <div
-            key={b.id}
-            role="status"
-            className={`${styles.wrap} px-4 py-2.5 flex items-start sm:items-center justify-between gap-3 flex-wrap`}
-          >
-            <div className="flex items-start sm:items-center gap-2 text-sm min-w-0">
-              {styles.icon}
-              <div className="min-w-0">
-                <span className="font-semibold">{b.title}</span>
-                {b.message && <span className="ml-2 opacity-90">{b.message}</span>}
-              </div>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              {b.link_url && b.link_label && (
-                isExternal ? (
+          <Alert key={b.id} variant={cfg.variant} className={`${cfg.className} pr-12`}>
+            <Icon className="h-4 w-4" />
+            <AlertTitle>{b.title}</AlertTitle>
+            {b.message && <AlertDescription>{b.message}</AlertDescription>}
+            {b.link_url && b.link_label && (
+              <div className="mt-3">
+                {isExternal ? (
                   <a href={b.link_url} target="_blank" rel="noopener noreferrer">
-                    <Button size="sm" variant="outline" className={`${styles.btn} min-h-[44px] sm:min-h-0`}>
-                      {b.link_label}
-                    </Button>
+                    <Button size="sm" variant="outline">{b.link_label}</Button>
                   </a>
                 ) : (
                   <Link to={b.link_url}>
-                    <Button size="sm" variant="outline" className={`${styles.btn} min-h-[44px] sm:min-h-0`}>
-                      {b.link_label}
-                    </Button>
+                    <Button size="sm" variant="outline">{b.link_label}</Button>
                   </Link>
-                )
-              )}
-              <Button
-                size="icon"
-                variant="ghost"
-                aria-label="Dismiss broadcast"
-                onClick={() => dismiss(b.id)}
-                className="h-9 w-9 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0"
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
+                )}
+              </div>
+            )}
+            <button
+              type="button"
+              aria-label="Dismiss broadcast"
+              onClick={() => dismiss(b.id)}
+              className="absolute right-2 top-2 inline-flex h-8 w-8 items-center justify-center rounded-md text-current/70 hover:bg-foreground/10 transition-colors"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </Alert>
         );
       })}
     </div>
