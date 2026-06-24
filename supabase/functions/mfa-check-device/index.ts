@@ -8,8 +8,7 @@ serve(async (req) => {
   try {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
-      console.log("[mfa-check-device] no auth header");
-      return json({ trusted: false }, 200);
+      return json({ trusted: false, _dbg: "no_auth_header" }, 200);
     }
 
     const anon = createClient(
@@ -20,18 +19,15 @@ serve(async (req) => {
     const token = authHeader.replace("Bearer ", "");
     const { data: claims, error: claimsErr } = await anon.auth.getClaims(token);
     if (claimsErr || !claims?.claims) {
-      console.log("[mfa-check-device] claims error", claimsErr?.message);
-      return json({ trusted: false }, 200);
+      return json({ trusted: false, _dbg: "claims_err", _msg: claimsErr?.message }, 200);
     }
 
     const userId = claims.claims.sub as string;
     const body = await req.json().catch(() => ({}));
     const deviceToken = body.token as string | undefined;
-    console.log("[mfa-check-device] user", userId, "tokenLen", deviceToken?.length ?? 0);
-    if (!deviceToken) return json({ trusted: false });
+    if (!deviceToken) return json({ trusted: false, _dbg: "no_token", _user: userId });
 
     const hash = await sha256Hex(deviceToken);
-    console.log("[mfa-check-device] hash", hash);
 
     const admin = createClient(
       Deno.env.get("SUPABASE_URL")!,
@@ -45,15 +41,13 @@ serve(async (req) => {
       .eq("token_hash", hash)
       .maybeSingle();
 
-    if (qErr) console.log("[mfa-check-device] query error", qErr.message);
+    if (qErr) return json({ trusted: false, _dbg: "query_err", _msg: qErr.message, _user: userId, _hash: hash });
     if (!data) {
-      console.log("[mfa-check-device] no row matched");
-      return json({ trusted: false });
+      return json({ trusted: false, _dbg: "no_row", _user: userId, _hash: hash });
     }
     if (new Date(data.expires_at).getTime() < Date.now()) {
-      console.log("[mfa-check-device] expired");
       await admin.from("mfa_trusted_devices").delete().eq("id", data.id);
-      return json({ trusted: false });
+      return json({ trusted: false, _dbg: "expired" });
     }
 
     await admin
