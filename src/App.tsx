@@ -31,6 +31,7 @@ const AdminSettings = lazy(() => import("@/pages/admin/AdminSettings"));
 const AdminActivityLogs = lazy(() => import("@/pages/admin/AdminActivityLogs"));
 const AdminFeedback = lazy(() => import("@/pages/admin/AdminFeedback"));
 const AdminDeployGuide = lazy(() => import("@/pages/admin/AdminDeployGuide"));
+const AdminSignupCodes = lazy(() => import("@/pages/admin/AdminSignupCodes"));
 
 // Manager pages
 const ManagerDashboard = lazy(() => import("@/pages/manager/ManagerDashboard"));
@@ -126,6 +127,7 @@ function AppRoutes() {
       <Route path="/report-issue" element={<ProtectedRoute allowedRoles={["admin", "manager", "staff", "client"]}><ReportIssue /></ProtectedRoute>} />
       <Route path="/admin/feedback" element={<ProtectedRoute allowedRoles={["admin"]}><AdminFeedback /></ProtectedRoute>} />
       <Route path="/admin/deploy-guide" element={<ProtectedRoute allowedRoles={["admin"]}><AdminDeployGuide /></ProtectedRoute>} />
+      <Route path="/admin/signup-codes" element={<ProtectedRoute allowedRoles={["admin", "manager"]}><AdminSignupCodes /></ProtectedRoute>} />
       <Route path="/profile" element={<ProtectedRoute allowedRoles={["admin", "manager", "staff", "client"]}><UserProfile /></ProtectedRoute>} />
 
       <Route path="*" element={<NotFound />} />

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import {
-  LayoutDashboard, Briefcase, Calendar, Package, FileText, Users, Settings, LogOut, Wrench, ChevronDown, BarChart3, Columns3, UserCheck, CalendarDays, User, Activity, Target, AlertCircle, MessageSquare,
+  LayoutDashboard, Briefcase, Calendar, Package, FileText, Users, Settings, LogOut, Wrench, ChevronDown, BarChart3, Columns3, UserCheck, CalendarDays, User, Activity, Target, AlertCircle, MessageSquare, KeyRound,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -42,6 +42,7 @@ const navGroups: Record<AppRole, NavGroup[]> = {
     ]},
     { label: "System", items: [
       { title: "Activity Logs", url: "/admin/activity-logs", icon: Activity },
+      { title: "Signup Codes", url: "/admin/signup-codes", icon: KeyRound },
       { title: "Settings", url: "/admin/settings", icon: Settings },
       { title: "Issue Reports", url: "/admin/feedback", icon: MessageSquare },
     ]},
