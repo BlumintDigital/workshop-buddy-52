@@ -2,7 +2,9 @@ import { Download, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
-const PDF_URL = "/docs/deploy-new-customer.pdf";
+import pdfAsset from "../../../public/docs/deploy-new-customer.pdf.asset.json";
+
+const PDF_URL = pdfAsset.url;
 
 export default function AdminDeployGuide() {
   return (
