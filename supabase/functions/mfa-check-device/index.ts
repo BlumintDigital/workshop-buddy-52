@@ -62,8 +62,8 @@ serve(async (req) => {
       .eq("id", data.id);
 
     return json({ trusted: true });
-  } catch {
-    return json({ trusted: false });
+  } catch (err) {
+    return json({ trusted: false, _err: (err as Error).message });
   }
 });
 
