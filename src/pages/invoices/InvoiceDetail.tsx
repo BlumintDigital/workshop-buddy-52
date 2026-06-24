@@ -34,6 +34,7 @@ export default function InvoiceDetail() {
   const { id } = useParams<{ id: string }>();
   const { role } = useAuth();
   const navigate = useNavigate();
+  const { format: fmt } = useCurrency();
 
   const [invoice, setInvoice] = useState<any>(null);
   const [clientName, setClientName] = useState("—");
