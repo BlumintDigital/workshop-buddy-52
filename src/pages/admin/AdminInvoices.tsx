@@ -119,7 +119,7 @@ export default function AdminInvoices() {
                         </SelectContent>
                       </Select>
                     </TableCell>
-                    <TableCell>${Number(inv.total).toFixed(2)}</TableCell>
+                    <TableCell>{fmt(Number(inv.total))}</TableCell>
                     <TableCell className="hidden sm:table-cell">{inv.due_date || "—"}</TableCell>
                     <TableCell className="hidden sm:table-cell">{new Date(inv.created_at).toLocaleDateString()}</TableCell>
                     {role === "admin" && (
