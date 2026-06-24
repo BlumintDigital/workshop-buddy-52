@@ -36,6 +36,9 @@ export default function Auth() {
   const [mfaCode, setMfaCode] = useState("");
   const [mfaSubmitting, setMfaSubmitting] = useState(false);
   const [pendingRole, setPendingRole] = useState<string | null>(null);
+  const [rememberDevice, setRememberDevice] = useState(false);
+  const [useBackupCode, setUseBackupCode] = useState(false);
+  const [backupCode, setBackupCode] = useState("");
 
   useEffect(() => {
     if (!loading && user && role && !needsMfaVerification && !mfaStep) {
