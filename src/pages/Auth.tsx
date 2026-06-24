@@ -306,18 +306,46 @@ export default function Auth() {
                     <Input
                       id="backup-code"
                       value={backupCode}
-                      onChange={(e) => setBackupCode(e.target.value.toUpperCase())}
+                      onChange={(e) => {
+                        setBackupCode(formatBackupInput(e.target.value));
+                        setBackupError(null);
+                      }}
                       placeholder="XXXX-XXXX"
                       autoComplete="one-time-code"
-                      className="font-mono tracking-wider text-center"
+                      maxLength={9}
+                      disabled={isLocked}
+                      aria-invalid={!!backupFormatHint || !!backupError}
+                      className={`font-mono tracking-wider text-center ${
+                        (backupFormatHint || backupError) ? "border-destructive focus-visible:ring-destructive" : ""
+                      }`}
                       autoFocus
                     />
+                    {backupFormatHint && (
+                      <p className="text-xs text-destructive">{backupFormatHint}</p>
+                    )}
+                    {backupError && !backupFormatHint && (
+                      <p className="text-xs text-destructive">{backupError}</p>
+                    )}
+                    {isLocked && (
+                      <p className="text-xs text-destructive">
+                        Locked out. Try again in {lockout.formatted}.
+                      </p>
+                    )}
+                    {!isLocked && backupRemainingAttempts !== null && backupRemainingAttempts > 0 && !backupError && (
+                      <p className="text-xs text-muted-foreground">
+                        {backupRemainingAttempts} attempt{backupRemainingAttempts === 1 ? "" : "s"} remaining before lockout.
+                      </p>
+                    )}
                   </div>
                   <label className="flex items-center gap-2 text-sm">
                     <Checkbox checked={rememberDevice} onCheckedChange={(v) => setRememberDevice(!!v)} />
                     Remember this device for 30 days
                   </label>
-                  <Button type="submit" className="w-full" disabled={mfaSubmitting || !backupCode.trim()}>
+                  <Button
+                    type="submit"
+                    className="w-full"
+                    disabled={mfaSubmitting || !backupFormatValid || isLocked}
+                  >
                     {mfaSubmitting ? "Verifying..." : "Verify backup code"}
                   </Button>
                   <Button
