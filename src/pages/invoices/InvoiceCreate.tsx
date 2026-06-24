@@ -12,6 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Plus, Trash2 } from "lucide-react";
 import { DatePickerInput } from "@/components/ui/date-picker-input";
 import { toast } from "sonner";
+import { useCurrency } from "@/hooks/useCurrency";
 
 interface LineItem {
   description: string;
