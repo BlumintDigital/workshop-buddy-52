@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ExternalLink } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useCurrency } from "@/hooks/useCurrency";
 
 const statusColors: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
   draft: "outline", sent: "secondary", paid: "default", overdue: "destructive", cancelled: "destructive",
