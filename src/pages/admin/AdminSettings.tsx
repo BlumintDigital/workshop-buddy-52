@@ -223,12 +223,19 @@ export default function AdminSettings() {
   const handleSetupDemo = async () => {
     setSettingUpDemo(true);
 
-    // 1. Create / reset demo user accounts via edge function
+    // 1. Create / reset demo user accounts via edge function (random passwords)
     const { data, error } = await supabase.functions.invoke("setup-demo");
     if (error || data?.error) {
       setSettingUpDemo(false);
       toast.error(data?.error || error?.message || "Failed to set up demo users");
       return;
+    }
+
+    // Surface generated passwords ONCE — copy them now.
+    if (Array.isArray(data?.users)) {
+      const credLines = data.users.map((u: any) => `${u.email} → ${u.password}`).join("\n");
+      console.log("[Demo accounts — copy these passwords now]\n" + credLines);
+      toast.info("Demo passwords printed to console — copy now (not stored)", { duration: 10000 });
     }
 
     // 2. Force-set roles (edge function may race against the auto-assign trigger)
