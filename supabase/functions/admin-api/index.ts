@@ -752,11 +752,22 @@ Deno.serve(async (req) => {
             vapidPrivateKey
           );
 
+          // Persist the notice so it appears in the in-app banner regardless of push delivery.
+          const { error: noticeErr } = await supabase
+            .from("system_notices" as any)
+            .insert({
+              title,
+              message: message ?? null,
+              url: notifUrl ?? null,
+              user_id: targetUserId ?? null,
+            });
+          if (noticeErr) console.error("system_notices insert failed", noticeErr);
+
           let subsQuery = supabase.from("push_subscriptions" as any).select("id, endpoint, p256dh, auth_key");
           if (targetUserId) subsQuery = subsQuery.eq("user_id", targetUserId);
           const { data: subs } = await subsQuery;
 
-          if (!subs?.length) return json({ sent: 0, total: 0, message: "No subscribers found" });
+          if (!subs?.length) return json({ sent: 0, total: 0, persisted: true, message: "Notice saved. No push subscribers." });
 
           const payload = JSON.stringify({ title, body: message ?? "", url: notifUrl ?? "/" });
           let sent = 0;
@@ -780,7 +791,7 @@ Deno.serve(async (req) => {
             await supabase.from("push_subscriptions" as any).delete().in("id", expiredIds);
           }
 
-          return json({ sent, total: subs.length, expired: expiredIds.length });
+          return json({ sent, total: subs.length, expired: expiredIds.length, persisted: true });
         }
 
         return err("Method not allowed", 405);
