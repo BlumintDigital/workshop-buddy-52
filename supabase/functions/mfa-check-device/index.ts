@@ -8,7 +8,7 @@ serve(async (req) => {
   try {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
-      return json({ trusted: false, _dbg: "no_auth_header" }, 200);
+      return json({ trusted: false }, 200);
     }
 
     const anon = createClient(
@@ -19,13 +19,13 @@ serve(async (req) => {
     const token = authHeader.replace("Bearer ", "");
     const { data: claims, error: claimsErr } = await anon.auth.getClaims(token);
     if (claimsErr || !claims?.claims) {
-      return json({ trusted: false, _dbg: "claims_err", _msg: claimsErr?.message }, 200);
+      return json({ trusted: false }, 200);
     }
 
     const userId = claims.claims.sub as string;
     const body = await req.json().catch(() => ({}));
     const deviceToken = body.token as string | undefined;
-    if (!deviceToken) return json({ trusted: false, _dbg: "no_token", _user: userId });
+    if (!deviceToken) return json({ trusted: false });
 
     const hash = await sha256Hex(deviceToken);
 
@@ -41,27 +41,11 @@ serve(async (req) => {
       .eq("token_hash", hash)
       .maybeSingle();
 
-    if (qErr) return json({ trusted: false, _dbg: "query_err", _msg: qErr.message, _user: userId, _hash: hash });
-    if (!data) {
-      const { data: allRows } = await admin
-        .from("mfa_trusted_devices")
-        .select("token_hash, user_id, expires_at")
-        .eq("user_id", userId);
-      return json({
-        trusted: false,
-        _dbg: "no_row",
-        _user: userId,
-        _hash: hash,
-        _rows: (allRows ?? []).map((r: any) => ({
-          uid: r.user_id,
-          hash_prefix: (r.token_hash as string).slice(0, 12),
-          exp: r.expires_at,
-        })),
-      });
-    }
+    if (qErr || !data) return json({ trusted: false });
+
     if (new Date(data.expires_at).getTime() < Date.now()) {
       await admin.from("mfa_trusted_devices").delete().eq("id", data.id);
-      return json({ trusted: false, _dbg: "expired" });
+      return json({ trusted: false });
     }
 
     await admin
@@ -70,8 +54,8 @@ serve(async (req) => {
       .eq("id", data.id);
 
     return json({ trusted: true });
-  } catch (err) {
-    return json({ trusted: false, _err: (err as Error).message });
+  } catch (_err) {
+    return json({ trusted: false });
   }
 });
 
