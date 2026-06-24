@@ -765,6 +765,30 @@ export type Database = {
         }
         Relationships: []
       }
+      workshop_admin_contacts: {
+        Row: {
+          id: number
+          super_admin_email: string | null
+          updated_at: string
+          vapid_private_key: string | null
+          vapid_public_key: string | null
+        }
+        Insert: {
+          id?: number
+          super_admin_email?: string | null
+          updated_at?: string
+          vapid_private_key?: string | null
+          vapid_public_key?: string | null
+        }
+        Update: {
+          id?: number
+          super_admin_email?: string | null
+          updated_at?: string
+          vapid_private_key?: string | null
+          vapid_public_key?: string | null
+        }
+        Relationships: []
+      }
       workshop_settings: {
         Row: {
           address: string | null
@@ -783,7 +807,6 @@ export type Database = {
           notify_low_inventory: boolean | null
           notify_new_appointment: boolean | null
           phone: string | null
-          super_admin_email: string | null
           workshop_name: string | null
         }
         Insert: {
@@ -803,7 +826,6 @@ export type Database = {
           notify_low_inventory?: boolean | null
           notify_new_appointment?: boolean | null
           phone?: string | null
-          super_admin_email?: string | null
           workshop_name?: string | null
         }
         Update: {
@@ -823,7 +845,6 @@ export type Database = {
           notify_low_inventory?: boolean | null
           notify_new_appointment?: boolean | null
           phone?: string | null
-          super_admin_email?: string | null
           workshop_name?: string | null
         }
         Relationships: []
@@ -860,7 +881,6 @@ export type Database = {
         Args: never
         Returns: {
           email_notifications_enabled: boolean
-          recipient_email: string
         }[]
       }
       get_job_completion_stats: {
