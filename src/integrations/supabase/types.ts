@@ -621,6 +621,33 @@ export type Database = {
         }
         Relationships: []
       }
+      monthly_revenue_goals: {
+        Row: {
+          created_at: string
+          goal_amount: number
+          id: number
+          month: number
+          set_by: string | null
+          year: number
+        }
+        Insert: {
+          created_at?: string
+          goal_amount: number
+          id?: never
+          month: number
+          set_by?: string | null
+          year: number
+        }
+        Update: {
+          created_at?: string
+          goal_amount?: number
+          id?: never
+          month?: number
+          set_by?: string | null
+          year?: number
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           created_at: string
@@ -718,6 +745,7 @@ export type Database = {
           currency: string | null
           default_tax_rate: number | null
           email_notifications_enabled: boolean | null
+          feature_flags: Json | null
           from_email: string | null
           id: number
           instance_version: string | null
@@ -737,6 +765,7 @@ export type Database = {
           currency?: string | null
           default_tax_rate?: number | null
           email_notifications_enabled?: boolean | null
+          feature_flags?: Json | null
           from_email?: string | null
           id?: number
           instance_version?: string | null
@@ -756,6 +785,7 @@ export type Database = {
           currency?: string | null
           default_tax_rate?: number | null
           email_notifications_enabled?: boolean | null
+          feature_flags?: Json | null
           from_email?: string | null
           id?: number
           instance_version?: string | null
