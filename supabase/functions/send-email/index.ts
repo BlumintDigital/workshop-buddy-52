@@ -72,6 +72,17 @@ serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+    // Resolve email from user_id when caller doesn't have the address directly
+    if (!to && to_user_id) {
+      const { data: { user: targetUser }, error: lookupError } =
+        await supabase.auth.admin.getUserById(to_user_id);
+      if (lookupError || !targetUser?.email) {
+        return new Response(JSON.stringify({ error: "Could not resolve recipient email" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      to = targetUser.email;
+    }
   }
 
   if (!RESEND_API_KEY) {
