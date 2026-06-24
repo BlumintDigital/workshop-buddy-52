@@ -70,11 +70,11 @@ export default function ReportIssue() {
       const submitterName = profile?.full_name || user.email || "A user";
       const feedbackLink = `${window.location.origin}/admin/feedback`;
 
-      await sendEmail(
-        recipientEmail,
-        `[${severity.toUpperCase()}] Issue Report: ${title.trim()}`,
-        bugReportEmailHtml(submitterName, severity, title.trim(), description.trim(), pageUrl.trim(), feedbackLink),
-      );
+      await sendEmail({
+        to: recipientEmail,
+        subject: `[${severity.toUpperCase()}] Issue Report: ${title.trim()}`,
+        html: bugReportEmailHtml(submitterName, severity, title.trim(), description.trim(), pageUrl.trim(), feedbackLink),
+      });
     }
 
     setSubmitting(false);

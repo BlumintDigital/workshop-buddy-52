@@ -15,7 +15,8 @@ export async function sendEmail(opts: {
 }): Promise<void> {
   try {
     const { data: config } = await supabase.rpc("get_email_notification_config");
-    if (!config?.email_notifications_enabled) return;
+    const row = Array.isArray(config) ? config[0] : config;
+    if (!row?.email_notifications_enabled) return;
     await supabase.functions.invoke("send-email", { body: opts });
   } catch {
     // Non-critical — swallow errors
