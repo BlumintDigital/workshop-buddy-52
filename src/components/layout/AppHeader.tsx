@@ -20,6 +20,9 @@ import {
 import { NotificationBell } from "@/components/NotificationBell";
 import { SessionIndicator } from "@/components/SessionIndicator";
 import { Link, useLocation } from "react-router-dom";
+import { n } from "@/hooks/n";
+
+const ROLE_SCOPED_SEGMENTS = new Set(["invoices", "jobs", "appointments", "inventory", "reports", "users", "clients", "calendar", "activity-logs", "settings", "feedback", "dashboard"]);
 
 const LABELS: Record<string, string> = {
   dashboard: "Dashboard",
