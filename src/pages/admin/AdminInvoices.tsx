@@ -25,6 +25,7 @@ export default function AdminInvoices() {
   const [clientNames, setClientNames] = useState<Record<string, string>>({});
   const { page, setPage } = usePagination();
   const { role } = useAuth();
+  const { format: fmt } = useCurrency();
 
   const fetchInvoices = async (currentPage = page) => {
     const { data, count } = await supabase
