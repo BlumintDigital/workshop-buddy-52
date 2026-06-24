@@ -1,57 +1,52 @@
-## Plan: MFA hardening — rate limits, lockouts, and clearer recovery UX
+# Super-admin broadcast banner
 
-Note: the backend has no shared rate-limit primitive. The plan below uses an ad-hoc, DB-backed counter table — simple and works today, but is per-user (not per-IP) and lives in Postgres. If you later add a proper rate-limiter (Redis/edge), these checks can be swapped out.
+Show notices sent from the super-admin as a dismissible banner at the top of every authenticated page. Each broadcast stays visible until the user dismisses it (per-device) or it expires.
 
-### 1. New rate-limit table (one migration)
+## What gets built
 
-`mfa_rate_limits` — one row per (`user_id`, `action`). Tracks `attempt_count`, `window_started_at`, `locked_until`. RLS: users may `SELECT` their own row (so the UI can show countdowns); all writes happen in edge functions via service role.
+### 1. `broadcasts` table (new)
 
-Limits applied (per user):
+Stores notices authored by the super-admin. All authenticated tenant users can read active ones; only `service_role` (admin-api edge function) can write.
 
-| Action | Limit | Lockout |
-|---|---|---|
-| `backup_generate` | 3 regenerations per hour | 1h cooldown after limit |
-| `trust_device` | 5 trusts per hour | 1h cooldown after limit |
-| `backup_verify` | 5 failed attempts per 15 min | 15 min lockout |
+Columns (domain-specific): `title`, `message`, `severity` (`info` | `warning` | `critical`), `link_url`, `link_label`, `active`, `starts_at`, `expires_at`.
 
-### 2. Edge function changes
+Access rules:
+- Authenticated users can read rows where `active = true` AND `starts_at <= now()` AND (`expires_at` IS NULL OR `expires_at > now()`).
+- No client writes — inserts/updates/deletes go through the admin-api edge function with the service role.
 
-Add a small shared helper `_shared/rate-limit.ts` exposing `checkAndConsume(userId, action, { limit, windowSec, lockoutSec })`. It returns `{ allowed, remaining, retryAfterSec, lockedUntil }`. On lockout it returns `allowed: false` without consuming further; successful `backup_verify` resets the counter.
+Realtime is enabled so banners appear/disappear without a refresh.
 
-Wire it into:
-- `mfa-backup-generate` — block when over limit, return `429` with `retry_after_sec`.
-- `mfa-trust-device` — same.
-- `mfa-backup-verify` — check before verifying; **increment only on failure**, reset on success. Response also includes `remaining_attempts` so the UI can show it.
+### 2. `admin-api` edge function — new `broadcasts` action
 
-### 3. Frontend: backup-code recovery form (`src/pages/Auth.tsx`)
+Super-admin–only (already gated by `GLOBAL_ADMIN_SECRET`):
+- `GET    ?action=broadcasts` — list all broadcasts (active + historical).
+- `POST   ?action=broadcasts` — create one (`title`, `message`, `severity`, `link_url`, `link_label`, `expires_at`).
+- `PATCH  ?action=broadcasts&id=<id>` — toggle `active` or update fields.
+- `DELETE ?action=broadcasts&id=<id>` — remove.
 
-- Add live formatting/validation: input is masked to `XXXX-XXXX` (uppercase, A–Z 2–9, auto-insert dash). When the value doesn't match the pattern, show an inline red helper and red border on the input — Verify stays disabled.
-- Show specific server errors instead of a generic toast:
-  - Invalid code → inline "That code didn't match. X attempts remaining before lockout."
-  - Already used → "This backup code was already used. Try another."
-  - Locked out → disable the form, show "Too many attempts. Try again in M:SS." with a live countdown driven by `retry_after_sec`.
-- Persist a small in-memory attempt counter for nicer messaging between server responses.
+No tenant-facing UI for composing — the user said the super-admin already sends them; this scope is display only. The endpoints are added so the super-admin tooling has something to call.
 
-### 4. Frontend: trusted device confirmations (`src/pages/profile/UserProfile.tsx`)
+### 3. Banner UI in the app shell
 
-- Replace the bare "Revoke all trusted devices" button with an `AlertDialog` confirmation ("Revoke all trusted devices? You'll need to enter a 2FA code on each device next time."). Confirm → delete → success toast; failure → error toast with the message.
-- Same dialog pattern wrapping the "Regenerate codes" button when codes already exist ("Regenerating invalidates your existing X codes. Continue?"). Plus a cooldown-aware disabled state + toast when the server returns 429 ("You can regenerate again in M:SS").
-- If/when we add per-device revoke (future), it reuses the same `AlertDialog` component.
+New component `src/components/BroadcastBanner.tsx`:
+- Subscribes to `broadcasts` via Supabase and filters to currently-active rows.
+- Renders a sticky bar at the very top of `DashboardLayout`, above the existing header.
+- Styling tied to `severity`: `info` uses muted/primary tokens, `warning` uses an amber/warning token, `critical` uses destructive tokens. All colors come from semantic tokens in `index.css` — no hard-coded hex.
+- Optional CTA button rendered from `link_label` + `link_url` (internal links use `react-router` `Link`, external open in a new tab with `rel="noopener"`).
+- Dismiss "×" button stores the broadcast id in `localStorage` under `dismissed-broadcasts`. Dismissed ids are filtered out. New broadcasts (new ids) appear automatically.
+- If multiple broadcasts are active, the highest-severity one renders first; the rest stack below it (max 3 visible).
 
-### 5. UI plumbing
+Hook it into `DashboardLayout` so every authenticated route shows it. Public routes (auth pages) are unchanged.
 
-- New tiny `useCountdown(seconds)` hook in `src/hooks/useCountdown.ts` for the locked-until / cooldown timers.
-- Reuse existing shadcn `AlertDialog` (already in the project).
+## Technical notes
 
-### Files touched
-- New migration: `mfa_rate_limits` table + RLS + grants.
-- New: `supabase/functions/_shared/rate-limit.ts`.
-- Edit: `supabase/functions/mfa-backup-generate/index.ts`, `mfa-trust-device/index.ts`, `mfa-backup-verify/index.ts`.
-- New: `src/hooks/useCountdown.ts`.
-- Edit: `src/pages/Auth.tsx` (backup-code form upgrades).
-- Edit: `src/pages/profile/UserProfile.tsx` (confirm dialogs, cooldown handling).
+- Migration follows the required order: `CREATE TABLE` → `GRANT SELECT` to `authenticated`, `GRANT ALL` to `service_role` (no `anon`) → `ENABLE ROW LEVEL SECURITY` → policies → `ALTER PUBLICATION supabase_realtime ADD TABLE public.broadcasts`.
+- Realtime subscription lives inside a `useEffect` with `supabase.removeChannel` cleanup.
+- Banner is mobile-friendly: text truncates with a "Read more" expand on small screens; min 44px tap target on dismiss/CTA.
+- No changes to existing `notices`/push pipeline — broadcasts are independent of Web Push.
 
-### Out of scope
-- Per-IP rate limiting (needs infra we don't have).
-- CAPTCHA / progressive delays beyond the lockout window.
-- Per-device "revoke this one" UI.
+## Out of scope
+
+- Super-admin compose UI inside this app (admin-api endpoints only).
+- Per-user read receipts in the database (dismissal is local to the device).
+- Email/push fan-out from broadcasts.
