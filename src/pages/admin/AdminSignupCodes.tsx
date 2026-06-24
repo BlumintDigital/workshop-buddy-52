@@ -301,6 +301,7 @@ export default function AdminSignupCodes() {
           )}
         </CardContent>
       </Card>
-    </div>
+      </div>
+    </DashboardLayout>
   );
 }
