@@ -40,11 +40,38 @@ serve(async (req) => {
     .select("role")
     .eq("user_id", user.id)
     .maybeSingle();
-  if (!roleRow || !["admin", "manager"].includes(roleRow.role)) {
-    return new Response(JSON.stringify({ error: "Forbidden" }), {
-      status: 403,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+
+  const body = await req.json();
+  const { to_user_id, subject, html, mode } = body;
+  let { to } = body;
+
+  // bug_report mode: any authenticated user, recipient resolved server-side
+  // (admin email is never exposed to the client).
+  if (mode === "bug_report") {
+    const { data: contact } = await supabase
+      .from("workshop_admin_contacts")
+      .select("super_admin_email")
+      .eq("id", 1)
+      .maybeSingle();
+    const { data: settings } = await supabase
+      .from("workshop_settings")
+      .select("contact_email")
+      .eq("id", 1)
+      .maybeSingle();
+    to = (contact as any)?.super_admin_email || (settings as any)?.contact_email || null;
+    if (!to) {
+      return new Response(JSON.stringify({ error: "No admin recipient configured" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+  } else {
+    // Default path: admin/manager only
+    if (!roleRow || !["admin", "manager"].includes(roleRow.role)) {
+      return new Response(JSON.stringify({ error: "Forbidden" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
   }
 
   if (!RESEND_API_KEY) {
@@ -52,22 +79,6 @@ serve(async (req) => {
       JSON.stringify({ error: "RESEND_API_KEY secret not configured" }),
       { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
-  }
-
-  const body = await req.json();
-  const { to_user_id, subject, html } = body;
-  let { to } = body;
-
-  // Resolve email from user_id when caller doesn't have the address directly
-  if (!to && to_user_id) {
-    const { data: { user: targetUser }, error: lookupError } =
-      await supabase.auth.admin.getUserById(to_user_id);
-    if (lookupError || !targetUser?.email) {
-      return new Response(JSON.stringify({ error: "Could not resolve recipient email" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-    to = targetUser.email;
   }
 
   if (!to || !subject || !html) {

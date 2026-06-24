@@ -8,11 +8,21 @@ const corsHeaders = {
 };
 
 const DEMO_USERS = [
-  { email: "demo.admin@workshop.demo", full_name: "Demo Admin", role: "admin", password: "Admin1234" },
-  { email: "demo.manager@workshop.demo", full_name: "Demo Manager", role: "manager", password: "Manager1234" },
-  { email: "demo.staff@workshop.demo", full_name: "Demo Staff", role: "staff", password: "Staff1234" },
-  { email: "demo.client@workshop.demo", full_name: "Demo Client", role: "client", password: "Client1234" },
+  { email: "demo.admin@workshop.demo", full_name: "Demo Admin", role: "admin" },
+  { email: "demo.manager@workshop.demo", full_name: "Demo Manager", role: "manager" },
+  { email: "demo.staff@workshop.demo", full_name: "Demo Staff", role: "staff" },
+  { email: "demo.client@workshop.demo", full_name: "Demo Client", role: "client" },
 ] as const;
+
+// Generate a strong random password (no hardcoded credentials in source).
+function generatePassword(): string {
+  const bytes = new Uint8Array(18);
+  crypto.getRandomValues(bytes);
+  // Base64-url-ish, strip padding/symbols; ensure length >= 20
+  const b64 = btoa(String.fromCharCode(...bytes))
+    .replace(/\+/g, "A").replace(/\//g, "B").replace(/=/g, "");
+  return `Wb!${b64}`;
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
