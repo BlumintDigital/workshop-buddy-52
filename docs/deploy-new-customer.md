@@ -25,26 +25,27 @@
 
 ## Step 2 — Apply the database schema
 
-The `schema.sql` file in the project root is a consolidation of all migrations.
+The schema lives in `supabase/migrations/` — each `.sql` file is a versioned migration, and the Supabase CLI applies them in order. This is the **single source of truth**; there is no longer a hand-maintained `schema.sql` file to keep in sync.
 
-**Option A — Supabase Studio (recommended, no CLI needed)**
-1. Open Supabase Studio for the new project
-2. Go to **SQL Editor** → New query
-3. Open `schema.sql` from the project root, copy all content
-4. Paste and click **Run**
-5. Confirm tables appear in **Table Editor**
+**Apply all migrations to the new project:**
 
-**Option B — CLI (requires database password from Step 1)**
 ```bash
-psql "postgresql://postgres:<db-password>@db.<project-ref>.supabase.co:5432/postgres" -f schema.sql
-```
-
-**Option C — Supabase CLI (after linking)**
-```bash
+# 1. Sign in (once per machine)
 supabase login
+
+# 2. Link this repo to the new customer's Supabase project
 supabase link --project-ref <project-ref>
+# When prompted, paste the database password from Step 1.
+
+# 3. Push every migration to the remote database
 supabase db push
 ```
+
+`supabase db push` reads `supabase/migrations/` in filename order, compares against the remote `supabase_migrations.schema_migrations` table, and applies only the ones that haven't run yet. Running it again on an up-to-date project is a no-op and safe.
+
+Confirm the schema landed by opening **Supabase Studio → Table Editor** and checking that the expected tables (`jobs`, `profiles`, `user_roles`, `signup_codes`, `push_subscriptions`, `workshop_admin_contacts`, …) are present.
+
+> **No CLI available?** As a fallback, you can paste the contents of each file in `supabase/migrations/` (in filename order) into **Supabase Studio → SQL Editor** and run them one by one. Use this only if `supabase db push` is not an option — it is error-prone and easy to skip files.
 
 ---
 
@@ -224,21 +225,20 @@ Then do a quick smoke test:
 
 ---
 
-## Updating `schema.sql` for future deployments
+## Adding new migrations later
 
-`schema.sql` is auto-generated from all files in `supabase/migrations/`. Regenerate it any time a new migration is added:
+The deploy flow is migration-driven, so shipping a schema change to existing customers is just:
 
-```bash
-# From the project root (PowerShell)
-$migrations = Get-ChildItem "supabase/migrations/*.sql" | Sort-Object Name
-$body = $migrations | ForEach-Object { Get-Content $_.FullName -Raw }
-$body -join "`n" | Out-File "schema.sql" -Encoding utf8
-```
+1. Create a new file in `supabase/migrations/` (the Lovable migration tool does this automatically, or use `supabase migration new <name>`).
+2. Commit it.
+3. For each customer project, run:
 
-Or use the generate script:
-```bash
-# bash
-cat supabase/migrations/*.sql > schema.sql
-```
+   ```bash
+   supabase link --project-ref <customer-project-ref>
+   supabase db push
+   ```
 
-Commit `schema.sql` after every migration so it stays current.
+   Only the new migrations are applied; previously-applied ones are skipped.
+
+No `schema.sql` regeneration step is needed — that file has been retired.
+
