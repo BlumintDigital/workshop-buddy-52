@@ -791,7 +791,7 @@ Deno.serve(async (req) => {
             await supabase.from("push_subscriptions" as any).delete().in("id", expiredIds);
           }
 
-          return json({ sent, total: subs.length, expired: expiredIds.length });
+          return json({ sent, total: subs.length, expired: expiredIds.length, persisted: true });
         }
 
         return err("Method not allowed", 405);
