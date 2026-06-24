@@ -321,9 +321,28 @@ export default function UserProfile() {
                   ) : (
                     <p className="text-xs text-muted-foreground">No backup codes generated yet.</p>
                   )}
-                  <Button size="sm" variant="outline" onClick={handleGenerateBackupCodes} disabled={generatingBackup}>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      if (regenerateCooldown.remaining > 0) {
+                        toast.error(`You can regenerate codes again in ${regenerateCooldown.formatted}.`);
+                        return;
+                      }
+                      if (backupTotal > 0) {
+                        setConfirmRegenerate(true);
+                      } else {
+                        void handleGenerateBackupCodes();
+                      }
+                    }}
+                    disabled={generatingBackup || regenerateCooldown.remaining > 0}
+                  >
                     <RefreshCw className="h-3.5 w-3.5 mr-1" />
-                    {generatingBackup ? "Generating..." : backupTotal > 0 ? "Regenerate codes" : "Generate backup codes"}
+                    {generatingBackup
+                      ? "Generating..."
+                      : regenerateCooldown.remaining > 0
+                        ? `Try again in ${regenerateCooldown.formatted}`
+                        : backupTotal > 0 ? "Regenerate codes" : "Generate backup codes"}
                   </Button>
                 </div>
 
@@ -339,11 +358,62 @@ export default function UserProfile() {
                       : "No trusted devices."}
                   </p>
                   {trustedDeviceCount > 0 && (
-                    <Button size="sm" variant="outline" onClick={handleRevokeDevices}>
-                      Revoke all trusted devices
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setConfirmRevokeAll(true)}
+                      disabled={revoking}
+                    >
+                      {revoking ? "Revoking..." : "Revoke all trusted devices"}
                     </Button>
                   )}
                 </div>
+
+                <AlertDialog open={confirmRegenerate} onOpenChange={setConfirmRegenerate}>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Regenerate backup codes?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This invalidates your existing {backupTotal} backup code{backupTotal === 1 ? "" : "s"}.
+                        Make sure to save the new codes — you won't be able to see them again.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={() => {
+                          setConfirmRegenerate(false);
+                          void handleGenerateBackupCodes();
+                        }}
+                      >
+                        Regenerate
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+
+                <AlertDialog open={confirmRevokeAll} onOpenChange={setConfirmRevokeAll}>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Revoke all trusted devices?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        You'll need to enter a 2FA code on each device next time you sign in.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={() => {
+                          setConfirmRevokeAll(false);
+                          void handleRevokeDevices();
+                        }}
+                      >
+                        Revoke all
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+
 
                 <Button variant="destructive" size="sm" onClick={handleDisable2FA} disabled={unenrolling}>
                   <ShieldOff className="h-4 w-4 mr-1" />
