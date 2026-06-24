@@ -1,4 +1,4 @@
-import { Download, FileText } from "lucide-react";
+import { FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -27,12 +27,6 @@ export default function AdminDeployGuide() {
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-3 sm:flex-row">
-          <Button asChild>
-            <a href={PDF_URL} download="deploy-new-customer.pdf">
-              <Download className="mr-2 h-4 w-4" />
-              Download PDF
-            </a>
-          </Button>
           <Button asChild variant="outline">
             <a href={PDF_URL} target="_blank" rel="noopener noreferrer">
               Open in new tab
