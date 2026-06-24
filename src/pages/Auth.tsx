@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { Wrench, ShieldCheck, KeyRound } from "lucide-react";
 import LoadingScreen from "@/components/LoadingScreen";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
+import { useCountdown } from "@/hooks/useCountdown";
 
 export default function Auth() {
   const { signIn, signUp, user, role, loading, needsMfaVerification, clearMfaFlag } = useAuth();
@@ -39,6 +40,23 @@ export default function Auth() {
   const [rememberDevice, setRememberDevice] = useState(false);
   const [useBackupCode, setUseBackupCode] = useState(false);
   const [backupCode, setBackupCode] = useState("");
+  const [backupError, setBackupError] = useState<string | null>(null);
+  const [backupRemainingAttempts, setBackupRemainingAttempts] = useState<number | null>(null);
+  const [backupLockoutSec, setBackupLockoutSec] = useState<number | null>(null);
+  const lockout = useCountdown(backupLockoutSec);
+  const isLocked = lockout.remaining > 0;
+  // XXXX-XXXX format; A–Z and 2–9 only (matches the generator alphabet).
+  const BACKUP_REGEX = /^[A-HJ-NP-Z2-9]{4}-[A-HJ-NP-Z2-9]{4}$/;
+  const backupFormatValid = BACKUP_REGEX.test(backupCode);
+  const backupFormatHint =
+    backupCode.length > 0 && !backupFormatValid
+      ? "Use the format XXXX-XXXX (letters A–Z and digits 2–9)."
+      : null;
+
+  const formatBackupInput = (raw: string) => {
+    const cleaned = raw.toUpperCase().replace(/[^A-HJ-NP-Z2-9]/g, "").slice(0, 8);
+    return cleaned.length > 4 ? `${cleaned.slice(0, 4)}-${cleaned.slice(4)}` : cleaned;
+  };
 
   useEffect(() => {
     if (!loading && user && role && !needsMfaVerification && !mfaStep) {
@@ -139,17 +157,42 @@ export default function Auth() {
 
   const handleBackupCodeVerify = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!backupCode.trim()) return;
+    if (!backupFormatValid || isLocked) return;
+    setBackupError(null);
     setMfaSubmitting(true);
     try {
       const { data, error } = await supabase.functions.invoke("mfa-backup-verify", {
         body: { code: backupCode.trim() },
       });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-      await finishMfaSuccess();
+      // supabase-js surfaces non-2xx as FunctionsHttpError; pull data from context if present.
+      const payload = (data ?? (error as any)?.context?.body) || {};
+      let parsed: any = payload;
+      if (typeof payload === "string") {
+        try { parsed = JSON.parse(payload); } catch { parsed = { error: payload }; }
+      }
+
+      if (parsed?.success) {
+        await finishMfaSuccess();
+        return;
+      }
+
+      // Error path
+      if (typeof parsed?.remaining_attempts === "number") {
+        setBackupRemainingAttempts(parsed.remaining_attempts);
+      }
+      if (typeof parsed?.retry_after_sec === "number" && parsed.retry_after_sec > 0) {
+        setBackupLockoutSec(parsed.retry_after_sec);
+        setBackupError(parsed.error || "Too many attempts. Please wait.");
+      } else {
+        const remainingMsg =
+          typeof parsed?.remaining_attempts === "number"
+            ? ` ${parsed.remaining_attempts} attempt${parsed.remaining_attempts === 1 ? "" : "s"} remaining.`
+            : "";
+        setBackupError((parsed?.error || error?.message || "Invalid backup code") + remainingMsg);
+      }
+      setBackupCode("");
     } catch (err: any) {
-      toast.error(err.message || "Invalid backup code");
+      setBackupError(err.message || "Invalid backup code");
       setBackupCode("");
     } finally {
       setMfaSubmitting(false);
@@ -263,18 +306,46 @@ export default function Auth() {
                     <Input
                       id="backup-code"
                       value={backupCode}
-                      onChange={(e) => setBackupCode(e.target.value.toUpperCase())}
+                      onChange={(e) => {
+                        setBackupCode(formatBackupInput(e.target.value));
+                        setBackupError(null);
+                      }}
                       placeholder="XXXX-XXXX"
                       autoComplete="one-time-code"
-                      className="font-mono tracking-wider text-center"
+                      maxLength={9}
+                      disabled={isLocked}
+                      aria-invalid={!!backupFormatHint || !!backupError}
+                      className={`font-mono tracking-wider text-center ${
+                        (backupFormatHint || backupError) ? "border-destructive focus-visible:ring-destructive" : ""
+                      }`}
                       autoFocus
                     />
+                    {backupFormatHint && (
+                      <p className="text-xs text-destructive">{backupFormatHint}</p>
+                    )}
+                    {backupError && !backupFormatHint && (
+                      <p className="text-xs text-destructive">{backupError}</p>
+                    )}
+                    {isLocked && (
+                      <p className="text-xs text-destructive">
+                        Locked out. Try again in {lockout.formatted}.
+                      </p>
+                    )}
+                    {!isLocked && backupRemainingAttempts !== null && backupRemainingAttempts > 0 && !backupError && (
+                      <p className="text-xs text-muted-foreground">
+                        {backupRemainingAttempts} attempt{backupRemainingAttempts === 1 ? "" : "s"} remaining before lockout.
+                      </p>
+                    )}
                   </div>
                   <label className="flex items-center gap-2 text-sm">
                     <Checkbox checked={rememberDevice} onCheckedChange={(v) => setRememberDevice(!!v)} />
                     Remember this device for 30 days
                   </label>
-                  <Button type="submit" className="w-full" disabled={mfaSubmitting || !backupCode.trim()}>
+                  <Button
+                    type="submit"
+                    className="w-full"
+                    disabled={mfaSubmitting || !backupFormatValid || isLocked}
+                  >
                     {mfaSubmitting ? "Verifying..." : "Verify backup code"}
                   </Button>
                   <Button
