@@ -132,6 +132,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const checkMfaStatus = async () => {
     const { data } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
     if (data && data.currentLevel === "aal1" && data.nextLevel === "aal2") {
+      // Honor "remember this device"
+      try {
+        const token = localStorage.getItem("mfa_device_token");
+        if (token) {
+          const { data: chk } = await supabase.functions.invoke("mfa-check-device", { body: { token } });
+          if (chk?.trusted) {
+            setNeedsMfaVerification(false);
+            return false;
+          }
+        }
+      } catch { /* ignore */ }
       setNeedsMfaVerification(true);
       return true;
     }
