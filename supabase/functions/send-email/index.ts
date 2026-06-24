@@ -85,6 +85,20 @@ serve(async (req) => {
     }
   }
 
+  // Enforce admin-controlled email_notifications_enabled toggle server-side.
+  // The toggle lives in admin-only workshop_settings and must never be readable by clients.
+  const { data: emailCfg } = await supabase
+    .from("workshop_settings")
+    .select("email_notifications_enabled")
+    .eq("id", 1)
+    .maybeSingle();
+  if (!(emailCfg as any)?.email_notifications_enabled) {
+    return new Response(JSON.stringify({ ok: true, skipped: "email_notifications_disabled" }), {
+      status: 200,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
   if (!RESEND_API_KEY) {
     return new Response(
       JSON.stringify({ error: "RESEND_API_KEY secret not configured" }),
