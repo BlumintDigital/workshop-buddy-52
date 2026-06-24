@@ -7,7 +7,10 @@ serve(async (req) => {
 
   try {
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader?.startsWith("Bearer ")) return json({ trusted: false }, 200);
+    if (!authHeader?.startsWith("Bearer ")) {
+      console.log("[mfa-check-device] no auth header");
+      return json({ trusted: false }, 200);
+    }
 
     const anon = createClient(
       Deno.env.get("SUPABASE_URL")!,
@@ -16,29 +19,39 @@ serve(async (req) => {
     );
     const token = authHeader.replace("Bearer ", "");
     const { data: claims, error: claimsErr } = await anon.auth.getClaims(token);
-    if (claimsErr || !claims?.claims) return json({ trusted: false }, 200);
+    if (claimsErr || !claims?.claims) {
+      console.log("[mfa-check-device] claims error", claimsErr?.message);
+      return json({ trusted: false }, 200);
+    }
 
     const userId = claims.claims.sub as string;
     const body = await req.json().catch(() => ({}));
     const deviceToken = body.token as string | undefined;
+    console.log("[mfa-check-device] user", userId, "tokenLen", deviceToken?.length ?? 0);
     if (!deviceToken) return json({ trusted: false });
 
     const hash = await sha256Hex(deviceToken);
+    console.log("[mfa-check-device] hash", hash);
 
     const admin = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
-    const { data } = await admin
+    const { data, error: qErr } = await admin
       .from("mfa_trusted_devices")
       .select("id, expires_at")
       .eq("user_id", userId)
       .eq("token_hash", hash)
       .maybeSingle();
 
-    if (!data) return json({ trusted: false });
+    if (qErr) console.log("[mfa-check-device] query error", qErr.message);
+    if (!data) {
+      console.log("[mfa-check-device] no row matched");
+      return json({ trusted: false });
+    }
     if (new Date(data.expires_at).getTime() < Date.now()) {
+      console.log("[mfa-check-device] expired");
       await admin.from("mfa_trusted_devices").delete().eq("id", data.id);
       return json({ trusted: false });
     }
