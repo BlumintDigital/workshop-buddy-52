@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import webpush from "npm:web-push@3";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": Deno.env.get("ALLOWED_ORIGIN") ?? "*",
@@ -675,6 +676,107 @@ Deno.serve(async (req) => {
         if (!linkData?.properties?.action_link) return err("Failed to generate login link", 500);
 
         return json({ success: true, link: linkData.properties.action_link });
+      }
+
+      // ==================== PUSH NOTIFICATIONS ====================
+
+      // Generate VAPID keys — run once per customer.
+      // Returns both keys; super admin must persist the private key as a Supabase secret:
+      //   supabase secrets set VAPID_PRIVATE_KEY=<privateKey> --project-ref <ref>
+      case "generate_vapid": {
+        const keys = webpush.generateVAPIDKeys();
+        await supabase
+          .from("workshop_settings")
+          .update({ vapid_public_key: keys.publicKey } as any)
+          .eq("id", 1);
+        return json({
+          public_key: keys.publicKey,
+          private_key: keys.privateKey,
+          next_step: `supabase secrets set VAPID_PRIVATE_KEY=${keys.privateKey} --project-ref <ref>`,
+          note: "Public key saved to workshop_settings. Set the private key as a Supabase secret, then redeploy this function.",
+        });
+      }
+
+      // Push notification CRUD via HTTP method:
+      //   GET    ?action=notices            → list all subscribers
+      //   POST   ?action=notices            → send push (body: { title, message, url?, user_id? })
+      //   DELETE ?action=notices&id=<id>    → remove a subscription by id
+      case "notices": {
+        if (req.method === "GET") {
+          const { data, error: listErr } = await supabase
+            .from("push_subscriptions" as any)
+            .select("id, user_id, endpoint, created_at, profiles:user_id(full_name, company_name)")
+            .order("created_at", { ascending: false });
+          if (listErr) return err(listErr.message, 500);
+          return json({ data: data ?? [], total: (data ?? []).length });
+        }
+
+        if (req.method === "DELETE") {
+          const id = url.searchParams.get("id");
+          if (!id) return err("id query param required");
+          const { error: delErr } = await supabase
+            .from("push_subscriptions" as any)
+            .delete()
+            .eq("id", id);
+          if (delErr) return err(delErr.message, 500);
+          return json({ ok: true });
+        }
+
+        if (req.method === "POST") {
+          const body = await req.json();
+          const { title, message, url: notifUrl, user_id: targetUserId } = body;
+          if (!title) return err("title is required");
+
+          const vapidPrivateKey = Deno.env.get("VAPID_PRIVATE_KEY");
+          if (!vapidPrivateKey) return err("VAPID_PRIVATE_KEY not configured — call generate_vapid first, then set the secret", 503);
+
+          const { data: ws } = await supabase
+            .from("workshop_settings")
+            .select("vapid_public_key, contact_email")
+            .eq("id", 1)
+            .maybeSingle();
+
+          const vapidPublicKey = (ws as any)?.vapid_public_key as string | null;
+          if (!vapidPublicKey) return err("VAPID keys not generated yet — call generate_vapid first", 503);
+
+          webpush.setVapidDetails(
+            `mailto:${(ws as any)?.contact_email || "admin@example.com"}`,
+            vapidPublicKey,
+            vapidPrivateKey
+          );
+
+          let subsQuery = supabase.from("push_subscriptions" as any).select("id, endpoint, p256dh, auth_key");
+          if (targetUserId) subsQuery = subsQuery.eq("user_id", targetUserId);
+          const { data: subs } = await subsQuery;
+
+          if (!subs?.length) return json({ sent: 0, total: 0, message: "No subscribers found" });
+
+          const payload = JSON.stringify({ title, body: message ?? "", url: notifUrl ?? "/" });
+          let sent = 0;
+          const expiredIds: number[] = [];
+
+          for (const sub of subs as { id: number; endpoint: string; p256dh: string; auth_key: string }[]) {
+            try {
+              await webpush.sendNotification(
+                { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth_key } },
+                payload
+              );
+              sent++;
+            } catch (e: any) {
+              if (e?.statusCode === 410 || e?.statusCode === 404) {
+                expiredIds.push(sub.id);
+              }
+            }
+          }
+
+          if (expiredIds.length) {
+            await supabase.from("push_subscriptions" as any).delete().in("id", expiredIds);
+          }
+
+          return json({ sent, total: subs.length, expired: expiredIds.length });
+        }
+
+        return err("Method not allowed", 405);
       }
 
       // ==================== FEATURE FLAGS ====================

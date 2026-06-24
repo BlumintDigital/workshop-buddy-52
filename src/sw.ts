@@ -31,3 +31,29 @@ self.addEventListener("message", (event) => {
     self.skipWaiting();
   }
 });
+
+self.addEventListener("push", (event: PushEvent) => {
+  const data = event.data?.json() ?? {};
+  event.waitUntil(
+    self.registration.showNotification(data.title ?? "Notification", {
+      body: data.body ?? "",
+      icon: "/pwa-192x192.png",
+      badge: "/pwa-192x192.png",
+      data: { url: data.url ?? "/" },
+    })
+  );
+});
+
+self.addEventListener("notificationclick", (event: NotificationEvent) => {
+  event.notification.close();
+  const target: string = event.notification.data?.url ?? "/";
+  event.waitUntil(
+    (self as unknown as { clients: Clients }).clients
+      .matchAll({ type: "window", includeUncontrolled: true })
+      .then((list) => {
+        const existing = (list as WindowClient[]).find((c) => c.url === target && "focus" in c);
+        if (existing) return existing.focus();
+        return (self as unknown as { clients: Clients }).clients.openWindow(target);
+      })
+  );
+});
