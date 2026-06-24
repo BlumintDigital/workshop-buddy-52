@@ -93,8 +93,8 @@ function InvoiceDocument({ invoice, clientName, items, workshopName = "Workshop"
             <View key={idx} style={styles.tableRow}>
               <Text style={styles.colDesc}>{item.description}</Text>
               <Text style={styles.colQty}>{item.quantity}</Text>
-              <Text style={styles.colPrice}>${Number(item.unit_price).toFixed(2)}</Text>
-              <Text style={styles.colTotal}>${(item.quantity * item.unit_price).toFixed(2)}</Text>
+              <Text style={styles.colPrice}>{fmt(Number(item.unit_price))}</Text>
+              <Text style={styles.colTotal}>{fmt(item.quantity * item.unit_price)}</Text>
             </View>
           ))}
         </View>
@@ -103,17 +103,17 @@ function InvoiceDocument({ invoice, clientName, items, workshopName = "Workshop"
         <View style={styles.totalSection}>
           <View style={styles.totalRow}>
             <Text style={styles.totalLabel}>Subtotal</Text>
-            <Text style={styles.totalValue}>${subtotal.toFixed(2)}</Text>
+            <Text style={styles.totalValue}>{fmt(subtotal)}</Text>
           </View>
           {taxRate > 0 && (
             <View style={styles.totalRow}>
               <Text style={styles.totalLabel}>Tax ({taxRate}%)</Text>
-              <Text style={styles.totalValue}>${taxAmount.toFixed(2)}</Text>
+              <Text style={styles.totalValue}>{fmt(taxAmount)}</Text>
             </View>
           )}
           <View style={styles.grandTotalRow}>
             <Text style={styles.grandTotalLabel}>Total</Text>
-            <Text style={styles.grandTotalValue}>${total.toFixed(2)}</Text>
+            <Text style={styles.grandTotalValue}>{fmt(total)}</Text>
           </View>
         </View>
 
