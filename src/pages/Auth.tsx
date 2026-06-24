@@ -88,6 +88,31 @@ export default function Auth() {
     }
   };
 
+  const trustThisDeviceIfRequested = async () => {
+    if (!rememberDevice) return;
+    try {
+      const label = navigator.userAgent.slice(0, 180);
+      const { data, error } = await supabase.functions.invoke("mfa-trust-device", {
+        body: { device_label: label },
+      });
+      if (error) throw error;
+      if (data?.token) localStorage.setItem("mfa_device_token", data.token);
+    } catch (err: any) {
+      toast.error("Could not remember this device, but you are signed in.");
+    }
+  };
+
+  const finishMfaSuccess = async () => {
+    await trustThisDeviceIfRequested();
+    clearMfaFlag();
+    setMfaStep(false);
+    setMfaCode("");
+    setBackupCode("");
+    setUseBackupCode(false);
+    toast.success("Signed in successfully");
+    navigate(getRoleDashboardPath(pendingRole as any), { replace: true });
+  };
+
   const handleMfaVerify = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!mfaFactorId || mfaCode.length !== 6) return;
@@ -103,14 +128,29 @@ export default function Auth() {
       });
       if (verifyError) throw verifyError;
 
-      clearMfaFlag();
-      setMfaStep(false);
-      setMfaCode("");
-      toast.success("Signed in successfully");
-      navigate(getRoleDashboardPath(pendingRole as any), { replace: true });
+      await finishMfaSuccess();
     } catch (err: any) {
       toast.error(err.message || "Invalid verification code");
       setMfaCode("");
+    } finally {
+      setMfaSubmitting(false);
+    }
+  };
+
+  const handleBackupCodeVerify = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!backupCode.trim()) return;
+    setMfaSubmitting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("mfa-backup-verify", {
+        body: { code: backupCode.trim() },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      await finishMfaSuccess();
+    } catch (err: any) {
+      toast.error(err.message || "Invalid backup code");
+      setBackupCode("");
     } finally {
       setMfaSubmitting(false);
     }
