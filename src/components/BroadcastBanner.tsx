@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Info, AlertTriangle, AlertOctagon, X } from "lucide-react";
 
@@ -24,21 +25,22 @@ const MAX_VISIBLE = 3;
 
 const severityRank: Record<Severity, number> = { critical: 0, warning: 1, info: 2 };
 
-const severityStyles: Record<Severity, { wrap: string; icon: JSX.Element; btn: string }> = {
+const severityConfig: Record<Severity, { variant: "default" | "destructive"; className: string; Icon: typeof Info }> = {
   info: {
-    wrap: "bg-primary/10 border-b border-primary/20 text-foreground",
-    icon: <Info className="h-4 w-4 shrink-0 text-primary" />,
-    btn: "border-primary/40 text-primary hover:bg-primary/15",
+    variant: "default",
+    className: "border-primary/30 bg-primary/5 [&>svg]:text-primary",
+    Icon: Info,
   },
   warning: {
-    wrap: "bg-amber-50 border-b border-amber-200 text-amber-900 dark:bg-amber-950/30 dark:border-amber-800 dark:text-amber-200",
-    icon: <AlertTriangle className="h-4 w-4 shrink-0" />,
-    btn: "border-amber-400 text-amber-800 hover:bg-amber-100 dark:border-amber-700 dark:text-amber-200 dark:hover:bg-amber-900/40",
+    variant: "default",
+    className:
+      "border-amber-300 bg-amber-50 text-amber-900 [&>svg]:text-amber-600 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200 dark:[&>svg]:text-amber-400",
+    Icon: AlertTriangle,
   },
   critical: {
-    wrap: "bg-destructive/10 border-b border-destructive/30 text-destructive-foreground dark:text-destructive",
-    icon: <AlertOctagon className="h-4 w-4 shrink-0 text-destructive" />,
-    btn: "border-destructive/50 text-destructive hover:bg-destructive/15",
+    variant: "destructive",
+    className: "bg-destructive/5",
+    Icon: AlertOctagon,
   },
 };
 
