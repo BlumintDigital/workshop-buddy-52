@@ -739,8 +739,8 @@ export default function JobDetail() {
                         <TableRow key={m.id}>
                           <TableCell className="font-medium">{item?.name || "—"}</TableCell>
                           <TableCell>{m.quantity} {item?.unit || ""}</TableCell>
-                          <TableCell className="hidden sm:table-cell">${Number(item?.unit_cost || 0).toFixed(2)}</TableCell>
-                          <TableCell>${lineTotal.toFixed(2)}</TableCell>
+                          <TableCell className="hidden sm:table-cell">{fmt(Number(item?.unit_cost || 0))}</TableCell>
+                          <TableCell>{fmt(lineTotal)}</TableCell>
                         </TableRow>
                       );
                     })}
