@@ -67,6 +67,8 @@ serve(async (req) => {
       { auth: { autoRefreshToken: false, persistSession: false } }
     );
 
+    const { data: allUsers } = await adminClient.auth.admin.listUsers();
+
     const results: { email: string; role: string; created: boolean; roleSet: boolean; password: string }[] = [];
 
     for (const demo of DEMO_USERS) {
