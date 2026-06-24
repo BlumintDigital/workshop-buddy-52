@@ -136,13 +136,14 @@ function InvoiceDocument({ invoice, clientName, items, workshopName = "Workshop"
 export async function generateInvoicePDF(props: Omit<InvoicePDFProps, "workshopName">): Promise<void> {
   const { data: settings } = await supabase
     .from("workshop_settings")
-    .select("workshop_name")
+    .select("workshop_name, currency")
     .eq("id", 1)
     .maybeSingle();
 
   const workshopName = settings?.workshop_name || "Workshop";
+  const currency = (settings as any)?.currency || props.invoice?.currency || "USD";
 
-  const blob = await pdf(<InvoiceDocument {...props} workshopName={workshopName} />).toBlob();
+  const blob = await pdf(<InvoiceDocument {...props} workshopName={workshopName} currency={currency} />).toBlob();
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
