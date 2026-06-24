@@ -786,6 +786,81 @@ Deno.serve(async (req) => {
         return err("Method not allowed", 405);
       }
 
+      // ==================== BROADCASTS ====================
+      // Super-admin–authored notices shown as a banner in tenant apps.
+      //   GET    ?action=broadcasts          → list all broadcasts
+      //   POST   ?action=broadcasts          → create (body: { title, message?, severity?, link_url?, link_label?, starts_at?, expires_at?, active? })
+      //   PATCH  ?action=broadcasts&id=<id>  → update any subset of fields
+      //   DELETE ?action=broadcasts&id=<id>  → remove a broadcast
+      case "broadcasts": {
+        if (req.method === "GET") {
+          const { data, error: listErr } = await supabase
+            .from("broadcasts" as any)
+            .select("*")
+            .order("created_at", { ascending: false });
+          if (listErr) return err(listErr.message, 500);
+          return json({ data: data ?? [], total: (data ?? []).length });
+        }
+
+        if (req.method === "POST") {
+          const body = await req.json();
+          const { title, message, severity, link_url, link_label, starts_at, expires_at, active } = body ?? {};
+          if (!title || typeof title !== "string") return err("title is required");
+          const allowed = ["info", "warning", "critical"];
+          const sev = severity && allowed.includes(severity) ? severity : "info";
+          const { data, error: insErr } = await supabase
+            .from("broadcasts" as any)
+            .insert({
+              title,
+              message: message ?? null,
+              severity: sev,
+              link_url: link_url ?? null,
+              link_label: link_label ?? null,
+              starts_at: starts_at ?? new Date().toISOString(),
+              expires_at: expires_at ?? null,
+              active: active ?? true,
+            })
+            .select()
+            .single();
+          if (insErr) return err(insErr.message, 500);
+          return json({ data });
+        }
+
+        if (req.method === "PATCH") {
+          const id = url.searchParams.get("id");
+          if (!id) return err("id query param required");
+          const body = await req.json();
+          const patch: Record<string, unknown> = {};
+          for (const k of ["title", "message", "severity", "link_url", "link_label", "starts_at", "expires_at", "active"]) {
+            if (k in body) patch[k] = (body as any)[k];
+          }
+          if (patch.severity && !["info", "warning", "critical"].includes(patch.severity as string)) {
+            return err("invalid severity");
+          }
+          const { data, error: updErr } = await supabase
+            .from("broadcasts" as any)
+            .update(patch)
+            .eq("id", id)
+            .select()
+            .single();
+          if (updErr) return err(updErr.message, 500);
+          return json({ data });
+        }
+
+        if (req.method === "DELETE") {
+          const id = url.searchParams.get("id");
+          if (!id) return err("id query param required");
+          const { error: delErr } = await supabase
+            .from("broadcasts" as any)
+            .delete()
+            .eq("id", id);
+          if (delErr) return err(delErr.message, 500);
+          return json({ ok: true });
+        }
+
+        return err("Method not allowed", 405);
+      }
+
       // ==================== FEATURE FLAGS ====================
       case "get_feature_flags": {
         const { data, error: fetchErr } = await supabase
