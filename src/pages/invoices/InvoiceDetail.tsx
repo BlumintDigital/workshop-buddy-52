@@ -351,9 +351,9 @@ export default function InvoiceDetail() {
         {/* Totals */}
         <Card>
           <CardContent className="pt-6 space-y-2">
-            <div className="flex justify-between text-sm"><span>Subtotal</span><span>${subtotal.toFixed(2)}</span></div>
-            <div className="flex justify-between text-sm"><span>Tax ({invoice.tax_rate ?? 0}%)</span><span>${taxAmount.toFixed(2)}</span></div>
-            <div className="flex justify-between font-bold text-lg border-t pt-2"><span>Total</span><span>${total.toFixed(2)}</span></div>
+            <div className="flex justify-between text-sm"><span>Subtotal</span><span>{fmt(subtotal)}</span></div>
+            <div className="flex justify-between text-sm"><span>Tax ({invoice.tax_rate ?? 0}%)</span><span>{fmt(taxAmount)}</span></div>
+            <div className="flex justify-between font-bold text-lg border-t pt-2"><span>Total</span><span>{fmt(total)}</span></div>
           </CardContent>
         </Card>
 
