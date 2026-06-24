@@ -172,8 +172,19 @@ export default function UserProfile() {
     try {
       const { error } = await supabase.auth.mfa.unenroll({ factorId });
       if (error) throw error;
+      // Clean up backup codes and trusted devices when MFA is removed
+      if (user) {
+        await Promise.all([
+          supabase.from("mfa_backup_codes").delete().eq("user_id", user.id),
+          supabase.from("mfa_trusted_devices").delete().eq("user_id", user.id),
+        ]);
+      }
+      localStorage.removeItem("mfa_device_token");
       setMfaEnabled(false);
       setFactorId(null);
+      setBackupTotal(0);
+      setBackupCodesRemaining(0);
+      setTrustedDeviceCount(0);
       await refreshMfaStatus();
       toast.success("Two-factor authentication disabled");
     } catch (err: any) {
