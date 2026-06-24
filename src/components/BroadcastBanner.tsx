@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Info, AlertTriangle, AlertOctagon, X } from "lucide-react";
 
@@ -24,21 +25,22 @@ const MAX_VISIBLE = 3;
 
 const severityRank: Record<Severity, number> = { critical: 0, warning: 1, info: 2 };
 
-const severityStyles: Record<Severity, { wrap: string; icon: JSX.Element; btn: string }> = {
+const severityConfig: Record<Severity, { variant: "default" | "destructive"; className: string; Icon: typeof Info }> = {
   info: {
-    wrap: "bg-primary/10 border-b border-primary/20 text-foreground",
-    icon: <Info className="h-4 w-4 shrink-0 text-primary" />,
-    btn: "border-primary/40 text-primary hover:bg-primary/15",
+    variant: "default",
+    className: "border-primary/30 bg-primary/5 [&>svg]:text-primary",
+    Icon: Info,
   },
   warning: {
-    wrap: "bg-amber-50 border-b border-amber-200 text-amber-900 dark:bg-amber-950/30 dark:border-amber-800 dark:text-amber-200",
-    icon: <AlertTriangle className="h-4 w-4 shrink-0" />,
-    btn: "border-amber-400 text-amber-800 hover:bg-amber-100 dark:border-amber-700 dark:text-amber-200 dark:hover:bg-amber-900/40",
+    variant: "default",
+    className:
+      "border-amber-300 bg-amber-50 text-amber-900 [&>svg]:text-amber-600 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200 dark:[&>svg]:text-amber-400",
+    Icon: AlertTriangle,
   },
   critical: {
-    wrap: "bg-destructive/10 border-b border-destructive/30 text-destructive-foreground dark:text-destructive",
-    icon: <AlertOctagon className="h-4 w-4 shrink-0 text-destructive" />,
-    btn: "border-destructive/50 text-destructive hover:bg-destructive/15",
+    variant: "destructive",
+    className: "bg-destructive/5",
+    Icon: AlertOctagon,
   },
 };
 
@@ -119,50 +121,38 @@ export function BroadcastBanner() {
   if (!user || visible.length === 0) return null;
 
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-col gap-2 px-3 sm:px-6 pt-3">
       {visible.map((b) => {
-        const styles = severityStyles[b.severity];
+        const cfg = severityConfig[b.severity];
+        const Icon = cfg.Icon;
         const isExternal = b.link_url && /^https?:\/\//i.test(b.link_url);
         return (
-          <div
-            key={b.id}
-            role="status"
-            className={`${styles.wrap} px-4 py-2.5 flex items-start sm:items-center justify-between gap-3 flex-wrap`}
-          >
-            <div className="flex items-start sm:items-center gap-2 text-sm min-w-0">
-              {styles.icon}
-              <div className="min-w-0">
-                <span className="font-semibold">{b.title}</span>
-                {b.message && <span className="ml-2 opacity-90">{b.message}</span>}
-              </div>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              {b.link_url && b.link_label && (
-                isExternal ? (
+          <Alert key={b.id} variant={cfg.variant} className={`${cfg.className} pr-12`}>
+            <Icon className="h-4 w-4" />
+            <AlertTitle>{b.title}</AlertTitle>
+            {b.message && <AlertDescription>{b.message}</AlertDescription>}
+            {b.link_url && b.link_label && (
+              <div className="mt-3">
+                {isExternal ? (
                   <a href={b.link_url} target="_blank" rel="noopener noreferrer">
-                    <Button size="sm" variant="outline" className={`${styles.btn} min-h-[44px] sm:min-h-0`}>
-                      {b.link_label}
-                    </Button>
+                    <Button size="sm" variant="outline">{b.link_label}</Button>
                   </a>
                 ) : (
                   <Link to={b.link_url}>
-                    <Button size="sm" variant="outline" className={`${styles.btn} min-h-[44px] sm:min-h-0`}>
-                      {b.link_label}
-                    </Button>
+                    <Button size="sm" variant="outline">{b.link_label}</Button>
                   </Link>
-                )
-              )}
-              <Button
-                size="icon"
-                variant="ghost"
-                aria-label="Dismiss broadcast"
-                onClick={() => dismiss(b.id)}
-                className="h-9 w-9 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0"
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
+                )}
+              </div>
+            )}
+            <button
+              type="button"
+              aria-label="Dismiss broadcast"
+              onClick={() => dismiss(b.id)}
+              className="absolute right-2 top-2 inline-flex h-8 w-8 items-center justify-center rounded-md text-current/70 hover:bg-foreground/10 transition-colors"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </Alert>
         );
       })}
     </div>
