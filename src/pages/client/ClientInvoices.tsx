@@ -52,7 +52,7 @@ export default function ClientInvoices() {
                       <Link to={`/invoices/${inv.id}`} className="text-primary hover:underline">{inv.invoice_number}</Link>
                     </TableCell>
                     <TableCell><Badge variant={statusColors[inv.status] || "outline"}>{inv.status}</Badge></TableCell>
-                    <TableCell>${Number(inv.total).toFixed(2)}</TableCell>
+                    <TableCell>{fmt(Number(inv.total))}</TableCell>
                     <TableCell className="hidden sm:table-cell">{inv.due_date || "—"}</TableCell>
                     <TableCell>
                       {inv.stripe_payment_url && inv.status !== "paid" && (
