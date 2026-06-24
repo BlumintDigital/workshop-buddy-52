@@ -157,17 +157,42 @@ export default function Auth() {
 
   const handleBackupCodeVerify = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!backupCode.trim()) return;
+    if (!backupFormatValid || isLocked) return;
+    setBackupError(null);
     setMfaSubmitting(true);
     try {
       const { data, error } = await supabase.functions.invoke("mfa-backup-verify", {
         body: { code: backupCode.trim() },
       });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-      await finishMfaSuccess();
+      // supabase-js surfaces non-2xx as FunctionsHttpError; pull data from context if present.
+      const payload = (data ?? (error as any)?.context?.body) || {};
+      let parsed: any = payload;
+      if (typeof payload === "string") {
+        try { parsed = JSON.parse(payload); } catch { parsed = { error: payload }; }
+      }
+
+      if (parsed?.success) {
+        await finishMfaSuccess();
+        return;
+      }
+
+      // Error path
+      if (typeof parsed?.remaining_attempts === "number") {
+        setBackupRemainingAttempts(parsed.remaining_attempts);
+      }
+      if (typeof parsed?.retry_after_sec === "number" && parsed.retry_after_sec > 0) {
+        setBackupLockoutSec(parsed.retry_after_sec);
+        setBackupError(parsed.error || "Too many attempts. Please wait.");
+      } else {
+        const remainingMsg =
+          typeof parsed?.remaining_attempts === "number"
+            ? ` ${parsed.remaining_attempts} attempt${parsed.remaining_attempts === 1 ? "" : "s"} remaining.`
+            : "";
+        setBackupError((parsed?.error || error?.message || "Invalid backup code") + remainingMsg);
+      }
+      setBackupCode("");
     } catch (err: any) {
-      toast.error(err.message || "Invalid backup code");
+      setBackupError(err.message || "Invalid backup code");
       setBackupCode("");
     } finally {
       setMfaSubmitting(false);
