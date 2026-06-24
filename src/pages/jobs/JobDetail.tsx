@@ -41,6 +41,7 @@ const emptyTaskForm = { title: "", description: "", assigned_to: "", status: "pe
 export default function JobDetail() {
   const { id } = useParams<{ id: string }>();
   const { role, user } = useAuth();
+  const { format: fmt } = useCurrency();
   const navigate = useNavigate();
 
   const [job, setJob] = useState<any>(null);
