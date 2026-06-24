@@ -1,8 +1,10 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders, sha256Hex } from "../_shared/mfa-cors.ts";
+import { checkRateLimit } from "../_shared/rate-limit.ts";
 
 const TRUST_DAYS = 30;
+const LIMIT = { limit: 5, windowSec: 60 * 60, lockoutSec: 60 * 60 };
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -23,10 +25,22 @@ serve(async (req) => {
     if (claimsErr || !claims?.claims) return json({ error: "Unauthorized" }, 401);
 
     const userId = claims.claims.sub as string;
+
+    const rl = await checkRateLimit(userId, "trust_device", LIMIT);
+    if (!rl.allowed) {
+      return json(
+        {
+          error: "Too many trust-device requests. Please try again later.",
+          retry_after_sec: rl.retryAfterSec,
+          locked_until: rl.lockedUntil,
+        },
+        429,
+      );
+    }
+
     const body = await req.json().catch(() => ({}));
     const deviceLabel: string = (body.device_label as string)?.slice(0, 200) || "Unknown device";
 
-    // Generate opaque token
     const tokenBytes = new Uint8Array(32);
     crypto.getRandomValues(tokenBytes);
     const opaque = Array.from(tokenBytes).map((b) => b.toString(16).padStart(2, "0")).join("");

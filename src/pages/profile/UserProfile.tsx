@@ -11,6 +11,17 @@ import { toast } from "sonner";
 import { User, ShieldCheck, ShieldOff, Copy, Loader2, KeyRound, RefreshCw } from "lucide-react";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import BackupCodesDialog from "@/components/mfa/BackupCodesDialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { useCountdown } from "@/hooks/useCountdown";
 
 export default function UserProfile() {
   const { user, profile, role, refreshMfaStatus } = useAuth();
@@ -35,6 +46,11 @@ export default function UserProfile() {
   const [generatingBackup, setGeneratingBackup] = useState(false);
   const [shownCodes, setShownCodes] = useState<string[] | null>(null);
   const [trustedDeviceCount, setTrustedDeviceCount] = useState(0);
+  const [revoking, setRevoking] = useState(false);
+  const [confirmRegenerate, setConfirmRegenerate] = useState(false);
+  const [confirmRevokeAll, setConfirmRevokeAll] = useState(false);
+  const [regenerateCooldownSec, setRegenerateCooldownSec] = useState<number | null>(null);
+  const regenerateCooldown = useCountdown(regenerateCooldownSec);
 
   const loadBackupAndDeviceCounts = async () => {
     if (!user) return;
@@ -58,9 +74,23 @@ export default function UserProfile() {
     setGeneratingBackup(true);
     try {
       const { data, error } = await supabase.functions.invoke("mfa-backup-generate");
-      if (error) throw error;
-      if (!data?.codes) throw new Error("No codes returned");
-      setShownCodes(data.codes);
+      const payload = (data ?? (error as any)?.context?.body) || {};
+      let parsed: any = payload;
+      if (typeof payload === "string") {
+        try { parsed = JSON.parse(payload); } catch { parsed = { error: payload }; }
+      }
+
+      if (typeof parsed?.retry_after_sec === "number" && parsed.retry_after_sec > 0) {
+        setRegenerateCooldownSec(parsed.retry_after_sec);
+        toast.error(parsed.error || "Please wait before regenerating again.");
+        return;
+      }
+      if (error || parsed?.error) {
+        toast.error(parsed?.error || error?.message || "Failed to generate backup codes");
+        return;
+      }
+      if (!parsed?.codes) throw new Error("No codes returned");
+      setShownCodes(parsed.codes);
       await loadBackupAndDeviceCounts();
       toast.success("Backup codes generated");
     } catch (err: any) {
@@ -72,11 +102,21 @@ export default function UserProfile() {
 
   const handleRevokeDevices = async () => {
     if (!user) return;
-    const { error } = await supabase.from("mfa_trusted_devices").delete().eq("user_id", user.id);
-    if (error) { toast.error(error.message); return; }
-    localStorage.removeItem("mfa_device_token");
-    setTrustedDeviceCount(0);
-    toast.success("Trusted devices revoked");
+    setRevoking(true);
+    try {
+      const { error } = await supabase.from("mfa_trusted_devices").delete().eq("user_id", user.id);
+      if (error) {
+        toast.error(error.message || "Failed to revoke trusted devices");
+        return;
+      }
+      localStorage.removeItem("mfa_device_token");
+      setTrustedDeviceCount(0);
+      toast.success("All trusted devices have been revoked");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to revoke trusted devices");
+    } finally {
+      setRevoking(false);
+    }
   };
 
   useEffect(() => {
@@ -281,9 +321,28 @@ export default function UserProfile() {
                   ) : (
                     <p className="text-xs text-muted-foreground">No backup codes generated yet.</p>
                   )}
-                  <Button size="sm" variant="outline" onClick={handleGenerateBackupCodes} disabled={generatingBackup}>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      if (regenerateCooldown.remaining > 0) {
+                        toast.error(`You can regenerate codes again in ${regenerateCooldown.formatted}.`);
+                        return;
+                      }
+                      if (backupTotal > 0) {
+                        setConfirmRegenerate(true);
+                      } else {
+                        void handleGenerateBackupCodes();
+                      }
+                    }}
+                    disabled={generatingBackup || regenerateCooldown.remaining > 0}
+                  >
                     <RefreshCw className="h-3.5 w-3.5 mr-1" />
-                    {generatingBackup ? "Generating..." : backupTotal > 0 ? "Regenerate codes" : "Generate backup codes"}
+                    {generatingBackup
+                      ? "Generating..."
+                      : regenerateCooldown.remaining > 0
+                        ? `Try again in ${regenerateCooldown.formatted}`
+                        : backupTotal > 0 ? "Regenerate codes" : "Generate backup codes"}
                   </Button>
                 </div>
 
@@ -299,11 +358,62 @@ export default function UserProfile() {
                       : "No trusted devices."}
                   </p>
                   {trustedDeviceCount > 0 && (
-                    <Button size="sm" variant="outline" onClick={handleRevokeDevices}>
-                      Revoke all trusted devices
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setConfirmRevokeAll(true)}
+                      disabled={revoking}
+                    >
+                      {revoking ? "Revoking..." : "Revoke all trusted devices"}
                     </Button>
                   )}
                 </div>
+
+                <AlertDialog open={confirmRegenerate} onOpenChange={setConfirmRegenerate}>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Regenerate backup codes?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This invalidates your existing {backupTotal} backup code{backupTotal === 1 ? "" : "s"}.
+                        Make sure to save the new codes — you won't be able to see them again.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={() => {
+                          setConfirmRegenerate(false);
+                          void handleGenerateBackupCodes();
+                        }}
+                      >
+                        Regenerate
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+
+                <AlertDialog open={confirmRevokeAll} onOpenChange={setConfirmRevokeAll}>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Revoke all trusted devices?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        You'll need to enter a 2FA code on each device next time you sign in.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={() => {
+                          setConfirmRevokeAll(false);
+                          void handleRevokeDevices();
+                        }}
+                      >
+                        Revoke all
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+
 
                 <Button variant="destructive" size="sm" onClick={handleDisable2FA} disabled={unenrolling}>
                   <ShieldOff className="h-4 w-4 mr-1" />

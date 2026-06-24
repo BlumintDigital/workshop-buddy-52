@@ -591,6 +591,33 @@ export type Database = {
         }
         Relationships: []
       }
+      mfa_rate_limits: {
+        Row: {
+          action: string
+          attempt_count: number
+          locked_until: string | null
+          updated_at: string
+          user_id: string
+          window_started_at: string
+        }
+        Insert: {
+          action: string
+          attempt_count?: number
+          locked_until?: string | null
+          updated_at?: string
+          user_id: string
+          window_started_at?: string
+        }
+        Update: {
+          action?: string
+          attempt_count?: number
+          locked_until?: string | null
+          updated_at?: string
+          user_id?: string
+          window_started_at?: string
+        }
+        Relationships: []
+      }
       mfa_trusted_devices: {
         Row: {
           created_at: string
