@@ -8,17 +8,17 @@ let inflight: Promise<string> | null = null;
 async function loadCurrency(): Promise<string> {
   if (cached) return cached;
   if (inflight) return inflight;
-  inflight = supabase
-    .from("workshop_settings")
-    .select("currency")
-    .eq("id", 1)
-    .maybeSingle()
-    .then(({ data }) => {
-      const c = ((data as any)?.currency as string | undefined) || "USD";
-      cached = c;
-      listeners.forEach((fn) => fn(c));
-      return c;
-    });
+  inflight = (async () => {
+    const { data } = await supabase
+      .from("workshop_settings")
+      .select("currency")
+      .eq("id", 1)
+      .maybeSingle();
+    const c = ((data as any)?.currency as string | undefined) || "USD";
+    cached = c;
+    listeners.forEach((fn) => fn(c));
+    return c;
+  })();
   return inflight;
 }
 
