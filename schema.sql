@@ -1,6 +1,6 @@
 ﻿-- ============================================================
 -- CONSOLIDATED SCHEMA
--- Generated from 39 migration files
+-- Generated from 40 migration files
 -- Apply this to a fresh Supabase project via:
 --   SQL Editor in Supabase Studio  (paste and run)
 -- OR:
@@ -1394,4 +1394,26 @@ ALTER TABLE public.mfa_backup_codes ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can view own backup codes"
   ON public.mfa_backup_codes FOR SELECT TO authenticated
   USING (auth.uid() = user_id);
+
+-- ── 20260624174437_2c927354-28fb-48a0-8108-2fea8c5719c2.sql ─────────────────────────────────────────
+CREATE TABLE public.mfa_rate_limits (
+  user_id uuid NOT NULL,
+  action text NOT NULL,
+  attempt_count integer NOT NULL DEFAULT 0,
+  window_started_at timestamptz NOT NULL DEFAULT now(),
+  locked_until timestamptz,
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (user_id, action)
+);
+
+GRANT SELECT ON public.mfa_rate_limits TO authenticated;
+GRANT ALL ON public.mfa_rate_limits TO service_role;
+
+ALTER TABLE public.mfa_rate_limits ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users view own rate limits"
+ON public.mfa_rate_limits
+FOR SELECT
+TO authenticated
+USING (auth.uid() = user_id);
 
