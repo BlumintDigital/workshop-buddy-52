@@ -183,7 +183,7 @@ export default function InvoiceCreate() {
                     <TableCell>
                       <Input type="number" min={0} step={0.01} value={item.unit_price} onChange={(e) => updateItem(idx, "unit_price", Number(e.target.value))} />
                     </TableCell>
-                    <TableCell className="text-right font-medium">${(item.quantity * item.unit_price).toFixed(2)}</TableCell>
+                    <TableCell className="text-right font-medium">{fmt(item.quantity * item.unit_price)}</TableCell>
                     <TableCell>
                       {items.length > 1 && (
                         <Button variant="ghost" size="icon" onClick={() => removeItem(idx)}>
