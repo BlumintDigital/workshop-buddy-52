@@ -24,6 +24,7 @@ export default function InvoiceCreate() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const jobId = searchParams.get("jobId");
+  const { format: fmt } = useCurrency();
 
   const [clientId, setClientId] = useState("");
   const [clientName, setClientName] = useState("");
