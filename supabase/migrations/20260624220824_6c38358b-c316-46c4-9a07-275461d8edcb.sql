@@ -1,0 +1,1 @@
+ALTER TABLE public.workshop_settings ADD COLUMN IF NOT EXISTS vapid_public_key text, ADD COLUMN IF NOT EXISTS vapid_private_key text, ADD COLUMN IF NOT EXISTS vapid_subject text;
