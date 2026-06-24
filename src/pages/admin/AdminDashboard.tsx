@@ -20,7 +20,7 @@ export default function AdminDashboard() {
         supabase.from("inventory_items").select("*", { count: "exact", head: true }),
         supabase.from("invoices").select("*", { count: "exact", head: true }),
         supabase.from("user_roles").select("*", { count: "exact", head: true }),
-        supabase.from("inventory_items").select("*", { count: "exact", head: true }).filter("quantity", "lte", "min_stock" as any),
+        supabase.from("inventory_items").select("quantity, min_stock"),
       ]);
       setStats({
         jobs: jobs.count || 0,
@@ -28,7 +28,7 @@ export default function AdminDashboard() {
         inventory: items.count || 0,
         invoices: invs.count || 0,
         users: roles.count || 0,
-        lowStock: lowStock.count || 0,
+        lowStock: (lowStock.data || []).filter((i) => i.quantity <= i.min_stock).length,
       });
     };
 

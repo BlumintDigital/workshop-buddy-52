@@ -24,7 +24,6 @@ export function SessionIndicator() {
   const { sessionTimeLeft, extendSession, signOut, user } = useAuth();
   const [showWarning, setShowWarning] = useState(false);
 
-  const percentage = (sessionTimeLeft / SESSION_TIMEOUT_MS) * 100;
   const isUrgent = sessionTimeLeft <= 120_000; // 2 min
   const isWarning = sessionTimeLeft <= 300_000; // 5 min
 
@@ -37,13 +36,10 @@ export function SessionIndicator() {
     }
   }, [isUrgent, user]);
 
-  if (!user) return null;
+  // Only surface the indicator when the session is actually approaching expiry
+  if (!user || !isWarning) return null;
 
-  const colorClass = isUrgent
-    ? "text-destructive"
-    : isWarning
-      ? "text-yellow-500"
-      : "text-muted-foreground";
+  const colorClass = isUrgent ? "text-destructive" : "text-yellow-500";
 
   const handleExtend = () => {
     extendSession();
@@ -56,7 +52,7 @@ export function SessionIndicator() {
         <Clock className="h-3.5 w-3.5" />
         <span className="hidden sm:inline">{formatTime(sessionTimeLeft)}</span>
         <Progress
-          value={percentage}
+          value={(sessionTimeLeft / SESSION_TIMEOUT_MS) * 100}
           className="h-1.5 w-12 hidden sm:block"
         />
       </div>

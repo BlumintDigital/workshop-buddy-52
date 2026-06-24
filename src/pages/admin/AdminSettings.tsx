@@ -78,6 +78,7 @@ export default function AdminSettings() {
   const [uploadingImage, setUploadingImage] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [copiedTemplate, setCopiedTemplate] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState("general");
   const imageInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
@@ -398,8 +399,25 @@ export default function AdminSettings() {
           <p className="text-muted-foreground">Workshop configuration</p>
         </div>
 
-        <Tabs defaultValue="general">
-          <TabsList className="grid grid-cols-3 w-full h-auto">
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          {/* Mobile dropdown */}
+          <div className="sm:hidden">
+            <Select value={activeTab} onValueChange={setActiveTab}>
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="general">General</SelectItem>
+                <SelectItem value="billing">Billing</SelectItem>
+                <SelectItem value="notifications">Notifications</SelectItem>
+                <SelectItem value="branding">Branding</SelectItem>
+                <SelectItem value="email">Email</SelectItem>
+                <SelectItem value="data">Data</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          {/* Desktop tabs */}
+          <TabsList className="hidden sm:grid sm:grid-cols-6 w-full h-auto">
             <TabsTrigger value="general" className="text-xs sm:text-sm">General</TabsTrigger>
             <TabsTrigger value="billing" className="text-xs sm:text-sm">Billing</TabsTrigger>
             <TabsTrigger value="notifications" className="text-xs sm:text-sm">Notifications</TabsTrigger>

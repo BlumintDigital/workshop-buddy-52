@@ -106,9 +106,9 @@ export default function AdminInventory() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h2 className="text-3xl font-bold tracking-tight">Inventory</h2>
+            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Inventory</h2>
             <p className="text-muted-foreground">Manage workshop inventory</p>
           </div>
           <Dialog open={open} onOpenChange={setOpen}>

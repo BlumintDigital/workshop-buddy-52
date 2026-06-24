@@ -255,26 +255,26 @@ export default function AdminCalendar() {
         </div>
 
         {/* Stats row */}
-        <div className="grid grid-cols-3 gap-4">
-          <Card className="p-4 flex items-center gap-3">
-            <Briefcase className="h-5 w-5 text-primary" />
-            <div>
-              <p className="text-2xl font-bold">{totalJobs}</p>
-              <p className="text-xs text-muted-foreground">Jobs this month</p>
+        <div className="grid grid-cols-3 gap-2 sm:gap-4">
+          <Card className="p-3 sm:p-4 flex flex-col sm:flex-row items-center gap-1 sm:gap-3">
+            <Briefcase className="h-4 w-4 sm:h-5 sm:w-5 text-primary shrink-0" />
+            <div className="text-center sm:text-left min-w-0">
+              <p className="text-xl sm:text-2xl font-bold">{totalJobs}</p>
+              <p className="text-[10px] sm:text-xs text-muted-foreground leading-tight">Jobs this month</p>
             </div>
           </Card>
-          <Card className="p-4 flex items-center gap-3">
-            <CalendarDays className="h-5 w-5 text-primary" />
-            <div>
-              <p className="text-2xl font-bold">{totalAppts}</p>
-              <p className="text-xs text-muted-foreground">Appointments</p>
+          <Card className="p-3 sm:p-4 flex flex-col sm:flex-row items-center gap-1 sm:gap-3">
+            <CalendarDays className="h-4 w-4 sm:h-5 sm:w-5 text-primary shrink-0" />
+            <div className="text-center sm:text-left min-w-0">
+              <p className="text-xl sm:text-2xl font-bold">{totalAppts}</p>
+              <p className="text-[10px] sm:text-xs text-muted-foreground leading-tight">Appointments</p>
             </div>
           </Card>
-          <Card className="p-4 flex items-center gap-3">
-            <AlertTriangle className="h-5 w-5 text-destructive" />
-            <div>
-              <p className="text-2xl font-bold">{overdueJobs}</p>
-              <p className="text-xs text-muted-foreground">Overdue jobs</p>
+          <Card className="p-3 sm:p-4 flex flex-col sm:flex-row items-center gap-1 sm:gap-3">
+            <AlertTriangle className="h-4 w-4 sm:h-5 sm:w-5 text-destructive shrink-0" />
+            <div className="text-center sm:text-left min-w-0">
+              <p className="text-xl sm:text-2xl font-bold">{overdueJobs}</p>
+              <p className="text-[10px] sm:text-xs text-muted-foreground leading-tight">Overdue jobs</p>
             </div>
           </Card>
         </div>

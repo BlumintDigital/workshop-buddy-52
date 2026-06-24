@@ -183,8 +183,24 @@ export default function AdminJobs() {
         </div>
 
         <div className="flex flex-col sm:flex-row gap-3">
-          <Tabs value={filter} onValueChange={handleFilterChange} className="flex-1">
-            <TabsList className="h-auto flex-wrap gap-1">
+          {/* Mobile dropdown filter */}
+          <div className="sm:hidden">
+            <Select value={filter} onValueChange={handleFilterChange}>
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="quote">Quotes</SelectItem>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="in_progress">In Progress</SelectItem>
+                <SelectItem value="completed">Completed</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          {/* Desktop tabs */}
+          <Tabs value={filter} onValueChange={handleFilterChange} className="hidden sm:block flex-1">
+            <TabsList className="h-auto gap-1 inline-flex">
               <TabsTrigger value="all">All</TabsTrigger>
               <TabsTrigger value="quote">Quotes</TabsTrigger>
               <TabsTrigger value="pending">Pending</TabsTrigger>
