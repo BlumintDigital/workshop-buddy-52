@@ -681,7 +681,7 @@ export default function JobDetail() {
                               </p>
                             )}
                             {parseFloat(task.value) > 0 && role !== "client" && (
-                              <Badge variant="outline" className="text-xs font-mono">${parseFloat(task.value).toFixed(2)}</Badge>
+                              <Badge variant="outline" className="text-xs font-mono">{fmt(parseFloat(task.value))}</Badge>
                             )}
                           </div>
                         </div>
