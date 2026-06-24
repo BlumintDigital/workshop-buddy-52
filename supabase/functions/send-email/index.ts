@@ -42,8 +42,17 @@ serve(async (req) => {
     .maybeSingle();
 
   const body = await req.json();
-  const { to_user_id, subject, html, mode } = body;
+  const { to_user_id, mode } = body;
+  let { subject, html } = body as { subject?: string; html?: string };
   let { to } = body;
+
+  // Escape HTML special characters to neutralize any markup in user input.
+  const escapeHtml = (s: string) =>
+    s.replace(/&/g, "&amp;")
+     .replace(/</g, "&lt;")
+     .replace(/>/g, "&gt;")
+     .replace(/"/g, "&quot;")
+     .replace(/'/g, "&#39;");
 
   // bug_report mode: any authenticated user, recipient resolved server-side
   // (admin email is never exposed to the client).
@@ -64,6 +73,24 @@ serve(async (req) => {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    // Sanitize untrusted client-supplied content to prevent HTML injection /
+    // phishing-style emails sent from the workshop's trusted address.
+    const rawSubject = typeof subject === "string" ? subject : "";
+    const safeSubject = rawSubject
+      .replace(/[\r\n]+/g, " ")
+      .trim()
+      .slice(0, 200) || "(no subject)";
+    subject = `[Bug Report] ${safeSubject}`;
+
+    const rawHtml = typeof html === "string" ? html : "";
+    // Strip all tags, then escape what remains and wrap in a safe template.
+    const plain = rawHtml.replace(/<[^>]*>/g, " ").slice(0, 10000);
+    html = `<div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.5;color:#111;">
+  <p><strong>Bug report submitted by user:</strong> ${escapeHtml(user.email ?? user.id)}</p>
+  <hr/>
+  <pre style="white-space:pre-wrap;font-family:inherit;">${escapeHtml(plain)}</pre>
+</div>`;
   } else {
     // Default path: admin/manager only
     if (!roleRow || !["admin", "manager"].includes(roleRow.role)) {
