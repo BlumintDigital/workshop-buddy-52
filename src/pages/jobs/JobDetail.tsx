@@ -622,7 +622,7 @@ export default function JobDetail() {
                 <p className="text-sm text-muted-foreground mt-0.5">
                   {completedTasks} of {tasks.length} completed{taskProgress !== null && ` · ${taskProgress}%`}
                   {totalJobValue > 0 && role !== "client" && (
-                    <span className="ml-2 font-medium text-foreground">${completedJobValue.toFixed(2)} / ${totalJobValue.toFixed(2)}</span>
+                    <span className="ml-2 font-medium text-foreground">{fmt(completedJobValue)} / {fmt(totalJobValue)}</span>
                   )}
                 </p>
               )}
