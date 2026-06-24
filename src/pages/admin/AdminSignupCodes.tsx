@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Copy, Plus, Trash2, RefreshCw, KeyRound } from "lucide-react";
 import { toast } from "sonner";
+import DashboardLayout from "@/components/layout/DashboardLayout";
 
 type SignupCode = {
   id: string;
