@@ -5,6 +5,7 @@ import { AppSidebar } from "./AppSidebar";
 import { AppHeader } from "./AppHeader";
 import { useAuth } from "@/hooks/useAuth";
 import { BroadcastBanner } from "@/components/BroadcastBanner";
+import { SystemNoticesBanner } from "@/components/SystemNoticesBanner";
 
 import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
