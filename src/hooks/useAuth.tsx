@@ -44,6 +44,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       inactivityTimer.current = null;
     }
     await supabase.auth.signOut();
+    // Keep the trusted-device token: the whole point is to skip MFA next time on this device.
     setRole(null);
     setProfile(null);
     setNeedsMfaVerification(false);
