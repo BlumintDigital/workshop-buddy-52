@@ -216,13 +216,13 @@ export default function Auth() {
     }
     setSubmitting(true);
     try {
-      const { data: redeemed, error: redeemError } = await supabase.rpc(
-        "redeem_signup_code",
-        { _code: signupInviteCode.trim() },
+      const { data: redeemRes, error: redeemError } = await supabase.functions.invoke(
+        "validate-signup-code",
+        { body: { code: signupInviteCode.trim() } },
       );
       if (redeemError) throw redeemError;
-      if (!redeemed) {
-        toast.error("Invalid, expired, or fully-used invite code");
+      if (!redeemRes?.valid) {
+        toast.error(redeemRes?.error || "Invalid, expired, or fully-used invite code");
         setSubmitting(false);
         return;
       }
