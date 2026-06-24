@@ -52,6 +52,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           )}
 
           <main className="flex-1 p-3 sm:p-6">{children}</main>
+          <footer className="border-t py-3 px-6 text-xs text-muted-foreground text-center">
+            Shoplane is powered by Blumint Workspace &copy; {new Date().getFullYear()} Blumint Digital Limited
+          </footer>
         </SidebarInset>
       </div>
 
