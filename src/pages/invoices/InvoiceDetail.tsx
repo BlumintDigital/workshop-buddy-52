@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Plus, Trash2, FileDown, ExternalLink, Link2 } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, FileDown, ExternalLink, Link2, Bell } from "lucide-react";
 import { DatePickerInput } from "@/components/ui/date-picker-input";
 import { toast } from "sonner";
 import { generateInvoicePDF } from "@/lib/invoicePdf";
@@ -42,6 +42,7 @@ export default function InvoiceDetail() {
   const [saving, setSaving] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [notifying, setNotifying] = useState(false);
 
   const canEdit = (role === "admin" || role === "manager") && invoice?.status === "draft";
   const canManage = role === "admin" || role === "manager";
@@ -134,6 +135,38 @@ export default function InvoiceDetail() {
       toast.error("Failed to generate PDF");
     } finally {
       setDownloading(false);
+    }
+  };
+
+  const notifyClient = async (title: string, body: string) => {
+    if (!invoice?.client_id) {
+      toast.error("This invoice has no client to notify.");
+      return;
+    }
+    setNotifying(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("send-push", {
+        body: {
+          user_ids: [invoice.client_id],
+          title,
+          body,
+          url: `/invoices/${invoice.id}`,
+        },
+      });
+      if (error) throw error;
+      const sent = (data as any)?.sent ?? 0;
+      const total = (data as any)?.total ?? 0;
+      if (sent > 0) {
+        toast.success(`Push notification sent to ${sent} device${sent === 1 ? "" : "s"}.`);
+      } else if (total === 0) {
+        toast.message("Client hasn't enabled push notifications on any device.");
+      } else {
+        toast.error("Notification could not be delivered.");
+      }
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to send push notification.");
+    } finally {
+      setNotifying(false);
     }
   };
 
