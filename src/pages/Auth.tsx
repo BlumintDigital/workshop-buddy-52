@@ -5,10 +5,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Wrench, ShieldCheck } from "lucide-react";
+import { Wrench, ShieldCheck, KeyRound } from "lucide-react";
 import LoadingScreen from "@/components/LoadingScreen";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 
@@ -35,6 +36,9 @@ export default function Auth() {
   const [mfaCode, setMfaCode] = useState("");
   const [mfaSubmitting, setMfaSubmitting] = useState(false);
   const [pendingRole, setPendingRole] = useState<string | null>(null);
+  const [rememberDevice, setRememberDevice] = useState(false);
+  const [useBackupCode, setUseBackupCode] = useState(false);
+  const [backupCode, setBackupCode] = useState("");
 
   useEffect(() => {
     if (!loading && user && role && !needsMfaVerification && !mfaStep) {
@@ -84,6 +88,31 @@ export default function Auth() {
     }
   };
 
+  const trustThisDeviceIfRequested = async () => {
+    if (!rememberDevice) return;
+    try {
+      const label = navigator.userAgent.slice(0, 180);
+      const { data, error } = await supabase.functions.invoke("mfa-trust-device", {
+        body: { device_label: label },
+      });
+      if (error) throw error;
+      if (data?.token) localStorage.setItem("mfa_device_token", data.token);
+    } catch (err: any) {
+      toast.error("Could not remember this device, but you are signed in.");
+    }
+  };
+
+  const finishMfaSuccess = async () => {
+    await trustThisDeviceIfRequested();
+    clearMfaFlag();
+    setMfaStep(false);
+    setMfaCode("");
+    setBackupCode("");
+    setUseBackupCode(false);
+    toast.success("Signed in successfully");
+    navigate(getRoleDashboardPath(pendingRole as any), { replace: true });
+  };
+
   const handleMfaVerify = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!mfaFactorId || mfaCode.length !== 6) return;
@@ -99,14 +128,29 @@ export default function Auth() {
       });
       if (verifyError) throw verifyError;
 
-      clearMfaFlag();
-      setMfaStep(false);
-      setMfaCode("");
-      toast.success("Signed in successfully");
-      navigate(getRoleDashboardPath(pendingRole as any), { replace: true });
+      await finishMfaSuccess();
     } catch (err: any) {
       toast.error(err.message || "Invalid verification code");
       setMfaCode("");
+    } finally {
+      setMfaSubmitting(false);
+    }
+  };
+
+  const handleBackupCodeVerify = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!backupCode.trim()) return;
+    setMfaSubmitting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("mfa-backup-verify", {
+        body: { code: backupCode.trim() },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      await finishMfaSuccess();
+    } catch (err: any) {
+      toast.error(err.message || "Invalid backup code");
+      setBackupCode("");
     } finally {
       setMfaSubmitting(false);
     }
@@ -199,43 +243,94 @@ export default function Auth() {
         <div className="w-full max-w-md space-y-6">
           <div className="flex flex-col items-center gap-2">
             <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-              <ShieldCheck className="h-6 w-6" />
+              {useBackupCode ? <KeyRound className="h-6 w-6" /> : <ShieldCheck className="h-6 w-6" />}
             </div>
-            <h1 className="text-2xl font-bold tracking-tight">Two-Factor Authentication</h1>
-            <p className="text-sm text-muted-foreground">Enter the 6-digit code from your authenticator app</p>
+            <h1 className="text-2xl font-bold tracking-tight">
+              {useBackupCode ? "Use a backup code" : "Two-Factor Authentication"}
+            </h1>
+            <p className="text-sm text-muted-foreground text-center">
+              {useBackupCode
+                ? "Enter one of the backup codes you saved when setting up 2FA"
+                : "Enter the 6-digit code from your authenticator app"}
+            </p>
           </div>
           <Card>
             <CardContent className="pt-6">
-              <form onSubmit={handleMfaVerify} className="space-y-6">
-                <div className="flex justify-center">
-                  <InputOTP maxLength={6} value={mfaCode} onChange={setMfaCode}>
-                    <InputOTPGroup>
-                      <InputOTPSlot index={0} />
-                      <InputOTPSlot index={1} />
-                      <InputOTPSlot index={2} />
-                      <InputOTPSlot index={3} />
-                      <InputOTPSlot index={4} />
-                      <InputOTPSlot index={5} />
-                    </InputOTPGroup>
-                  </InputOTP>
-                </div>
-                <Button type="submit" className="w-full" disabled={mfaSubmitting || mfaCode.length !== 6}>
-                  {mfaSubmitting ? "Verifying..." : "Verify"}
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  className="w-full"
-                  onClick={() => {
-                    setMfaStep(false);
-                    setMfaCode("");
-                    clearMfaFlag();
-                    supabase.auth.signOut();
-                  }}
-                >
-                  Cancel
-                </Button>
-              </form>
+              {useBackupCode ? (
+                <form onSubmit={handleBackupCodeVerify} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="backup-code">Backup code</Label>
+                    <Input
+                      id="backup-code"
+                      value={backupCode}
+                      onChange={(e) => setBackupCode(e.target.value.toUpperCase())}
+                      placeholder="XXXX-XXXX"
+                      autoComplete="one-time-code"
+                      className="font-mono tracking-wider text-center"
+                      autoFocus
+                    />
+                  </div>
+                  <label className="flex items-center gap-2 text-sm">
+                    <Checkbox checked={rememberDevice} onCheckedChange={(v) => setRememberDevice(!!v)} />
+                    Remember this device for 30 days
+                  </label>
+                  <Button type="submit" className="w-full" disabled={mfaSubmitting || !backupCode.trim()}>
+                    {mfaSubmitting ? "Verifying..." : "Verify backup code"}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="w-full"
+                    onClick={() => { setUseBackupCode(false); setBackupCode(""); }}
+                  >
+                    Back to authenticator code
+                  </Button>
+                </form>
+              ) : (
+                <form onSubmit={handleMfaVerify} className="space-y-6">
+                  <div className="flex justify-center">
+                    <InputOTP maxLength={6} value={mfaCode} onChange={setMfaCode}>
+                      <InputOTPGroup>
+                        <InputOTPSlot index={0} />
+                        <InputOTPSlot index={1} />
+                        <InputOTPSlot index={2} />
+                        <InputOTPSlot index={3} />
+                        <InputOTPSlot index={4} />
+                        <InputOTPSlot index={5} />
+                      </InputOTPGroup>
+                    </InputOTP>
+                  </div>
+                  <label className="flex items-center justify-center gap-2 text-sm">
+                    <Checkbox checked={rememberDevice} onCheckedChange={(v) => setRememberDevice(!!v)} />
+                    Remember this device for 30 days
+                  </label>
+                  <Button type="submit" className="w-full" disabled={mfaSubmitting || mfaCode.length !== 6}>
+                    {mfaSubmitting ? "Verifying..." : "Verify"}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => setUseBackupCode(true)}
+                  >
+                    <KeyRound className="h-4 w-4 mr-1" />
+                    Use a backup code instead
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="w-full"
+                    onClick={() => {
+                      setMfaStep(false);
+                      setMfaCode("");
+                      clearMfaFlag();
+                      supabase.auth.signOut();
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                </form>
+              )}
             </CardContent>
           </Card>
         </div>

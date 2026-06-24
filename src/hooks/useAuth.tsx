@@ -44,6 +44,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       inactivityTimer.current = null;
     }
     await supabase.auth.signOut();
+    // Keep the trusted-device token: the whole point is to skip MFA next time on this device.
     setRole(null);
     setProfile(null);
     setNeedsMfaVerification(false);
@@ -132,6 +133,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const checkMfaStatus = async () => {
     const { data } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
     if (data && data.currentLevel === "aal1" && data.nextLevel === "aal2") {
+      // Honor "remember this device"
+      try {
+        const token = localStorage.getItem("mfa_device_token");
+        if (token) {
+          const { data: chk } = await supabase.functions.invoke("mfa-check-device", { body: { token } });
+          if (chk?.trusted) {
+            setNeedsMfaVerification(false);
+            return false;
+          }
+        }
+      } catch { /* ignore */ }
       setNeedsMfaVerification(true);
       return true;
     }
@@ -184,6 +196,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
+  const checkTrustedDevice = async (): Promise<boolean> => {
+    try {
+      const token = localStorage.getItem("mfa_device_token");
+      if (!token) return false;
+      const { data, error } = await supabase.functions.invoke("mfa-check-device", {
+        body: { token },
+      });
+      if (error) return false;
+      return !!data?.trusted;
+    } catch {
+      return false;
+    }
+  };
+
   const signIn = async (email: string, password: string) => {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
@@ -198,8 +224,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Check if MFA is required
     const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
     if (aalData && aalData.currentLevel === "aal1" && aalData.nextLevel === "aal2") {
+      // Check trusted device — skip MFA prompt if recognized
+      const trusted = await checkTrustedDevice();
+      if (trusted) {
+        setNeedsMfaVerification(false);
+        return { role: nextRole, needsMfa: false };
+      }
+
       setNeedsMfaVerification(true);
-      // Get the TOTP factor ID
       const { data: factorsData } = await supabase.auth.mfa.listFactors();
       const totpFactor = factorsData?.totp?.find((f) => f.status === "verified");
       return { role: nextRole, needsMfa: true, factorId: totpFactor?.id };
