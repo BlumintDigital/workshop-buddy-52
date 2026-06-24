@@ -745,6 +745,13 @@ export type Database = {
       }
     }
     Functions: {
+      get_email_notification_config: {
+        Args: never
+        Returns: {
+          email_notifications_enabled: boolean
+          recipient_email: string
+        }[]
+      }
       get_job_completion_stats: {
         Args: never
         Returns: {
