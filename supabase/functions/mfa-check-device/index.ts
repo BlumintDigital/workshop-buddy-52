@@ -43,7 +43,21 @@ serve(async (req) => {
 
     if (qErr) return json({ trusted: false, _dbg: "query_err", _msg: qErr.message, _user: userId, _hash: hash });
     if (!data) {
-      return json({ trusted: false, _dbg: "no_row", _user: userId, _hash: hash });
+      const { data: allRows } = await admin
+        .from("mfa_trusted_devices")
+        .select("token_hash, user_id, expires_at")
+        .eq("user_id", userId);
+      return json({
+        trusted: false,
+        _dbg: "no_row",
+        _user: userId,
+        _hash: hash,
+        _rows: (allRows ?? []).map((r: any) => ({
+          uid: r.user_id,
+          hash_prefix: (r.token_hash as string).slice(0, 12),
+          exp: r.expires_at,
+        })),
+      });
     }
     if (new Date(data.expires_at).getTime() < Date.now()) {
       await admin.from("mfa_trusted_devices").delete().eq("id", data.id);
