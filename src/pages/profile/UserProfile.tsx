@@ -8,8 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { toast } from "sonner";
-import { User, ShieldCheck, ShieldOff, Copy, Loader2 } from "lucide-react";
+import { User, ShieldCheck, ShieldOff, Copy, Loader2, KeyRound, RefreshCw } from "lucide-react";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
+import BackupCodesDialog from "@/components/mfa/BackupCodesDialog";
 
 export default function UserProfile() {
   const { user, profile, role, refreshMfaStatus } = useAuth();
@@ -27,6 +28,56 @@ export default function UserProfile() {
   const [verifyCode, setVerifyCode] = useState("");
   const [verifying, setVerifying] = useState(false);
   const [unenrolling, setUnenrolling] = useState(false);
+
+  // Backup codes
+  const [backupCodesRemaining, setBackupCodesRemaining] = useState<number | null>(null);
+  const [backupTotal, setBackupTotal] = useState<number>(0);
+  const [generatingBackup, setGeneratingBackup] = useState(false);
+  const [shownCodes, setShownCodes] = useState<string[] | null>(null);
+  const [trustedDeviceCount, setTrustedDeviceCount] = useState(0);
+
+  const loadBackupAndDeviceCounts = async () => {
+    if (!user) return;
+    const [{ data: codes }, { data: devs }] = await Promise.all([
+      supabase.from("mfa_backup_codes").select("id, used_at").eq("user_id", user.id),
+      supabase.from("mfa_trusted_devices").select("id, expires_at").eq("user_id", user.id),
+    ]);
+    if (codes) {
+      setBackupTotal(codes.length);
+      setBackupCodesRemaining(codes.filter((c: any) => !c.used_at).length);
+    }
+    if (devs) {
+      const active = devs.filter((d: any) => new Date(d.expires_at).getTime() > Date.now());
+      setTrustedDeviceCount(active.length);
+    }
+  };
+
+  useEffect(() => { void loadBackupAndDeviceCounts(); }, [user, mfaEnabled]);
+
+  const handleGenerateBackupCodes = async () => {
+    setGeneratingBackup(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("mfa-backup-generate");
+      if (error) throw error;
+      if (!data?.codes) throw new Error("No codes returned");
+      setShownCodes(data.codes);
+      await loadBackupAndDeviceCounts();
+      toast.success("Backup codes generated");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to generate backup codes");
+    } finally {
+      setGeneratingBackup(false);
+    }
+  };
+
+  const handleRevokeDevices = async () => {
+    if (!user) return;
+    const { error } = await supabase.from("mfa_trusted_devices").delete().eq("user_id", user.id);
+    if (error) { toast.error(error.message); return; }
+    localStorage.removeItem("mfa_device_token");
+    setTrustedDeviceCount(0);
+    toast.success("Trusted devices revoked");
+  };
 
   useEffect(() => {
     if (profile) {
@@ -121,8 +172,19 @@ export default function UserProfile() {
     try {
       const { error } = await supabase.auth.mfa.unenroll({ factorId });
       if (error) throw error;
+      // Clean up backup codes and trusted devices when MFA is removed
+      if (user) {
+        await Promise.all([
+          supabase.from("mfa_backup_codes").delete().eq("user_id", user.id),
+          supabase.from("mfa_trusted_devices").delete().eq("user_id", user.id),
+        ]);
+      }
+      localStorage.removeItem("mfa_device_token");
       setMfaEnabled(false);
       setFactorId(null);
+      setBackupTotal(0);
+      setBackupCodesRemaining(0);
+      setTrustedDeviceCount(0);
       await refreshMfaStatus();
       toast.success("Two-factor authentication disabled");
     } catch (err: any) {
@@ -197,11 +259,52 @@ export default function UserProfile() {
                 Loading 2FA status...
               </div>
             ) : mfaEnabled ? (
-              <div className="space-y-3">
+              <div className="space-y-4">
                 <div className="flex items-center gap-2 text-sm text-primary">
                   <ShieldCheck className="h-4 w-4" />
                   Two-factor authentication is enabled
                 </div>
+
+                {/* Backup codes */}
+                <div className="rounded-md border p-3 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <KeyRound className="h-4 w-4 text-primary" />
+                    <span className="text-sm font-medium">Backup codes</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Use these one-time codes to sign in if you lose your authenticator.
+                  </p>
+                  {backupTotal > 0 ? (
+                    <p className="text-xs">
+                      <span className="font-medium">{backupCodesRemaining ?? 0}</span> of {backupTotal} codes remaining
+                    </p>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">No backup codes generated yet.</p>
+                  )}
+                  <Button size="sm" variant="outline" onClick={handleGenerateBackupCodes} disabled={generatingBackup}>
+                    <RefreshCw className="h-3.5 w-3.5 mr-1" />
+                    {generatingBackup ? "Generating..." : backupTotal > 0 ? "Regenerate codes" : "Generate backup codes"}
+                  </Button>
+                </div>
+
+                {/* Trusted devices */}
+                <div className="rounded-md border p-3 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck className="h-4 w-4 text-primary" />
+                    <span className="text-sm font-medium">Trusted devices</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {trustedDeviceCount > 0
+                      ? `${trustedDeviceCount} device${trustedDeviceCount === 1 ? "" : "s"} can skip the 2FA prompt for 30 days.`
+                      : "No trusted devices."}
+                  </p>
+                  {trustedDeviceCount > 0 && (
+                    <Button size="sm" variant="outline" onClick={handleRevokeDevices}>
+                      Revoke all trusted devices
+                    </Button>
+                  )}
+                </div>
+
                 <Button variant="destructive" size="sm" onClick={handleDisable2FA} disabled={unenrolling}>
                   <ShieldOff className="h-4 w-4 mr-1" />
                   {unenrolling ? "Disabling..." : "Disable 2FA"}
@@ -257,6 +360,12 @@ export default function UserProfile() {
           </CardContent>
         </Card>
       </div>
+
+      <BackupCodesDialog
+        open={!!shownCodes}
+        codes={shownCodes ?? []}
+        onClose={() => setShownCodes(null)}
+      />
     </DashboardLayout>
   );
 }

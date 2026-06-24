@@ -567,6 +567,60 @@ export type Database = {
         }
         Relationships: []
       }
+      mfa_backup_codes: {
+        Row: {
+          code_hash: string
+          created_at: string
+          id: string
+          used_at: string | null
+          user_id: string
+        }
+        Insert: {
+          code_hash: string
+          created_at?: string
+          id?: string
+          used_at?: string | null
+          user_id: string
+        }
+        Update: {
+          code_hash?: string
+          created_at?: string
+          id?: string
+          used_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      mfa_trusted_devices: {
+        Row: {
+          created_at: string
+          device_label: string | null
+          expires_at: string
+          id: string
+          last_used_at: string
+          token_hash: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          device_label?: string | null
+          expires_at: string
+          id?: string
+          last_used_at?: string
+          token_hash: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          device_label?: string | null
+          expires_at?: string
+          id?: string
+          last_used_at?: string
+          token_hash?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           created_at: string
