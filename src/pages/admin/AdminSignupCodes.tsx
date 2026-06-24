@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Copy, Plus, Trash2, RefreshCw, KeyRound } from "lucide-react";
 import { toast } from "sonner";
+import DashboardLayout from "@/components/layout/DashboardLayout";
 
 type SignupCode = {
   id: string;
@@ -131,8 +132,9 @@ export default function AdminSignupCodes() {
   };
 
   return (
-    <div className="container mx-auto max-w-5xl space-y-6 p-6">
-      <header className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+    <DashboardLayout>
+      <div className="space-y-6">
+        <header className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-1">
           <h1 className="text-3xl font-bold tracking-tight">Signup Invite Codes</h1>
           <p className="text-muted-foreground">
@@ -299,6 +301,7 @@ export default function AdminSignupCodes() {
           )}
         </CardContent>
       </Card>
-    </div>
+      </div>
+    </DashboardLayout>
   );
 }
