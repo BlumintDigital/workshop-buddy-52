@@ -29,6 +29,56 @@ export default function UserProfile() {
   const [verifying, setVerifying] = useState(false);
   const [unenrolling, setUnenrolling] = useState(false);
 
+  // Backup codes
+  const [backupCodesRemaining, setBackupCodesRemaining] = useState<number | null>(null);
+  const [backupTotal, setBackupTotal] = useState<number>(0);
+  const [generatingBackup, setGeneratingBackup] = useState(false);
+  const [shownCodes, setShownCodes] = useState<string[] | null>(null);
+  const [trustedDeviceCount, setTrustedDeviceCount] = useState(0);
+
+  const loadBackupAndDeviceCounts = async () => {
+    if (!user) return;
+    const [{ data: codes }, { data: devs }] = await Promise.all([
+      supabase.from("mfa_backup_codes").select("id, used_at").eq("user_id", user.id),
+      supabase.from("mfa_trusted_devices").select("id, expires_at").eq("user_id", user.id),
+    ]);
+    if (codes) {
+      setBackupTotal(codes.length);
+      setBackupCodesRemaining(codes.filter((c: any) => !c.used_at).length);
+    }
+    if (devs) {
+      const active = devs.filter((d: any) => new Date(d.expires_at).getTime() > Date.now());
+      setTrustedDeviceCount(active.length);
+    }
+  };
+
+  useEffect(() => { void loadBackupAndDeviceCounts(); }, [user, mfaEnabled]);
+
+  const handleGenerateBackupCodes = async () => {
+    setGeneratingBackup(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("mfa-backup-generate");
+      if (error) throw error;
+      if (!data?.codes) throw new Error("No codes returned");
+      setShownCodes(data.codes);
+      await loadBackupAndDeviceCounts();
+      toast.success("Backup codes generated");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to generate backup codes");
+    } finally {
+      setGeneratingBackup(false);
+    }
+  };
+
+  const handleRevokeDevices = async () => {
+    if (!user) return;
+    const { error } = await supabase.from("mfa_trusted_devices").delete().eq("user_id", user.id);
+    if (error) { toast.error(error.message); return; }
+    localStorage.removeItem("mfa_device_token");
+    setTrustedDeviceCount(0);
+    toast.success("Trusted devices revoked");
+  };
+
   useEffect(() => {
     if (profile) {
       setFullName(profile.full_name || "");
