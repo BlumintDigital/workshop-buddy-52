@@ -110,15 +110,22 @@ export default function GoalsPage() {
 
     const { data: settingsData } = await supabase
       .from("workshop_settings")
-      .select("monthly_goal, currency, workshop_name, logo_url")
+      .select("currency, workshop_name, logo_url")
       .eq("id", 1)
       .maybeSingle();
 
-    const goal = (settingsData as any)?.monthly_goal ?? null;
-    setMonthlyGoal(goal ? parseFloat(goal) : null);
     setCurrency((settingsData as any)?.currency ?? "USD");
     setWorkshopName((settingsData as any)?.workshop_name ?? "Workshop");
     setLogoUrl((settingsData as any)?.logo_url ?? null);
+
+    // Read goal from per-month table
+    const { data: goalData } = await (supabase as any)
+      .from("monthly_revenue_goals")
+      .select("goal_amount")
+      .eq("year", now.getFullYear())
+      .eq("month", now.getMonth() + 1)
+      .maybeSingle();
+    setMonthlyGoal(goalData ? parseFloat(goalData.goal_amount) : null);
 
     const { data: tasks } = await (supabase
       .from("job_tasks")

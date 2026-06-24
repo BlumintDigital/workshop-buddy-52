@@ -1,7 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
-  "Access-Control-Allow-Origin": Deno.env.get("ALLOWED_ORIGIN") ?? "https://ieq.shoplane.uk",
+  "Access-Control-Allow-Origin": Deno.env.get("ALLOWED_ORIGIN") ?? "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type",
 };
@@ -675,6 +675,30 @@ Deno.serve(async (req) => {
         if (!linkData?.properties?.action_link) return err("Failed to generate login link", 500);
 
         return json({ success: true, link: linkData.properties.action_link });
+      }
+
+      // ==================== FEATURE FLAGS ====================
+      case "get_feature_flags": {
+        const { data, error: fetchErr } = await supabase
+          .from("workshop_settings")
+          .select("feature_flags")
+          .eq("id", 1)
+          .maybeSingle();
+        if (fetchErr) return err(fetchErr.message, 500);
+        return json({ flags: data?.feature_flags ?? {} });
+      }
+
+      case "set_feature_flags": {
+        if (req.method !== "POST") return err("POST required", 405);
+        const body = await req.json();
+        const { flags } = body;
+        if (!flags || typeof flags !== "object") return err("flags object required");
+        const { error: updateErr } = await supabase
+          .from("workshop_settings")
+          .update({ feature_flags: flags })
+          .eq("id", 1);
+        if (updateErr) return err(updateErr.message, 500);
+        return json({ ok: true });
       }
 
       default:

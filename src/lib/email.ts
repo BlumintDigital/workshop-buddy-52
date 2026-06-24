@@ -1,19 +1,22 @@
 import { supabase } from "@/integrations/supabase/client";
 
 /**
- * Send an email via the Supabase send-email Edge Function.
+ * Send an email via the send-email Edge Function (Resend).
+ * Checks email_notifications_enabled before sending — callers don't need to check.
  * Fails silently — email is non-critical and should never block the caller.
  *
- * Setup:
- *   1. Create a Resend account at resend.com and get your API key
- *   2. supabase secrets set RESEND_API_KEY=your_key FROM_EMAIL=noreply@yourdomain.com
- *   3. supabase functions deploy send-email
+ * Pass either `to` (direct address) or `to_user_id` (looked up server-side from auth.users).
  */
-export async function sendEmail(to: string, subject: string, html: string): Promise<void> {
+export async function sendEmail(opts: {
+  to?: string;
+  to_user_id?: string;
+  subject: string;
+  html: string;
+}): Promise<void> {
   try {
-    await supabase.functions.invoke("send-email", {
-      body: { to, subject, html },
-    });
+    const { data: config } = await supabase.rpc("get_email_notification_config");
+    if (!config?.email_notifications_enabled) return;
+    await supabase.functions.invoke("send-email", { body: opts });
   } catch {
     // Non-critical — swallow errors
   }

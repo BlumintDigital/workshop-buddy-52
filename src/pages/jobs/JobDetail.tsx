@@ -22,6 +22,7 @@ import { DatePickerInput } from "@/components/ui/date-picker-input";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { sendNotifications } from "@/lib/notifications";
+import { sendEmail, jobStatusEmailHtml, quoteReadyEmailHtml } from "@/lib/email";
 import { generateJobReport } from "@/lib/jobReportPdf";
 
 const statusColors: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
@@ -320,6 +321,13 @@ export default function JobDetail() {
     if (error) { toast.error(error.message); return; }
     setJob({ ...job, status: newJobStatus });
     toast.success(newJobStatus === "pending" ? "Quote approved — work order is now active" : "Quote declined");
+    if (job.client_id) {
+      sendEmail({
+        to_user_id: job.client_id,
+        subject: `Quote update: ${job.title}`,
+        html: jobStatusEmailHtml(job.title, newJobStatus, `${window.location.origin}/jobs/${job.id}`),
+      }).catch(() => {});
+    }
   };
 
   const sendJobNotifications = (jobData: any, message: string) => {
@@ -337,6 +345,16 @@ export default function JobDetail() {
     setJob({ ...job, status });
     toast.success("Status updated");
     sendJobNotifications(job, `${job.title} is now ${status.replace(/_/g, " ")}`);
+    if (job.client_id) {
+      const emailHtml = status === "quote"
+        ? quoteReadyEmailHtml(job.title, `${window.location.origin}/jobs/${job.id}`)
+        : jobStatusEmailHtml(job.title, status, `${window.location.origin}/jobs/${job.id}`);
+      sendEmail({
+        to_user_id: job.client_id,
+        subject: status === "quote" ? `Quote ready: ${job.title}` : `Job update: ${job.title}`,
+        html: emailHtml,
+      }).catch(() => {});
+    }
   };
 
   const handleActualHoursBlur = async () => {

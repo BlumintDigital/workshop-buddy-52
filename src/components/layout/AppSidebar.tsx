@@ -5,6 +5,7 @@ import {
 import { NavLink } from "@/components/NavLink";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { useFeatureFlags } from "@/hooks/useFeatureFlags";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
@@ -101,12 +102,29 @@ const navGroups: Record<AppRole, NavGroup[]> = {
   ],
 };
 
+// Items gated per feature flag: url fragment → flag key
+const FLAG_GATES: Record<string, keyof import("@/hooks/useFeatureFlags").FeatureFlags> = {
+  "/goals": "goals",
+  "/admin/clients": "client_portal",
+  "/admin/reports": "reports",
+  "/admin/appointments": "appointments",
+  "/admin/calendar": "appointments",
+  "/manager/appointments": "appointments",
+  "/manager/calendar": "appointments",
+  "/staff/schedule": "appointments",
+  "/client/appointments": "appointments",
+  "/client/dashboard": "client_portal",
+  "/client/jobs": "client_portal",
+  "/client/invoices": "client_portal",
+};
+
 export function AppSidebar() {
   const { state, setOpenMobile } = useSidebar();
   const collapsed = state === "collapsed";
   const location = useLocation();
   const navigate = useNavigate();
   const { role, profile, signOut } = useAuth();
+  const flags = useFeatureFlags();
   const [workshopName, setWorkshopName] = useState("Workshop Manager");
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
 
@@ -140,7 +158,16 @@ export function AppSidebar() {
     };
   }, []);
 
-  const groups = navGroups[role || "client"];
+  const rawGroups = navGroups[role || "client"];
+  const groups = rawGroups
+    .map((g) => ({
+      ...g,
+      items: g.items.filter((item) => {
+        const gate = FLAG_GATES[item.url];
+        return !gate || flags[gate];
+      }),
+    }))
+    .filter((g) => g.items.length > 0);
   const initials = (profile?.full_name || "U").split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
 
   const handleSignOut = async () => {

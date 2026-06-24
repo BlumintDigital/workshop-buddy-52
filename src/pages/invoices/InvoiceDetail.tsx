@@ -15,6 +15,7 @@ import { ArrowLeft, Plus, Trash2, FileDown, ExternalLink, Link2 } from "lucide-r
 import { DatePickerInput } from "@/components/ui/date-picker-input";
 import { toast } from "sonner";
 import { generateInvoicePDF } from "@/lib/invoicePdf";
+import { sendEmail, invoiceSentEmailHtml } from "@/lib/email";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
 const statusColors: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
@@ -226,6 +227,18 @@ export default function InvoiceDetail() {
                       if (error) { toast.error(error.message); return; }
                       setInvoice({ ...invoice, status: v });
                       toast.success(`Status updated to ${v}`);
+                      if (v === "sent" && invoice.client_id) {
+                        sendEmail({
+                          to_user_id: invoice.client_id,
+                          subject: `Invoice ${invoice.invoice_number}`,
+                          html: invoiceSentEmailHtml(
+                            invoice.invoice_number,
+                            total,
+                            invoice.currency ?? "USD",
+                            `${window.location.origin}/invoices/${invoice.id}`
+                          ),
+                        }).catch(() => {});
+                      }
                     }}
                   >
                     <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>

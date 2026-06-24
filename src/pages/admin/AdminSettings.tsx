@@ -14,14 +14,7 @@ import {
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { Database, Trash2, Loader2, Upload, ImageIcon, X, Users, AlertTriangle, Copy, Check, Mail } from "lucide-react";
-import {
-  authConfirmSignupEmailHtml,
-  authResetPasswordEmailHtml,
-  authMagicLinkEmailHtml,
-  authChangeEmailEmailHtml,
-  authInviteUserEmailHtml,
-} from "@/lib/email";
+import { Database, Trash2, Loader2, Upload, ImageIcon, X, Users, AlertTriangle, Lock } from "lucide-react";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
@@ -77,19 +70,14 @@ export default function AdminSettings() {
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
-  const [copiedTemplate, setCopiedTemplate] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("general");
+  const [currentMonthGoal, setCurrentMonthGoal] = useState<number | null | undefined>(undefined);
+  const [pastGoals, setPastGoals] = useState<{ year: number; month: number; goal_amount: number }[]>([]);
+  const [goalInput, setGoalInput] = useState("");
+  const [settingGoal, setSettingGoal] = useState(false);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
-
-  const copyTemplate = (key: string, html: string) => {
-    navigator.clipboard.writeText(html).then(() => {
-      setCopiedTemplate(key);
-      toast.success("Copied! Paste into Supabase Dashboard → Auth → Email Templates");
-      setTimeout(() => setCopiedTemplate(null), 2500);
-    });
-  };
 
   useEffect(() => {
     supabase
@@ -120,6 +108,38 @@ export default function AdminSettings() {
         setLoading(false);
       });
   }, []);
+
+  const loadMonthlyGoals = async () => {
+    const now = new Date();
+    const { data } = await (supabase as any)
+      .from("monthly_revenue_goals")
+      .select("year, month, goal_amount")
+      .order("year", { ascending: false })
+      .order("month", { ascending: false });
+    if (!data) return;
+    const current = data.find((g: any) => g.year === now.getFullYear() && g.month === now.getMonth() + 1);
+    setCurrentMonthGoal(current ? parseFloat(current.goal_amount) : null);
+    setPastGoals(data.filter((g: any) => !(g.year === now.getFullYear() && g.month === now.getMonth() + 1)));
+  };
+
+  useEffect(() => { loadMonthlyGoals(); }, []);
+
+  const handleSetGoal = async () => {
+    const amount = parseFloat(goalInput);
+    if (!amount || amount <= 0) { toast.error("Enter a valid goal amount"); return; }
+    const now = new Date();
+    setSettingGoal(true);
+    const { error } = await (supabase as any).from("monthly_revenue_goals").insert({
+      year: now.getFullYear(),
+      month: now.getMonth() + 1,
+      goal_amount: amount,
+    });
+    setSettingGoal(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Goal set for this month");
+    setGoalInput("");
+    loadMonthlyGoals();
+  };
 
   const handleSave = async () => {
     setSaving(true);
@@ -475,10 +495,60 @@ export default function AdminSettings() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div>
-                  <Label htmlFor="monthly_goal">Monthly Revenue Goal</Label>
-                  <p className="text-xs text-muted-foreground mb-1">Visible to all staff on the Goals page as a progress target.</p>
-                  <Input id="monthly_goal" type="number" min="0" step="100" value={settings.monthly_goal} onChange={(e) => set("monthly_goal", e.target.value)} className="mt-1 w-full sm:w-40" placeholder="e.g. 10000" />
+                <div className="space-y-3">
+                  <div>
+                    <Label>Monthly Revenue Goal</Label>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Set a revenue target each month. Once set, it cannot be changed for that month.
+                    </p>
+                  </div>
+                  {(() => {
+                    const now = new Date();
+                    const label = now.toLocaleString("default", { month: "long", year: "numeric" });
+                    if (currentMonthGoal === undefined) {
+                      return <p className="text-sm text-muted-foreground">Loading...</p>;
+                    }
+                    if (currentMonthGoal !== null) {
+                      return (
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium">{label}:</span>
+                          <span className="text-sm">{settings.currency} {currentMonthGoal.toLocaleString()}</span>
+                          <span className="inline-flex items-center gap-1 text-xs text-muted-foreground border rounded px-1.5 py-0.5">
+                            <Lock className="h-3 w-3" /> Locked
+                          </span>
+                        </div>
+                      );
+                    }
+                    return (
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="number" min="0" step="100"
+                          value={goalInput}
+                          onChange={(e) => setGoalInput(e.target.value)}
+                          placeholder={`Set goal for ${label}`}
+                          className="w-full sm:w-48"
+                        />
+                        <Button size="sm" onClick={handleSetGoal} disabled={settingGoal}>
+                          {settingGoal ? <Loader2 className="h-4 w-4 animate-spin" /> : "Set Goal"}
+                        </Button>
+                      </div>
+                    );
+                  })()}
+                  {pastGoals.length > 0 && (
+                    <div className="mt-3">
+                      <p className="text-xs font-medium text-muted-foreground mb-1">Past goals</p>
+                      <div className="border rounded-md divide-y text-sm">
+                        {pastGoals.map((g) => (
+                          <div key={`${g.year}-${g.month}`} className="flex justify-between px-3 py-1.5">
+                            <span className="text-muted-foreground">
+                              {new Date(g.year, g.month - 1).toLocaleString("default", { month: "long", year: "numeric" })}
+                            </span>
+                            <span className="font-medium">{settings.currency} {Number(g.goal_amount).toLocaleString()}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -593,102 +663,6 @@ export default function AdminSettings() {
                   <Input id="super_admin_email" type="email" value={settings.super_admin_email} onChange={(e) => set("super_admin_email", e.target.value)} placeholder="admin@example.com" className="mt-1" />
                   <p className="text-xs text-muted-foreground mt-1">Issue reports from users will be sent to this address</p>
                 </div>
-              </CardContent>
-            </Card>
-            <Card className="border-dashed">
-              <CardContent className="pt-5 space-y-2">
-                <p className="text-sm font-medium">Setup instructions</p>
-                <ol className="text-xs text-muted-foreground space-y-1 list-decimal list-inside">
-                  <li>Create a free account at <strong>resend.com</strong> and get your API key</li>
-                  <li>Run: <code className="bg-muted px-1 rounded">supabase secrets set RESEND_API_KEY=your_key</code></li>
-                  <li>Run: <code className="bg-muted px-1 rounded">supabase functions deploy send-email</code></li>
-                  <li>Enable the toggle above and set your from address, then save</li>
-                </ol>
-              </CardContent>
-            </Card>
-
-            {/* Auth Email Templates */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2"><Mail className="h-5 w-5" />Auth Email Templates</CardTitle>
-                <CardDescription>
-                  Replace Supabase's default auth emails with your branded templates. Copy each template and paste it into your Supabase Dashboard.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="rounded-lg border bg-muted/40 p-4 space-y-2">
-                  <p className="text-sm font-medium">How to apply these templates</p>
-                  <ol className="text-xs text-muted-foreground space-y-1 list-decimal list-inside">
-                    <li>Click <strong>Copy HTML</strong> on the template you want to update</li>
-                    <li>Go to <strong>Supabase Dashboard → Authentication → Email Templates</strong></li>
-                    <li>Select the matching template type, paste the HTML, and save</li>
-                    <li>Repeat for each template — future emails will use your branding</li>
-                  </ol>
-                </div>
-
-                {(
-                  [
-                    {
-                      key: "confirm_signup",
-                      label: "Confirm Signup",
-                      description: "Sent when a new user registers an account",
-                      html: authConfirmSignupEmailHtml(settings.workshop_name || "Workshop Manager", settings.logo_url || null),
-                    },
-                    {
-                      key: "recovery",
-                      label: "Reset Password",
-                      description: "Sent when a user requests a password reset",
-                      html: authResetPasswordEmailHtml(settings.workshop_name || "Workshop Manager", settings.logo_url || null),
-                    },
-                    {
-                      key: "magic_link",
-                      label: "Magic Link",
-                      description: "Sent when a user requests a magic sign-in link",
-                      html: authMagicLinkEmailHtml(settings.workshop_name || "Workshop Manager", settings.logo_url || null),
-                    },
-                    {
-                      key: "email_change",
-                      label: "Change Email",
-                      description: "Sent to confirm a new email address",
-                      html: authChangeEmailEmailHtml(settings.workshop_name || "Workshop Manager", settings.logo_url || null),
-                    },
-                    {
-                      key: "invite",
-                      label: "Invite User",
-                      description: "Sent when an admin invites a new user",
-                      html: authInviteUserEmailHtml(settings.workshop_name || "Workshop Manager", settings.logo_url || null),
-                    },
-                  ] as { key: string; label: string; description: string; html: string }[]
-                ).map(({ key, label, description, html }) => (
-                  <div key={key} className="rounded-lg border overflow-hidden">
-                    <div className="flex items-center justify-between gap-4 px-4 py-3 bg-muted/30">
-                      <div>
-                        <p className="text-sm font-medium">{label}</p>
-                        <p className="text-xs text-muted-foreground">{description}</p>
-                      </div>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="shrink-0"
-                        onClick={() => copyTemplate(key, html)}
-                      >
-                        {copiedTemplate === key ? (
-                          <><Check className="h-3.5 w-3.5 mr-1.5 text-emerald-500" />Copied!</>
-                        ) : (
-                          <><Copy className="h-3.5 w-3.5 mr-1.5" />Copy HTML</>
-                        )}
-                      </Button>
-                    </div>
-                    <div className="relative overflow-hidden bg-slate-50" style={{ height: 220 }}>
-                      <iframe
-                        srcDoc={html}
-                        sandbox=""
-                        style={{ transform: "scale(0.55)", transformOrigin: "top left", width: "182%", height: "400px", border: "none", pointerEvents: "none" }}
-                        title={`Preview: ${label}`}
-                      />
-                    </div>
-                  </div>
-                ))}
               </CardContent>
             </Card>
           </TabsContent>

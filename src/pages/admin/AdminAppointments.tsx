@@ -19,6 +19,7 @@ import { DatePickerInput } from "@/components/ui/date-picker-input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { generateICS, downloadICS } from "@/lib/ical";
 import { toast } from "sonner";
+import { sendEmail, appointmentConfirmedEmailHtml } from "@/lib/email";
 import { Pagination, PaginationContent, PaginationItem, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import { usePagination, PAGE_SIZE } from "@/hooks/usePagination";
 
@@ -120,6 +121,13 @@ export default function AdminAppointments() {
       const { error } = await supabase.from("appointments").insert({ ...payload, status: "pending" });
       if (error) { toast.error(error.message); return; }
       toast.success("Appointment created");
+      if (form.client_id) {
+        sendEmail({
+          to_user_id: form.client_id,
+          subject: `Appointment confirmed: ${form.title}`,
+          html: appointmentConfirmedEmailHtml(form.title, form.appointment_date, form.appointment_time),
+        }).catch(() => {});
+      }
     }
 
     setOpen(false);
