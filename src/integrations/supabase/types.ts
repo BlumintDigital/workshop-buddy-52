@@ -858,6 +858,36 @@ export type Database = {
         }
         Relationships: []
       }
+      system_notices: {
+        Row: {
+          created_at: string
+          expires_at: string | null
+          id: string
+          message: string | null
+          title: string
+          url: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          message?: string | null
+          title: string
+          url?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          message?: string | null
+          title?: string
+          url?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string
