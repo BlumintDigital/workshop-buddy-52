@@ -70,6 +70,21 @@ export default defineConfig(({ mode }) => ({
   ].filter(Boolean),
   build: {
     sourcemap: false,
+    chunkSizeWarningLimit: 1000,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes("node_modules")) return;
+          if (id.includes("@react-pdf")) return "vendor-pdf";
+          if (id.includes("remotion") || id.includes("@remotion")) return "vendor-remotion";
+          if (id.includes("recharts")) return "vendor-charts";
+          if (id.includes("@supabase")) return "vendor-supabase";
+          if (id.includes("@radix-ui")) return "vendor-radix";
+          if (id.includes("react-router")) return "vendor-router";
+          if (id.includes("react-dom") || id.includes("/react/")) return "vendor-react";
+        },
+      },
+    },
   },
   resolve: {
     alias: {
