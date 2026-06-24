@@ -685,15 +685,15 @@ Deno.serve(async (req) => {
       //   supabase secrets set VAPID_PRIVATE_KEY=<privateKey> --project-ref <ref>
       case "generate_vapid": {
         const keys = webpush.generateVAPIDKeys();
-        await supabase
-          .from("workshop_settings")
-          .update({ vapid_public_key: keys.publicKey } as any)
-          .eq("id", 1);
+        // Store BOTH keys server-side in admin-only table; never return the private key.
+        await (supabase.from("workshop_admin_contacts") as any).upsert({
+          id: 1,
+          vapid_public_key: keys.publicKey,
+          vapid_private_key: keys.privateKey,
+        });
         return json({
           public_key: keys.publicKey,
-          private_key: keys.privateKey,
-          next_step: `supabase secrets set VAPID_PRIVATE_KEY=${keys.privateKey} --project-ref <ref>`,
-          note: "Public key saved to workshop_settings. Set the private key as a Supabase secret, then redeploy this function.",
+          note: "VAPID keys generated. Private key stored securely server-side and never exposed in API responses.",
         });
       }
 
@@ -727,17 +727,24 @@ Deno.serve(async (req) => {
           const { title, message, url: notifUrl, user_id: targetUserId } = body;
           if (!title) return err("title is required");
 
-          const vapidPrivateKey = Deno.env.get("VAPID_PRIVATE_KEY");
-          if (!vapidPrivateKey) return err("VAPID_PRIVATE_KEY not configured — call generate_vapid first, then set the secret", 503);
-
-          const { data: ws } = await supabase
-            .from("workshop_settings")
-            .select("vapid_public_key, contact_email")
+          // Read both VAPID keys from admin-only contacts table.
+          const { data: contact } = await supabase
+            .from("workshop_admin_contacts" as any)
+            .select("vapid_public_key, vapid_private_key")
             .eq("id", 1)
             .maybeSingle();
 
-          const vapidPublicKey = (ws as any)?.vapid_public_key as string | null;
-          if (!vapidPublicKey) return err("VAPID keys not generated yet — call generate_vapid first", 503);
+          const vapidPrivateKey = (contact as any)?.vapid_private_key as string | null;
+          const vapidPublicKey = (contact as any)?.vapid_public_key as string | null;
+          if (!vapidPrivateKey || !vapidPublicKey) {
+            return err("VAPID keys not generated yet — call generate_vapid first", 503);
+          }
+
+          const { data: ws } = await supabase
+            .from("workshop_settings")
+            .select("contact_email")
+            .eq("id", 1)
+            .maybeSingle();
 
           webpush.setVapidDetails(
             `mailto:${(ws as any)?.contact_email || "admin@example.com"}`,

@@ -8,11 +8,21 @@ const corsHeaders = {
 };
 
 const DEMO_USERS = [
-  { email: "demo.admin@workshop.demo", full_name: "Demo Admin", role: "admin", password: "Admin1234" },
-  { email: "demo.manager@workshop.demo", full_name: "Demo Manager", role: "manager", password: "Manager1234" },
-  { email: "demo.staff@workshop.demo", full_name: "Demo Staff", role: "staff", password: "Staff1234" },
-  { email: "demo.client@workshop.demo", full_name: "Demo Client", role: "client", password: "Client1234" },
+  { email: "demo.admin@workshop.demo", full_name: "Demo Admin", role: "admin" },
+  { email: "demo.manager@workshop.demo", full_name: "Demo Manager", role: "manager" },
+  { email: "demo.staff@workshop.demo", full_name: "Demo Staff", role: "staff" },
+  { email: "demo.client@workshop.demo", full_name: "Demo Client", role: "client" },
 ] as const;
+
+// Generate a strong random password (no hardcoded credentials in source).
+function generatePassword(): string {
+  const bytes = new Uint8Array(18);
+  crypto.getRandomValues(bytes);
+  // Base64-url-ish, strip padding/symbols; ensure length >= 20
+  const b64 = btoa(String.fromCharCode(...bytes))
+    .replace(/\+/g, "A").replace(/\//g, "B").replace(/=/g, "");
+  return `Wb!${b64}`;
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -57,28 +67,26 @@ serve(async (req) => {
       { auth: { autoRefreshToken: false, persistSession: false } }
     );
 
-    const results: { email: string; role: string; created: boolean; roleSet: boolean }[] = [];
-
-    // Fetch all users once
     const { data: allUsers } = await adminClient.auth.admin.listUsers();
+
+    const results: { email: string; role: string; created: boolean; roleSet: boolean; password: string }[] = [];
 
     for (const demo of DEMO_USERS) {
       const existingUser = allUsers?.users?.find(u => u.email === demo.email);
       let userId: string;
       let created = false;
+      const password = generatePassword();
 
       if (existingUser) {
         userId = existingUser.id;
-        // Reset password
         await adminClient.auth.admin.updateUserById(userId, {
-          password: demo.password,
+          password,
           email_confirm: true,
         });
       } else {
-        // Create new user
         const { data: newUser, error: createError } = await adminClient.auth.admin.createUser({
           email: demo.email,
-          password: demo.password,
+          password,
           email_confirm: true,
           user_metadata: { full_name: demo.full_name },
         });
@@ -91,19 +99,21 @@ serve(async (req) => {
         userId = newUser.user.id;
         created = true;
 
-        // Update profile name
         await adminClient.from("profiles").update({ full_name: demo.full_name }).eq("id", userId);
       }
 
-      // Force-set role: delete existing row then insert correct one
       await adminClient.from("user_roles").delete().eq("user_id", userId);
       const { error: roleError } = await adminClient.from("user_roles").insert({ user_id: userId, role: demo.role });
 
-      results.push({ email: demo.email, role: demo.role, created, roleSet: !roleError });
+      results.push({ email: demo.email, role: demo.role, created, roleSet: !roleError, password });
     }
 
     return new Response(
-      JSON.stringify({ success: true, users: results }),
+      JSON.stringify({
+        success: true,
+        users: results,
+        notice: "Passwords are shown ONCE here — copy them now. They are not stored anywhere retrievable.",
+      }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {

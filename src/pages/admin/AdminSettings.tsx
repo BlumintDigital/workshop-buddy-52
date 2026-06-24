@@ -80,33 +80,32 @@ export default function AdminSettings() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    supabase
-      .from("workshop_settings")
-      .select("*")
-      .eq("id", 1)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (data) {
-          setSettings({
-            workshop_name: data.workshop_name ?? "",
-            contact_email: data.contact_email ?? "",
-            phone: data.phone ?? "",
-            address: data.address ?? "",
-            default_tax_rate: data.default_tax_rate?.toString() ?? "0",
-            monthly_goal: (data as any).monthly_goal?.toString() ?? "",
-            currency: data.currency ?? "USD",
-            notify_job_status: data.notify_job_status ?? true,
-            notify_new_appointment: data.notify_new_appointment ?? true,
-            notify_low_inventory: data.notify_low_inventory ?? true,
-            email_notifications_enabled: (data as any).email_notifications_enabled ?? false,
-            from_email: (data as any).from_email ?? "",
-            super_admin_email: (data as any).super_admin_email ?? "",
-            login_image_url: (data as any).login_image_url ?? "",
-            logo_url: (data as any).logo_url ?? "",
-          });
-        }
-        setLoading(false);
-      });
+    Promise.all([
+      supabase.from("workshop_settings").select("*").eq("id", 1).maybeSingle(),
+      (supabase.from("workshop_admin_contacts" as any) as any)
+        .select("super_admin_email").eq("id", 1).maybeSingle(),
+    ]).then(([{ data }, { data: adminData }]) => {
+      if (data) {
+        setSettings({
+          workshop_name: data.workshop_name ?? "",
+          contact_email: data.contact_email ?? "",
+          phone: data.phone ?? "",
+          address: data.address ?? "",
+          default_tax_rate: data.default_tax_rate?.toString() ?? "0",
+          monthly_goal: (data as any).monthly_goal?.toString() ?? "",
+          currency: data.currency ?? "USD",
+          notify_job_status: data.notify_job_status ?? true,
+          notify_new_appointment: data.notify_new_appointment ?? true,
+          notify_low_inventory: data.notify_low_inventory ?? true,
+          email_notifications_enabled: (data as any).email_notifications_enabled ?? false,
+          from_email: (data as any).from_email ?? "",
+          super_admin_email: (adminData as any)?.super_admin_email ?? "",
+          login_image_url: (data as any).login_image_url ?? "",
+          logo_url: (data as any).logo_url ?? "",
+        });
+      }
+      setLoading(false);
+    });
   }, []);
 
   const loadMonthlyGoals = async () => {
@@ -157,12 +156,17 @@ export default function AdminSettings() {
       notify_low_inventory: settings.notify_low_inventory,
       email_notifications_enabled: settings.email_notifications_enabled,
       from_email: settings.from_email || null,
-      super_admin_email: settings.super_admin_email || null,
       login_image_url: settings.login_image_url || null,
       logo_url: settings.logo_url || null,
     });
+    if (error) { setSaving(false); toast.error(error.message); return; }
+
+    const { error: adminErr } = await (supabase.from("workshop_admin_contacts" as any) as any).upsert({
+      id: 1,
+      super_admin_email: settings.super_admin_email || null,
+    });
     setSaving(false);
-    if (error) { toast.error(error.message); return; }
+    if (adminErr) { toast.error(adminErr.message); return; }
     toast.success("Settings saved");
   };
 
@@ -219,12 +223,19 @@ export default function AdminSettings() {
   const handleSetupDemo = async () => {
     setSettingUpDemo(true);
 
-    // 1. Create / reset demo user accounts via edge function
+    // 1. Create / reset demo user accounts via edge function (random passwords)
     const { data, error } = await supabase.functions.invoke("setup-demo");
     if (error || data?.error) {
       setSettingUpDemo(false);
       toast.error(data?.error || error?.message || "Failed to set up demo users");
       return;
+    }
+
+    // Surface generated passwords ONCE — copy them now.
+    if (Array.isArray(data?.users)) {
+      const credLines = data.users.map((u: any) => `${u.email} → ${u.password}`).join("\n");
+      console.log("[Demo accounts — copy these passwords now]\n" + credLines);
+      toast.info("Demo passwords printed to console — copy now (not stored)", { duration: 10000 });
     }
 
     // 2. Force-set roles (edge function may race against the auto-assign trigger)

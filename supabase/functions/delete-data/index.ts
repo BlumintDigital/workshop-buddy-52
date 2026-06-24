@@ -161,10 +161,17 @@ serve(async (req) => {
         notify_low_inventory: true,
         email_notifications_enabled: false,
         from_email: null,
-        super_admin_email: null,
         login_image_url: null,
         logo_url: null,
       }).eq("id", 1);
+
+      // Reset admin-only contacts (super admin email, VAPID keys)
+      await (adminClient.from("workshop_admin_contacts") as any).upsert({
+        id: 1,
+        super_admin_email: null,
+        vapid_public_key: null,
+        vapid_private_key: null,
+      });
     }
 
     return new Response(JSON.stringify({ success: true, deleted }), {
