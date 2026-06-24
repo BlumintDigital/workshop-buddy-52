@@ -92,6 +92,48 @@ export type Database = {
         }
         Relationships: []
       }
+      broadcasts: {
+        Row: {
+          active: boolean
+          created_at: string
+          expires_at: string | null
+          id: string
+          link_label: string | null
+          link_url: string | null
+          message: string | null
+          severity: Database["public"]["Enums"]["broadcast_severity"]
+          starts_at: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          link_label?: string | null
+          link_url?: string | null
+          message?: string | null
+          severity?: Database["public"]["Enums"]["broadcast_severity"]
+          starts_at?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          link_label?: string | null
+          link_url?: string | null
+          message?: string | null
+          severity?: Database["public"]["Enums"]["broadcast_severity"]
+          starts_at?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       bug_reports: {
         Row: {
           created_at: string
@@ -985,6 +1027,7 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "manager" | "staff" | "client"
+      broadcast_severity: "info" | "warning" | "critical"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1113,6 +1156,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "manager", "staff", "client"],
+      broadcast_severity: ["info", "warning", "critical"],
     },
   },
 } as const
