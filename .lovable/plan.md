@@ -1,52 +1,56 @@
-# Super-admin broadcast banner
+## Goal
 
-Show notices sent from the super-admin as a dismissible banner at the top of every authenticated page. Each broadcast stays visible until the user dismisses it (per-device) or it expires.
+Today, when the super-admin sends a "notice" through this workshop's `admin-api` (`POST ?action=notices`), it's delivered as a web-push only. If the user isn't subscribed or misses the push, the message is gone. We'll persist every notice into a new `system_notices` table on the workshop DB and render an in-app banner that reads from it, mirroring the existing `BroadcastBanner` pattern.
 
-## What gets built
+## 1. Database — new `system_notices` table
 
-### 1. `broadcasts` table (new)
+Migration creating:
 
-Stores notices authored by the super-admin. All authenticated tenant users can read active ones; only `service_role` (admin-api edge function) can write.
+- `id uuid pk`
+- `title text not null`
+- `message text`
+- `url text` (optional click-through)
+- `user_id uuid` nullable — when set, notice is targeted to one user; when null, it's global to the workshop
+- `created_at timestamptz default now()`
+- `expires_at timestamptz` nullable (defaults to NULL = never)
 
-Columns (domain-specific): `title`, `message`, `severity` (`info` | `warning` | `critical`), `link_url`, `link_label`, `active`, `starts_at`, `expires_at`.
+Standard GRANTs + RLS:
+- `GRANT SELECT, INSERT, UPDATE, DELETE` to `service_role` (edge function writes).
+- `GRANT SELECT` to `authenticated`.
+- Policy: authenticated users can `SELECT` a row when `user_id IS NULL` OR `user_id = auth.uid()`.
+- No INSERT/UPDATE/DELETE policies for `authenticated` — only the edge function (service role) writes.
+- Add table to `supabase_realtime` publication so the banner updates live.
 
-Access rules:
-- Authenticated users can read rows where `active = true` AND `starts_at <= now()` AND (`expires_at` IS NULL OR `expires_at > now()`).
-- No client writes — inserts/updates/deletes go through the admin-api edge function with the service role.
+## 2. Edge function — `admin-api` notices POST
 
-Realtime is enabled so banners appear/disappear without a refresh.
+In `supabase/functions/admin-api/index.ts`, inside `case "notices"` → `POST` branch, insert a `system_notices` row **before** the push loop:
 
-### 2. `admin-api` edge function — new `broadcasts` action
+```ts
+await supabase.from("system_notices").insert({
+  title,
+  message: message ?? null,
+  url: notifUrl ?? null,
+  user_id: targetUserId ?? null,
+});
+```
 
-Super-admin–only (already gated by `GLOBAL_ADMIN_SECRET`):
-- `GET    ?action=broadcasts` — list all broadcasts (active + historical).
-- `POST   ?action=broadcasts` — create one (`title`, `message`, `severity`, `link_url`, `link_label`, `expires_at`).
-- `PATCH  ?action=broadcasts&id=<id>` — toggle `active` or update fields.
-- `DELETE ?action=broadcasts&id=<id>` — remove.
+Return value extended with `persisted: true` so the super-admin UI can confirm. Push delivery behavior is unchanged.
 
-No tenant-facing UI for composing — the user said the super-admin already sends them; this scope is display only. The endpoints are added so the super-admin tooling has something to call.
+## 3. Frontend — `SystemNoticesBanner` component
 
-### 3. Banner UI in the app shell
+New file `src/components/SystemNoticesBanner.tsx`, structurally identical to `BroadcastBanner`:
 
-New component `src/components/BroadcastBanner.tsx`:
-- Subscribes to `broadcasts` via Supabase and filters to currently-active rows.
-- Renders a sticky bar at the very top of `DashboardLayout`, above the existing header.
-- Styling tied to `severity`: `info` uses muted/primary tokens, `warning` uses an amber/warning token, `critical` uses destructive tokens. All colors come from semantic tokens in `index.css` — no hard-coded hex.
-- Optional CTA button rendered from `link_label` + `link_url` (internal links use `react-router` `Link`, external open in a new tab with `rel="noopener"`).
-- Dismiss "×" button stores the broadcast id in `localStorage` under `dismissed-broadcasts`. Dismissed ids are filtered out. New broadcasts (new ids) appear automatically.
-- If multiple broadcasts are active, the highest-severity one renders first; the rest stack below it (max 3 visible).
+- On mount, query `system_notices` where `expires_at IS NULL OR expires_at > now()`, ordered by `created_at desc`, limit 10. RLS automatically filters to global + own notices.
+- Subscribe to `postgres_changes` on `public.system_notices` (INSERT/UPDATE/DELETE) inside a `useEffect` with proper `removeChannel` cleanup.
+- Per-device dismissal: store dismissed ids in `localStorage` under key `dismissed-system-notices` (separate from broadcasts), filter them out with `useMemo`.
+- Render each active notice as a shadcn `<Alert>` with a `Bell` icon (info styling — these are operational notifications, not severity-tiered). Optional `url` becomes a link in the description. Dismiss `×` button in the top-right, same styling as BroadcastBanner (`opacity-70 hover:opacity-100`).
 
-Hook it into `DashboardLayout` so every authenticated route shows it. Public routes (auth pages) are unchanged.
+## 4. Mount in layout
+
+Add `<SystemNoticesBanner />` in `src/components/layout/DashboardLayout.tsx` directly below the existing `<BroadcastBanner />` so both banner stacks appear at the top of every authenticated page.
 
 ## Technical notes
 
-- Migration follows the required order: `CREATE TABLE` → `GRANT SELECT` to `authenticated`, `GRANT ALL` to `service_role` (no `anon`) → `ENABLE ROW LEVEL SECURITY` → policies → `ALTER PUBLICATION supabase_realtime ADD TABLE public.broadcasts`.
-- Realtime subscription lives inside a `useEffect` with `supabase.removeChannel` cleanup.
-- Banner is mobile-friendly: text truncates with a "Read more" expand on small screens; min 44px tap target on dismiss/CTA.
-- No changes to existing `notices`/push pipeline — broadcasts are independent of Web Push.
-
-## Out of scope
-
-- Super-admin compose UI inside this app (admin-api endpoints only).
-- Per-user read receipts in the database (dismissal is local to the device).
-- Email/push fan-out from broadcasts.
+- No changes to the super-admin side — they keep calling the same `POST ?action=notices` endpoint; the workshop simply records what it receives.
+- Notices and broadcasts stay separate tables: broadcasts are authored on the workshop's own admin UI; notices are pushed in from outside. Different lifecycles, different dismissal storage keys.
+- `src/integrations/supabase/types.ts` regenerates after the migration, so the banner can drop the `as any` casts.
