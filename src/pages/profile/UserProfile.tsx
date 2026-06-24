@@ -8,8 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { toast } from "sonner";
-import { User, ShieldCheck, ShieldOff, Copy, Loader2 } from "lucide-react";
+import { User, ShieldCheck, ShieldOff, Copy, Loader2, KeyRound, RefreshCw } from "lucide-react";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
+import BackupCodesDialog from "@/components/mfa/BackupCodesDialog";
 
 export default function UserProfile() {
   const { user, profile, role, refreshMfaStatus } = useAuth();
