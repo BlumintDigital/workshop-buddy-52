@@ -193,6 +193,21 @@ export default function InvoiceDetail() {
             <Button variant="outline" size="sm" onClick={handleDownloadPDF} disabled={downloading}>
               <FileDown className="mr-2 h-4 w-4" />{downloading ? "Generating..." : "PDF"}
             </Button>
+            {canManage && invoice.client_id && (
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={notifying}
+                onClick={() =>
+                  void notifyClient(
+                    `Invoice ${invoice.invoice_number}`,
+                    `Status: ${invoice.status} • Total: ${fmt(total)}`,
+                  )
+                }
+              >
+                <Bell className="mr-2 h-4 w-4" />{notifying ? "Sending..." : "Notify client"}
+              </Button>
+            )}
             {role === "admin" && (
               <AlertDialog>
                 <AlertDialogTrigger asChild>
