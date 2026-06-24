@@ -17,6 +17,7 @@ const statusColors: Record<string, "default" | "secondary" | "outline" | "destru
 export default function ClientInvoices() {
   const { user } = useAuth();
   const [invoices, setInvoices] = useState<any[]>([]);
+  const { format: fmt } = useCurrency();
 
   useEffect(() => {
     if (!user) return;
