@@ -24,6 +24,7 @@ import { cn } from "@/lib/utils";
 import { sendNotifications } from "@/lib/notifications";
 import { sendEmail, jobStatusEmailHtml, quoteReadyEmailHtml } from "@/lib/email";
 import { generateJobReport } from "@/lib/jobReportPdf";
+import { useCurrency } from "@/hooks/useCurrency";
 
 const statusColors: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
   quote: "secondary", pending: "outline", in_progress: "secondary", review: "default", completed: "default", cancelled: "destructive",
