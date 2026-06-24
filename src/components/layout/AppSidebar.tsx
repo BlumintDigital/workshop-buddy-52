@@ -67,6 +67,9 @@ const navGroups: Record<AppRole, NavGroup[]> = {
     { label: "People", items: [
       { title: "Staff", url: "/manager/staff", icon: Users },
     ]},
+    { label: "System", items: [
+      { title: "Signup Codes", url: "/admin/signup-codes", icon: KeyRound },
+    ]},
     { label: "Help", items: [
       { title: "Report Issue", url: "/report-issue", icon: AlertCircle },
     ]},
