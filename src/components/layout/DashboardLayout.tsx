@@ -39,6 +39,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         <SidebarInset>
           <AppHeader />
           <BroadcastBanner />
+          <SystemNoticesBanner />
 
 
           {/* 2FA reminder banner — shown to all users without 2FA */}
