@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { Wrench, ShieldCheck, KeyRound } from "lucide-react";
 import LoadingScreen from "@/components/LoadingScreen";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
+import { useCountdown } from "@/hooks/useCountdown";
 
 export default function Auth() {
   const { signIn, signUp, user, role, loading, needsMfaVerification, clearMfaFlag } = useAuth();
@@ -39,6 +40,23 @@ export default function Auth() {
   const [rememberDevice, setRememberDevice] = useState(false);
   const [useBackupCode, setUseBackupCode] = useState(false);
   const [backupCode, setBackupCode] = useState("");
+  const [backupError, setBackupError] = useState<string | null>(null);
+  const [backupRemainingAttempts, setBackupRemainingAttempts] = useState<number | null>(null);
+  const [backupLockoutSec, setBackupLockoutSec] = useState<number | null>(null);
+  const lockout = useCountdown(backupLockoutSec);
+  const isLocked = lockout.remaining > 0;
+  // XXXX-XXXX format; A–Z and 2–9 only (matches the generator alphabet).
+  const BACKUP_REGEX = /^[A-HJ-NP-Z2-9]{4}-[A-HJ-NP-Z2-9]{4}$/;
+  const backupFormatValid = BACKUP_REGEX.test(backupCode);
+  const backupFormatHint =
+    backupCode.length > 0 && !backupFormatValid
+      ? "Use the format XXXX-XXXX (letters A–Z and digits 2–9)."
+      : null;
+
+  const formatBackupInput = (raw: string) => {
+    const cleaned = raw.toUpperCase().replace(/[^A-HJ-NP-Z2-9]/g, "").slice(0, 8);
+    return cleaned.length > 4 ? `${cleaned.slice(0, 4)}-${cleaned.slice(4)}` : cleaned;
+  };
 
   useEffect(() => {
     if (!loading && user && role && !needsMfaVerification && !mfaStep) {
