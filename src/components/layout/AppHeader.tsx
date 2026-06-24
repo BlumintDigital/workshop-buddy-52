@@ -20,7 +20,7 @@ import {
 import { NotificationBell } from "@/components/NotificationBell";
 import { SessionIndicator } from "@/components/SessionIndicator";
 import { Link, useLocation } from "react-router-dom";
-import { n } from "@/hooks/n";
+import { useAuth } from "@/hooks/useAuth";
 
 const ROLE_SCOPED_SEGMENTS = new Set(["invoices", "jobs", "appointments", "inventory", "reports", "users", "clients", "calendar", "activity-logs", "settings", "feedback", "dashboard"]);
 
