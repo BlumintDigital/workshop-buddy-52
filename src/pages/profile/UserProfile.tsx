@@ -22,6 +22,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useCountdown } from "@/hooks/useCountdown";
+import PushNotificationsCard from "@/components/profile/PushNotificationsCard";
 
 export default function UserProfile() {
   const { user, profile, role, refreshMfaStatus } = useAuth();
@@ -469,7 +470,10 @@ export default function UserProfile() {
             )}
           </CardContent>
         </Card>
+
+        <PushNotificationsCard />
       </div>
+
 
       <BackupCodesDialog
         open={!!shownCodes}
