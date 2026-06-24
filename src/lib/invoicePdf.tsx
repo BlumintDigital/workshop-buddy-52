@@ -38,11 +38,18 @@ interface InvoicePDFProps {
   workshopName?: string;
 }
 
-function InvoiceDocument({ invoice, clientName, items, workshopName = "Workshop" }: InvoicePDFProps) {
+function InvoiceDocument({ invoice, clientName, items, workshopName = "Workshop", currency = "USD" }: InvoicePDFProps & { currency?: string }) {
   const subtotal = items.reduce((sum, i) => sum + i.quantity * i.unit_price, 0);
   const taxRate = invoice.tax_rate ?? 0;
   const taxAmount = subtotal * (taxRate / 100);
   const total = subtotal + taxAmount;
+  const fmt = (n: number) => {
+    try {
+      return new Intl.NumberFormat(undefined, { style: "currency", currency, minimumFractionDigits: 2 }).format(n);
+    } catch {
+      return `${currency} ${n.toFixed(2)}`;
+    }
+  };
 
   return (
     <Document>
@@ -86,8 +93,8 @@ function InvoiceDocument({ invoice, clientName, items, workshopName = "Workshop"
             <View key={idx} style={styles.tableRow}>
               <Text style={styles.colDesc}>{item.description}</Text>
               <Text style={styles.colQty}>{item.quantity}</Text>
-              <Text style={styles.colPrice}>${Number(item.unit_price).toFixed(2)}</Text>
-              <Text style={styles.colTotal}>${(item.quantity * item.unit_price).toFixed(2)}</Text>
+              <Text style={styles.colPrice}>{fmt(Number(item.unit_price))}</Text>
+              <Text style={styles.colTotal}>{fmt(item.quantity * item.unit_price)}</Text>
             </View>
           ))}
         </View>
@@ -96,17 +103,17 @@ function InvoiceDocument({ invoice, clientName, items, workshopName = "Workshop"
         <View style={styles.totalSection}>
           <View style={styles.totalRow}>
             <Text style={styles.totalLabel}>Subtotal</Text>
-            <Text style={styles.totalValue}>${subtotal.toFixed(2)}</Text>
+            <Text style={styles.totalValue}>{fmt(subtotal)}</Text>
           </View>
           {taxRate > 0 && (
             <View style={styles.totalRow}>
               <Text style={styles.totalLabel}>Tax ({taxRate}%)</Text>
-              <Text style={styles.totalValue}>${taxAmount.toFixed(2)}</Text>
+              <Text style={styles.totalValue}>{fmt(taxAmount)}</Text>
             </View>
           )}
           <View style={styles.grandTotalRow}>
             <Text style={styles.grandTotalLabel}>Total</Text>
-            <Text style={styles.grandTotalValue}>${total.toFixed(2)}</Text>
+            <Text style={styles.grandTotalValue}>{fmt(total)}</Text>
           </View>
         </View>
 
@@ -129,13 +136,14 @@ function InvoiceDocument({ invoice, clientName, items, workshopName = "Workshop"
 export async function generateInvoicePDF(props: Omit<InvoicePDFProps, "workshopName">): Promise<void> {
   const { data: settings } = await supabase
     .from("workshop_settings")
-    .select("workshop_name")
+    .select("workshop_name, currency")
     .eq("id", 1)
     .maybeSingle();
 
   const workshopName = settings?.workshop_name || "Workshop";
+  const currency = (settings as any)?.currency || props.invoice?.currency || "USD";
 
-  const blob = await pdf(<InvoiceDocument {...props} workshopName={workshopName} />).toBlob();
+  const blob = await pdf(<InvoiceDocument {...props} workshopName={workshopName} currency={currency} />).toBlob();
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;

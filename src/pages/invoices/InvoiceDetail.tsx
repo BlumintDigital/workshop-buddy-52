@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import { generateInvoicePDF } from "@/lib/invoicePdf";
 import { sendEmail, invoiceSentEmailHtml } from "@/lib/email";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { useCurrency } from "@/hooks/useCurrency";
 
 const statusColors: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
   draft: "outline", sent: "secondary", paid: "default", overdue: "destructive", cancelled: "destructive",
@@ -33,6 +34,7 @@ export default function InvoiceDetail() {
   const { id } = useParams<{ id: string }>();
   const { role } = useAuth();
   const navigate = useNavigate();
+  const { format: fmt } = useCurrency();
 
   const [invoice, setInvoice] = useState<any>(null);
   const [clientName, setClientName] = useState("—");
@@ -327,9 +329,9 @@ export default function InvoiceDetail() {
                     <TableCell className="text-right">
                       {canEdit ? (
                         <Input type="number" min={0} step={0.01} value={item.unit_price} onChange={(e) => updateItem(idx, "unit_price", Number(e.target.value))} className="w-24 text-right ml-auto" />
-                      ) : `$${Number(item.unit_price).toFixed(2)}`}
+                      ) : fmt(Number(item.unit_price))}
                     </TableCell>
-                    <TableCell className="text-right font-medium">${(item.quantity * item.unit_price).toFixed(2)}</TableCell>
+                    <TableCell className="text-right font-medium">{fmt(item.quantity * item.unit_price)}</TableCell>
                     {canEdit && (
                       <TableCell>
                         {items.length > 1 && (
@@ -349,9 +351,9 @@ export default function InvoiceDetail() {
         {/* Totals */}
         <Card>
           <CardContent className="pt-6 space-y-2">
-            <div className="flex justify-between text-sm"><span>Subtotal</span><span>${subtotal.toFixed(2)}</span></div>
-            <div className="flex justify-between text-sm"><span>Tax ({invoice.tax_rate ?? 0}%)</span><span>${taxAmount.toFixed(2)}</span></div>
-            <div className="flex justify-between font-bold text-lg border-t pt-2"><span>Total</span><span>${total.toFixed(2)}</span></div>
+            <div className="flex justify-between text-sm"><span>Subtotal</span><span>{fmt(subtotal)}</span></div>
+            <div className="flex justify-between text-sm"><span>Tax ({invoice.tax_rate ?? 0}%)</span><span>{fmt(taxAmount)}</span></div>
+            <div className="flex justify-between font-bold text-lg border-t pt-2"><span>Total</span><span>{fmt(total)}</span></div>
           </CardContent>
         </Card>
 

@@ -12,6 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Plus, Trash2 } from "lucide-react";
 import { DatePickerInput } from "@/components/ui/date-picker-input";
 import { toast } from "sonner";
+import { useCurrency } from "@/hooks/useCurrency";
 
 interface LineItem {
   description: string;
@@ -23,6 +24,7 @@ export default function InvoiceCreate() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const jobId = searchParams.get("jobId");
+  const { format: fmt } = useCurrency();
 
   const [clientId, setClientId] = useState("");
   const [clientName, setClientName] = useState("");
@@ -181,7 +183,7 @@ export default function InvoiceCreate() {
                     <TableCell>
                       <Input type="number" min={0} step={0.01} value={item.unit_price} onChange={(e) => updateItem(idx, "unit_price", Number(e.target.value))} />
                     </TableCell>
-                    <TableCell className="text-right font-medium">${(item.quantity * item.unit_price).toFixed(2)}</TableCell>
+                    <TableCell className="text-right font-medium">{fmt(item.quantity * item.unit_price)}</TableCell>
                     <TableCell>
                       {items.length > 1 && (
                         <Button variant="ghost" size="icon" onClick={() => removeItem(idx)}>
@@ -198,9 +200,9 @@ export default function InvoiceCreate() {
 
         <Card>
           <CardContent className="pt-6 space-y-2">
-            <div className="flex justify-between text-sm"><span>Subtotal</span><span>${subtotal.toFixed(2)}</span></div>
-            <div className="flex justify-between text-sm"><span>Tax ({taxRate}%)</span><span>${taxAmount.toFixed(2)}</span></div>
-            <div className="flex justify-between font-bold text-lg border-t pt-2"><span>Total</span><span>${total.toFixed(2)}</span></div>
+            <div className="flex justify-between text-sm"><span>Subtotal</span><span>{fmt(subtotal)}</span></div>
+            <div className="flex justify-between text-sm"><span>Tax ({taxRate}%)</span><span>{fmt(taxAmount)}</span></div>
+            <div className="flex justify-between font-bold text-lg border-t pt-2"><span>Total</span><span>{fmt(total)}</span></div>
           </CardContent>
         </Card>
 
