@@ -349,6 +349,12 @@ export default function UserProfile() {
           </CardContent>
         </Card>
       </div>
+
+      <BackupCodesDialog
+        open={!!shownCodes}
+        codes={shownCodes ?? []}
+        onClose={() => setShownCodes(null)}
+      />
     </DashboardLayout>
   );
 }
