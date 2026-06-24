@@ -38,11 +38,18 @@ interface InvoicePDFProps {
   workshopName?: string;
 }
 
-function InvoiceDocument({ invoice, clientName, items, workshopName = "Workshop" }: InvoicePDFProps) {
+function InvoiceDocument({ invoice, clientName, items, workshopName = "Workshop", currency = "USD" }: InvoicePDFProps & { currency?: string }) {
   const subtotal = items.reduce((sum, i) => sum + i.quantity * i.unit_price, 0);
   const taxRate = invoice.tax_rate ?? 0;
   const taxAmount = subtotal * (taxRate / 100);
   const total = subtotal + taxAmount;
+  const fmt = (n: number) => {
+    try {
+      return new Intl.NumberFormat(undefined, { style: "currency", currency, minimumFractionDigits: 2 }).format(n);
+    } catch {
+      return `${currency} ${n.toFixed(2)}`;
+    }
+  };
 
   return (
     <Document>
