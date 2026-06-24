@@ -148,7 +148,7 @@ export function BroadcastBanner() {
               type="button"
               aria-label="Dismiss broadcast"
               onClick={() => dismiss(b.id)}
-              className="absolute right-2 top-2 inline-flex h-8 w-8 items-center justify-center rounded-md text-current/70 hover:bg-foreground/10 transition-colors"
+              className="absolute right-2 top-2 inline-flex h-8 w-8 items-center justify-center rounded-md opacity-70 hover:opacity-100 hover:bg-foreground/10 transition-opacity"
             >
               <X className="h-4 w-4" />
             </button>
