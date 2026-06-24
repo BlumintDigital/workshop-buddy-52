@@ -24,6 +24,7 @@ export default function Auth() {
   const [signupConfirmPassword, setSignupConfirmPassword] = useState("");
   const [signupFirstName, setSignupFirstName] = useState("");
   const [signupLastName, setSignupLastName] = useState("");
+  const [signupInviteCode, setSignupInviteCode] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [loginImageUrl, setLoginImageUrl] = useState<string | null>(null);
   const [workshopName, setWorkshopName] = useState<string>("Workshop Manager");
@@ -209,8 +210,22 @@ export default function Auth() {
       toast.error("First and last name are required");
       return;
     }
+    if (!signupInviteCode.trim()) {
+      toast.error("An invite code is required to create an account");
+      return;
+    }
     setSubmitting(true);
     try {
+      const { data: redeemed, error: redeemError } = await supabase.rpc(
+        "redeem_signup_code",
+        { _code: signupInviteCode.trim() },
+      );
+      if (redeemError) throw redeemError;
+      if (!redeemed) {
+        toast.error("Invalid, expired, or fully-used invite code");
+        setSubmitting(false);
+        return;
+      }
       const fullName = `${signupFirstName.trim()} ${signupLastName.trim()}`;
       await signUp(signupEmail, signupPassword, fullName);
       setConfirmationEmail(signupEmail);
@@ -488,6 +503,21 @@ export default function Auth() {
                     <div className="space-y-2">
                       <Label htmlFor="signup-confirm-password">Confirm Password</Label>
                       <Input id="signup-confirm-password" type="password" value={signupConfirmPassword} onChange={(e) => setSignupConfirmPassword(e.target.value)} required minLength={6} placeholder="••••••••" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="signup-invite-code">Invite Code</Label>
+                      <Input
+                        id="signup-invite-code"
+                        value={signupInviteCode}
+                        onChange={(e) => setSignupInviteCode(e.target.value)}
+                        required
+                        placeholder="Enter the code provided by your workshop"
+                        autoComplete="off"
+                        maxLength={64}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Don't have one? Ask your workshop admin to issue you an invite code.
+                      </p>
                     </div>
                     <Button type="submit" className="w-full" disabled={submitting}>
                       {submitting ? "Creating account..." : "Create Account"}
