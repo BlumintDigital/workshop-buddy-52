@@ -248,11 +248,52 @@ export default function UserProfile() {
                 Loading 2FA status...
               </div>
             ) : mfaEnabled ? (
-              <div className="space-y-3">
+              <div className="space-y-4">
                 <div className="flex items-center gap-2 text-sm text-primary">
                   <ShieldCheck className="h-4 w-4" />
                   Two-factor authentication is enabled
                 </div>
+
+                {/* Backup codes */}
+                <div className="rounded-md border p-3 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <KeyRound className="h-4 w-4 text-primary" />
+                    <span className="text-sm font-medium">Backup codes</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Use these one-time codes to sign in if you lose your authenticator.
+                  </p>
+                  {backupTotal > 0 ? (
+                    <p className="text-xs">
+                      <span className="font-medium">{backupCodesRemaining ?? 0}</span> of {backupTotal} codes remaining
+                    </p>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">No backup codes generated yet.</p>
+                  )}
+                  <Button size="sm" variant="outline" onClick={handleGenerateBackupCodes} disabled={generatingBackup}>
+                    <RefreshCw className="h-3.5 w-3.5 mr-1" />
+                    {generatingBackup ? "Generating..." : backupTotal > 0 ? "Regenerate codes" : "Generate backup codes"}
+                  </Button>
+                </div>
+
+                {/* Trusted devices */}
+                <div className="rounded-md border p-3 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck className="h-4 w-4 text-primary" />
+                    <span className="text-sm font-medium">Trusted devices</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {trustedDeviceCount > 0
+                      ? `${trustedDeviceCount} device${trustedDeviceCount === 1 ? "" : "s"} can skip the 2FA prompt for 30 days.`
+                      : "No trusted devices."}
+                  </p>
+                  {trustedDeviceCount > 0 && (
+                    <Button size="sm" variant="outline" onClick={handleRevokeDevices}>
+                      Revoke all trusted devices
+                    </Button>
+                  )}
+                </div>
+
                 <Button variant="destructive" size="sm" onClick={handleDisable2FA} disabled={unenrolling}>
                   <ShieldOff className="h-4 w-4 mr-1" />
                   {unenrolling ? "Disabling..." : "Disable 2FA"}
