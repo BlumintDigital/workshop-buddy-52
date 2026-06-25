@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
-  ArrowLeft, CalendarDays, Clock, Pencil, Plus, Trash2, CheckSquare,
+  ArrowLeft, CalendarDays, Clock, History, Pencil, Plus, Trash2, CheckSquare,
   FileUp, FileText, Download, MessageSquare, Paperclip, Package, Star,
   CheckCircle2, XCircle,
 } from "lucide-react";
@@ -102,6 +102,10 @@ export default function JobDetail() {
   // Actual hours
   const [actualHoursInput, setActualHoursInput] = useState("");
 
+  // Assignment / progress timeline
+  const [jobLogs, setJobLogs] = useState<any[]>([]);
+  const [staffNameMap, setStaffNameMap] = useState<Record<string, string>>({});
+
   const canEdit = role === "admin" || role === "manager";
   const canAddUpdate = role === "admin" || role === "manager" || role === "staff";
 
@@ -132,6 +136,7 @@ export default function JobDetail() {
     fetchJobAttachments();
     fetchMaterials();
     if (role === "client") fetchRating();
+    if (role === "admin" || role === "manager") fetchJobLogs();
   }, [id]);
 
   // Real-time job status updates
@@ -213,6 +218,36 @@ export default function JobDetail() {
     if (!user) return;
     const { data } = await (supabase.from as any)("job_ratings").select("*").eq("job_id", id!).eq("client_id", user.id).maybeSingle();
     if (data) { setExistingRating(data); setRatingValue(data.rating); setRatingComment(data.comment || ""); }
+  };
+
+  const fetchJobLogs = async () => {
+    const { data: logs } = await supabase
+      .from("activity_logs")
+      .select("id, action, created_at, details")
+      .eq("table_name", "jobs")
+      .eq("record_id", id!)
+      .order("created_at", { ascending: true });
+    const logList = logs ?? [];
+    setJobLogs(logList);
+
+    // Resolve staff names from UUIDs stored in staff_assignment log details
+    const staffIds = new Set<string>();
+    for (const log of logList) {
+      const sa = (log.details as any)?.staff_assignment;
+      if (sa?.from) staffIds.add(sa.from);
+      if (sa?.to) staffIds.add(sa.to);
+    }
+    if (staffIds.size > 0) {
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("id, full_name")
+        .in("id", [...staffIds]);
+      if (profiles) {
+        const map: Record<string, string> = {};
+        profiles.forEach(p => { map[p.id] = p.full_name || "Unknown"; });
+        setStaffNameMap(prev => ({ ...prev, ...map }));
+      }
+    }
   };
 
   // Storage helpers
@@ -348,6 +383,7 @@ export default function JobDetail() {
     if (error) { toast.error(error.message); return; }
     setJob({ ...job, status });
     toast.success("Status updated");
+    if (canEdit) fetchJobLogs();
     sendJobNotifications(job, `${job.title} is now ${status.replace(/_/g, " ")}`);
     if (job.client_id) {
       const emailHtml = status === "quote"
@@ -407,6 +443,7 @@ export default function JobDetail() {
     const { error } = await supabase.from("jobs").update(payload).eq("id", job.id);
     if (error) { toast.error(error.message); return; }
     setJob({ ...job, ...payload }); setEditOpen(false); toast.success("Job updated");
+    if (canEdit) fetchJobLogs();
   };
 
   const handleOpenAddTask = () => { setEditingTask(null); setTaskForm({ ...emptyTaskForm }); setTaskPendingFiles([]); setTaskOpen(true); };
@@ -490,9 +527,68 @@ export default function JobDetail() {
   const taskProgress = tasks.length > 0 ? Math.round((completedTasks / tasks.length) * 100) : null;
   const matTotal = materials.reduce((sum, m) => sum + m.quantity * Number((m as any).inventory_items?.unit_cost || 0), 0);
 
+  const fmtDuration = (ms: number): string => {
+    const totalMins = Math.floor(ms / 60000);
+    if (totalMins < 1) return "<1m";
+    if (totalMins < 60) return `${totalMins}m`;
+    const h = Math.floor(totalMins / 60);
+    const d = Math.floor(h / 24);
+    const rh = h % 24;
+    const rm = totalMins % 60;
+    if (d > 0) return rh > 0 ? `${d}d ${rh}h` : `${d}d`;
+    return rm > 0 ? `${h}h ${rm}m` : `${h}h`;
+  };
+
+  type TLEvent = {
+    key: string;
+    type: "created" | "assigned" | "reassigned" | "unassigned" | "status";
+    at: Date;
+    label: string;
+    sub?: string;
+  };
+
+  const timeline = (() => {
+    const events: TLEvent[] = [];
+    events.push({ key: "created", type: "created", at: new Date(job.created_at), label: "Job created" });
+
+    const hasAssignmentLog = jobLogs.some(l => (l.details as any)?.staff_assignment);
+
+    for (const log of jobLogs) {
+      const det = log.details as any;
+      if (det?.status_change) {
+        const parts = (det.status_change as string).split(" → ");
+        events.push({
+          key: log.id + "-status",
+          type: "status",
+          at: new Date(log.created_at),
+          label: "Status changed",
+          sub: `${parts[0] ?? ""} → ${parts[1] ?? ""}`,
+        });
+      }
+      if (det?.staff_assignment) {
+        const { from, to } = det.staff_assignment as { from: string; to: string };
+        const fromName = from ? (staffNameMap[from] || staffName || "Unknown") : null;
+        const toName = to ? (staffNameMap[to] || staffName || "Unknown") : null;
+        if (!from && to) {
+          events.push({ key: log.id + "-assign", type: "assigned", at: new Date(log.created_at), label: `Assigned to ${toName}` });
+        } else if (from && !to) {
+          events.push({ key: log.id + "-unassign", type: "unassigned", at: new Date(log.created_at), label: "Unassigned", sub: `was ${fromName}` });
+        } else if (from && to) {
+          events.push({ key: log.id + "-reassign", type: "reassigned", at: new Date(log.created_at), label: `Reassigned to ${toName}`, sub: `from ${fromName}` });
+        }
+      }
+    }
+
+    if (!hasAssignmentLog && job.assigned_staff_id) {
+      events.push({ key: "assigned-initial", type: "assigned", at: new Date(job.created_at), label: `Assigned to ${staffName}` });
+    }
+
+    return events.sort((a, b) => a.at.getTime() - b.at.getTime());
+  })();
+
   return (
     <DashboardLayout>
-      <div className="space-y-6 max-w-3xl">
+      <div className="space-y-6 max-w-6xl">
         <Button variant="ghost" size="sm" onClick={() => navigate(backPath)}>
           <ArrowLeft className="mr-2 h-4 w-4" />Back to Jobs
         </Button>
@@ -540,6 +636,10 @@ export default function JobDetail() {
             </CardContent>
           </Card>
         )}
+
+        {/* ── 2-column grid: left = main content, right = sidebar ── */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+        <div className="lg:col-span-2 space-y-6">
 
         {/* Status / Priority / Assignment */}
         <Card>
@@ -807,6 +907,65 @@ export default function JobDetail() {
           </Card>
         )}
 
+        </div>{/* end left column */}
+
+        {/* ── Right sidebar ── */}
+        <div className="space-y-6">
+
+        {/* Assignment & Progress Timeline */}
+        {canEdit && (
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <History className="h-4 w-4" />Assignment Timeline
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {timeline.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No history yet.</p>
+              ) : (
+                <div>
+                  {timeline.map((event, idx) => {
+                    const prevAt = idx > 0 ? timeline[idx - 1].at : null;
+                    const duration = prevAt ? event.at.getTime() - prevAt.getTime() : null;
+                    const isLast = idx === timeline.length - 1;
+                    const dotColor =
+                      event.type === "created" ? "border-muted-foreground bg-muted" :
+                      event.type === "status" ? "border-primary bg-primary" :
+                      "border-blue-500 bg-blue-500";
+                    return (
+                      <div key={event.key} className="relative flex gap-3">
+                        {!isLast && (
+                          <div className="absolute left-[5px] top-4 bottom-0 w-px bg-border" />
+                        )}
+                        <div className={cn("relative mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full border-2", dotColor)} />
+                        <div className="pb-4 min-w-0 flex-1">
+                          <div className="flex items-start justify-between gap-1">
+                            <span className="text-xs font-medium leading-tight">{event.label}</span>
+                            {duration !== null && (
+                              <span className="text-[10px] text-muted-foreground shrink-0 mt-0.5">+{fmtDuration(duration)}</span>
+                            )}
+                          </div>
+                          {event.sub && (
+                            <p className="text-[10px] text-muted-foreground capitalize">{event.sub.replace(/_/g, " ")}</p>
+                          )}
+                          <p className="text-[10px] text-muted-foreground mt-0.5">
+                            {event.at.toLocaleDateString(undefined, { month: "short", day: "numeric" })} · {event.at.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  <div className="mt-1 pt-2 border-t flex justify-between items-center text-xs">
+                    <span className="text-muted-foreground flex items-center gap-1"><Clock className="h-3 w-3" />Total elapsed</span>
+                    <span className="font-semibold">{fmtDuration(Date.now() - new Date(job.created_at).getTime())}</span>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
         {/* Job Attachments */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-3">
@@ -897,6 +1056,9 @@ export default function JobDetail() {
             </CardContent>
           </Card>
         )}
+
+        </div>{/* end right column */}
+        </div>{/* end grid */}
 
         {/* Edit Job Dialog */}
         <Dialog open={editOpen} onOpenChange={setEditOpen}>
