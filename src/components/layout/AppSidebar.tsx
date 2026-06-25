@@ -217,6 +217,7 @@ export function AppSidebar() {
       <SidebarContent
         ref={contentRef}
         onScroll={(e) => { scrollTopRef.current = (e.currentTarget as HTMLElement).scrollTop; }}
+        className="[&::-webkit-scrollbar]:hidden [scrollbar-width:none] [-ms-overflow-style:none]"
       >
         {groups.map((group) => (
           <SidebarGroup key={group.label}>
