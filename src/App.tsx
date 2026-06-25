@@ -72,7 +72,7 @@ function FeatureRoute({ flag, children }: { flag: boolean; children: ReactNode }
 }
 
 function AppRoutes() {
-  const flags = useFeatureFlags();
+  const { flags } = useFeatureFlags();
   return (
     <Routes>
       <Route path="/" element={<Navigate to="/auth" replace />} />
