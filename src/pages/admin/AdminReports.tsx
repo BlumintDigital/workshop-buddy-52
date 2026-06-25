@@ -148,7 +148,7 @@ export default function AdminReports() {
                         cy="50%"
                         innerRadius={60}
                         outerRadius={120}
-                        label={({ status, count }) => `${status} (${count})`}
+                        label={(props: any) => `${props.status} (${props.count})`}
                       >
                         {jobStats.map((_, idx) => (
                           <Cell key={idx} fill={COLORS[idx % COLORS.length]} />
