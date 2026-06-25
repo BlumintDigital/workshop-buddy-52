@@ -45,6 +45,7 @@ serve(async (req) => {
   const { to_user_id, mode } = body;
   let { subject, html } = body as { subject?: string; html?: string };
   let { to } = body;
+  let from: string;
 
   const escapeHtml = (s: string) =>
     s.replace(/&/g, "&amp;")
@@ -55,10 +56,12 @@ serve(async (req) => {
 
   // bug_report mode: any authenticated user may send; recipient resolved server-side
   // so the admin's email address is never exposed to the client.
+  // Intentionally bypasses email_notifications_enabled — bug reports are admin-to-admin
+  // alerts, not customer-facing notifications.
   if (mode === "bug_report") {
     const { data: ws } = await supabase
       .from("workshop_settings")
-      .select("contact_email")
+      .select("contact_email, from_email")
       .eq("id", 1)
       .maybeSingle();
     to = (ws as any)?.contact_email ?? null;
@@ -67,6 +70,7 @@ serve(async (req) => {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+    from = (ws as any)?.from_email || Deno.env.get("FROM_EMAIL") || "noreply@workshopmanager.com";
 
     // Sanitize client-supplied content — strip tags, escape remaining chars.
     const rawSubject = typeof subject === "string" ? subject : "";
@@ -81,13 +85,29 @@ serve(async (req) => {
   <pre style="white-space:pre-wrap;font-family:inherit">${escapeHtml(plain)}</pre>
 </div>`;
   } else {
-    // All other emails: admin or manager only
+    // All other emails: admin or manager only, and respect the notification toggle.
     if (!roleRow || !["admin", "manager"].includes(roleRow.role)) {
       return new Response(JSON.stringify({ error: "Forbidden" }), {
         status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    const { data: emailCfg } = await supabase
+      .from("workshop_settings")
+      .select("email_notifications_enabled, from_email")
+      .eq("id", 1)
+      .maybeSingle();
+
+    if (!(emailCfg as any)?.email_notifications_enabled) {
+      return new Response(JSON.stringify({ ok: true, skipped: "email_notifications_disabled" }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    from = (emailCfg as any)?.from_email || Deno.env.get("FROM_EMAIL") || "noreply@workshopmanager.com";
+
     // Resolve email from user_id when the caller doesn't have the address directly
     if (!to && to_user_id) {
       const { data: { user: targetUser }, error: lookupError } =
@@ -99,20 +119,6 @@ serve(async (req) => {
       }
       to = targetUser.email;
     }
-  }
-
-  // Enforce the email_notifications_enabled toggle server-side for all paths.
-  const { data: emailCfg } = await supabase
-    .from("workshop_settings")
-    .select("email_notifications_enabled, from_email")
-    .eq("id", 1)
-    .maybeSingle();
-
-  if (!(emailCfg as any)?.email_notifications_enabled) {
-    return new Response(JSON.stringify({ ok: true, skipped: "email_notifications_disabled" }), {
-      status: 200,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
   }
 
   if (!RESEND_API_KEY) {
@@ -128,8 +134,6 @@ serve(async (req) => {
       { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
-
-  const from = (emailCfg as any)?.from_email || Deno.env.get("FROM_EMAIL") || "noreply@workshopmanager.com";
 
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
