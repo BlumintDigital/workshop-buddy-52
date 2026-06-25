@@ -46,6 +46,15 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
+    const isFeatureEnabled = async (key: string) => {
+      const { data } = await supabase
+        .from("feature_flags")
+        .select("enabled")
+        .eq("key", key)
+        .maybeSingle();
+      return data?.enabled ?? true;
+    };
+
     const url = new URL(req.url);
     const action = url.searchParams.get("action");
 
@@ -67,10 +76,13 @@ Deno.serve(async (req) => {
 
       // ==================== STATS ====================
       case "stats": {
+        const appointmentsEnabled = await isFeatureEnabled("appointments");
         const [jobs, users, appointments, invoices, inventory] = await Promise.all([
           supabase.from("jobs").select("id", { count: "exact", head: true }),
           supabase.from("profiles").select("id", { count: "exact", head: true }),
-          supabase.from("appointments").select("id", { count: "exact", head: true }),
+          appointmentsEnabled
+            ? supabase.from("appointments").select("id", { count: "exact", head: true })
+            : Promise.resolve({ count: 0 }),
           supabase.from("invoices").select("id", { count: "exact", head: true }),
           supabase.from("inventory_items").select("id, quantity, min_stock"),
         ]);
@@ -210,13 +222,29 @@ Deno.serve(async (req) => {
 
       // ==================== REVENUE ====================
       case "revenue": {
-        const { data, error } = await supabase.rpc("get_monthly_revenue");
+        if (!(await isFeatureEnabled("reports"))) return err("Reports feature is disabled", 403);
+        const { data, error } = await supabase
+          .from("invoices")
+          .select("paid_at, total")
+          .eq("status", "paid")
+          .gte("paid_at", new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString());
         if (error) return err(error.message, 500);
-        return json(data);
+        const totals = new Map<string, number>();
+        for (const invoice of data ?? []) {
+          if (!invoice.paid_at) continue;
+          const month = invoice.paid_at.slice(0, 7);
+          totals.set(month, (totals.get(month) ?? 0) + Number(invoice.total ?? 0));
+        }
+        return json(
+          [...totals.entries()]
+            .sort(([a], [b]) => a.localeCompare(b))
+            .map(([month, revenue]) => ({ month, revenue }))
+        );
       }
 
       // ==================== APPOINTMENTS ====================
       case "appointments": {
+        if (!(await isFeatureEnabled("appointments"))) return err("Appointments feature is disabled", 403);
         const { limit, offset } = getPagination(url);
         const status = url.searchParams.get("status");
         const { from, to } = getDateRange(url);
@@ -875,25 +903,34 @@ Deno.serve(async (req) => {
       // ==================== FEATURE FLAGS ====================
       case "get_feature_flags": {
         const { data, error: fetchErr } = await supabase
-          .from("workshop_settings")
-          .select("feature_flags")
-          .eq("id", 1)
-          .maybeSingle();
+          .from("feature_flags")
+          .select("key, enabled, updated_at, updated_by")
+          .order("key");
         if (fetchErr) return err(fetchErr.message, 500);
-        return json({ flags: data?.feature_flags ?? {} });
+        return json({ flags: data ?? [] });
       }
 
       case "set_feature_flags": {
         if (req.method !== "POST") return err("POST required", 405);
         const body = await req.json();
-        const { flags } = body;
-        if (!flags || typeof flags !== "object") return err("flags object required");
+        const { key, enabled } = body ?? {};
+        const allowed = ["appointments", "client_portal", "goals", "reports", "job_chat"];
+        if (!allowed.includes(key) || typeof enabled !== "boolean") {
+          return err("A valid key and boolean enabled value are required");
+        }
         const { error: updateErr } = await supabase
-          .from("workshop_settings")
-          .update({ feature_flags: flags })
-          .eq("id", 1);
+          .from("feature_flags")
+          .update({ enabled, updated_at: new Date().toISOString(), updated_by: null })
+          .eq("key", key);
         if (updateErr) return err(updateErr.message, 500);
-        return json({ ok: true });
+        await supabase.from("activity_logs").insert({
+          action: "updated",
+          table_name: "feature_flags",
+          record_id: key,
+          summary: `Feature ${key} was ${enabled ? "enabled" : "disabled"} through admin API`,
+          details: { key, enabled, source: "admin-api" },
+        });
+        return json({ ok: true, key, enabled });
       }
 
       default:

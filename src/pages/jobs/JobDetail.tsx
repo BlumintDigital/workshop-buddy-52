@@ -23,6 +23,8 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { sendNotifications } from "@/lib/notifications";
 import { sendEmail, jobStatusEmailHtml, quoteReadyEmailHtml } from "@/lib/email";
+import { FeatureGate } from "@/hooks/useFeatureFlags";
+import JobComments from "@/components/jobs/JobComments";
 import { generateJobReport } from "@/lib/jobReportPdf";
 import { useCurrency } from "@/hooks/useCurrency";
 
@@ -780,6 +782,11 @@ export default function JobDetail() {
             </CardContent>
           </Card>
         )}
+
+        {/* Comments — real-time thread for all parties; internal notes hidden from clients */}
+        <FeatureGate feature="job_chat">
+          {id && <JobComments jobId={id} jobTitle={job?.title} />}
+        </FeatureGate>
 
         {/* Activity Timeline */}
         {updates.length > 0 && (
