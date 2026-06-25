@@ -122,7 +122,8 @@ export function FeatureFlagProvider({ children }: { children: ReactNode }) {
 export function useFeatureFlags(): FeatureFlagState {
   const context = useContext(FeatureFlagContext);
   if (!context) {
-    throw new Error("useFeatureFlags must be used inside FeatureFlagProvider");
+    console.error("useFeatureFlags called outside FeatureFlagProvider — returning defaults");
+    return { flags: FEATURE_DEFAULTS, loading: false, error: null };
   }
   return context;
 }
