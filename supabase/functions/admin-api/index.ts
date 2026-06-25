@@ -901,15 +901,86 @@ Deno.serve(async (req) => {
       }
 
       // ==================== FEATURE FLAGS ====================
+      // Unified HTTP-method routing — consistent with the notices action.
+      //
+      //   GET   ?action=feature_flags
+      //     → list all flags: [{ key, enabled, updated_at }]
+      //
+      //   POST  ?action=feature_flags   body: { key, enabled }
+      //     → set a flag to an explicit true/false value
+      //
+      //   PATCH ?action=feature_flags   body: { key }
+      //     → toggle a flag (flip its current value); returns { key, enabled } with new state
+      //
+      // Valid keys: appointments | client_portal | goals | reports | job_chat
+      case "feature_flags": {
+        const VALID_KEYS = ["appointments", "client_portal", "goals", "reports", "job_chat"];
+
+        if (req.method === "GET") {
+          const { data, error: fetchErr } = await supabase
+            .from("feature_flags")
+            .select("key, enabled, updated_at")
+            .order("key");
+          if (fetchErr) return err(fetchErr.message, 500);
+          return json({ flags: data ?? [] });
+        }
+
+        if (req.method === "POST") {
+          const body = await req.json();
+          const { key, enabled } = body ?? {};
+          if (!VALID_KEYS.includes(key) || typeof enabled !== "boolean") {
+            return err(`key must be one of [${VALID_KEYS.join(", ")}] and enabled must be a boolean`);
+          }
+          const { error: updateErr } = await supabase
+            .from("feature_flags")
+            .update({ enabled, updated_at: new Date().toISOString() })
+            .eq("key", key);
+          if (updateErr) return err(updateErr.message, 500);
+          await supabase.from("activity_logs").insert({
+            action: "updated", table_name: "feature_flags", record_id: key,
+            summary: `Feature ${key} ${enabled ? "enabled" : "disabled"} via admin API`,
+            details: { key, enabled, source: "admin-api" },
+          });
+          return json({ ok: true, key, enabled });
+        }
+
+        if (req.method === "PATCH") {
+          const body = await req.json();
+          const { key } = body ?? {};
+          if (!VALID_KEYS.includes(key)) {
+            return err(`key must be one of [${VALID_KEYS.join(", ")}]`);
+          }
+          // Read current value then flip it
+          const { data: current, error: readErr } = await supabase
+            .from("feature_flags")
+            .select("enabled")
+            .eq("key", key)
+            .maybeSingle();
+          if (readErr) return err(readErr.message, 500);
+          const newEnabled = !(current as any)?.enabled;
+          const { error: updateErr } = await supabase
+            .from("feature_flags")
+            .update({ enabled: newEnabled, updated_at: new Date().toISOString() })
+            .eq("key", key);
+          if (updateErr) return err(updateErr.message, 500);
+          await supabase.from("activity_logs").insert({
+            action: "updated", table_name: "feature_flags", record_id: key,
+            summary: `Feature ${key} toggled to ${newEnabled ? "enabled" : "disabled"} via admin API`,
+            details: { key, enabled: newEnabled, source: "admin-api" },
+          });
+          return json({ ok: true, key, enabled: newEnabled });
+        }
+
+        return err("Method not allowed — use GET, POST, or PATCH", 405);
+      }
+
+      // Legacy aliases kept for backward compatibility with older super-admin dashboards.
       case "get_feature_flags": {
         const { data, error: fetchErr } = await supabase
-          .from("feature_flags")
-          .select("key, enabled, updated_at, updated_by")
-          .order("key");
+          .from("feature_flags").select("key, enabled, updated_at").order("key");
         if (fetchErr) return err(fetchErr.message, 500);
         return json({ flags: data ?? [] });
       }
-
       case "set_feature_flags": {
         if (req.method !== "POST") return err("POST required", 405);
         const body = await req.json();
@@ -920,16 +991,9 @@ Deno.serve(async (req) => {
         }
         const { error: updateErr } = await supabase
           .from("feature_flags")
-          .update({ enabled, updated_at: new Date().toISOString(), updated_by: null })
+          .update({ enabled, updated_at: new Date().toISOString() })
           .eq("key", key);
         if (updateErr) return err(updateErr.message, 500);
-        await supabase.from("activity_logs").insert({
-          action: "updated",
-          table_name: "feature_flags",
-          record_id: key,
-          summary: `Feature ${key} was ${enabled ? "enabled" : "disabled"} through admin API`,
-          details: { key, enabled, source: "admin-api" },
-        });
         return json({ ok: true, key, enabled });
       }
 
