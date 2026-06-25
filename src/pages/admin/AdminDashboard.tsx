@@ -6,8 +6,10 @@ import { StatCard } from "@/components/dashboard/StatsCards";
 import { RecentActivity } from "@/components/dashboard/RecentActivity";
 import { JobStatusChart } from "@/components/dashboard/JobStatusChart";
 import { ActivityFeed } from "@/components/dashboard/ActivityFeed";
+import { useFeature } from "@/hooks/useFeatureFlags";
 
 export default function AdminDashboard() {
+  const appointmentsEnabled = useFeature("appointments");
   const [stats, setStats] = useState({ jobs: 0, appointments: 0, inventory: 0, invoices: 0, users: 0, lowStock: 0 });
   const [recentJobs, setRecentJobs] = useState<any[]>([]);
   const [statusData, setStatusData] = useState<{ name: string; value: number }[]>([]);
@@ -16,7 +18,9 @@ export default function AdminDashboard() {
     const fetchStats = async () => {
       const [jobs, appts, items, invs, roles, lowStock] = await Promise.all([
         supabase.from("jobs").select("*", { count: "exact", head: true }),
-        supabase.from("appointments").select("*", { count: "exact", head: true }),
+        appointmentsEnabled
+          ? supabase.from("appointments").select("*", { count: "exact", head: true })
+          : Promise.resolve({ count: 0, data: null, error: null }),
         supabase.from("inventory_items").select("*", { count: "exact", head: true }),
         supabase.from("invoices").select("*", { count: "exact", head: true }),
         supabase.from("user_roles").select("*", { count: "exact", head: true }),
@@ -49,7 +53,7 @@ export default function AdminDashboard() {
     fetchStats();
     fetchRecent();
     fetchStatusDistribution();
-  }, []);
+  }, [appointmentsEnabled]);
 
   return (
     <DashboardLayout>
@@ -60,13 +64,13 @@ export default function AdminDashboard() {
         </div>
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          <StatCard
+          {appointmentsEnabled && <StatCard
             title="Total Jobs"
             value={stats.jobs}
             icon={Briefcase}
             description="All workshop jobs"
             iconClassName="bg-gradient-to-br from-blue-500 to-blue-700"
-          />
+          />}
           <StatCard
             title="Appointments"
             value={stats.appointments}

@@ -161,8 +161,17 @@ serve(async (req) => {
       { title: "Warranty Service", client_id: pickClient(), appointment_date: fmtDate(new Date(today.getTime() - 5 * dayMs)), appointment_time: "13:00", duration_minutes: 120, type: "service", status: "cancelled" },
     ];
 
-    const { data: insertedAppts } = await adminClient.from("appointments").insert(appointmentsData).select("id");
-    counts.appointments = insertedAppts?.length || 0;
+    const { data: appointmentsFlag } = await adminClient
+      .from("feature_flags")
+      .select("enabled")
+      .eq("key", "appointments")
+      .maybeSingle();
+    if (appointmentsFlag?.enabled ?? true) {
+      const { data: insertedAppts } = await adminClient.from("appointments").insert(appointmentsData).select("id");
+      counts.appointments = insertedAppts?.length || 0;
+    } else {
+      counts.appointments = 0;
+    }
 
     // 6. Invoices (for completed jobs)
     const completedJobs = (insertedJobs || []).filter((j) => j.status === "completed");

@@ -5,8 +5,10 @@ import { useAuth } from "@/hooks/useAuth";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { StatCard } from "@/components/dashboard/StatsCards";
 import { RecentActivity } from "@/components/dashboard/RecentActivity";
+import { useFeature } from "@/hooks/useFeatureFlags";
 
 export default function ClientDashboard() {
+  const appointmentsEnabled = useFeature("appointments");
   const { user } = useAuth();
   const [stats, setStats] = useState({ jobs: 0, appointments: 0, invoices: 0 });
   const [recentJobs, setRecentJobs] = useState<any[]>([]);
@@ -16,7 +18,9 @@ export default function ClientDashboard() {
     const fetch = async () => {
       const [jobs, appts, invs] = await Promise.all([
         supabase.from("jobs").select("*", { count: "exact", head: true }).eq("client_id", user.id),
-        supabase.from("appointments").select("*", { count: "exact", head: true }).eq("client_id", user.id),
+        appointmentsEnabled
+          ? supabase.from("appointments").select("*", { count: "exact", head: true }).eq("client_id", user.id)
+          : Promise.resolve({ count: 0, data: null, error: null }),
         supabase.from("invoices").select("*", { count: "exact", head: true }).eq("client_id", user.id),
       ]);
       setStats({ jobs: jobs.count || 0, appointments: appts.count || 0, invoices: invs.count || 0 });
@@ -24,7 +28,7 @@ export default function ClientDashboard() {
       setRecentJobs((data || []).map((j) => ({ id: j.id, title: j.title, status: j.status, date: new Date(j.created_at).toLocaleDateString() })));
     };
     fetch();
-  }, [user]);
+  }, [user, appointmentsEnabled]);
 
   return (
     <DashboardLayout>
@@ -35,7 +39,7 @@ export default function ClientDashboard() {
         </div>
         <div className="grid gap-4 md:grid-cols-3">
           <StatCard title="My Jobs" value={stats.jobs} icon={Briefcase} />
-          <StatCard title="Appointments" value={stats.appointments} icon={Calendar} />
+          {appointmentsEnabled && <StatCard title="Appointments" value={stats.appointments} icon={Calendar} />}
           <StatCard title="Invoices" value={stats.invoices} icon={FileText} />
         </div>
         <RecentActivity activities={recentJobs} title="My Recent Jobs" />

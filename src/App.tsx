@@ -7,7 +7,15 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/hooks/useAuth";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { PwaStatus } from "@/components/PwaStatus";
-import { useFeatureFlags } from "@/hooks/useFeatureFlags";
+import {
+  FeatureFlagProvider,
+  useFeature,
+  useFeatureFlags,
+  type FeatureKey,
+} from "@/hooks/useFeatureFlags";
+import { useAuth } from "@/hooks/useAuth";
+import LoadingScreen from "@/components/LoadingScreen";
+import { ClientPortalUnavailable, DisabledFeatureRedirect } from "@/pages/FeatureUnavailable";
 
 // Always-loaded: auth pages are the entry point
 import Auth from "@/pages/Auth";
@@ -67,12 +75,29 @@ const ReportIssue = lazy(() => import("@/pages/support/ReportIssue"));
 
 const queryClient = new QueryClient();
 
-function FeatureRoute({ flag, children }: { flag: boolean; children: ReactNode }) {
-  return flag ? <>{children}</> : <Navigate to="/" replace />;
+function FeatureRoute({ feature, children }: { feature: FeatureKey; children: ReactNode }) {
+  const enabled = useFeature(feature);
+  const { role } = useAuth();
+
+  if (enabled) return <>{children}</>;
+  if (feature === "client_portal" && role === "client") {
+    return <ClientPortalUnavailable />;
+  }
+  return <DisabledFeatureRedirect feature={feature} />;
+}
+
+function ClientPortalRoute({ children }: { children: ReactNode }) {
+  const { role } = useAuth();
+  if (role !== "client") return <>{children}</>;
+  return <FeatureRoute feature="client_portal">{children}</FeatureRoute>;
 }
 
 function AppRoutes() {
-  const { flags } = useFeatureFlags();
+  const { loading } = useFeatureFlags();
+  const { user } = useAuth();
+
+  if (user && loading) return <LoadingScreen />;
+
   return (
     <Routes>
       <Route path="/" element={<Navigate to="/auth" replace />} />
@@ -84,46 +109,46 @@ function AppRoutes() {
       {/* Admin routes */}
       <Route path="/admin/dashboard" element={<ProtectedRoute allowedRoles={["admin"]}><AdminDashboard /></ProtectedRoute>} />
       <Route path="/admin/jobs" element={<ProtectedRoute allowedRoles={["admin"]}><AdminJobs /></ProtectedRoute>} />
-      <Route path="/admin/appointments" element={<ProtectedRoute allowedRoles={["admin"]}><FeatureRoute flag={flags.appointments}><AdminAppointments /></FeatureRoute></ProtectedRoute>} />
+      <Route path="/admin/appointments" element={<ProtectedRoute allowedRoles={["admin"]}><FeatureRoute feature="appointments"><AdminAppointments /></FeatureRoute></ProtectedRoute>} />
       <Route path="/admin/inventory" element={<ProtectedRoute allowedRoles={["admin"]}><AdminInventory /></ProtectedRoute>} />
       <Route path="/admin/invoices" element={<ProtectedRoute allowedRoles={["admin"]}><AdminInvoices /></ProtectedRoute>} />
-      <Route path="/admin/reports" element={<ProtectedRoute allowedRoles={["admin"]}><FeatureRoute flag={flags.reports}><AdminReports /></FeatureRoute></ProtectedRoute>} />
+      <Route path="/admin/reports" element={<ProtectedRoute allowedRoles={["admin"]}><FeatureRoute feature="reports"><AdminReports /></FeatureRoute></ProtectedRoute>} />
       <Route path="/admin/users" element={<ProtectedRoute allowedRoles={["admin"]}><AdminUsers /></ProtectedRoute>} />
       <Route path="/admin/users/:userId" element={<ProtectedRoute allowedRoles={["admin"]}><AdminUserDetail /></ProtectedRoute>} />
-      <Route path="/admin/clients" element={<ProtectedRoute allowedRoles={["admin"]}><FeatureRoute flag={flags.client_portal}><AdminClients /></FeatureRoute></ProtectedRoute>} />
-      <Route path="/admin/calendar" element={<ProtectedRoute allowedRoles={["admin"]}><FeatureRoute flag={flags.appointments}><AdminCalendar /></FeatureRoute></ProtectedRoute>} />
+      <Route path="/admin/clients" element={<ProtectedRoute allowedRoles={["admin"]}><FeatureRoute feature="client_portal"><AdminClients /></FeatureRoute></ProtectedRoute>} />
+      <Route path="/admin/calendar" element={<ProtectedRoute allowedRoles={["admin"]}><FeatureRoute feature="appointments"><AdminCalendar /></FeatureRoute></ProtectedRoute>} />
       <Route path="/admin/activity-logs" element={<ProtectedRoute allowedRoles={["admin"]}><AdminActivityLogs /></ProtectedRoute>} />
       <Route path="/admin/settings" element={<ProtectedRoute allowedRoles={["admin"]}><AdminSettings /></ProtectedRoute>} />
 
       {/* Manager routes */}
       <Route path="/manager/dashboard" element={<ProtectedRoute allowedRoles={["manager"]}><ManagerDashboard /></ProtectedRoute>} />
       <Route path="/manager/jobs" element={<ProtectedRoute allowedRoles={["manager"]}><ManagerJobs /></ProtectedRoute>} />
-      <Route path="/manager/appointments" element={<ProtectedRoute allowedRoles={["manager"]}><FeatureRoute flag={flags.appointments}><ManagerAppointments /></FeatureRoute></ProtectedRoute>} />
+      <Route path="/manager/appointments" element={<ProtectedRoute allowedRoles={["manager"]}><FeatureRoute feature="appointments"><ManagerAppointments /></FeatureRoute></ProtectedRoute>} />
       <Route path="/manager/inventory" element={<ProtectedRoute allowedRoles={["manager"]}><ManagerInventory /></ProtectedRoute>} />
       <Route path="/manager/invoices" element={<ProtectedRoute allowedRoles={["manager"]}><ManagerInvoices /></ProtectedRoute>} />
       <Route path="/manager/staff" element={<ProtectedRoute allowedRoles={["manager"]}><ManagerStaff /></ProtectedRoute>} />
       <Route path="/manager/staff/:userId" element={<ProtectedRoute allowedRoles={["manager"]}><ManagerUserDetail /></ProtectedRoute>} />
-      <Route path="/manager/calendar" element={<ProtectedRoute allowedRoles={["manager"]}><FeatureRoute flag={flags.appointments}><ManagerCalendar /></FeatureRoute></ProtectedRoute>} />
+      <Route path="/manager/calendar" element={<ProtectedRoute allowedRoles={["manager"]}><FeatureRoute feature="appointments"><ManagerCalendar /></FeatureRoute></ProtectedRoute>} />
 
       {/* Staff routes */}
       <Route path="/staff/dashboard" element={<ProtectedRoute allowedRoles={["staff"]}><StaffDashboard /></ProtectedRoute>} />
       <Route path="/staff/jobs" element={<ProtectedRoute allowedRoles={["staff"]}><StaffJobs /></ProtectedRoute>} />
       <Route path="/staff/kanban" element={<ProtectedRoute allowedRoles={["staff"]}><StaffKanban /></ProtectedRoute>} />
-      <Route path="/staff/schedule" element={<ProtectedRoute allowedRoles={["staff"]}><FeatureRoute flag={flags.appointments}><StaffSchedule /></FeatureRoute></ProtectedRoute>} />
+      <Route path="/staff/schedule" element={<ProtectedRoute allowedRoles={["staff"]}><FeatureRoute feature="appointments"><StaffSchedule /></FeatureRoute></ProtectedRoute>} />
       <Route path="/staff/inventory" element={<ProtectedRoute allowedRoles={["staff"]}><StaffInventory /></ProtectedRoute>} />
 
       {/* Client routes */}
-      <Route path="/client/dashboard" element={<ProtectedRoute allowedRoles={["client"]}><FeatureRoute flag={flags.client_portal}><ClientDashboard /></FeatureRoute></ProtectedRoute>} />
-      <Route path="/client/jobs" element={<ProtectedRoute allowedRoles={["client"]}><FeatureRoute flag={flags.client_portal}><ClientJobs /></FeatureRoute></ProtectedRoute>} />
-      <Route path="/client/appointments" element={<ProtectedRoute allowedRoles={["client"]}><FeatureRoute flag={flags.client_portal && flags.appointments}><ClientAppointments /></FeatureRoute></ProtectedRoute>} />
-      <Route path="/client/invoices" element={<ProtectedRoute allowedRoles={["client"]}><FeatureRoute flag={flags.client_portal}><ClientInvoices /></FeatureRoute></ProtectedRoute>} />
+      <Route path="/client/dashboard" element={<ProtectedRoute allowedRoles={["client"]}><FeatureRoute feature="client_portal"><ClientDashboard /></FeatureRoute></ProtectedRoute>} />
+      <Route path="/client/jobs" element={<ProtectedRoute allowedRoles={["client"]}><FeatureRoute feature="client_portal"><ClientJobs /></FeatureRoute></ProtectedRoute>} />
+      <Route path="/client/appointments" element={<ProtectedRoute allowedRoles={["client"]}><FeatureRoute feature="client_portal"><FeatureRoute feature="appointments"><ClientAppointments /></FeatureRoute></FeatureRoute></ProtectedRoute>} />
+      <Route path="/client/invoices" element={<ProtectedRoute allowedRoles={["client"]}><FeatureRoute feature="client_portal"><ClientInvoices /></FeatureRoute></ProtectedRoute>} />
 
       {/* Shared routes */}
-      <Route path="/jobs/:id" element={<ProtectedRoute allowedRoles={["admin", "manager", "staff", "client"]}><JobDetail /></ProtectedRoute>} />
+      <Route path="/jobs/:id" element={<ProtectedRoute allowedRoles={["admin", "manager", "staff", "client"]}><ClientPortalRoute><JobDetail /></ClientPortalRoute></ProtectedRoute>} />
       <Route path="/invoices/new" element={<ProtectedRoute allowedRoles={["admin", "manager"]}><InvoiceCreate /></ProtectedRoute>} />
-      <Route path="/invoices/:id" element={<ProtectedRoute allowedRoles={["admin", "manager", "client"]}><InvoiceDetail /></ProtectedRoute>} />
-      <Route path="/goals" element={<ProtectedRoute allowedRoles={["admin", "manager", "staff"]}><FeatureRoute flag={flags.goals}><GoalsPage /></FeatureRoute></ProtectedRoute>} />
-      <Route path="/appointments/:id" element={<ProtectedRoute allowedRoles={["admin", "manager", "staff", "client"]}><AppointmentDetail /></ProtectedRoute>} />
+      <Route path="/invoices/:id" element={<ProtectedRoute allowedRoles={["admin", "manager", "client"]}><ClientPortalRoute><InvoiceDetail /></ClientPortalRoute></ProtectedRoute>} />
+      <Route path="/goals" element={<ProtectedRoute allowedRoles={["admin", "manager", "staff"]}><FeatureRoute feature="goals"><GoalsPage /></FeatureRoute></ProtectedRoute>} />
+      <Route path="/appointments/:id" element={<ProtectedRoute allowedRoles={["admin", "manager", "staff", "client"]}><ClientPortalRoute><FeatureRoute feature="appointments"><AppointmentDetail /></FeatureRoute></ClientPortalRoute></ProtectedRoute>} />
       <Route path="/report-issue" element={<ProtectedRoute allowedRoles={["admin", "manager", "staff", "client"]}><ReportIssue /></ProtectedRoute>} />
       <Route path="/admin/feedback" element={<ProtectedRoute allowedRoles={["admin"]}><AdminFeedback /></ProtectedRoute>} />
       <Route path="/admin/deploy-guide" element={<ProtectedRoute allowedRoles={["admin"]}><AdminDeployGuide /></ProtectedRoute>} />
@@ -143,9 +168,11 @@ const App = () => (
       <PwaStatus />
       <BrowserRouter>
         <AuthProvider>
-          <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="h-8 w-8 rounded-full border-4 border-primary border-t-transparent animate-spin" /></div>}>
-            <AppRoutes />
-          </Suspense>
+          <FeatureFlagProvider>
+            <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="h-8 w-8 rounded-full border-4 border-primary border-t-transparent animate-spin" /></div>}>
+              <AppRoutes />
+            </Suspense>
+          </FeatureFlagProvider>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>

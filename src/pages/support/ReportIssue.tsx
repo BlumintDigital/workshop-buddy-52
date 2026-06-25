@@ -68,13 +68,18 @@ export default function ReportIssue() {
     const submitterName = profile?.full_name || user.email || "A user";
     const feedbackLink = `${window.location.origin}/admin/feedback`;
 
-    await supabase.functions.invoke("send-email", {
+    const { data: emailData, error: emailError } = await supabase.functions.invoke("send-email", {
       body: {
         mode: "bug_report",
         subject: `[${severity.toUpperCase()}] Issue Report: ${title.trim()}`,
         html: bugReportEmailHtml(submitterName, severity, title.trim(), description.trim(), pageUrl.trim(), feedbackLink),
       },
     });
+
+    if (emailError || (emailData as any)?.error) {
+      const msg = (emailData as any)?.error || emailError?.message || "Email delivery failed";
+      toast.error(`Report saved but email failed: ${msg}`);
+    }
 
     setSubmitting(false);
     setSubmitted(true);

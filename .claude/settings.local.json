@@ -2,7 +2,15 @@
   "permissions": {
     "allow": [
       "Bash(node -e \"require\\('./node_modules/remotion/package.json'\\)\")",
-      "Bash(node -e \"require\\('./node_modules/@remotion/player/package.json'\\)\")"
+      "Bash(node -e \"require\\('./node_modules/@remotion/player/package.json'\\)\")",
+      "Bash(npx tsc:*)",
+      "Bash(grep -n \"workshop_settings\" /d/Projects/workshop/workshop-buddy-52/supabase/migrations/*.sql)",
+      "Bash(grep -A 15 \"CREATE TABLE.*workshop\" /d/Projects/workshop/workshop-buddy-52/supabase/migrations/*.sql)",
+      "Bash(wc -l /d/Projects/workshop/workshop-buddy-52/supabase/migrations/*.sql)",
+      "Bash(grep -r \"CREATE TABLE.*workshop\" /d/Projects/workshop/workshop-buddy-52/supabase/migrations/*.sql)",
+      "Bash(npx skills:*)",
+      "Bash(git -C /d/Projects/workshop/workshop-buddy-52 show HEAD~5:.env)",
+      "Bash(git -C /d/Projects/workshop/workshop-buddy-52 log --all -- \".env\" --oneline)"
     ]
   }
 }

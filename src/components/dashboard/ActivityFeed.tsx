@@ -6,6 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
 import { Activity } from "lucide-react";
+import { useFeature } from "@/hooks/useFeatureFlags";
 
 type LogEntry = {
   id: string;
@@ -32,6 +33,7 @@ const tableLabels: Record<string, string> = {
 };
 
 export function ActivityFeed() {
+  const appointmentsEnabled = useFeature("appointments");
   const [entries, setEntries] = useState<LogEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -42,7 +44,7 @@ export function ActivityFeed() {
         .select("id, action, table_name, summary, created_at")
         .order("created_at", { ascending: false })
         .limit(5);
-      setEntries(data || []);
+      setEntries((data || []).filter((entry) => appointmentsEnabled || entry.table_name !== "appointments"));
       setLoading(false);
     };
     fetch();
@@ -51,12 +53,13 @@ export function ActivityFeed() {
       .channel("activity-feed")
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "activity_logs" }, (payload) => {
         const newEntry = payload.new as LogEntry;
+        if (!appointmentsEnabled && newEntry.table_name === "appointments") return;
         setEntries((prev) => [newEntry, ...prev].slice(0, 5));
       })
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, []);
+  }, [appointmentsEnabled]);
 
   return (
     <Card>

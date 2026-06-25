@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Download } from "lucide-react";
 import { downloadCSV } from "@/lib/csv";
+import { useFeature } from "@/hooks/useFeatureFlags";
 import {
   BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
@@ -28,17 +29,22 @@ interface StaffStat {
 }
 
 export default function AdminReports() {
+  const appointmentsEnabled = useFeature("appointments");
   const [bookings, setBookings] = useState<{ month: string; count: number }[]>([]);
   const [revenue, setRevenue] = useState<{ month: string; revenue: number }[]>([]);
   const [jobStats, setJobStats] = useState<{ status: string; count: number }[]>([]);
   const [staffStats, setStaffStats] = useState<StaffStat[]>([]);
 
   useEffect(() => {
-    supabase.rpc("get_monthly_bookings").then(({ data }) => setBookings((data as any[])?.map((d) => ({ month: d.month, count: Number(d.count) })) || []));
+    if (appointmentsEnabled) {
+      supabase.rpc("get_monthly_bookings").then(({ data }) => setBookings((data as any[])?.map((d) => ({ month: d.month, count: Number(d.count) })) || []));
+    } else {
+      setBookings([]);
+    }
     supabase.rpc("get_monthly_revenue").then(({ data }) => setRevenue((data as any[])?.map((d) => ({ month: d.month, revenue: Number(d.revenue) })) || []));
     supabase.rpc("get_job_completion_stats").then(({ data }) => setJobStats((data as any[])?.map((d) => ({ status: d.status, count: Number(d.count) })) || []));
     fetchStaffStats();
-  }, []);
+  }, [appointmentsEnabled]);
 
   const fetchStaffStats = async () => {
     const { data: jobs } = await supabase
@@ -88,7 +94,7 @@ export default function AdminReports() {
           <TabsContent value="overview" className="mt-4">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Monthly Bookings */}
-              <Card>
+              {appointmentsEnabled && <Card>
                 <CardHeader className="flex flex-row items-center justify-between">
                   <CardTitle>Monthly Bookings</CardTitle>
                   <Button variant="outline" size="sm" onClick={() => downloadCSV("bookings.csv", ["Month", "Count"], bookings.map((b) => [b.month, b.count]))}>
@@ -106,7 +112,7 @@ export default function AdminReports() {
                     </BarChart>
                   </ResponsiveContainer>
                 </CardContent>
-              </Card>
+              </Card>}
 
               {/* Monthly Revenue */}
               <Card>

@@ -4,8 +4,10 @@ import { supabase } from "@/integrations/supabase/client";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { StatCard } from "@/components/dashboard/StatsCards";
 import { RecentActivity } from "@/components/dashboard/RecentActivity";
+import { useFeature } from "@/hooks/useFeatureFlags";
 
 export default function ManagerDashboard() {
+  const appointmentsEnabled = useFeature("appointments");
   const [stats, setStats] = useState({ jobs: 0, appointments: 0, inventory: 0, invoices: 0 });
   const [recentJobs, setRecentJobs] = useState<any[]>([]);
 
@@ -13,7 +15,9 @@ export default function ManagerDashboard() {
     const fetch = async () => {
       const [jobs, appts, items, invs] = await Promise.all([
         supabase.from("jobs").select("*", { count: "exact", head: true }),
-        supabase.from("appointments").select("*", { count: "exact", head: true }),
+        appointmentsEnabled
+          ? supabase.from("appointments").select("*", { count: "exact", head: true })
+          : Promise.resolve({ count: 0, data: null, error: null }),
         supabase.from("inventory_items").select("*", { count: "exact", head: true }),
         supabase.from("invoices").select("*", { count: "exact", head: true }),
       ]);
@@ -22,7 +26,7 @@ export default function ManagerDashboard() {
       setRecentJobs((data || []).map((j) => ({ id: j.id, title: j.title, status: j.status, date: new Date(j.created_at).toLocaleDateString() })));
     };
     fetch();
-  }, []);
+  }, [appointmentsEnabled]);
 
   return (
     <DashboardLayout>
@@ -33,7 +37,7 @@ export default function ManagerDashboard() {
         </div>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <StatCard title="Active Jobs" value={stats.jobs} icon={Briefcase} />
-          <StatCard title="Appointments" value={stats.appointments} icon={Calendar} />
+          {appointmentsEnabled && <StatCard title="Appointments" value={stats.appointments} icon={Calendar} />}
           <StatCard title="Inventory" value={stats.inventory} icon={Package} />
           <StatCard title="Invoices" value={stats.invoices} icon={FileText} />
         </div>
