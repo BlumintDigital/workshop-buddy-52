@@ -35,17 +35,8 @@ serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
-  const { data: roleRow } = await supabase
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", user.id)
-    .maybeSingle();
-  if (!roleRow || !["admin", "manager"].includes(roleRow.role)) {
-    return new Response(JSON.stringify({ error: "Forbidden" }), {
-      status: 403,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
+  // Any authenticated user may trigger a send (staff and clients submit bug reports).
+  // The from address and API key are server-controlled; callers cannot spoof the sender.
 
   if (!RESEND_API_KEY) {
     return new Response(
