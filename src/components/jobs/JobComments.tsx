@@ -99,11 +99,11 @@ export default function JobComments({ jobId, jobTitle }: Props) {
       if (!isInternal) {
         const { data: job } = await supabase
           .from("jobs")
-          .select("assigned_to, client_id")
+          .select("assigned_staff_id, client_id")
           .eq("id", jobId)
           .maybeSingle();
         const recipients = new Set<string>();
-        if (job?.assigned_to) recipients.add(job.assigned_to as string);
+        if (job?.assigned_staff_id) recipients.add(job.assigned_staff_id as string);
         if (job?.client_id) recipients.add(job.client_id as string);
         recipients.delete(user.id);
         const title = "New comment";
