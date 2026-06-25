@@ -519,8 +519,8 @@ export default function AdminSettings() {
   const handleTestEmail = async () => {
     setTestingEmail(true);
     setEmailTestResult(null);
-    const { data, error } = await supabase.functions.invoke("admin-api", {
-      body: { action: "test_email" },
+    const { data, error } = await supabase.functions.invoke("send-email", {
+      body: { mode: "test_email" },
     });
     setTestingEmail(false);
     if (error || !(data as any)?.ok) {

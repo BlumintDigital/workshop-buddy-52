@@ -54,6 +54,52 @@ serve(async (req) => {
      .replace(/"/g, "&quot;")
      .replace(/'/g, "&#39;");
 
+  // test_email mode: admin only; sends a real email to contact_email using current settings
+  // and returns the raw Resend response so the admin can diagnose delivery issues.
+  if (mode === "test_email") {
+    if (!roleRow || roleRow.role !== "admin") {
+      return new Response(JSON.stringify({ error: "Forbidden" }), {
+        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const { data: ws } = await supabase
+      .from("workshop_settings")
+      .select("contact_email, from_email")
+      .eq("id", 1)
+      .maybeSingle();
+    const toAddr = (ws as any)?.contact_email ?? null;
+    if (!toAddr) {
+      return new Response(JSON.stringify({ ok: false, error: "No contact_email configured in Settings" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const fromAddr = (ws as any)?.from_email || "noreply@workshopmanager.com";
+    if (!RESEND_API_KEY) {
+      return new Response(JSON.stringify({ ok: false, error: "RESEND_API_KEY secret not configured" }), {
+        status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const testRes = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        from: fromAddr,
+        to: toAddr,
+        subject: "Test email — Workshop Manager",
+        html: "<p>If you receive this, your email configuration is working correctly.</p>",
+      }),
+    });
+    if (!testRes.ok) {
+      const text = await testRes.text();
+      return new Response(JSON.stringify({ ok: false, error: text }), {
+        status: testRes.status, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    return new Response(JSON.stringify({ ok: true, sentTo: toAddr }), {
+      status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
   // bug_report mode: any authenticated user may send; recipient resolved server-side
   // so the admin's email address is never exposed to the client.
   // Intentionally bypasses email_notifications_enabled — bug reports are admin-to-admin

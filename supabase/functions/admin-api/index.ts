@@ -997,39 +997,6 @@ Deno.serve(async (req) => {
         return json({ ok: true, key, enabled });
       }
 
-      case "test_email": {
-        const { data: ws } = await supabase
-          .from("workshop_settings")
-          .select("contact_email, from_email")
-          .eq("id", 1)
-          .maybeSingle();
-
-        const resendKey = Deno.env.get("RESEND_API_KEY");
-        if (!resendKey) return json({ ok: false, error: "RESEND_API_KEY secret not configured in Supabase" }, 503);
-
-        const toAddr = (ws as any)?.contact_email;
-        if (!toAddr) return json({ ok: false, error: "No contact_email configured in Settings" }, 400);
-
-        const fromAddr = (ws as any)?.from_email || "noreply@workshopmanager.com";
-
-        const resendRes = await fetch("https://api.resend.com/emails", {
-          method: "POST",
-          headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" },
-          body: JSON.stringify({
-            from: fromAddr,
-            to: toAddr,
-            subject: "Test email — Workshop Manager",
-            html: "<p>If you receive this, your email configuration is working correctly.</p>",
-          }),
-        });
-
-        if (!resendRes.ok) {
-          const text = await resendRes.text();
-          return json({ ok: false, error: text }, resendRes.status);
-        }
-        return json({ ok: true, sentTo: toAddr });
-      }
-
       default:
         return err(`Unknown action: ${action}`, 400);
     }
