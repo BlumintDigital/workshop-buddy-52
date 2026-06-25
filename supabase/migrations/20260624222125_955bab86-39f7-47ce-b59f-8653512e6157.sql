@@ -1,0 +1,1 @@
+GRANT EXECUTE ON FUNCTION public.redeem_signup_code(text) TO anon;

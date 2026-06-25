@@ -13,6 +13,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useAuth } from "@/hooks/useAuth";
 import { Pagination, PaginationContent, PaginationItem, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import { usePagination, PAGE_SIZE } from "@/hooks/usePagination";
+import { useCurrency } from "@/hooks/useCurrency";
 
 const statusColors: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
   draft: "outline", sent: "secondary", paid: "default", overdue: "destructive", cancelled: "destructive",
@@ -24,6 +25,7 @@ export default function AdminInvoices() {
   const [clientNames, setClientNames] = useState<Record<string, string>>({});
   const { page, setPage } = usePagination();
   const { role } = useAuth();
+  const { format: fmt } = useCurrency();
 
   const fetchInvoices = async (currentPage = page) => {
     const { data, count } = await supabase
@@ -117,7 +119,7 @@ export default function AdminInvoices() {
                         </SelectContent>
                       </Select>
                     </TableCell>
-                    <TableCell>${Number(inv.total).toFixed(2)}</TableCell>
+                    <TableCell>{fmt(Number(inv.total))}</TableCell>
                     <TableCell className="hidden sm:table-cell">{inv.due_date || "—"}</TableCell>
                     <TableCell className="hidden sm:table-cell">{new Date(inv.created_at).toLocaleDateString()}</TableCell>
                     {role === "admin" && (

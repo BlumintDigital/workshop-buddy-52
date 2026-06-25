@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.redeem_signup_code(text) FROM PUBLIC, anon, authenticated;

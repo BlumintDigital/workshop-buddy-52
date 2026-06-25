@@ -1,6 +1,8 @@
-import { useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+
+const SW_PATH = "/push-sw.js";
 
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
@@ -9,65 +11,183 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
   return Uint8Array.from([...raw].map((c) => c.charCodeAt(0)));
 }
 
-export function usePushSubscription() {
+export interface PushState {
+  supported: boolean;
+  permission: NotificationPermission | "unsupported";
+  isSubscribed: boolean;
+  loading: boolean;
+  vapidConfigured: boolean;
+  subscribe: () => Promise<void>;
+  unsubscribe: () => Promise<void>;
+  error: string | null;
+}
+
+async function getOrRegisterWorker(): Promise<ServiceWorkerRegistration> {
+  const existing = await navigator.serviceWorker.getRegistration(SW_PATH);
+  if (existing) return existing;
+  return await navigator.serviceWorker.register(SW_PATH, { scope: "/" });
+}
+
+export function usePushSubscription(): PushState {
   const { user } = useAuth();
+  const supported =
+    typeof window !== "undefined" &&
+    "serviceWorker" in navigator &&
+    "PushManager" in window &&
+    "Notification" in window;
 
-  useEffect(() => {
-    if (!user) return;
-    if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
+  const [permission, setPermission] = useState<NotificationPermission | "unsupported">(
+    supported ? Notification.permission : "unsupported"
+  );
+  const [isSubscribed, setIsSubscribed] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [vapidKey, setVapidKey] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-    void register();
-  }, [user?.id]);
-
-  async function register() {
+  const refreshStatus = useCallback(async () => {
+    if (!supported || !user) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
     try {
       const { data: ws } = await supabase
         .from("workshop_settings")
         .select("vapid_public_key")
         .eq("id", 1)
         .maybeSingle();
+      const key = (ws as any)?.vapid_public_key as string | null;
+      setVapidKey(key || null);
 
-      const vapidPublicKey = (ws as any)?.vapid_public_key as string | null;
-      if (!vapidPublicKey) return; // VAPID not configured yet — skip silently
+      setPermission(Notification.permission);
 
-      if (Notification.permission === "denied") return;
+      const reg = await navigator.serviceWorker.getRegistration(SW_PATH);
+      const sub = reg ? await reg.pushManager.getSubscription() : null;
+      setIsSubscribed(!!sub);
+    } finally {
+      setLoading(false);
+    }
+  }, [supported, user]);
 
-      const permission = await Notification.requestPermission();
-      if (permission !== "granted") return;
+  useEffect(() => {
+    void refreshStatus();
+  }, [refreshStatus]);
 
-      const reg = await navigator.serviceWorker.ready;
-
-      const existing = await reg.pushManager.getSubscription();
-      if (existing) {
-        await save(existing);
+  const subscribe = useCallback(async () => {
+    setError(null);
+    if (!supported) {
+      setError("Push notifications aren't supported in this browser.");
+      return;
+    }
+    if (!user) {
+      setError("You must be signed in.");
+      return;
+    }
+    if (!vapidKey) {
+      setError("Push notifications haven't been configured for this workshop yet.");
+      return;
+    }
+    setLoading(true);
+    try {
+      const perm = await Notification.requestPermission();
+      setPermission(perm);
+      if (perm !== "granted") {
+        setError(
+          perm === "denied"
+            ? "Notifications are blocked. Enable them in your browser settings."
+            : "Notification permission was not granted."
+        );
         return;
       }
 
-      const subscription = await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
-      });
+      const reg = await getOrRegisterWorker();
+      // Wait for the worker to be active.
+      if (!reg.active) {
+        await new Promise<void>((resolve) => {
+          const worker = reg.installing || reg.waiting;
+          if (!worker) return resolve();
+          worker.addEventListener("statechange", () => {
+            if (worker.state === "activated") resolve();
+          });
+        });
+      }
 
-      await save(subscription);
-    } catch {
-      // Push is non-critical — fail silently
+      const existing = await reg.pushManager.getSubscription();
+      const subscription =
+        existing ??
+        (await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(vapidKey) as BufferSource,
+        }));
+
+      const json = subscription.toJSON();
+      const endpoint = json.endpoint;
+      const keys = json.keys as { p256dh?: string; auth?: string } | undefined;
+      if (!endpoint || !keys?.p256dh || !keys?.auth) {
+        throw new Error("Subscription is missing required keys.");
+      }
+
+      const { error: upsertErr } = await supabase.from("push_subscriptions" as any).upsert(
+        {
+          user_id: user.id,
+          endpoint,
+          p256dh: keys.p256dh,
+          auth_key: keys.auth,
+        },
+        { onConflict: "user_id,endpoint" }
+      );
+      if (upsertErr) throw upsertErr;
+
+      setIsSubscribed(true);
+    } catch (e: any) {
+      setError(e?.message || "Failed to subscribe to push notifications.");
+    } finally {
+      setLoading(false);
     }
-  }
+  }, [supported, user, vapidKey]);
 
-  async function save(sub: PushSubscription) {
-    const json = sub.toJSON();
-    const endpoint = json.endpoint;
-    const keys = json.keys as { p256dh?: string; auth?: string } | undefined;
-    if (!endpoint || !keys?.p256dh || !keys?.auth) return;
+  const unsubscribe = useCallback(async () => {
+    setError(null);
+    if (!supported || !user) return;
+    setLoading(true);
+    try {
+      const reg = await navigator.serviceWorker.getRegistration(SW_PATH);
+      const sub = reg ? await reg.pushManager.getSubscription() : null;
+      const endpoint = sub?.endpoint;
 
-    await supabase.from("push_subscriptions" as any).upsert(
-      {
-        user_id: user!.id,
-        endpoint,
-        p256dh: keys.p256dh,
-        auth_key: keys.auth,
-      },
-      { onConflict: "user_id,endpoint" }
-    );
-  }
+      if (sub) {
+        try {
+          await sub.unsubscribe();
+        } catch {}
+      }
+
+      if (endpoint) {
+        await supabase
+          .from("push_subscriptions" as any)
+          .delete()
+          .eq("user_id", user.id)
+          .eq("endpoint", endpoint);
+      } else {
+        // Fallback: remove any rows for this user
+        await supabase.from("push_subscriptions" as any).delete().eq("user_id", user.id);
+      }
+
+      setIsSubscribed(false);
+    } catch (e: any) {
+      setError(e?.message || "Failed to unsubscribe.");
+    } finally {
+      setLoading(false);
+    }
+  }, [supported, user]);
+
+  return {
+    supported,
+    permission,
+    isSubscribed,
+    loading,
+    vapidConfigured: !!vapidKey,
+    subscribe,
+    unsubscribe,
+    error,
+  };
 }

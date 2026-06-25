@@ -11,12 +11,13 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Plus, Trash2, FileDown, ExternalLink, Link2 } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, FileDown, ExternalLink, Link2, Bell } from "lucide-react";
 import { DatePickerInput } from "@/components/ui/date-picker-input";
 import { toast } from "sonner";
 import { generateInvoicePDF } from "@/lib/invoicePdf";
 import { sendEmail, invoiceSentEmailHtml } from "@/lib/email";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { useCurrency } from "@/hooks/useCurrency";
 
 const statusColors: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
   draft: "outline", sent: "secondary", paid: "default", overdue: "destructive", cancelled: "destructive",
@@ -33,6 +34,7 @@ export default function InvoiceDetail() {
   const { id } = useParams<{ id: string }>();
   const { role } = useAuth();
   const navigate = useNavigate();
+  const { format: fmt } = useCurrency();
 
   const [invoice, setInvoice] = useState<any>(null);
   const [clientName, setClientName] = useState("—");
@@ -40,6 +42,7 @@ export default function InvoiceDetail() {
   const [saving, setSaving] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [notifying, setNotifying] = useState(false);
 
   const canEdit = (role === "admin" || role === "manager") && invoice?.status === "draft";
   const canManage = role === "admin" || role === "manager";
@@ -135,6 +138,38 @@ export default function InvoiceDetail() {
     }
   };
 
+  const notifyClient = async (title: string, body: string) => {
+    if (!invoice?.client_id) {
+      toast.error("This invoice has no client to notify.");
+      return;
+    }
+    setNotifying(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("send-push", {
+        body: {
+          user_ids: [invoice.client_id],
+          title,
+          body,
+          url: `/invoices/${invoice.id}`,
+        },
+      });
+      if (error) throw error;
+      const sent = (data as any)?.sent ?? 0;
+      const total = (data as any)?.total ?? 0;
+      if (sent > 0) {
+        toast.success(`Push notification sent to ${sent} device${sent === 1 ? "" : "s"}.`);
+      } else if (total === 0) {
+        toast.message("Client hasn't enabled push notifications on any device.");
+      } else {
+        toast.error("Notification could not be delivered.");
+      }
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to send push notification.");
+    } finally {
+      setNotifying(false);
+    }
+  };
+
   if (!invoice) return <DashboardLayout><p className="p-8 text-muted-foreground">Loading...</p></DashboardLayout>;
 
   const backPath = role === "client" ? "/client/invoices" : role === "manager" ? "/manager/invoices" : "/admin/invoices";
@@ -158,6 +193,21 @@ export default function InvoiceDetail() {
             <Button variant="outline" size="sm" onClick={handleDownloadPDF} disabled={downloading}>
               <FileDown className="mr-2 h-4 w-4" />{downloading ? "Generating..." : "PDF"}
             </Button>
+            {canManage && invoice.client_id && (
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={notifying}
+                onClick={() =>
+                  void notifyClient(
+                    `Invoice ${invoice.invoice_number}`,
+                    `Status: ${invoice.status} • Total: ${fmt(total)}`,
+                  )
+                }
+              >
+                <Bell className="mr-2 h-4 w-4" />{notifying ? "Sending..." : "Notify client"}
+              </Button>
+            )}
             {role === "admin" && (
               <AlertDialog>
                 <AlertDialogTrigger asChild>
@@ -327,9 +377,9 @@ export default function InvoiceDetail() {
                     <TableCell className="text-right">
                       {canEdit ? (
                         <Input type="number" min={0} step={0.01} value={item.unit_price} onChange={(e) => updateItem(idx, "unit_price", Number(e.target.value))} className="w-24 text-right ml-auto" />
-                      ) : `$${Number(item.unit_price).toFixed(2)}`}
+                      ) : fmt(Number(item.unit_price))}
                     </TableCell>
-                    <TableCell className="text-right font-medium">${(item.quantity * item.unit_price).toFixed(2)}</TableCell>
+                    <TableCell className="text-right font-medium">{fmt(item.quantity * item.unit_price)}</TableCell>
                     {canEdit && (
                       <TableCell>
                         {items.length > 1 && (
@@ -349,9 +399,9 @@ export default function InvoiceDetail() {
         {/* Totals */}
         <Card>
           <CardContent className="pt-6 space-y-2">
-            <div className="flex justify-between text-sm"><span>Subtotal</span><span>${subtotal.toFixed(2)}</span></div>
-            <div className="flex justify-between text-sm"><span>Tax ({invoice.tax_rate ?? 0}%)</span><span>${taxAmount.toFixed(2)}</span></div>
-            <div className="flex justify-between font-bold text-lg border-t pt-2"><span>Total</span><span>${total.toFixed(2)}</span></div>
+            <div className="flex justify-between text-sm"><span>Subtotal</span><span>{fmt(subtotal)}</span></div>
+            <div className="flex justify-between text-sm"><span>Tax ({invoice.tax_rate ?? 0}%)</span><span>{fmt(taxAmount)}</span></div>
+            <div className="flex justify-between font-bold text-lg border-t pt-2"><span>Total</span><span>{fmt(total)}</span></div>
           </CardContent>
         </Card>
 

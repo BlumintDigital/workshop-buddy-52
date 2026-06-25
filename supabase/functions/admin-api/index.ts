@@ -685,15 +685,15 @@ Deno.serve(async (req) => {
       //   supabase secrets set VAPID_PRIVATE_KEY=<privateKey> --project-ref <ref>
       case "generate_vapid": {
         const keys = webpush.generateVAPIDKeys();
-        await supabase
-          .from("workshop_settings")
-          .update({ vapid_public_key: keys.publicKey } as any)
-          .eq("id", 1);
+        // Store BOTH keys server-side in admin-only table; never return the private key.
+        await (supabase.from("workshop_admin_contacts") as any).upsert({
+          id: 1,
+          vapid_public_key: keys.publicKey,
+          vapid_private_key: keys.privateKey,
+        });
         return json({
           public_key: keys.publicKey,
-          private_key: keys.privateKey,
-          next_step: `supabase secrets set VAPID_PRIVATE_KEY=${keys.privateKey} --project-ref <ref>`,
-          note: "Public key saved to workshop_settings. Set the private key as a Supabase secret, then redeploy this function.",
+          note: "VAPID keys generated. Private key stored securely server-side and never exposed in API responses.",
         });
       }
 
@@ -727,17 +727,24 @@ Deno.serve(async (req) => {
           const { title, message, url: notifUrl, user_id: targetUserId } = body;
           if (!title) return err("title is required");
 
-          const vapidPrivateKey = Deno.env.get("VAPID_PRIVATE_KEY");
-          if (!vapidPrivateKey) return err("VAPID_PRIVATE_KEY not configured — call generate_vapid first, then set the secret", 503);
-
-          const { data: ws } = await supabase
-            .from("workshop_settings")
-            .select("vapid_public_key, contact_email")
+          // Read both VAPID keys from admin-only contacts table.
+          const { data: contact } = await supabase
+            .from("workshop_admin_contacts" as any)
+            .select("vapid_public_key, vapid_private_key")
             .eq("id", 1)
             .maybeSingle();
 
-          const vapidPublicKey = (ws as any)?.vapid_public_key as string | null;
-          if (!vapidPublicKey) return err("VAPID keys not generated yet — call generate_vapid first", 503);
+          const vapidPrivateKey = (contact as any)?.vapid_private_key as string | null;
+          const vapidPublicKey = (contact as any)?.vapid_public_key as string | null;
+          if (!vapidPrivateKey || !vapidPublicKey) {
+            return err("VAPID keys not generated yet — call generate_vapid first", 503);
+          }
+
+          const { data: ws } = await supabase
+            .from("workshop_settings")
+            .select("contact_email")
+            .eq("id", 1)
+            .maybeSingle();
 
           webpush.setVapidDetails(
             `mailto:${(ws as any)?.contact_email || "admin@example.com"}`,
@@ -745,11 +752,22 @@ Deno.serve(async (req) => {
             vapidPrivateKey
           );
 
+          // Persist the notice so it appears in the in-app banner regardless of push delivery.
+          const { error: noticeErr } = await supabase
+            .from("system_notices" as any)
+            .insert({
+              title,
+              message: message ?? null,
+              url: notifUrl ?? null,
+              user_id: targetUserId ?? null,
+            });
+          if (noticeErr) console.error("system_notices insert failed", noticeErr);
+
           let subsQuery = supabase.from("push_subscriptions" as any).select("id, endpoint, p256dh, auth_key");
           if (targetUserId) subsQuery = subsQuery.eq("user_id", targetUserId);
           const { data: subs } = await subsQuery;
 
-          if (!subs?.length) return json({ sent: 0, total: 0, message: "No subscribers found" });
+          if (!subs?.length) return json({ sent: 0, total: 0, persisted: true, message: "Notice saved. No push subscribers." });
 
           const payload = JSON.stringify({ title, body: message ?? "", url: notifUrl ?? "/" });
           let sent = 0;
@@ -773,7 +791,82 @@ Deno.serve(async (req) => {
             await supabase.from("push_subscriptions" as any).delete().in("id", expiredIds);
           }
 
-          return json({ sent, total: subs.length, expired: expiredIds.length });
+          return json({ sent, total: subs.length, expired: expiredIds.length, persisted: true });
+        }
+
+        return err("Method not allowed", 405);
+      }
+
+      // ==================== BROADCASTS ====================
+      // Super-admin–authored notices shown as a banner in tenant apps.
+      //   GET    ?action=broadcasts          → list all broadcasts
+      //   POST   ?action=broadcasts          → create (body: { title, message?, severity?, link_url?, link_label?, starts_at?, expires_at?, active? })
+      //   PATCH  ?action=broadcasts&id=<id>  → update any subset of fields
+      //   DELETE ?action=broadcasts&id=<id>  → remove a broadcast
+      case "broadcasts": {
+        if (req.method === "GET") {
+          const { data, error: listErr } = await supabase
+            .from("broadcasts" as any)
+            .select("*")
+            .order("created_at", { ascending: false });
+          if (listErr) return err(listErr.message, 500);
+          return json({ data: data ?? [], total: (data ?? []).length });
+        }
+
+        if (req.method === "POST") {
+          const body = await req.json();
+          const { title, message, severity, link_url, link_label, starts_at, expires_at, active } = body ?? {};
+          if (!title || typeof title !== "string") return err("title is required");
+          const allowed = ["info", "warning", "critical"];
+          const sev = severity && allowed.includes(severity) ? severity : "info";
+          const { data, error: insErr } = await supabase
+            .from("broadcasts" as any)
+            .insert({
+              title,
+              message: message ?? null,
+              severity: sev,
+              link_url: link_url ?? null,
+              link_label: link_label ?? null,
+              starts_at: starts_at ?? new Date().toISOString(),
+              expires_at: expires_at ?? null,
+              active: active ?? true,
+            })
+            .select()
+            .single();
+          if (insErr) return err(insErr.message, 500);
+          return json({ data });
+        }
+
+        if (req.method === "PATCH") {
+          const id = url.searchParams.get("id");
+          if (!id) return err("id query param required");
+          const body = await req.json();
+          const patch: Record<string, unknown> = {};
+          for (const k of ["title", "message", "severity", "link_url", "link_label", "starts_at", "expires_at", "active"]) {
+            if (k in body) patch[k] = (body as any)[k];
+          }
+          if (patch.severity && !["info", "warning", "critical"].includes(patch.severity as string)) {
+            return err("invalid severity");
+          }
+          const { data, error: updErr } = await supabase
+            .from("broadcasts" as any)
+            .update(patch)
+            .eq("id", id)
+            .select()
+            .single();
+          if (updErr) return err(updErr.message, 500);
+          return json({ data });
+        }
+
+        if (req.method === "DELETE") {
+          const id = url.searchParams.get("id");
+          if (!id) return err("id query param required");
+          const { error: delErr } = await supabase
+            .from("broadcasts" as any)
+            .delete()
+            .eq("id", id);
+          if (delErr) return err(delErr.message, 500);
+          return json({ ok: true });
         }
 
         return err("Method not allowed", 405);

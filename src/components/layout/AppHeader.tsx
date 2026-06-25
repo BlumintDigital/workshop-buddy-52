@@ -20,6 +20,9 @@ import {
 import { NotificationBell } from "@/components/NotificationBell";
 import { SessionIndicator } from "@/components/SessionIndicator";
 import { Link, useLocation } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
+
+const ROLE_SCOPED_SEGMENTS = new Set(["invoices", "jobs", "appointments", "inventory", "reports", "users", "clients", "calendar", "activity-logs", "settings", "feedback", "dashboard"]);
 
 const LABELS: Record<string, string> = {
   dashboard: "Dashboard",
@@ -42,12 +45,19 @@ function toLabel(segment: string) {
 
 export function AppHeader() {
   const location = useLocation();
+  const { role } = useAuth();
 
   const rawSegments = location.pathname.split("/").filter(Boolean);
-  // Build crumbs from all segments except "admin", preserving full href at each step
+  const hasRolePrefix = rawSegments[0] === "admin" || rawSegments[0] === "manager" || rawSegments[0] === "staff" || rawSegments[0] === "client";
+  // Build crumbs from all segments except the role prefix; for top-level role-scoped sections
+  // (e.g. /invoices/new) route the link through the user's role landing page.
   const crumbs = rawSegments.reduce<Array<{ label: string; href: string }>>((acc, seg, i) => {
-    if (seg === "admin") return acc;
-    return [...acc, { label: toLabel(seg), href: "/" + rawSegments.slice(0, i + 1).join("/") }];
+    if (i === 0 && hasRolePrefix) return acc;
+    let href = "/" + rawSegments.slice(0, i + 1).join("/");
+    if (!hasRolePrefix && i === 0 && role && ROLE_SCOPED_SEGMENTS.has(seg)) {
+      href = `/${role}/${seg}`;
+    }
+    return [...acc, { label: toLabel(seg), href }];
   }, []);
 
   return (

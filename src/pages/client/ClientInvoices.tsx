@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ExternalLink } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useCurrency } from "@/hooks/useCurrency";
 
 const statusColors: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
   draft: "outline", sent: "secondary", paid: "default", overdue: "destructive", cancelled: "destructive",
@@ -16,6 +17,7 @@ const statusColors: Record<string, "default" | "secondary" | "outline" | "destru
 export default function ClientInvoices() {
   const { user } = useAuth();
   const [invoices, setInvoices] = useState<any[]>([]);
+  const { format: fmt } = useCurrency();
 
   useEffect(() => {
     if (!user) return;
@@ -50,7 +52,7 @@ export default function ClientInvoices() {
                       <Link to={`/invoices/${inv.id}`} className="text-primary hover:underline">{inv.invoice_number}</Link>
                     </TableCell>
                     <TableCell><Badge variant={statusColors[inv.status] || "outline"}>{inv.status}</Badge></TableCell>
-                    <TableCell>${Number(inv.total).toFixed(2)}</TableCell>
+                    <TableCell>{fmt(Number(inv.total))}</TableCell>
                     <TableCell className="hidden sm:table-cell">{inv.due_date || "—"}</TableCell>
                     <TableCell>
                       {inv.stripe_payment_url && inv.status !== "paid" && (

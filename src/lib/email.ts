@@ -14,9 +14,8 @@ export async function sendEmail(opts: {
   html: string;
 }): Promise<void> {
   try {
-    const { data: config } = await supabase.rpc("get_email_notification_config");
-    const row = Array.isArray(config) ? config[0] : config;
-    if (!row?.email_notifications_enabled) return;
+    // The send-email edge function enforces the email_notifications_enabled
+    // check server-side (config is admin-only and never exposed to the client).
     await supabase.functions.invoke("send-email", { body: opts });
   } catch {
     // Non-critical — swallow errors

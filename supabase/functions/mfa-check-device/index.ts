@@ -7,7 +7,9 @@ serve(async (req) => {
 
   try {
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader?.startsWith("Bearer ")) return json({ trusted: false }, 200);
+    if (!authHeader?.startsWith("Bearer ")) {
+      return json({ trusted: false }, 200);
+    }
 
     const anon = createClient(
       Deno.env.get("SUPABASE_URL")!,
@@ -16,7 +18,9 @@ serve(async (req) => {
     );
     const token = authHeader.replace("Bearer ", "");
     const { data: claims, error: claimsErr } = await anon.auth.getClaims(token);
-    if (claimsErr || !claims?.claims) return json({ trusted: false }, 200);
+    if (claimsErr || !claims?.claims) {
+      return json({ trusted: false }, 200);
+    }
 
     const userId = claims.claims.sub as string;
     const body = await req.json().catch(() => ({}));
@@ -30,14 +34,15 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
-    const { data } = await admin
+    const { data, error: qErr } = await admin
       .from("mfa_trusted_devices")
       .select("id, expires_at")
       .eq("user_id", userId)
       .eq("token_hash", hash)
       .maybeSingle();
 
-    if (!data) return json({ trusted: false });
+    if (qErr || !data) return json({ trusted: false });
+
     if (new Date(data.expires_at).getTime() < Date.now()) {
       await admin.from("mfa_trusted_devices").delete().eq("id", data.id);
       return json({ trusted: false });
@@ -49,7 +54,7 @@ serve(async (req) => {
       .eq("id", data.id);
 
     return json({ trusted: true });
-  } catch {
+  } catch (_err) {
     return json({ trusted: false });
   }
 });

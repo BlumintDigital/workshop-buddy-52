@@ -1,57 +1,56 @@
-## Plan: MFA hardening — rate limits, lockouts, and clearer recovery UX
+## Goal
 
-Note: the backend has no shared rate-limit primitive. The plan below uses an ad-hoc, DB-backed counter table — simple and works today, but is per-user (not per-IP) and lives in Postgres. If you later add a proper rate-limiter (Redis/edge), these checks can be swapped out.
+Today, when the super-admin sends a "notice" through this workshop's `admin-api` (`POST ?action=notices`), it's delivered as a web-push only. If the user isn't subscribed or misses the push, the message is gone. We'll persist every notice into a new `system_notices` table on the workshop DB and render an in-app banner that reads from it, mirroring the existing `BroadcastBanner` pattern.
 
-### 1. New rate-limit table (one migration)
+## 1. Database — new `system_notices` table
 
-`mfa_rate_limits` — one row per (`user_id`, `action`). Tracks `attempt_count`, `window_started_at`, `locked_until`. RLS: users may `SELECT` their own row (so the UI can show countdowns); all writes happen in edge functions via service role.
+Migration creating:
 
-Limits applied (per user):
+- `id uuid pk`
+- `title text not null`
+- `message text`
+- `url text` (optional click-through)
+- `user_id uuid` nullable — when set, notice is targeted to one user; when null, it's global to the workshop
+- `created_at timestamptz default now()`
+- `expires_at timestamptz` nullable (defaults to NULL = never)
 
-| Action | Limit | Lockout |
-|---|---|---|
-| `backup_generate` | 3 regenerations per hour | 1h cooldown after limit |
-| `trust_device` | 5 trusts per hour | 1h cooldown after limit |
-| `backup_verify` | 5 failed attempts per 15 min | 15 min lockout |
+Standard GRANTs + RLS:
+- `GRANT SELECT, INSERT, UPDATE, DELETE` to `service_role` (edge function writes).
+- `GRANT SELECT` to `authenticated`.
+- Policy: authenticated users can `SELECT` a row when `user_id IS NULL` OR `user_id = auth.uid()`.
+- No INSERT/UPDATE/DELETE policies for `authenticated` — only the edge function (service role) writes.
+- Add table to `supabase_realtime` publication so the banner updates live.
 
-### 2. Edge function changes
+## 2. Edge function — `admin-api` notices POST
 
-Add a small shared helper `_shared/rate-limit.ts` exposing `checkAndConsume(userId, action, { limit, windowSec, lockoutSec })`. It returns `{ allowed, remaining, retryAfterSec, lockedUntil }`. On lockout it returns `allowed: false` without consuming further; successful `backup_verify` resets the counter.
+In `supabase/functions/admin-api/index.ts`, inside `case "notices"` → `POST` branch, insert a `system_notices` row **before** the push loop:
 
-Wire it into:
-- `mfa-backup-generate` — block when over limit, return `429` with `retry_after_sec`.
-- `mfa-trust-device` — same.
-- `mfa-backup-verify` — check before verifying; **increment only on failure**, reset on success. Response also includes `remaining_attempts` so the UI can show it.
+```ts
+await supabase.from("system_notices").insert({
+  title,
+  message: message ?? null,
+  url: notifUrl ?? null,
+  user_id: targetUserId ?? null,
+});
+```
 
-### 3. Frontend: backup-code recovery form (`src/pages/Auth.tsx`)
+Return value extended with `persisted: true` so the super-admin UI can confirm. Push delivery behavior is unchanged.
 
-- Add live formatting/validation: input is masked to `XXXX-XXXX` (uppercase, A–Z 2–9, auto-insert dash). When the value doesn't match the pattern, show an inline red helper and red border on the input — Verify stays disabled.
-- Show specific server errors instead of a generic toast:
-  - Invalid code → inline "That code didn't match. X attempts remaining before lockout."
-  - Already used → "This backup code was already used. Try another."
-  - Locked out → disable the form, show "Too many attempts. Try again in M:SS." with a live countdown driven by `retry_after_sec`.
-- Persist a small in-memory attempt counter for nicer messaging between server responses.
+## 3. Frontend — `SystemNoticesBanner` component
 
-### 4. Frontend: trusted device confirmations (`src/pages/profile/UserProfile.tsx`)
+New file `src/components/SystemNoticesBanner.tsx`, structurally identical to `BroadcastBanner`:
 
-- Replace the bare "Revoke all trusted devices" button with an `AlertDialog` confirmation ("Revoke all trusted devices? You'll need to enter a 2FA code on each device next time."). Confirm → delete → success toast; failure → error toast with the message.
-- Same dialog pattern wrapping the "Regenerate codes" button when codes already exist ("Regenerating invalidates your existing X codes. Continue?"). Plus a cooldown-aware disabled state + toast when the server returns 429 ("You can regenerate again in M:SS").
-- If/when we add per-device revoke (future), it reuses the same `AlertDialog` component.
+- On mount, query `system_notices` where `expires_at IS NULL OR expires_at > now()`, ordered by `created_at desc`, limit 10. RLS automatically filters to global + own notices.
+- Subscribe to `postgres_changes` on `public.system_notices` (INSERT/UPDATE/DELETE) inside a `useEffect` with proper `removeChannel` cleanup.
+- Per-device dismissal: store dismissed ids in `localStorage` under key `dismissed-system-notices` (separate from broadcasts), filter them out with `useMemo`.
+- Render each active notice as a shadcn `<Alert>` with a `Bell` icon (info styling — these are operational notifications, not severity-tiered). Optional `url` becomes a link in the description. Dismiss `×` button in the top-right, same styling as BroadcastBanner (`opacity-70 hover:opacity-100`).
 
-### 5. UI plumbing
+## 4. Mount in layout
 
-- New tiny `useCountdown(seconds)` hook in `src/hooks/useCountdown.ts` for the locked-until / cooldown timers.
-- Reuse existing shadcn `AlertDialog` (already in the project).
+Add `<SystemNoticesBanner />` in `src/components/layout/DashboardLayout.tsx` directly below the existing `<BroadcastBanner />` so both banner stacks appear at the top of every authenticated page.
 
-### Files touched
-- New migration: `mfa_rate_limits` table + RLS + grants.
-- New: `supabase/functions/_shared/rate-limit.ts`.
-- Edit: `supabase/functions/mfa-backup-generate/index.ts`, `mfa-trust-device/index.ts`, `mfa-backup-verify/index.ts`.
-- New: `src/hooks/useCountdown.ts`.
-- Edit: `src/pages/Auth.tsx` (backup-code form upgrades).
-- Edit: `src/pages/profile/UserProfile.tsx` (confirm dialogs, cooldown handling).
+## Technical notes
 
-### Out of scope
-- Per-IP rate limiting (needs infra we don't have).
-- CAPTCHA / progressive delays beyond the lockout window.
-- Per-device "revoke this one" UI.
+- No changes to the super-admin side — they keep calling the same `POST ?action=notices` endpoint; the workshop simply records what it receives.
+- Notices and broadcasts stay separate tables: broadcasts are authored on the workshop's own admin UI; notices are pushed in from outside. Different lifecycles, different dismissal storage keys.
+- `src/integrations/supabase/types.ts` regenerates after the migration, so the banner can drop the `as any` casts.

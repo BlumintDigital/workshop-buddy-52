@@ -30,6 +30,8 @@ const AdminCalendar = lazy(() => import("@/pages/admin/AdminCalendar"));
 const AdminSettings = lazy(() => import("@/pages/admin/AdminSettings"));
 const AdminActivityLogs = lazy(() => import("@/pages/admin/AdminActivityLogs"));
 const AdminFeedback = lazy(() => import("@/pages/admin/AdminFeedback"));
+const AdminDeployGuide = lazy(() => import("@/pages/admin/AdminDeployGuide"));
+const AdminSignupCodes = lazy(() => import("@/pages/admin/AdminSignupCodes"));
 
 // Manager pages
 const ManagerDashboard = lazy(() => import("@/pages/manager/ManagerDashboard"));
@@ -124,6 +126,8 @@ function AppRoutes() {
       <Route path="/appointments/:id" element={<ProtectedRoute allowedRoles={["admin", "manager", "staff", "client"]}><AppointmentDetail /></ProtectedRoute>} />
       <Route path="/report-issue" element={<ProtectedRoute allowedRoles={["admin", "manager", "staff", "client"]}><ReportIssue /></ProtectedRoute>} />
       <Route path="/admin/feedback" element={<ProtectedRoute allowedRoles={["admin"]}><AdminFeedback /></ProtectedRoute>} />
+      <Route path="/admin/deploy-guide" element={<ProtectedRoute allowedRoles={["admin"]}><AdminDeployGuide /></ProtectedRoute>} />
+      <Route path="/admin/signup-codes" element={<ProtectedRoute allowedRoles={["admin", "manager"]}><AdminSignupCodes /></ProtectedRoute>} />
       <Route path="/profile" element={<ProtectedRoute allowedRoles={["admin", "manager", "staff", "client"]}><UserProfile /></ProtectedRoute>} />
 
       <Route path="*" element={<NotFound />} />
@@ -137,7 +141,7 @@ const App = () => (
       <Toaster />
       <Sonner />
       <PwaStatus />
-      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+      <BrowserRouter>
         <AuthProvider>
           <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="h-8 w-8 rounded-full border-4 border-primary border-t-transparent animate-spin" /></div>}>
             <AppRoutes />

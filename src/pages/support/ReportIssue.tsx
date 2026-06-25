@@ -56,26 +56,25 @@ export default function ReportIssue() {
       "/admin/feedback"
     );
 
-    // Send email to contact_email if configured and notifications are enabled
-    const { data: emailConfig } = await (supabase.rpc as any)("get_email_notification_config").maybeSingle();
+    // Email is sent server-side via send-email (mode: bug_report). The function
+    // enforces email_notifications_enabled and resolves the admin recipient from
+    // admin-only workshop_admin_contacts; never exposed to the client.
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("full_name")
+      .eq("id", user.id)
+      .maybeSingle();
 
-    const recipientEmail = emailConfig?.recipient_email;
-    if (recipientEmail && emailConfig?.email_notifications_enabled) {
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("full_name")
-        .eq("id", user.id)
-        .maybeSingle();
+    const submitterName = profile?.full_name || user.email || "A user";
+    const feedbackLink = `${window.location.origin}/admin/feedback`;
 
-      const submitterName = profile?.full_name || user.email || "A user";
-      const feedbackLink = `${window.location.origin}/admin/feedback`;
-
-      await sendEmail({
-        to: recipientEmail,
+    await supabase.functions.invoke("send-email", {
+      body: {
+        mode: "bug_report",
         subject: `[${severity.toUpperCase()}] Issue Report: ${title.trim()}`,
         html: bugReportEmailHtml(submitterName, severity, title.trim(), description.trim(), pageUrl.trim(), feedbackLink),
-      });
-    }
+      },
+    });
 
     setSubmitting(false);
     setSubmitted(true);

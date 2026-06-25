@@ -24,6 +24,7 @@ import { cn } from "@/lib/utils";
 import { sendNotifications } from "@/lib/notifications";
 import { sendEmail, jobStatusEmailHtml, quoteReadyEmailHtml } from "@/lib/email";
 import { generateJobReport } from "@/lib/jobReportPdf";
+import { useCurrency } from "@/hooks/useCurrency";
 
 const statusColors: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
   quote: "secondary", pending: "outline", in_progress: "secondary", review: "default", completed: "default", cancelled: "destructive",
@@ -40,6 +41,7 @@ const emptyTaskForm = { title: "", description: "", assigned_to: "", status: "pe
 export default function JobDetail() {
   const { id } = useParams<{ id: string }>();
   const { role, user } = useAuth();
+  const { format: fmt } = useCurrency();
   const navigate = useNavigate();
 
   const [job, setJob] = useState<any>(null);
@@ -620,7 +622,7 @@ export default function JobDetail() {
                 <p className="text-sm text-muted-foreground mt-0.5">
                   {completedTasks} of {tasks.length} completed{taskProgress !== null && ` · ${taskProgress}%`}
                   {totalJobValue > 0 && role !== "client" && (
-                    <span className="ml-2 font-medium text-foreground">${completedJobValue.toFixed(2)} / ${totalJobValue.toFixed(2)}</span>
+                    <span className="ml-2 font-medium text-foreground">{fmt(completedJobValue)} / {fmt(totalJobValue)}</span>
                   )}
                 </p>
               )}
@@ -679,7 +681,7 @@ export default function JobDetail() {
                               </p>
                             )}
                             {parseFloat(task.value) > 0 && role !== "client" && (
-                              <Badge variant="outline" className="text-xs font-mono">${parseFloat(task.value).toFixed(2)}</Badge>
+                              <Badge variant="outline" className="text-xs font-mono">{fmt(parseFloat(task.value))}</Badge>
                             )}
                           </div>
                         </div>
@@ -737,15 +739,15 @@ export default function JobDetail() {
                         <TableRow key={m.id}>
                           <TableCell className="font-medium">{item?.name || "—"}</TableCell>
                           <TableCell>{m.quantity} {item?.unit || ""}</TableCell>
-                          <TableCell className="hidden sm:table-cell">${Number(item?.unit_cost || 0).toFixed(2)}</TableCell>
-                          <TableCell>${lineTotal.toFixed(2)}</TableCell>
+                          <TableCell className="hidden sm:table-cell">{fmt(Number(item?.unit_cost || 0))}</TableCell>
+                          <TableCell>{fmt(lineTotal)}</TableCell>
                         </TableRow>
                       );
                     })}
                   </TableBody>
                 </Table>
                 <p className="text-sm font-semibold text-right mt-2">
-                  Materials total: ${matTotal.toFixed(2)}
+                  Materials total: {fmt(matTotal)}
                 </p>
               </>
             )}

@@ -92,6 +92,48 @@ export type Database = {
         }
         Relationships: []
       }
+      broadcasts: {
+        Row: {
+          active: boolean
+          created_at: string
+          expires_at: string | null
+          id: string
+          link_label: string | null
+          link_url: string | null
+          message: string | null
+          severity: Database["public"]["Enums"]["broadcast_severity"]
+          starts_at: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          link_label?: string | null
+          link_url?: string | null
+          message?: string | null
+          severity?: Database["public"]["Enums"]["broadcast_severity"]
+          starts_at?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          link_label?: string | null
+          link_url?: string | null
+          message?: string | null
+          severity?: Database["public"]["Enums"]["broadcast_severity"]
+          starts_at?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       bug_reports: {
         Row: {
           created_at: string
@@ -747,6 +789,105 @@ export type Database = {
         }
         Relationships: []
       }
+      push_subscriptions: {
+        Row: {
+          auth: string
+          created_at: string
+          endpoint: string
+          id: string
+          p256dh: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          auth: string
+          created_at?: string
+          endpoint: string
+          id?: string
+          p256dh: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          auth?: string
+          created_at?: string
+          endpoint?: string
+          id?: string
+          p256dh?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      signup_codes: {
+        Row: {
+          active: boolean
+          code: string
+          created_at: string
+          created_by: string | null
+          expires_at: string | null
+          id: string
+          label: string | null
+          max_uses: number | null
+          updated_at: string
+          uses_count: number
+        }
+        Insert: {
+          active?: boolean
+          code: string
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          label?: string | null
+          max_uses?: number | null
+          updated_at?: string
+          uses_count?: number
+        }
+        Update: {
+          active?: boolean
+          code?: string
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          label?: string | null
+          max_uses?: number | null
+          updated_at?: string
+          uses_count?: number
+        }
+        Relationships: []
+      }
+      system_notices: {
+        Row: {
+          created_at: string
+          expires_at: string | null
+          id: string
+          message: string | null
+          title: string
+          url: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          message?: string | null
+          title: string
+          url?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          message?: string | null
+          title?: string
+          url?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string
@@ -762,6 +903,30 @@ export type Database = {
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
+        }
+        Relationships: []
+      }
+      workshop_admin_contacts: {
+        Row: {
+          id: number
+          super_admin_email: string | null
+          updated_at: string
+          vapid_private_key: string | null
+          vapid_public_key: string | null
+        }
+        Insert: {
+          id?: number
+          super_admin_email?: string | null
+          updated_at?: string
+          vapid_private_key?: string | null
+          vapid_public_key?: string | null
+        }
+        Update: {
+          id?: number
+          super_admin_email?: string | null
+          updated_at?: string
+          vapid_private_key?: string | null
+          vapid_public_key?: string | null
         }
         Relationships: []
       }
@@ -783,7 +948,7 @@ export type Database = {
           notify_low_inventory: boolean | null
           notify_new_appointment: boolean | null
           phone: string | null
-          super_admin_email: string | null
+          vapid_public_key: string | null
           workshop_name: string | null
         }
         Insert: {
@@ -803,7 +968,7 @@ export type Database = {
           notify_low_inventory?: boolean | null
           notify_new_appointment?: boolean | null
           phone?: string | null
-          super_admin_email?: string | null
+          vapid_public_key?: string | null
           workshop_name?: string | null
         }
         Update: {
@@ -823,7 +988,7 @@ export type Database = {
           notify_low_inventory?: boolean | null
           notify_new_appointment?: boolean | null
           phone?: string | null
-          super_admin_email?: string | null
+          vapid_public_key?: string | null
           workshop_name?: string | null
         }
         Relationships: []
@@ -856,13 +1021,6 @@ export type Database = {
       }
     }
     Functions: {
-      get_email_notification_config: {
-        Args: never
-        Returns: {
-          email_notifications_enabled: boolean
-          recipient_email: string
-        }[]
-      }
       get_job_completion_stats: {
         Args: never
         Returns: {
@@ -895,9 +1053,11 @@ export type Database = {
         }
         Returns: boolean
       }
+      redeem_signup_code: { Args: { _code: string }; Returns: boolean }
     }
     Enums: {
       app_role: "admin" | "manager" | "staff" | "client"
+      broadcast_severity: "info" | "warning" | "critical"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1026,6 +1186,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "manager", "staff", "client"],
+      broadcast_severity: ["info", "warning", "critical"],
     },
   },
 } as const
