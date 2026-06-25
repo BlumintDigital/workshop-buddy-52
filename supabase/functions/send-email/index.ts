@@ -70,13 +70,13 @@ serve(async (req) => {
     const toAddr = (ws as any)?.contact_email ?? null;
     if (!toAddr) {
       return new Response(JSON.stringify({ ok: false, error: "No contact_email configured in Settings" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
     const fromAddr = (ws as any)?.from_email || "noreply@workshopmanager.com";
     if (!RESEND_API_KEY) {
       return new Response(JSON.stringify({ ok: false, error: "RESEND_API_KEY secret not configured" }), {
-        status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
     const testRes = await fetch("https://api.resend.com/emails", {
@@ -91,8 +91,9 @@ serve(async (req) => {
     });
     if (!testRes.ok) {
       const text = await testRes.text();
+      // Always return 200 so supabase-js puts the body in `data` (not `error`)
       return new Response(JSON.stringify({ ok: false, error: text }), {
-        status: testRes.status, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
     return new Response(JSON.stringify({ ok: true, sentTo: toAddr }), {
