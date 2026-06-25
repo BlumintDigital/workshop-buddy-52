@@ -77,7 +77,7 @@ export default function JobComments({ jobId, jobTitle }: Props) {
       .select("*, profiles:user_id(full_name)")
       .eq("job_id", jobId)
       .order("created_at", { ascending: true });
-    setComments((data as Comment[]) || []);
+    setComments(((data as unknown) as Comment[]) || []);
   }
 
   async function handleSubmit(e?: React.FormEvent) {
@@ -97,12 +97,20 @@ export default function JobComments({ jobId, jobTitle }: Props) {
       setBody("");
       // Notify other parties in-app (fire-and-forget)
       if (!isInternal) {
+        const { data: job } = await supabase
+          .from("jobs")
+          .select("assigned_to, client_id")
+          .eq("id", jobId)
+          .maybeSingle();
+        const recipients = new Set<string>();
+        if (job?.assigned_to) recipients.add(job.assigned_to as string);
+        if (job?.client_id) recipients.add(job.client_id as string);
+        recipients.delete(user.id);
+        const title = "New comment";
+        const message = `${user.email?.split("@")[0] ?? "Someone"} commented on "${jobTitle ?? "a job"}"`;
+        const link = `/jobs/${jobId}`;
         void sendNotifications(
-          jobId,
-          "New comment",
-          `${user.email?.split("@")[0] ?? "Someone"} commented on "${jobTitle ?? "a job"}"`,
-          `/jobs/${jobId}`,
-          user.id,
+          Array.from(recipients).map((uid) => ({ user_id: uid, title, message, link })),
         );
       }
     }
