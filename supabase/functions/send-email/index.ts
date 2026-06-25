@@ -54,22 +54,21 @@ serve(async (req) => {
      .replace(/"/g, "&quot;")
      .replace(/'/g, "&#39;");
 
-  // test_email mode: admin only; sends a real email to contact_email using current settings
-  // and returns the raw Resend response so the admin can diagnose delivery issues.
+  // test_email mode: admin only; sends a real email to the Platform Support Email using
+  // current settings and returns the raw Resend response for diagnostics.
   if (mode === "test_email") {
     if (!roleRow || roleRow.role !== "admin") {
       return new Response(JSON.stringify({ error: "Forbidden" }), {
         status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    const { data: ws } = await supabase
-      .from("workshop_settings")
-      .select("contact_email, from_email")
-      .eq("id", 1)
-      .maybeSingle();
-    const toAddr = (ws as any)?.contact_email ?? null;
+    const [{ data: adminContact }, { data: ws }] = await Promise.all([
+      supabase.from("workshop_admin_contacts").select("super_admin_email").eq("id", 1).maybeSingle(),
+      supabase.from("workshop_settings").select("from_email").eq("id", 1).maybeSingle(),
+    ]);
+    const toAddr = (adminContact as any)?.super_admin_email ?? null;
     if (!toAddr) {
-      return new Response(JSON.stringify({ ok: false, error: "No contact_email configured in Settings" }), {
+      return new Response(JSON.stringify({ ok: false, error: "No Platform Support Email configured in Settings → Email" }), {
         status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -102,18 +101,16 @@ serve(async (req) => {
   }
 
   // bug_report mode: any authenticated user may send; recipient resolved server-side
-  // so the admin's email address is never exposed to the client.
-  // Intentionally bypasses email_notifications_enabled — bug reports are admin-to-admin
-  // alerts, not customer-facing notifications.
+  // from workshop_admin_contacts so the platform support email is never exposed to clients.
+  // Intentionally bypasses email_notifications_enabled — bug reports are admin-to-admin alerts.
   if (mode === "bug_report") {
-    const { data: ws } = await supabase
-      .from("workshop_settings")
-      .select("contact_email, from_email")
-      .eq("id", 1)
-      .maybeSingle();
-    to = (ws as any)?.contact_email ?? null;
+    const [{ data: adminContact }, { data: ws }] = await Promise.all([
+      supabase.from("workshop_admin_contacts").select("super_admin_email").eq("id", 1).maybeSingle(),
+      supabase.from("workshop_settings").select("from_email").eq("id", 1).maybeSingle(),
+    ]);
+    to = (adminContact as any)?.super_admin_email ?? null;
     if (!to) {
-      return new Response(JSON.stringify({ error: "No admin contact email configured in Settings" }), {
+      return new Response(JSON.stringify({ error: "No Platform Support Email configured in Settings → Email" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
