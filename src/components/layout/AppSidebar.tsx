@@ -1,11 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   LayoutDashboard, Briefcase, Calendar, Package, FileText, Users, Settings, LogOut, Wrench, ChevronDown, BarChart3, Columns3, UserCheck, CalendarDays, User, Activity, Target, AlertCircle, MessageSquare, KeyRound,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { useFeatureFlags } from "@/hooks/useFeatureFlags";
+import { useFeatureFlags, type FeatureKey } from "@/hooks/useFeatureFlags";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
@@ -18,7 +18,14 @@ import {
 
 type AppRole = "admin" | "manager" | "staff" | "client";
 
-type NavGroup = { label: string; items: { title: string; url: string; icon: any }[] };
+type NavItem = {
+  title: string;
+  url: string;
+  icon: any;
+  features?: FeatureKey[];
+};
+
+type NavGroup = { label: string; items: NavItem[] };
 
 const navGroups: Record<AppRole, NavGroup[]> = {
   admin: [
@@ -27,18 +34,18 @@ const navGroups: Record<AppRole, NavGroup[]> = {
     ]},
     { label: "Operations", items: [
       { title: "Jobs", url: "/admin/jobs", icon: Briefcase },
-      { title: "Appointments", url: "/admin/appointments", icon: Calendar },
-      { title: "Calendar", url: "/admin/calendar", icon: CalendarDays },
+      { title: "Appointments", url: "/admin/appointments", icon: Calendar, features: ["appointments"] },
+      { title: "Calendar", url: "/admin/calendar", icon: CalendarDays, features: ["appointments"] },
     ]},
     { label: "Management", items: [
       { title: "Inventory", url: "/admin/inventory", icon: Package },
       { title: "Invoices", url: "/admin/invoices", icon: FileText },
-      { title: "Reports", url: "/admin/reports", icon: BarChart3 },
-      { title: "Goals", url: "/goals", icon: Target },
+      { title: "Reports", url: "/admin/reports", icon: BarChart3, features: ["reports"] },
+      { title: "Goals", url: "/goals", icon: Target, features: ["goals"] },
     ]},
     { label: "People", items: [
       { title: "Users", url: "/admin/users", icon: Users },
-      { title: "Clients", url: "/admin/clients", icon: UserCheck },
+      { title: "Clients", url: "/admin/clients", icon: UserCheck, features: ["client_portal"] },
     ]},
     { label: "System", items: [
       { title: "Activity Logs", url: "/admin/activity-logs", icon: Activity },
@@ -56,13 +63,13 @@ const navGroups: Record<AppRole, NavGroup[]> = {
     ]},
     { label: "Operations", items: [
       { title: "Jobs", url: "/manager/jobs", icon: Briefcase },
-      { title: "Appointments", url: "/manager/appointments", icon: Calendar },
-      { title: "Calendar", url: "/manager/calendar", icon: CalendarDays },
+      { title: "Appointments", url: "/manager/appointments", icon: Calendar, features: ["appointments"] },
+      { title: "Calendar", url: "/manager/calendar", icon: CalendarDays, features: ["appointments"] },
     ]},
     { label: "Management", items: [
       { title: "Inventory", url: "/manager/inventory", icon: Package },
       { title: "Invoices", url: "/manager/invoices", icon: FileText },
-      { title: "Goals", url: "/goals", icon: Target },
+      { title: "Goals", url: "/goals", icon: Target, features: ["goals"] },
     ]},
     { label: "People", items: [
       { title: "Staff", url: "/manager/staff", icon: Users },
@@ -81,11 +88,11 @@ const navGroups: Record<AppRole, NavGroup[]> = {
     { label: "Work", items: [
       { title: "My Jobs", url: "/staff/jobs", icon: Briefcase },
       { title: "Kanban", url: "/staff/kanban", icon: Columns3 },
-      { title: "Schedule", url: "/staff/schedule", icon: Calendar },
+      { title: "Schedule", url: "/staff/schedule", icon: Calendar, features: ["appointments"] },
     ]},
     { label: "Resources", items: [
       { title: "Inventory", url: "/staff/inventory", icon: Package },
-      { title: "Goals", url: "/goals", icon: Target },
+      { title: "Goals", url: "/goals", icon: Target, features: ["goals"] },
     ]},
     { label: "Help", items: [
       { title: "Report Issue", url: "/report-issue", icon: AlertCircle },
@@ -93,12 +100,12 @@ const navGroups: Record<AppRole, NavGroup[]> = {
   ],
   client: [
     { label: "Overview", items: [
-      { title: "Dashboard", url: "/client/dashboard", icon: LayoutDashboard },
+      { title: "Dashboard", url: "/client/dashboard", icon: LayoutDashboard, features: ["client_portal"] },
     ]},
     { label: "My Account", items: [
-      { title: "My Jobs", url: "/client/jobs", icon: Briefcase },
-      { title: "Appointments", url: "/client/appointments", icon: Calendar },
-      { title: "Invoices", url: "/client/invoices", icon: FileText },
+      { title: "My Jobs", url: "/client/jobs", icon: Briefcase, features: ["client_portal"] },
+      { title: "Appointments", url: "/client/appointments", icon: Calendar, features: ["client_portal", "appointments"] },
+      { title: "Invoices", url: "/client/invoices", icon: FileText, features: ["client_portal"] },
     ]},
     { label: "Help", items: [
       { title: "Report Issue", url: "/report-issue", icon: AlertCircle },
@@ -107,30 +114,18 @@ const navGroups: Record<AppRole, NavGroup[]> = {
 };
 
 // Items gated per feature flag: url fragment → flag key
-const FLAG_GATES: Record<string, keyof import("@/hooks/useFeatureFlags").FeatureFlags> = {
-  "/goals": "goals",
-  "/admin/clients": "client_portal",
-  "/admin/reports": "reports",
-  "/admin/appointments": "appointments",
-  "/admin/calendar": "appointments",
-  "/manager/appointments": "appointments",
-  "/manager/calendar": "appointments",
-  "/staff/schedule": "appointments",
-  "/client/appointments": "appointments",
-  "/client/dashboard": "client_portal",
-  "/client/jobs": "client_portal",
-  "/client/invoices": "client_portal",
-};
-
 export function AppSidebar() {
   const { state, setOpenMobile } = useSidebar();
   const collapsed = state === "collapsed";
   const location = useLocation();
   const navigate = useNavigate();
   const { role, profile, signOut } = useAuth();
-  const flags = useFeatureFlags();
+  const { flags } = useFeatureFlags();
   const [workshopName, setWorkshopName] = useState("Workshop Manager");
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const scrollTopRef = useRef(0);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const prevState = useRef(state);
 
   useEffect(() => {
     supabase
@@ -162,16 +157,26 @@ export function AppSidebar() {
     };
   }, []);
 
-  const rawGroups = navGroups[role || "client"];
-  const groups = rawGroups
-    .map((g) => ({
-      ...g,
-      items: g.items.filter((item) => {
-        const gate = FLAG_GATES[item.url];
-        return !gate || flags[gate];
-      }),
-    }))
-    .filter((g) => g.items.length > 0);
+  // Restore scroll when sidebar re-expands after being collapsed.
+  useEffect(() => {
+    if (prevState.current === "collapsed" && state === "expanded" && contentRef.current) {
+      contentRef.current.scrollTop = scrollTopRef.current;
+    }
+    prevState.current = state;
+  }, [state]);
+
+  const groups = useMemo(() => {
+    const rawGroups = navGroups[role || "client"];
+    return rawGroups
+      .map((g) => ({
+        ...g,
+        items: g.items.filter((item) =>
+          !item.features || item.features.every((feature) => flags[feature])
+        ),
+      }))
+      .filter((g) => g.items.length > 0);
+  }, [role, flags]);
+
   const initials = (profile?.full_name || "U").split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
 
   const handleSignOut = async () => {
@@ -209,7 +214,10 @@ export function AppSidebar() {
 
       <SidebarSeparator className="bg-sidebar-border" />
 
-      <SidebarContent>
+      <SidebarContent
+        ref={contentRef}
+        onScroll={(e) => { scrollTopRef.current = (e.currentTarget as HTMLElement).scrollTop; }}
+      >
         {groups.map((group) => (
           <SidebarGroup key={group.label}>
             <SidebarGroupLabel className="text-sidebar-foreground/60 text-xs font-medium tracking-wider uppercase">{group.label}</SidebarGroupLabel>
