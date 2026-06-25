@@ -167,6 +167,27 @@ export type Database = {
         }
         Relationships: []
       }
+      feature_flags: {
+        Row: {
+          enabled: boolean
+          key: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          enabled?: boolean
+          key: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          enabled?: boolean
+          key?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       inventory_items: {
         Row: {
           category: string | null
@@ -401,6 +422,41 @@ export type Database = {
             columns: ["task_id"]
             isOneToOne: false
             referencedRelation: "job_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      job_comments: {
+        Row: {
+          body: string
+          created_at: string
+          id: number
+          is_internal: boolean
+          job_id: string
+          user_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: never
+          is_internal?: boolean
+          job_id: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: never
+          is_internal?: boolean
+          job_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_comments_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
             referencedColumns: ["id"]
           },
         ]
@@ -1053,7 +1109,23 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_feature_enabled: { Args: { feature_key: string }; Returns: boolean }
       redeem_signup_code: { Args: { _code: string }; Returns: boolean }
+      set_feature_flag: {
+        Args: { feature_enabled: boolean; feature_key: string }
+        Returns: {
+          enabled: boolean
+          key: string
+          updated_at: string
+          updated_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "feature_flags"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
     }
     Enums: {
       app_role: "admin" | "manager" | "staff" | "client"
