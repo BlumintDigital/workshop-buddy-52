@@ -1,6 +1,7 @@
+import blumintLogoUrl from "@/assets/blumint_logo.png";
 import type { SyntheticEvent } from "react";
 
-export const DEFAULT_LOGO_URL = "/blumint_logo.png";
+export const DEFAULT_LOGO_URL = blumintLogoUrl;
 
 export const resolveLogoUrl = (logoUrl?: string | null) => {
   const trimmed = logoUrl?.trim();
@@ -9,7 +10,7 @@ export const resolveLogoUrl = (logoUrl?: string | null) => {
 
 export const useDefaultLogoOnError = (event: SyntheticEvent<HTMLImageElement>) => {
   const image = event.currentTarget;
-  if (!image.src.endsWith(DEFAULT_LOGO_URL)) {
+  if (image.src !== DEFAULT_LOGO_URL && !image.src.endsWith(DEFAULT_LOGO_URL)) {
     image.src = DEFAULT_LOGO_URL;
   }
 };
