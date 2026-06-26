@@ -82,7 +82,7 @@ function parse(md: string): Block[] {
 export default function Help() {
   const blocks = useMemo(() => parse(guideMarkdown), []);
   const toc = useMemo(
-    () => blocks.filter((b): b is Extract<Block, { type: "h2" }> => b.type === "h2"),
+    () => blocks.flatMap((b) => (b.type === "h2" ? [{ id: b.id, text: b.text }] : [])),
     [blocks]
   );
   const [active, setActive] = useState<string>("");
