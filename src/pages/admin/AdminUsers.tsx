@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
 import { Eye, Search } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 
 type UserRow = {
@@ -21,11 +22,13 @@ type UserRow = {
 
 export default function AdminUsers() {
   const [users, setUsers] = useState<UserRow[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
   const navigate = useNavigate();
 
   const fetchUsers = async () => {
+    setIsLoading(true);
     const { data: roles } = await supabase.from("user_roles").select("user_id, role").in("role", ["admin", "manager", "staff"]);
     const { data: profiles } = await supabase.from("profiles").select("id, full_name, created_at, is_super_admin, is_active");
     if (roles && profiles) {
@@ -44,6 +47,7 @@ export default function AdminUsers() {
         .filter((u) => !u.is_super_admin);
       setUsers(merged);
     }
+    setIsLoading(false);
   };
 
   useEffect(() => { fetchUsers(); }, []);
@@ -99,7 +103,16 @@ export default function AdminUsers() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.length === 0 ? (
+                {isLoading ? (
+                  Array.from({ length: 6 }).map((_, i) => (
+                    <TableRow key={i}>
+                      <TableCell><Skeleton className="h-4 w-36" /></TableCell>
+                      <TableCell><Skeleton className="h-8 w-[110px] rounded-md" /></TableCell>
+                      <TableCell className="hidden md:table-cell"><Skeleton className="h-4 w-24" /></TableCell>
+                      <TableCell><Skeleton className="h-7 w-7 rounded" /></TableCell>
+                    </TableRow>
+                  ))
+                ) : filtered.length === 0 ? (
                   <TableRow><TableCell colSpan={4} className="text-center py-8 text-muted-foreground">No users found</TableCell></TableRow>
                 ) : filtered.map((u) => (
                   <TableRow key={u.user_id} className="cursor-pointer" onClick={() => navigate(`/admin/users/${u.user_id}`)}>
@@ -132,7 +145,19 @@ export default function AdminUsers() {
 
         {/* Mobile cards */}
         <div className="sm:hidden space-y-3">
-          {filtered.length === 0 ? (
+          {isLoading ? (
+            Array.from({ length: 4 }).map((_, i) => (
+              <Card key={i}>
+                <CardContent className="p-4 flex items-center justify-between gap-3">
+                  <div className="space-y-1.5 min-w-0">
+                    <Skeleton className="h-4 w-36" />
+                    <Skeleton className="h-3 w-20" />
+                  </div>
+                  <Skeleton className="h-8 w-[100px] rounded-md shrink-0" />
+                </CardContent>
+              </Card>
+            ))
+          ) : filtered.length === 0 ? (
             <p className="text-center py-8 text-muted-foreground">No users found</p>
           ) : filtered.map((u) => (
             <Card key={u.user_id} className="cursor-pointer" onClick={() => navigate(`/admin/users/${u.user_id}`)}>

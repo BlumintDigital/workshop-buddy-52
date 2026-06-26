@@ -14,6 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
 import { Plus, Search, Pencil, Check, X } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 type ClientRow = {
   user_id: string;
@@ -29,6 +30,7 @@ type ClientRow = {
 export default function AdminClients() {
   const [clients, setClients] = useState<ClientRow[]>([]);
   const [totalCount, setTotalCount] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -49,8 +51,9 @@ export default function AdminClients() {
   const [editAddress, setEditAddress] = useState("");
 
   const fetchClients = async () => {
+    setIsLoading(true);
     const { data: roles } = await supabase.from("user_roles").select("user_id").eq("role", "client");
-    if (!roles?.length) { setClients([]); setTotalCount(0); return; }
+    if (!roles?.length) { setClients([]); setTotalCount(0); setIsLoading(false); return; }
     const ids = roles.map((r) => r.user_id);
     const { data: profiles, count } = await supabase.from("profiles").select("id, full_name, phone, created_at, is_active, company_name, contact_person, address" as any, { count: "exact" }).in("id", ids).range(from, to);
     setTotalCount(count ?? 0);
@@ -64,6 +67,7 @@ export default function AdminClients() {
       created_at: p.created_at,
       is_active: p.is_active ?? true,
     })));
+    setIsLoading(false);
   };
 
   useEffect(() => { fetchClients(); }, [page]);
@@ -194,7 +198,18 @@ export default function AdminClients() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.length === 0 ? (
+                {isLoading ? (
+                  Array.from({ length: 6 }).map((_, i) => (
+                    <TableRow key={i}>
+                      <TableCell><Skeleton className="h-4 w-36" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-28" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                      <TableCell className="hidden md:table-cell"><Skeleton className="h-4 w-40" /></TableCell>
+                      <TableCell><Skeleton className="h-5 w-10 rounded-full" /></TableCell>
+                      <TableCell><Skeleton className="h-7 w-7 rounded" /></TableCell>
+                    </TableRow>
+                  ))
+                ) : filtered.length === 0 ? (
                   <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No clients found</TableCell></TableRow>
                 ) : filtered.map((c) => {
                   const isEditing = editingId === c.user_id;
@@ -235,7 +250,17 @@ export default function AdminClients() {
 
         {/* Mobile Cards */}
         <div className="sm:hidden space-y-3">
-          {filtered.length === 0 ? (
+          {isLoading ? (
+            Array.from({ length: 4 }).map((_, i) => (
+              <Card key={i}>
+                <CardContent className="p-4 space-y-2">
+                  <Skeleton className="h-5 w-40" />
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-4 w-28" />
+                </CardContent>
+              </Card>
+            ))
+          ) : filtered.length === 0 ? (
             <p className="text-center py-8 text-muted-foreground">No clients found</p>
           ) : filtered.map((c) => (
             <Card key={c.user_id} className="cursor-pointer" onClick={() => navigate(`/admin/users/${c.user_id}`)}>
