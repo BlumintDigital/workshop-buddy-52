@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const statusColors: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
   pending: "outline", in_progress: "secondary", review: "default", completed: "default", cancelled: "destructive",
@@ -16,10 +17,19 @@ export default function StaffJobs() {
   const { user } = useAuth();
   const [jobs, setJobs] = useState<any[]>([]);
   const [filter, setFilter] = useState("mine");
+  const [isLoading, setIsLoading] = useState(true);
+
+  const fetchJobs = async () => {
+    setIsLoading(true);
+    if (!user) { setIsLoading(false); return; }
+    const { data } = await supabase.from("jobs").select("*").order("created_at", { ascending: false });
+    setJobs(data || []);
+    setIsLoading(false);
+  };
 
   useEffect(() => {
     if (!user) return;
-    supabase.from("jobs").select("*").order("created_at", { ascending: false }).then(({ data }) => setJobs(data || []));
+    fetchJobs();
   }, [user]);
 
   const filtered = jobs.filter((j) => {
@@ -27,6 +37,16 @@ export default function StaffJobs() {
     if (filter === "all") return true;
     return j.status === filter;
   });
+
+  const skeletonRows = Array.from({ length: 6 }).map((_, i) => (
+    <TableRow key={i}>
+      <TableCell><Skeleton className="h-4 w-40" /></TableCell>
+      <TableCell><Skeleton className="h-4 w-20 rounded-full" /></TableCell>
+      <TableCell className="hidden sm:table-cell"><Skeleton className="h-4 w-16" /></TableCell>
+      <TableCell className="hidden sm:table-cell"><Skeleton className="h-4 w-24" /></TableCell>
+      <TableCell className="hidden md:table-cell"><Skeleton className="h-4 w-28" /></TableCell>
+    </TableRow>
+  ));
 
   return (
     <DashboardLayout>
@@ -57,7 +77,7 @@ export default function StaffJobs() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.length === 0 ? (
+                {isLoading ? skeletonRows : filtered.length === 0 ? (
                   <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">No jobs</TableCell></TableRow>
                 ) : filtered.map((job) => (
                   <TableRow key={job.id} className="cursor-pointer hover:bg-muted/50">

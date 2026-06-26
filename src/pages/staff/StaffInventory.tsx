@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function StaffInventory() {
   const { user } = useAuth();
@@ -19,10 +20,13 @@ export default function StaffInventory() {
   const [adjustOpen, setAdjustOpen] = useState(false);
   const [adjustItem, setAdjustItem] = useState<any | null>(null);
   const [adjustForm, setAdjustForm] = useState({ type: "out", quantity: "1", notes: "" });
+  const [isLoading, setIsLoading] = useState(true);
 
   const fetchItems = async () => {
+    setIsLoading(true);
     const { data } = await supabase.from("inventory_items").select("*").order("name");
     setItems(data || []);
+    setIsLoading(false);
   };
 
   useEffect(() => { fetchItems(); }, []);
@@ -67,6 +71,16 @@ export default function StaffInventory() {
     fetchItems();
   };
 
+  const skeletonRows = Array.from({ length: 6 }).map((_, i) => (
+    <TableRow key={i}>
+      <TableCell><Skeleton className="h-4 w-40" /></TableCell>
+      <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+      <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+      <TableCell><Skeleton className="h-4 w-20 rounded-full" /></TableCell>
+      <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+    </TableRow>
+  ));
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -87,7 +101,7 @@ export default function StaffInventory() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {items.length === 0 ? (
+                {isLoading ? skeletonRows : items.length === 0 ? (
                   <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">No items</TableCell></TableRow>
                 ) : items.map((item) => (
                   <TableRow key={item.id}>
