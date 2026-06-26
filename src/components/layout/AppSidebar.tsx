@@ -118,6 +118,9 @@ const navGroups: Record<AppRole, NavGroup[]> = {
   ],
 };
 
+// Persists sidebar scroll position across component remounts caused by route navigation.
+let _savedScrollTop = 0;
+
 // Items gated per feature flag: url fragment → flag key
 export function AppSidebar() {
   const { state, setOpenMobile } = useSidebar();
@@ -128,7 +131,7 @@ export function AppSidebar() {
   const { flags } = useFeatureFlags();
   const [workshopName, setWorkshopName] = useState("Workshop Manager");
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
-  const scrollTopRef = useRef(0);
+  const scrollTopRef = useRef(_savedScrollTop);
   const contentRef = useRef<HTMLDivElement>(null);
   const prevState = useRef(state);
 
@@ -160,6 +163,14 @@ export function AppSidebar() {
     return () => {
       supabase.removeChannel(channel);
     };
+  }, []);
+
+  // Restore scroll on mount (after navigation remounts the component).
+  useEffect(() => {
+    if (contentRef.current && _savedScrollTop > 0) {
+      contentRef.current.scrollTop = _savedScrollTop;
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Restore scroll when sidebar re-expands after being collapsed.
@@ -221,7 +232,11 @@ export function AppSidebar() {
 
       <SidebarContent
         ref={contentRef}
-        onScroll={(e) => { scrollTopRef.current = (e.currentTarget as HTMLElement).scrollTop; }}
+        onScroll={(e) => {
+          const top = (e.currentTarget as HTMLElement).scrollTop;
+          scrollTopRef.current = top;
+          _savedScrollTop = top;
+        }}
         className="[&::-webkit-scrollbar]:hidden [scrollbar-width:none] [-ms-overflow-style:none]"
       >
         {groups.map((group) => (
