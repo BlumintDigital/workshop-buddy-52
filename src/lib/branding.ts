@@ -1,6 +1,6 @@
 import type { SyntheticEvent } from "react";
 
-export const DEFAULT_LOGO_URL = "/Blumint_Logo.png";
+export const DEFAULT_LOGO_URL = "/blumint_logo.png";
 
 export const resolveLogoUrl = (logoUrl?: string | null) => {
   const trimmed = logoUrl?.trim();
