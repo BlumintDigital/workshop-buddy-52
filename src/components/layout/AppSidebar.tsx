@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  LayoutDashboard, Briefcase, Calendar, Package, FileText, Users, Settings, LogOut, Wrench, ChevronDown, BarChart3, Columns3, UserCheck, CalendarDays, User, Activity, Target, AlertCircle, MessageSquare, KeyRound, ShieldCheck,
+  LayoutDashboard, Briefcase, Calendar, Package, FileText, Users, Settings, LogOut, Wrench, ChevronDown, BarChart3, Columns3, UserCheck, CalendarDays, User, Activity, Target, AlertCircle, MessageSquare, KeyRound, ShieldCheck, BookOpen,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -55,6 +55,7 @@ const navGroups: Record<AppRole, NavGroup[]> = {
       { title: "Issue Reports", url: "/admin/feedback", icon: MessageSquare },
     ]},
     { label: "Help", items: [
+      { title: "User Guide", url: "/help", icon: BookOpen },
       { title: "Report Issue", url: "/report-issue", icon: AlertCircle },
     ]},
   ],
@@ -79,6 +80,7 @@ const navGroups: Record<AppRole, NavGroup[]> = {
       { title: "Signup Codes", url: "/admin/signup-codes", icon: KeyRound },
     ]},
     { label: "Help", items: [
+      { title: "User Guide", url: "/help", icon: BookOpen },
       { title: "Report Issue", url: "/report-issue", icon: AlertCircle },
     ]},
   ],
@@ -96,6 +98,7 @@ const navGroups: Record<AppRole, NavGroup[]> = {
       { title: "Goals", url: "/goals", icon: Target, features: ["goals"] },
     ]},
     { label: "Help", items: [
+      { title: "User Guide", url: "/help", icon: BookOpen },
       { title: "Report Issue", url: "/report-issue", icon: AlertCircle },
     ]},
   ],
@@ -109,6 +112,7 @@ const navGroups: Record<AppRole, NavGroup[]> = {
       { title: "Invoices", url: "/client/invoices", icon: FileText, features: ["client_portal"] },
     ]},
     { label: "Help", items: [
+      { title: "User Guide", url: "/help", icon: BookOpen },
       { title: "Report Issue", url: "/report-issue", icon: AlertCircle },
     ]},
   ],

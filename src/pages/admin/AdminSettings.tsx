@@ -86,6 +86,10 @@ const FEATURE_DETAILS: Record<FeatureKey, { label: string; description: string; 
     label: "Reports",
     description: "Administrative analytics, exports, and report RPCs.",
   },
+  job_chat: {
+    label: "Job chat",
+    description: "In-app comments and discussion threads on job detail pages.",
+  },
 };
 
 export default function AdminSettings() {
