@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useCurrency } from "@/hooks/useCurrency";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -72,6 +73,7 @@ export default function AdminUserDetail() {
   const { userId } = useParams<{ userId: string }>();
   const navigate = useNavigate();
   const { role: callerRole, user: callerUser } = useAuth();
+  const { format: fmt } = useCurrency();
   const [isLoading, setIsLoading] = useState(true);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [role, setRole] = useState<string>("");
@@ -307,7 +309,7 @@ export default function AdminUserDetail() {
                 />
                 <StatCard
                   title="Total Billed"
-                  value={`£${totalBilled.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                  value={fmt(totalBilled)}
                   description={unpaidCount > 0 ? `${unpaidCount} unpaid invoice${unpaidCount > 1 ? "s" : ""}` : "All settled"}
                   icon={DollarSign}
                   iconClassName="bg-gradient-to-br from-violet-500 to-violet-700"
@@ -400,7 +402,7 @@ export default function AdminUserDetail() {
                           {inv.status}
                         </Badge>
                       </TableCell>
-                      <TableCell>£{inv.total.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                      <TableCell>{fmt(inv.total)}</TableCell>
                       <TableCell>{inv.due_date ? new Date(inv.due_date).toLocaleDateString() : "—"}</TableCell>
                     </TableRow>
                   ))}
