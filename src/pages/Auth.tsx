@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth, getRoleDashboardPath } from "@/hooks/useAuth";
+import type { AppRole } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,7 +16,17 @@ import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp
 import { useCountdown } from "@/hooks/useCountdown";
 
 export default function Auth() {
-  const { signIn, signUp, user, role, loading, needsMfaVerification, clearMfaFlag } = useAuth();
+  const {
+    signIn,
+    signUp,
+    user,
+    role,
+    loading,
+    needsMfaVerification,
+    pendingMfaFactorId,
+    pendingMfaRole,
+    clearMfaFlag,
+  } = useAuth();
   const navigate = useNavigate();
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
@@ -33,11 +44,11 @@ export default function Auth() {
   const [confirmationEmail, setConfirmationEmail] = useState("");
 
   // MFA state
-  const [mfaStep, setMfaStep] = useState(false);
+  const [localMfaStep, setLocalMfaStep] = useState(false);
   const [mfaFactorId, setMfaFactorId] = useState<string | null>(null);
   const [mfaCode, setMfaCode] = useState("");
   const [mfaSubmitting, setMfaSubmitting] = useState(false);
-  const [pendingRole, setPendingRole] = useState<string | null>(null);
+  const [pendingRole, setPendingRole] = useState<AppRole | null>(null);
   const [rememberDevice, setRememberDevice] = useState(false);
   const [useBackupCode, setUseBackupCode] = useState(false);
   const [backupCode, setBackupCode] = useState("");
@@ -46,6 +57,9 @@ export default function Auth() {
   const [backupLockoutSec, setBackupLockoutSec] = useState<number | null>(null);
   const lockout = useCountdown(backupLockoutSec);
   const isLocked = lockout.remaining > 0;
+  const mfaStep = localMfaStep || needsMfaVerification;
+  const activeMfaFactorId = mfaFactorId ?? pendingMfaFactorId;
+  const activePendingRole = pendingRole ?? pendingMfaRole ?? role;
   // XXXX-XXXX format; A–Z and 2–9 only (matches the generator alphabet).
   const BACKUP_REGEX = /^[A-HJ-NP-Z2-9]{4}-[A-HJ-NP-Z2-9]{4}$/;
   const backupFormatValid = BACKUP_REGEX.test(backupCode);
@@ -57,6 +71,35 @@ export default function Auth() {
   const formatBackupInput = (raw: string) => {
     const cleaned = raw.toUpperCase().replace(/[^A-HJ-NP-Z2-9]/g, "").slice(0, 8);
     return cleaned.length > 4 ? `${cleaned.slice(0, 4)}-${cleaned.slice(4)}` : cleaned;
+  };
+
+  const getErrorMessage = (err: unknown, fallback: string) =>
+    err instanceof Error ? err.message : fallback;
+
+  type BackupVerifyPayload = {
+    success?: boolean;
+    remaining_attempts?: number;
+    retry_after_sec?: number;
+    error?: string;
+  };
+
+  const parseBackupVerifyPayload = (payload: unknown): BackupVerifyPayload => {
+    if (typeof payload === "string") {
+      try {
+        return parseBackupVerifyPayload(JSON.parse(payload));
+      } catch {
+        return { error: payload };
+      }
+    }
+    if (!payload || typeof payload !== "object") return {};
+
+    const record = payload as Record<string, unknown>;
+    return {
+      success: typeof record.success === "boolean" ? record.success : undefined,
+      remaining_attempts: typeof record.remaining_attempts === "number" ? record.remaining_attempts : undefined,
+      retry_after_sec: typeof record.retry_after_sec === "number" ? record.retry_after_sec : undefined,
+      error: typeof record.error === "string" ? record.error : undefined,
+    };
   };
 
   useEffect(() => {
@@ -89,8 +132,8 @@ export default function Auth() {
     setSubmitting(true);
     try {
       const result = await signIn(loginEmail, loginPassword);
-      if (result.needsMfa && result.factorId) {
-        setMfaStep(true);
+      if (result.needsMfa) {
+        setLocalMfaStep(true);
         setMfaFactorId(result.factorId);
         setPendingRole(result.role);
         toast.info("Please enter your 2FA code");
@@ -100,11 +143,32 @@ export default function Auth() {
           navigate(getRoleDashboardPath(result.role), { replace: true });
         }
       }
-    } catch (err: any) {
-      toast.error(err.message || "Failed to sign in");
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, "Failed to sign in"));
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const checkTrustedDevice = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) return false;
+    const res = await fetch(
+      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/mfa-check-device`,
+      {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Authorization": `Bearer ${session.access_token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({}),
+      }
+    );
+    if (!res.ok) return false;
+    const data: unknown = await res.json().catch(() => null);
+    const trusted = data && typeof data === "object" && (data as Record<string, unknown>).trusted;
+    return trusted === true;
   };
 
   const trustThisDeviceIfRequested = async () => {
@@ -112,9 +176,9 @@ export default function Auth() {
     try {
       const label = navigator.userAgent.slice(0, 180);
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) return;
+      if (!session?.access_token) throw new Error("Missing session");
       // Token is set as an httpOnly cookie by the edge function — no localStorage needed
-      await fetch(
+      const res = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/mfa-trust-device`,
         {
           method: "POST",
@@ -126,6 +190,15 @@ export default function Auth() {
           body: JSON.stringify({ device_label: label }),
         }
       );
+      const data: unknown = await res.json().catch(() => null);
+      const record = data && typeof data === "object" ? data as Record<string, unknown> : {};
+      if (!res.ok || record.ok !== true) {
+        throw new Error(typeof record.error === "string" ? record.error : "Trust-device request failed");
+      }
+      const trusted = await checkTrustedDevice();
+      if (!trusted) {
+        throw new Error("Trust-device cookie was not accepted");
+      }
     } catch {
       toast.error("Could not remember this device, but you are signed in.");
     }
@@ -134,32 +207,34 @@ export default function Auth() {
   const finishMfaSuccess = async () => {
     await trustThisDeviceIfRequested();
     clearMfaFlag();
-    setMfaStep(false);
+    setLocalMfaStep(false);
+    setMfaFactorId(null);
+    setPendingRole(null);
     setMfaCode("");
     setBackupCode("");
     setUseBackupCode(false);
     toast.success("Signed in successfully");
-    navigate(getRoleDashboardPath(pendingRole as any), { replace: true });
+    navigate(getRoleDashboardPath(activePendingRole), { replace: true });
   };
 
   const handleMfaVerify = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!mfaFactorId || mfaCode.length !== 6) return;
+    if (!activeMfaFactorId || mfaCode.length !== 6) return;
     setMfaSubmitting(true);
     try {
-      const { data: challengeData, error: challengeError } = await supabase.auth.mfa.challenge({ factorId: mfaFactorId });
+      const { data: challengeData, error: challengeError } = await supabase.auth.mfa.challenge({ factorId: activeMfaFactorId });
       if (challengeError) throw challengeError;
 
       const { error: verifyError } = await supabase.auth.mfa.verify({
-        factorId: mfaFactorId,
+        factorId: activeMfaFactorId,
         challengeId: challengeData.id,
         code: mfaCode,
       });
       if (verifyError) throw verifyError;
 
       await finishMfaSuccess();
-    } catch (err: any) {
-      toast.error(err.message || "Invalid verification code");
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, "Invalid verification code"));
       setMfaCode("");
     } finally {
       setMfaSubmitting(false);
@@ -176,11 +251,11 @@ export default function Auth() {
         body: { code: backupCode.trim() },
       });
       // supabase-js surfaces non-2xx as FunctionsHttpError; pull data from context if present.
-      const payload = (data ?? (error as any)?.context?.body) || {};
-      let parsed: any = payload;
-      if (typeof payload === "string") {
-        try { parsed = JSON.parse(payload); } catch { parsed = { error: payload }; }
-      }
+      const errorBody =
+        error && typeof error === "object" && "context" in error
+          ? (error as { context?: { body?: unknown } }).context?.body
+          : undefined;
+      const parsed = parseBackupVerifyPayload(data ?? errorBody);
 
       if (parsed?.success) {
         await finishMfaSuccess();
@@ -202,8 +277,8 @@ export default function Auth() {
         setBackupError((parsed?.error || error?.message || "Invalid backup code") + remainingMsg);
       }
       setBackupCode("");
-    } catch (err: any) {
-      setBackupError(err.message || "Invalid backup code");
+    } catch (err: unknown) {
+      setBackupError(getErrorMessage(err, "Invalid backup code"));
       setBackupCode("");
     } finally {
       setMfaSubmitting(false);
@@ -240,8 +315,8 @@ export default function Auth() {
       await signUp(signupEmail, signupPassword, fullName);
       setConfirmationEmail(signupEmail);
       setEmailConfirmationSent(true);
-    } catch (err: any) {
-      toast.error(err.message || "Failed to create account");
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, "Failed to create account"));
     } finally {
       setSubmitting(false);
     }
@@ -400,7 +475,7 @@ export default function Auth() {
                     <Checkbox checked={rememberDevice} onCheckedChange={(v) => setRememberDevice(!!v)} />
                     Remember this device for 30 days
                   </label>
-                  <Button type="submit" className="w-full" disabled={mfaSubmitting || mfaCode.length !== 6}>
+                  <Button type="submit" className="w-full" disabled={mfaSubmitting || !activeMfaFactorId || mfaCode.length !== 6}>
                     {mfaSubmitting ? "Verifying..." : "Verify"}
                   </Button>
                   <Button
@@ -417,7 +492,9 @@ export default function Auth() {
                     variant="ghost"
                     className="w-full"
                     onClick={() => {
-                      setMfaStep(false);
+                      setLocalMfaStep(false);
+                      setMfaFactorId(null);
+                      setPendingRole(null);
                       setMfaCode("");
                       clearMfaFlag();
                       supabase.auth.signOut();
@@ -547,35 +624,37 @@ export default function Auth() {
 
       {/* Right side - Hero image */}
       <div className="hidden lg:flex lg:flex-1 relative overflow-hidden">
-        {loginImageUrl ? (
-          <img
-            src={loginImageUrl}
-            alt="Workshop"
-            className="absolute inset-0 w-full h-full object-cover"
-          />
-        ) : (
-          <div className="absolute inset-0 bg-gradient-to-br from-primary/80 via-primary/60 to-primary/90 flex items-center justify-center">
-            <div className="text-center space-y-4 px-12">
-              {logoUrl ? (
-                <img src={logoUrl} alt={workshopName} className="h-16 w-16 rounded-lg object-contain mx-auto" />
-              ) : (
-                <Wrench className="h-16 w-16 text-primary-foreground/80 mx-auto" />
-              )}
-              <h2 className="text-3xl font-bold text-primary-foreground">{workshopName}</h2>
-              <p className="text-primary-foreground/70 text-lg max-w-sm mx-auto">
-                Streamline your manufacturing & fabrication workflow with powerful job tracking, inventory management, and client collaboration.
-              </p>
-            </div>
+        <img
+          src={loginImageUrl ?? "/auth-hero.jpg"}
+          alt="Workshop"
+          className="absolute inset-0 w-full h-full object-cover"
+          onError={(e) => {
+            // If the default image isn't found, fall back to the gradient placeholder
+            const target = e.currentTarget;
+            target.style.display = "none";
+            target.nextElementSibling?.classList.remove("hidden");
+          }}
+        />
+        {/* Gradient fallback — hidden when image loads, shown on image error */}
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/80 via-primary/60 to-primary/90 items-center justify-center hidden">
+          <div className="text-center space-y-4 px-12">
+            {logoUrl ? (
+              <img src={logoUrl} alt={workshopName} className="h-16 w-16 rounded-lg object-contain mx-auto" />
+            ) : (
+              <Wrench className="h-16 w-16 text-primary-foreground/80 mx-auto" />
+            )}
+            <h2 className="text-3xl font-bold text-primary-foreground">{workshopName}</h2>
+            <p className="text-primary-foreground/70 text-lg max-w-sm mx-auto">
+              Streamline your manufacturing & fabrication workflow with powerful job tracking, inventory management, and client collaboration.
+            </p>
           </div>
-        )}
-        {loginImageUrl && (
-          <div className="absolute inset-0 bg-black/30 flex items-end p-8">
-            <div className="text-white">
-              <h2 className="text-2xl font-bold">{workshopName}</h2>
-              <p className="text-white/70 text-sm mt-1">Manufacturing & Fabrication Management</p>
-            </div>
+        </div>
+        <div className="absolute inset-0 bg-black/30 flex items-end p-8">
+          <div className="text-white">
+            <h2 className="text-2xl font-bold">{workshopName}</h2>
+            <p className="text-white/70 text-sm mt-1">Manufacturing & Fabrication Management</p>
           </div>
-        )}
+        </div>
       </div>
     </div>
   );
