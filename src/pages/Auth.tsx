@@ -10,7 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Wrench, ShieldCheck, KeyRound } from "lucide-react";
+import { ShieldCheck, KeyRound } from "lucide-react";
 import LoadingScreen from "@/components/LoadingScreen";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { useCountdown } from "@/hooks/useCountdown";
@@ -328,13 +328,7 @@ export default function Auth() {
       <div className="flex min-h-screen items-center justify-center bg-background p-6">
         <div className="w-full max-w-md space-y-6">
           <div className="flex flex-col items-center gap-2">
-            {logoUrl ? (
-              <img src={logoUrl} alt={workshopName} className="h-16 w-16 rounded-lg object-contain" />
-            ) : (
-              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                <Wrench className="h-6 w-6" />
-              </div>
-            )}
+            <img src={logoUrl ?? "/Blumint_Logo.png"} alt={workshopName} className="h-16 w-16 rounded-lg object-contain" />
             <h1 className="text-2xl font-bold tracking-tight">Check your email</h1>
             <p className="text-sm text-muted-foreground text-center">
               We've sent a confirmation link to
@@ -517,13 +511,7 @@ export default function Auth() {
       <div className="flex flex-1 items-center justify-center bg-background p-6 sm:p-8">
         <div className="w-full max-w-md space-y-6">
           <div className="flex flex-col items-center gap-2">
-            {logoUrl ? (
-              <img src={logoUrl} alt={workshopName} className="h-40 w-40 rounded-2xl object-contain drop-shadow-md" />
-            ) : (
-              <div className="flex h-40 w-40 items-center justify-center rounded-2xl bg-primary text-primary-foreground">
-                <Wrench className="h-20 w-20" />
-              </div>
-            )}
+            <img src={logoUrl ?? "/Blumint_Logo.png"} alt={workshopName} className="h-40 w-40 rounded-2xl object-contain drop-shadow-md" />
             <h1 className="text-2xl font-bold tracking-tight">{workshopName}</h1>
             <p className="text-sm text-muted-foreground">Manufacturing & Fabrication Management</p>
           </div>
@@ -638,11 +626,7 @@ export default function Auth() {
         {/* Gradient fallback — hidden when image loads, shown on image error */}
         <div className="absolute inset-0 bg-gradient-to-br from-primary/80 via-primary/60 to-primary/90 items-center justify-center hidden">
           <div className="text-center space-y-4 px-12">
-            {logoUrl ? (
-              <img src={logoUrl} alt={workshopName} className="h-16 w-16 rounded-lg object-contain mx-auto" />
-            ) : (
-              <Wrench className="h-16 w-16 text-primary-foreground/80 mx-auto" />
-            )}
+            <img src={logoUrl ?? "/Blumint_Logo.png"} alt={workshopName} className="h-16 w-16 rounded-lg object-contain mx-auto" />
             <h2 className="text-3xl font-bold text-primary-foreground">{workshopName}</h2>
             <p className="text-primary-foreground/70 text-lg max-w-sm mx-auto">
               Streamline your manufacturing & fabrication workflow with powerful job tracking, inventory management, and client collaboration.
