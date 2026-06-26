@@ -23,6 +23,7 @@ import { toast } from "sonner";
 import { sendEmail, appointmentConfirmedEmailHtml } from "@/lib/email";
 import { Pagination, PaginationContent, PaginationItem, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import { usePagination, PAGE_SIZE } from "@/hooks/usePagination";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const statusColors: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
   pending: "outline", confirmed: "secondary", in_progress: "default", completed: "default", cancelled: "destructive",
@@ -45,6 +46,7 @@ const emptyJobForm = {
 export default function AdminAppointments() {
   const navigate = useNavigate();
   const [appointments, setAppointments] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
   const [clients, setClients] = useState<UserOption[]>([]);
   const [staffUsers, setStaffUsers] = useState<UserOption[]>([]);
@@ -65,6 +67,7 @@ export default function AdminAppointments() {
   const { page, setPage } = usePagination();
 
   const fetchAppointments = async (currentPage = page) => {
+    setIsLoading(true);
     const { data: appts, count } = await supabase
       .from("appointments")
       .select("*", { count: "exact" })
@@ -81,6 +84,7 @@ export default function AdminAppointments() {
       if (profiles) profiles.forEach(p => { clientMap[p.id] = p.full_name || "Unknown"; });
     }
     setAppointments(appts.map(a => ({ ...a, client_name: clientMap[a.client_id] || "—" })));
+    setIsLoading(false);
   };
 
   const fetchUsers = async () => {
@@ -262,7 +266,17 @@ export default function AdminAppointments() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {appointments.length === 0 ? (
+                {isLoading ? Array.from({ length: 6 }).map((_, i) => (
+                  <TableRow key={i}>
+                    <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-28" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-20 rounded-full" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+                  </TableRow>
+                )) : appointments.length === 0 ? (
                   <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No appointments</TableCell></TableRow>
                 ) : appointments.map((a) => (
                   <TableRow key={a.id}>

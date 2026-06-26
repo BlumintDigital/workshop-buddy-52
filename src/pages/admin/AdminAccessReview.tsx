@@ -9,6 +9,7 @@ import { ShieldCheck, AlertTriangle, Download, UserX, UserCheck, Trash2 } from "
 import { toast } from "sonner";
 import { downloadCSV } from "@/lib/csv";
 import { formatDistanceToNow } from "date-fns";
+import { Skeleton } from "@/components/ui/skeleton";
 
 type ReviewUser = {
   user_id: string;
@@ -192,13 +193,15 @@ export default function AdminAccessReview() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {loading ? (
-                  <TableRow>
-                    <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
-                      Loading…
-                    </TableCell>
+                {loading ? Array.from({ length: 6 }).map((_, i) => (
+                  <TableRow key={i}>
+                    <TableCell><Skeleton className="h-4 w-36" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-40" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-20 rounded-full" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-20 rounded-full" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-28" /></TableCell>
                   </TableRow>
-                ) : users.length === 0 ? (
+                )) : users.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
                       No users found

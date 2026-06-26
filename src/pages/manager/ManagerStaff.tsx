@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
 import { Eye } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 type StaffRow = {
   user_id: string;
@@ -19,9 +20,11 @@ type StaffRow = {
 
 export default function ManagerStaff() {
   const [staff, setStaff] = useState<StaffRow[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
 
   const fetchStaff = async () => {
+    setIsLoading(true);
     const { data: roles } = await supabase.from("user_roles").select("user_id, role").in("role", ["staff", "manager"]);
     const { data: profiles } = await supabase.from("profiles").select("id, full_name, created_at, is_super_admin");
     if (roles && profiles) {
@@ -36,6 +39,7 @@ export default function ManagerStaff() {
         });
       setStaff(merged);
     }
+    setIsLoading(false);
   };
 
   useEffect(() => { fetchStaff(); }, []);
@@ -66,7 +70,14 @@ export default function ManagerStaff() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {staff.length === 0 ? (
+                {isLoading ? Array.from({ length: 6 }).map((_, i) => (
+                  <TableRow key={i}>
+                    <TableCell><Skeleton className="h-4 w-36" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-28" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+                  </TableRow>
+                )) : staff.length === 0 ? (
                   <TableRow><TableCell colSpan={4} className="text-center py-8 text-muted-foreground">No staff members</TableCell></TableRow>
                 ) : staff.map((s) => (
                   <TableRow key={s.user_id}>

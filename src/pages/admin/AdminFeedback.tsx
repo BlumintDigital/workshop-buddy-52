@@ -9,6 +9,7 @@ import { Pagination, PaginationContent, PaginationItem, PaginationNext, Paginati
 import { usePagination, PAGE_SIZE } from "@/hooks/usePagination";
 import { MessageSquare } from "lucide-react";
 import { toast } from "sonner";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const severityColors: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
   low: "outline",
@@ -24,10 +25,12 @@ const statusColors: Record<string, "default" | "secondary" | "outline" | "destru
 
 export default function AdminFeedback() {
   const [reports, setReports] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
   const { page, setPage } = usePagination();
 
   const fetchReports = async (currentPage = page) => {
+    setIsLoading(true);
     const { data, count } = await (supabase
       .from("bug_reports" as any)
       .select("*", { count: "exact" })
@@ -35,7 +38,7 @@ export default function AdminFeedback() {
       .range(currentPage * PAGE_SIZE, currentPage * PAGE_SIZE + PAGE_SIZE - 1)) as any;
 
     setTotalCount(count ?? 0);
-    if (!data) { setReports([]); return; }
+    if (!data) { setReports([]); setIsLoading(false); return; }
 
     // Fetch submitter names
     const userIds = [...new Set(data.map((r: any) => r.user_id).filter(Boolean))] as string[];
@@ -46,6 +49,7 @@ export default function AdminFeedback() {
     }
 
     setReports(data.map((r: any) => ({ ...r, submitter_name: nameMap[r.user_id] || "Unknown" })));
+    setIsLoading(false);
   };
 
   useEffect(() => { fetchReports(page); }, [page]);
@@ -85,7 +89,16 @@ export default function AdminFeedback() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {reports.length === 0 ? (
+                {isLoading ? Array.from({ length: 6 }).map((_, i) => (
+                  <TableRow key={i}>
+                    <TableCell><Skeleton className="h-4 w-40" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-28" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-20 rounded-full" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-20 rounded-full" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                  </TableRow>
+                )) : reports.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                       No reports submitted yet

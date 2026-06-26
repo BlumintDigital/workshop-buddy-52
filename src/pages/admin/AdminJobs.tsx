@@ -18,6 +18,7 @@ import { DatePickerInput } from "@/components/ui/date-picker-input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { usePagination, PAGE_SIZE } from "@/hooks/usePagination";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const statusColors: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
   quote: "secondary", pending: "outline", in_progress: "secondary", review: "default", completed: "default", cancelled: "destructive",
@@ -27,6 +28,7 @@ interface UserOption { id: string; full_name: string; }
 
 export default function AdminJobs() {
   const [jobs, setJobs] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
   const [open, setOpen] = useState(false);
   const [filter, setFilter] = useState("all");
@@ -38,6 +40,7 @@ export default function AdminJobs() {
   const { page, setPage, from, reset } = usePagination();
 
   const fetchJobs = async (currentPage: number, currentFilter: string, currentSearch: string) => {
+    setIsLoading(true);
     let query = supabase.from("jobs").select("*", { count: "exact" }).order("created_at", { ascending: false });
     if (currentFilter !== "all") query = query.eq("status", currentFilter);
     if (currentSearch.trim()) query = query.ilike("title", `%${currentSearch.trim()}%`);
@@ -60,6 +63,7 @@ export default function AdminJobs() {
       staff_name: j.assigned_staff_id ? profileMap[j.assigned_staff_id] || "—" : "—",
       client_name: j.client_id ? profileMap[j.client_id] || "—" : "—",
     })));
+    setIsLoading(false);
   };
 
   const fetchUsers = async () => {
@@ -233,7 +237,16 @@ export default function AdminJobs() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {jobs.length === 0 ? (
+                {isLoading ? Array.from({ length: 6 }).map((_, i) => (
+                  <TableRow key={i}>
+                    <TableCell><Skeleton className="h-4 w-40" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-20 rounded-full" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-28" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-28" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                  </TableRow>
+                )) : jobs.length === 0 ? (
                   <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No jobs found</TableCell></TableRow>
                 ) : jobs.map((job) => (
                   <TableRow key={job.id} className="cursor-pointer hover:bg-muted/50">

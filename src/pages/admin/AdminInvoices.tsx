@@ -14,6 +14,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Pagination, PaginationContent, PaginationItem, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import { usePagination, PAGE_SIZE } from "@/hooks/usePagination";
 import { useCurrency } from "@/hooks/useCurrency";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const statusColors: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
   draft: "outline", sent: "secondary", paid: "default", overdue: "destructive", cancelled: "destructive",
@@ -21,6 +22,7 @@ const statusColors: Record<string, "default" | "secondary" | "outline" | "destru
 
 export default function AdminInvoices() {
   const [invoices, setInvoices] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
   const [clientNames, setClientNames] = useState<Record<string, string>>({});
   const { page, setPage } = usePagination();
@@ -28,6 +30,7 @@ export default function AdminInvoices() {
   const { format: fmt } = useCurrency();
 
   const fetchInvoices = async (currentPage = page) => {
+    setIsLoading(true);
     const { data, count } = await supabase
       .from("invoices")
       .select("*", { count: "exact" })
@@ -35,7 +38,7 @@ export default function AdminInvoices() {
       .range(currentPage * PAGE_SIZE, currentPage * PAGE_SIZE + PAGE_SIZE - 1);
 
     setTotalCount(count ?? 0);
-    if (!data) { setInvoices([]); return; }
+    if (!data) { setInvoices([]); setIsLoading(false); return; }
 
     const clientIds = [...new Set(data.map(i => i.client_id).filter(Boolean))];
     if (clientIds.length > 0) {
@@ -47,6 +50,7 @@ export default function AdminInvoices() {
       }
     }
     setInvoices(data);
+    setIsLoading(false);
   };
 
   useEffect(() => { fetchInvoices(page); }, [page]);
@@ -95,7 +99,16 @@ export default function AdminInvoices() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {invoices.length === 0 ? (
+                {isLoading ? Array.from({ length: 6 }).map((_, i) => (
+                  <TableRow key={i}>
+                    <TableCell><Skeleton className="h-4 w-28" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-20 rounded-full" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                  </TableRow>
+                )) : invoices.length === 0 ? (
                   <TableRow><TableCell colSpan={role === "admin" ? 7 : 6} className="text-center py-8 text-muted-foreground">No invoices</TableCell></TableRow>
                 ) : invoices.map((inv) => (
                   <TableRow key={inv.id}>

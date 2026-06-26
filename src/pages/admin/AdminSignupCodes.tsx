@@ -12,6 +12,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Copy, Plus, Trash2, RefreshCw, KeyRound } from "lucide-react";
 import { toast } from "sonner";
 import DashboardLayout from "@/components/layout/DashboardLayout";
+import { Skeleton } from "@/components/ui/skeleton";
 
 type SignupCode = {
   id: string;
@@ -228,27 +229,35 @@ export default function AdminSignupCodes() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {loading ? (
-            <p className="text-sm text-muted-foreground">Loading…</p>
-          ) : codes.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              No invite codes yet. Create one to allow new sign-ups.
-            </p>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Code</TableHead>
-                    <TableHead>Label</TableHead>
-                    <TableHead>Uses</TableHead>
-                    <TableHead>Expires</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Code</TableHead>
+                  <TableHead>Label</TableHead>
+                  <TableHead>Uses</TableHead>
+                  <TableHead>Expires</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {loading ? Array.from({ length: 6 }).map((_, i) => (
+                  <TableRow key={i}>
+                    <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-36" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-20 rounded-full" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-16 ml-auto" /></TableCell>
                   </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {codes.map((row) => (
+                )) : codes.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                      No invite codes yet. Create one to allow new sign-ups.
+                    </TableCell>
+                  </TableRow>
+                ) : codes.map((row) => (
                     <TableRow key={row.id}>
                       <TableCell className="font-mono">{row.code}</TableCell>
                       <TableCell>{row.label ?? <span className="text-muted-foreground">—</span>}</TableCell>
@@ -298,7 +307,6 @@ export default function AdminSignupCodes() {
                 </TableBody>
               </Table>
             </div>
-          )}
         </CardContent>
       </Card>
       </div>
