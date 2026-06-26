@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ExternalLink } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useCurrency } from "@/hooks/useCurrency";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const statusColors: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
   draft: "outline", sent: "secondary", paid: "default", overdue: "destructive", cancelled: "destructive",
@@ -18,11 +19,30 @@ export default function ClientInvoices() {
   const { user } = useAuth();
   const [invoices, setInvoices] = useState<any[]>([]);
   const { format: fmt } = useCurrency();
+  const [isLoading, setIsLoading] = useState(true);
+
+  const fetchInvoices = async () => {
+    setIsLoading(true);
+    if (!user) { setIsLoading(false); return; }
+    const { data } = await supabase.from("invoices").select("*").eq("client_id", user.id).in("status", ["sent", "paid", "overdue"]).order("created_at", { ascending: false });
+    setInvoices(data || []);
+    setIsLoading(false);
+  };
 
   useEffect(() => {
     if (!user) return;
-    supabase.from("invoices").select("*").eq("client_id", user.id).in("status", ["sent", "paid", "overdue"]).order("created_at", { ascending: false }).then(({ data }) => setInvoices(data || []));
+    fetchInvoices();
   }, [user]);
+
+  const skeletonRows = Array.from({ length: 6 }).map((_, i) => (
+    <TableRow key={i}>
+      <TableCell><Skeleton className="h-4 w-28" /></TableCell>
+      <TableCell><Skeleton className="h-4 w-20 rounded-full" /></TableCell>
+      <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+      <TableCell className="hidden sm:table-cell"><Skeleton className="h-4 w-24" /></TableCell>
+      <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+    </TableRow>
+  ));
 
   return (
     <DashboardLayout>
@@ -44,7 +64,7 @@ export default function ClientInvoices() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {invoices.length === 0 ? (
+                {isLoading ? skeletonRows : invoices.length === 0 ? (
                   <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">No invoices</TableCell></TableRow>
                 ) : invoices.map((inv) => (
                   <TableRow key={inv.id}>
