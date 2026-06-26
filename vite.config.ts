@@ -20,7 +20,7 @@ export default defineConfig(({ mode }) => ({
       strategies: "injectManifest",
       srcDir: "src",
       filename: "sw.ts",
-      registerType: "prompt",
+      registerType: "autoUpdate",
       injectRegister: null,
       manifest: {
         name: "Workshop Manager",
@@ -54,7 +54,6 @@ export default defineConfig(({ mode }) => ({
       },
       injectManifest: {
         globPatterns: [
-          "index.html",
           "offline.html",
           "assets/index-*.js",
           "assets/index-*.css",

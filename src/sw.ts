@@ -7,13 +7,15 @@ import { NetworkOnly } from "workbox-strategies";
 declare let self: ServiceWorkerGlobalScope;
 
 cleanupOutdatedCaches();
-precacheAndRoute(self.__WB_MANIFEST);
 
-// Page navigations are network-only so authenticated screens are never stored.
+// Registered BEFORE precacheAndRoute so it takes priority — navigation requests
+// always go to the network, preventing stale index.html from being served after deployments.
 registerRoute(
   ({ request }) => request.mode === "navigate",
   new NetworkOnly(),
 );
+
+precacheAndRoute(self.__WB_MANIFEST);
 
 setCatchHandler(async ({ request }) => {
   if (request.mode === "navigate") {

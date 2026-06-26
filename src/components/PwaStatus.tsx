@@ -1,16 +1,15 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { WifiOff } from "lucide-react";
 import { toast } from "sonner";
 import { useRegisterSW } from "virtual:pwa-register/react";
 
 export function PwaStatus() {
   const [online, setOnline] = useState(() => navigator.onLine);
-  const updateToastShown = useRef(false);
 
-  const {
-    needRefresh: [needRefresh, setNeedRefresh],
-    updateServiceWorker,
-  } = useRegisterSW({
+  const { updateServiceWorker } = useRegisterSW({
+    onNeedRefresh() {
+      updateServiceWorker(true);
+    },
     onRegisterError(error) {
       console.error("Service worker registration failed", error);
     },
@@ -31,27 +30,6 @@ export function PwaStatus() {
       window.removeEventListener("offline", handleOffline);
     };
   }, []);
-
-  useEffect(() => {
-    if (!needRefresh || updateToastShown.current) return;
-
-    updateToastShown.current = true;
-    toast("A new version is available", {
-      description: "Refresh to use the latest Workshop Manager.",
-      duration: Infinity,
-      action: {
-        label: "Refresh",
-        onClick: () => updateServiceWorker(true),
-      },
-      cancel: {
-        label: "Later",
-        onClick: () => {
-          setNeedRefresh(false);
-          updateToastShown.current = false;
-        },
-      },
-    });
-  }, [needRefresh, setNeedRefresh, updateServiceWorker]);
 
   if (online) return null;
 
