@@ -1,56 +1,50 @@
-## Goal
+## Workshop Buddy User Guide — Plan
 
-Today, when the super-admin sends a "notice" through this workshop's `admin-api` (`POST ?action=notices`), it's delivered as a web-push only. If the user isn't subscribed or misses the push, the message is gone. We'll persist every notice into a new `system_notices` table on the workshop DB and render an in-app banner that reads from it, mirroring the existing `BroadcastBanner` pattern.
+Produce a comprehensive (25-35 page) user guide covering Admin, Manager, Staff, and Client roles. Deliver as both a professional PDF (hosted on Lovable CDN) and an in-app help page accessible to every signed-in user.
 
-## 1. Database — new `system_notices` table
+### Deliverables
 
-Migration creating:
+1. **`docs/user-guide.md`** — Markdown source of truth, organized by section so it can also render in-app.
+2. **`/mnt/documents/user-guide.pdf`** — Professionally styled PDF generated with reportlab using the same navy/blue branding as the deploy guide.
+3. **CDN upload** — `public/docs/user-guide.pdf.asset.json` pointer via `lovable-assets`.
+4. **In-app page** — new route `/help` (`src/pages/Help.tsx`), wrapped in `DashboardLayout`, with:
+   - Sidebar table of contents (sticky)
+   - Rendered guide content (markdown → React via `react-markdown` if available, otherwise structured sections)
+   - "Open PDF" and "Download PDF" buttons linking to the CDN asset
+5. **Routing & nav** — register `/help` in `src/App.tsx` for all four roles; add a "Help & Guide" link in `AppSidebar.tsx` (footer area, visible to every role).
 
-- `id uuid pk`
-- `title text not null`
-- `message text`
-- `url text` (optional click-through)
-- `user_id uuid` nullable — when set, notice is targeted to one user; when null, it's global to the workshop
-- `created_at timestamptz default now()`
-- `expires_at timestamptz` nullable (defaults to NULL = never)
+### Guide structure (sections)
 
-Standard GRANTs + RLS:
-- `GRANT SELECT, INSERT, UPDATE, DELETE` to `service_role` (edge function writes).
-- `GRANT SELECT` to `authenticated`.
-- Policy: authenticated users can `SELECT` a row when `user_id IS NULL` OR `user_id = auth.uid()`.
-- No INSERT/UPDATE/DELETE policies for `authenticated` — only the edge function (service role) writes.
-- Add table to `supabase_realtime` publication so the banner updates live.
+1. **Welcome** — what Workshop Buddy is, who each role is for
+2. **Getting Started** — signing up with invite code, signing in, password reset, MFA setup (TOTP, backup codes, trusted devices)
+3. **Navigating the App** — layout tour: sidebar, header, breadcrumbs, notifications bell, broadcasts banner, profile menu, session timeout
+4. **Admin Guide** — dashboard, users, clients, signup codes, settings (branding, features, currency, email), activity logs, feedback, access review, factory reset, deploy guide
+5. **Manager Guide** — dashboard, jobs, appointments, inventory, invoices, staff management, calendar
+6. **Staff Guide** — dashboard, assigned jobs, kanban board, schedule, inventory lookup
+7. **Client Guide** — dashboard, my jobs, my appointments, my invoices, booking
+8. **Core Workflows** (cross-role)
+   - Jobs: create → assign → progress → complete → auto-invoice
+   - Appointments: drag-drop scheduling, client self-booking
+   - Invoices: create, send, Stripe link, PDF, mark paid, push notify client
+   - Inventory: stock levels, low-stock alerts
+9. **Notifications** — in-app bell, push notification opt-in, email notifications
+10. **Security & Account** — MFA, trusted devices, backup codes, password change, profile, report an issue
+11. **FAQ & Troubleshooting** — common issues (currency not updating, MFA loop, push not arriving, can't sign up)
+12. **Glossary** — roles, statuses, terms
 
-## 2. Edge function — `admin-api` notices POST
+### Technical notes
 
-In `supabase/functions/admin-api/index.ts`, inside `case "notices"` → `POST` branch, insert a `system_notices` row **before** the push loop:
+- Reuse the PDF generator pattern from the deploy-guide PDF: reportlab with custom markdown parser, navy/blue palette, page numbers, footer, cover page with Workshop Buddy logo/title.
+- Branding stays on platform tokens (no hardcoded colors in the React `Help` page — use existing semantic tokens like `bg-card`, `text-foreground`).
+- Markdown rendering in the in-app page: check if `react-markdown` is installed; if not, render structured JSX directly from the same content to avoid adding a dependency unnecessarily. (Will decide on inspection in build mode.)
+- QA: convert every PDF page to JPEG and visually inspect for clipping, overflow, broken tables, before declaring done.
 
-```ts
-await supabase.from("system_notices").insert({
-  title,
-  message: message ?? null,
-  url: notifUrl ?? null,
-  user_id: targetUserId ?? null,
-});
-```
+### Files created / edited
 
-Return value extended with `persisted: true` so the super-admin UI can confirm. Push delivery behavior is unchanged.
+- create `docs/user-guide.md`
+- create `src/pages/Help.tsx`
+- create `public/docs/user-guide.pdf.asset.json`
+- edit `src/App.tsx` (register `/help` route)
+- edit `src/components/layout/AppSidebar.tsx` (add Help link for all roles)
 
-## 3. Frontend — `SystemNoticesBanner` component
-
-New file `src/components/SystemNoticesBanner.tsx`, structurally identical to `BroadcastBanner`:
-
-- On mount, query `system_notices` where `expires_at IS NULL OR expires_at > now()`, ordered by `created_at desc`, limit 10. RLS automatically filters to global + own notices.
-- Subscribe to `postgres_changes` on `public.system_notices` (INSERT/UPDATE/DELETE) inside a `useEffect` with proper `removeChannel` cleanup.
-- Per-device dismissal: store dismissed ids in `localStorage` under key `dismissed-system-notices` (separate from broadcasts), filter them out with `useMemo`.
-- Render each active notice as a shadcn `<Alert>` with a `Bell` icon (info styling — these are operational notifications, not severity-tiered). Optional `url` becomes a link in the description. Dismiss `×` button in the top-right, same styling as BroadcastBanner (`opacity-70 hover:opacity-100`).
-
-## 4. Mount in layout
-
-Add `<SystemNoticesBanner />` in `src/components/layout/DashboardLayout.tsx` directly below the existing `<BroadcastBanner />` so both banner stacks appear at the top of every authenticated page.
-
-## Technical notes
-
-- No changes to the super-admin side — they keep calling the same `POST ?action=notices` endpoint; the workshop simply records what it receives.
-- Notices and broadcasts stay separate tables: broadcasts are authored on the workshop's own admin UI; notices are pushed in from outside. Different lifecycles, different dismissal storage keys.
-- `src/integrations/supabase/types.ts` regenerates after the migration, so the banner can drop the `as any` casts.
+No backend, schema, or business-logic changes.

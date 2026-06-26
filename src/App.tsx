@@ -75,6 +75,7 @@ const UserProfile = lazy(() => import("@/pages/profile/UserProfile"));
 const GoalsPage = lazy(() => import("@/pages/goals/GoalsPage"));
 const AppointmentDetail = lazy(() => import("@/pages/appointments/AppointmentDetail"));
 const ReportIssue = lazy(() => import("@/pages/support/ReportIssue"));
+const Help = lazy(() => import("@/pages/Help"));
 
 const queryClient = new QueryClient();
 
@@ -153,6 +154,7 @@ function AppRoutes() {
       <Route path="/goals" element={<ProtectedRoute allowedRoles={["admin", "manager", "staff"]}><FeatureRoute feature="goals"><GoalsPage /></FeatureRoute></ProtectedRoute>} />
       <Route path="/appointments/:id" element={<ProtectedRoute allowedRoles={["admin", "manager", "staff", "client"]}><ClientPortalRoute><FeatureRoute feature="appointments"><AppointmentDetail /></FeatureRoute></ClientPortalRoute></ProtectedRoute>} />
       <Route path="/report-issue" element={<ProtectedRoute allowedRoles={["admin", "manager", "staff", "client"]}><ReportIssue /></ProtectedRoute>} />
+      <Route path="/help" element={<ProtectedRoute allowedRoles={["admin", "manager", "staff", "client"]}><Help /></ProtectedRoute>} />
       <Route path="/admin/feedback" element={<ProtectedRoute allowedRoles={["admin"]}><AdminFeedback /></ProtectedRoute>} />
       <Route path="/admin/deploy-guide" element={<ProtectedRoute allowedRoles={["admin"]}><AdminDeployGuide /></ProtectedRoute>} />
       <Route path="/admin/signup-codes" element={<ProtectedRoute allowedRoles={["admin", "manager"]}><AdminSignupCodes /></ProtectedRoute>} />
