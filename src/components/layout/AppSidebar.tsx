@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  LayoutDashboard, Briefcase, Calendar, Package, FileText, Users, Settings, LogOut, Wrench, ChevronDown, BarChart3, Columns3, UserCheck, CalendarDays, User, Activity, Target, AlertCircle, MessageSquare, KeyRound, ShieldCheck, BookOpen,
+  LayoutDashboard, Briefcase, Calendar, Package, FileText, Users, Settings, LogOut, ChevronDown, BarChart3, Columns3, UserCheck, CalendarDays, User, Activity, Target, AlertCircle, MessageSquare, KeyRound, ShieldCheck, BookOpen,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -11,10 +11,11 @@ import {
   Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
   SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarSeparator, useSidebar,
 } from "@/components/ui/sidebar";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { resolveLogoUrl, useDefaultLogoOnError } from "@/lib/branding";
 
 type AppRole = "admin" | "manager" | "staff" | "client";
 
@@ -210,13 +211,7 @@ export function AppSidebar() {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" className="cursor-default hover:bg-transparent">
-              {logoUrl ? (
-                <img src={logoUrl} alt={workshopName} className="h-8 w-8 shrink-0 rounded-lg object-contain" />
-              ) : (
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/15 text-white">
-                  <Wrench className="h-4 w-4" />
-                </div>
-              )}
+              <img src={resolveLogoUrl(logoUrl)} alt={workshopName} className="h-8 w-8 shrink-0 rounded-lg object-contain" onError={useDefaultLogoOnError} />
               {!collapsed && (
                 <div className="flex flex-col gap-0.5 leading-none">
                   <span className="font-semibold text-sidebar-accent-foreground">{workshopName}</span>
@@ -273,6 +268,7 @@ export function AppSidebar() {
               <DropdownMenuTrigger asChild>
                 <SidebarMenuButton size="lg" className="min-h-[44px] hover:bg-sidebar-accent/60 transition-colors duration-150">
                   <Avatar className="h-8 w-8">
+                    {profile?.avatar_url && <AvatarImage src={profile.avatar_url} alt={profile.full_name || "Avatar"} />}
                     <AvatarFallback className="bg-white/15 text-white text-xs font-semibold">{initials}</AvatarFallback>
                   </Avatar>
                   {!collapsed && (

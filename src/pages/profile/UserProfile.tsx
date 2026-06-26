@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import DashboardLayout from "@/components/layout/DashboardLayout";
@@ -6,9 +6,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
-import { User, ShieldCheck, ShieldOff, Copy, Loader2, KeyRound, RefreshCw } from "lucide-react";
+import { User, ShieldCheck, ShieldOff, Copy, Loader2, KeyRound, RefreshCw, Upload } from "lucide-react";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import BackupCodesDialog from "@/components/mfa/BackupCodesDialog";
 import {
@@ -25,9 +25,12 @@ import { useCountdown } from "@/hooks/useCountdown";
 import PushNotificationsCard from "@/components/profile/PushNotificationsCard";
 
 export default function UserProfile() {
-  const { user, profile, role, refreshMfaStatus } = useAuth();
+  const { user, profile, role, refreshMfaStatus, refreshProfile } = useAuth();
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
   const [saving, setSaving] = useState(false);
 
   // MFA state
@@ -122,6 +125,7 @@ export default function UserProfile() {
   useEffect(() => {
     if (profile) {
       setFullName(profile.full_name || "");
+      setAvatarUrl(profile.avatar_url ?? null);
     }
     if (user) {
       supabase.from("profiles").select("phone").eq("id", user.id).maybeSingle().then(({ data }) => {
@@ -150,12 +154,33 @@ export default function UserProfile() {
 
   const initials = (fullName || "U").split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
 
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+    setUploadingAvatar(true);
+    const ext = file.name.split(".").pop();
+    const path = `${user.id}/avatar.${ext}`;
+    const { error: uploadErr } = await supabase.storage
+      .from("avatars")
+      .upload(path, file, { upsert: true });
+    if (uploadErr) { toast.error(uploadErr.message); setUploadingAvatar(false); return; }
+    const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(path);
+    const newUrl = urlData.publicUrl;
+    await supabase.from("profiles").update({ avatar_url: newUrl } as any).eq("id", user.id);
+    setAvatarUrl(newUrl);
+    await refreshProfile();
+    toast.success("Avatar updated");
+    setUploadingAvatar(false);
+    e.target.value = "";
+  };
+
   const handleSave = async () => {
     if (!user) return;
     setSaving(true);
     const { error } = await supabase.from("profiles").update({
       full_name: fullName || null,
       phone: phone || null,
+      avatar_url: avatarUrl,
     } as any).eq("id", user.id);
     setSaving(false);
     if (error) { toast.error(error.message); return; }
@@ -251,9 +276,28 @@ export default function UserProfile() {
         <Card>
           <CardHeader>
             <div className="flex items-center gap-4">
-              <Avatar className="h-16 w-16">
-                <AvatarFallback className="text-lg bg-primary text-primary-foreground">{initials}</AvatarFallback>
-              </Avatar>
+              <div
+                className="relative group cursor-pointer shrink-0"
+                onClick={() => avatarInputRef.current?.click()}
+                title="Click to change avatar"
+              >
+                <Avatar className="h-16 w-16">
+                  {avatarUrl && <AvatarImage src={avatarUrl} alt={fullName} />}
+                  <AvatarFallback className="text-lg bg-primary text-primary-foreground">{initials}</AvatarFallback>
+                </Avatar>
+                <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity">
+                  {uploadingAvatar
+                    ? <Loader2 className="h-5 w-5 text-white animate-spin" />
+                    : <Upload className="h-5 w-5 text-white" />}
+                </div>
+              </div>
+              <input
+                ref={avatarInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleAvatarUpload}
+              />
               <div>
                 <CardTitle>{fullName || "User"}</CardTitle>
                 <CardDescription className="capitalize">{role} · {user?.email}</CardDescription>

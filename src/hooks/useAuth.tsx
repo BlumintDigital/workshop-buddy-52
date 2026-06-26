@@ -24,6 +24,7 @@ interface AuthContextType {
   clearMfaFlag: () => void;
   extendSession: () => void;
   refreshMfaStatus: () => Promise<void>;
+  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -131,6 +132,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data } = await supabase.auth.mfa.listFactors();
     setMfaEnabled(!!(data?.totp?.find((f) => f.status === "verified")));
   }, []);
+
+  const refreshProfile = useCallback(async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from("profiles")
+      .select("full_name, avatar_url")
+      .eq("id", user.id)
+      .maybeSingle();
+    setProfile(data ?? null);
+  }, [user]);
 
   const fetchUserData = async (userId: string): Promise<AppRole | null> => {
     const [roleRes, profileRes] = await Promise.all([
@@ -302,11 +313,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const clearMfaFlag = () => clearPendingMfa();
 
   return (
-    <AuthContext.Provider value={{ session, user, role, profile, loading, needsMfaVerification, pendingMfaFactorId, pendingMfaRole, mfaEnabled, sessionTimeLeft, signIn, signUp, signOut, clearMfaFlag, extendSession, refreshMfaStatus }}>
+    <AuthContext.Provider value={{ session, user, role, profile, loading, needsMfaVerification, pendingMfaFactorId, pendingMfaRole, mfaEnabled, sessionTimeLeft, signIn, signUp, signOut, clearMfaFlag, extendSession, refreshMfaStatus, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   );
 }
+
 
 export function useAuth() {
   const ctx = useContext(AuthContext);
