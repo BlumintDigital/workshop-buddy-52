@@ -3,7 +3,7 @@ import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
-type AppRole = "admin" | "manager" | "staff" | "client";
+export type AppRole = "admin" | "manager" | "staff" | "client";
 
 export const SESSION_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
 
@@ -14,6 +14,8 @@ interface AuthContextType {
   profile: { full_name: string; avatar_url: string | null } | null;
   loading: boolean;
   needsMfaVerification: boolean;
+  pendingMfaFactorId: string | null;
+  pendingMfaRole: AppRole | null;
   mfaEnabled: boolean;
   sessionTimeLeft: number;
   signIn: (email: string, password: string) => Promise<{ role: AppRole | null; needsMfa: boolean; factorId?: string }>;
@@ -33,10 +35,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<{ full_name: string; avatar_url: string | null } | null>(null);
   const [loading, setLoading] = useState(true);
   const [needsMfaVerification, setNeedsMfaVerification] = useState(false);
+  const [pendingMfaFactorId, setPendingMfaFactorId] = useState<string | null>(null);
+  const [pendingMfaRole, setPendingMfaRole] = useState<AppRole | null>(null);
   const [mfaEnabled, setMfaEnabled] = useState(false);
   const [sessionTimeLeft, setSessionTimeLeft] = useState(SESSION_TIMEOUT_MS);
   const inactivityTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sessionDeadline = useRef<number>(Date.now() + SESSION_TIMEOUT_MS);
+  const needsMfaVerificationRef = useRef(false);
+
+  const clearPendingMfa = useCallback(() => {
+    needsMfaVerificationRef.current = false;
+    setNeedsMfaVerification(false);
+    setPendingMfaFactorId(null);
+    setPendingMfaRole(null);
+  }, []);
+
+  const markPendingMfa = useCallback((nextRole: AppRole | null, factorId?: string) => {
+    needsMfaVerificationRef.current = true;
+    setNeedsMfaVerification(true);
+    setPendingMfaRole(nextRole);
+    setPendingMfaFactorId(factorId ?? null);
+  }, []);
 
   const performSignOut = useCallback(async (reason?: string) => {
     if (inactivityTimer.current) {
@@ -47,12 +66,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Keep the trusted-device token: the whole point is to skip MFA next time on this device.
     setRole(null);
     setProfile(null);
-    setNeedsMfaVerification(false);
+    clearPendingMfa();
     setMfaEnabled(false);
     if (reason) {
       toast.info(reason);
     }
-  }, []);
+  }, [clearPendingMfa]);
 
   // Inactivity timer
   const resetInactivityTimer = useCallback(() => {
@@ -130,25 +149,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return nextRole;
   };
 
-  const checkMfaStatus = async () => {
+  const checkMfaStatus = async (nextRole: AppRole | null) => {
     const { data } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
     if (data && data.currentLevel === "aal1" && data.nextLevel === "aal2") {
-      // Honor "remember this device" — token lives in an httpOnly cookie, browser sends it automatically
+      // Device trust bypass only applies to staff/client roles. Admin and manager must
+      // complete TOTP every session so the JWT reaches aal2 — required by the server-side
+      // RLS restrictive policies on user_roles and profiles.
+      const isElevatedRole = nextRole === "admin" || nextRole === "manager";
       try {
         const trusted = await checkTrustedDevice();
-        if (trusted) {
-          setNeedsMfaVerification(false);
+        if (trusted && !isElevatedRole) {
+          clearPendingMfa();
           return false;
         }
       } catch { /* ignore */ }
-      setNeedsMfaVerification(true);
+      const { data: factorsData } = await supabase.auth.mfa.listFactors();
+      const totpFactor = factorsData?.totp?.find((f) => f.status === "verified");
+      markPendingMfa(nextRole, totpFactor?.id);
       return true;
     }
-    setNeedsMfaVerification(false);
+    clearPendingMfa();
     return false;
   };
 
   const currentUserIdRef = useRef<string | null>(null);
+  const currentAccessTokenRef = useRef<string | null>(null);
 
   useEffect(() => {
     const handleSession = (session: Session | null) => {
@@ -159,26 +184,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return;
         }
 
-        // Same user already loaded — skip entirely to avoid re-triggering useEffects (timer, etc.)
-        if (currentUserIdRef.current === session.user.id) {
+        const sameUser = currentUserIdRef.current === session.user.id;
+        const sameToken = currentAccessTokenRef.current === session.access_token;
+
+        // Same fully-reconciled session — skip to avoid re-triggering timers and data fetches.
+        if (sameUser && sameToken && !needsMfaVerificationRef.current) {
           return;
         }
 
         // New user login or initial load
         currentUserIdRef.current = session.user.id;
+        currentAccessTokenRef.current = session.access_token;
         setSession(session);
         setUser(session.user);
         setLoading(true);
-        Promise.all([fetchUserData(session.user.id), checkMfaStatus()]).finally(() =>
-          setLoading(false)
-        );
+        fetchUserData(session.user.id)
+          .then((nextRole) => checkMfaStatus(nextRole))
+          .finally(() => setLoading(false));
       } else {
         currentUserIdRef.current = null;
+        currentAccessTokenRef.current = null;
         setSession(null);
         setUser(null);
         setRole(null);
         setProfile(null);
-        setNeedsMfaVerification(false);
+        clearPendingMfa();
         setMfaEnabled(false);
         setLoading(false);
       }
@@ -191,6 +221,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     supabase.auth.getSession().then(({ data: { session } }) => handleSession(session));
 
     return () => subscription.unsubscribe();
+  // Auth subscriptions should be registered once; mutable refs keep session reconciliation current.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const checkTrustedDevice = async (): Promise<boolean> => {
@@ -223,28 +255,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     setSession(data.session ?? null);
     setUser(data.user ?? null);
+    currentUserIdRef.current = data.user?.id ?? null;
+    currentAccessTokenRef.current = data.session?.access_token ?? null;
 
-    if (!data.user) return { role: null, needsMfa: false };
+    if (!data.user) {
+      clearPendingMfa();
+      return { role: null, needsMfa: false };
+    }
 
     const nextRole = await fetchUserData(data.user.id);
 
     // Check if MFA is required
     const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
     if (aalData && aalData.currentLevel === "aal1" && aalData.nextLevel === "aal2") {
-      // Check trusted device — skip MFA prompt if recognized
+      // Device trust bypass only applies to staff/client roles (same gate as checkMfaStatus).
+      const isElevatedRole = nextRole === "admin" || nextRole === "manager";
       const trusted = await checkTrustedDevice();
-      if (trusted) {
-        setNeedsMfaVerification(false);
+      if (trusted && !isElevatedRole) {
+        clearPendingMfa();
         return { role: nextRole, needsMfa: false };
       }
 
-      setNeedsMfaVerification(true);
       const { data: factorsData } = await supabase.auth.mfa.listFactors();
       const totpFactor = factorsData?.totp?.find((f) => f.status === "verified");
+      markPendingMfa(nextRole, totpFactor?.id);
       return { role: nextRole, needsMfa: true, factorId: totpFactor?.id };
     }
 
-    setNeedsMfaVerification(false);
+    clearPendingMfa();
     return { role: nextRole, needsMfa: false };
   };
 
@@ -261,10 +299,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await performSignOut();
   };
 
-  const clearMfaFlag = () => setNeedsMfaVerification(false);
+  const clearMfaFlag = () => clearPendingMfa();
 
   return (
-    <AuthContext.Provider value={{ session, user, role, profile, loading, needsMfaVerification, mfaEnabled, sessionTimeLeft, signIn, signUp, signOut, clearMfaFlag, extendSession, refreshMfaStatus }}>
+    <AuthContext.Provider value={{ session, user, role, profile, loading, needsMfaVerification, pendingMfaFactorId, pendingMfaRole, mfaEnabled, sessionTimeLeft, signIn, signUp, signOut, clearMfaFlag, extendSession, refreshMfaStatus }}>
       {children}
     </AuthContext.Provider>
   );

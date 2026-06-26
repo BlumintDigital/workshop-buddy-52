@@ -33,12 +33,21 @@ CREATE POLICY "Users can update own profile" ON public.profiles FOR UPDATE
 -- TOTP enrolled before this migration is applied, or they will be locked out of
 -- write operations. Verify in Dashboard -> Authentication -> Users.
 
-CREATE POLICY "Admin and manager operations require MFA"
+-- FOR ALL would block SELECT, breaking role-fetch at aal1 before the TOTP prompt is shown.
+-- Restrict writes only; SELECT is left open so the login flow can read the role at aal1.
+CREATE POLICY "Admin and manager write operations on user_roles require MFA"
   ON public.user_roles
   AS RESTRICTIVE
-  FOR ALL
+  FOR INSERT, UPDATE, DELETE
   TO authenticated
   USING (
+    (
+      NOT has_role(auth.uid(), 'admin'::app_role)
+      AND NOT has_role(auth.uid(), 'manager'::app_role)
+    )
+    OR (auth.jwt() ->> 'aal') = 'aal2'
+  )
+  WITH CHECK (
     (
       NOT has_role(auth.uid(), 'admin'::app_role)
       AND NOT has_role(auth.uid(), 'manager'::app_role)
