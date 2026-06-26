@@ -23,8 +23,9 @@ serve(async (req) => {
     }
 
     const userId = claims.claims.sub as string;
-    const body = await req.json().catch(() => ({}));
-    const deviceToken = body.token as string | undefined;
+    const cookieHeader = req.headers.get("Cookie") ?? "";
+    const match = cookieHeader.match(/(?:^|;\s*)mfa_device_token=([^;]+)/);
+    const deviceToken = match?.[1];
     if (!deviceToken) return json({ trusted: false });
 
     const hash = await sha256Hex(deviceToken);

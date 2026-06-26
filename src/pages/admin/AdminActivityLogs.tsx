@@ -8,7 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { format } from "date-fns";
-import { Activity, Search, ChevronLeft, ChevronRight, Filter } from "lucide-react";
+import { Activity, Search, ChevronLeft, ChevronRight, Filter, AlertTriangle, X } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 type ActivityLog = {
   id: string;
@@ -40,6 +41,12 @@ const actionColors: Record<string, string> = {
   deleted: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
 };
 
+type AnomalyAlert = {
+  id: string;
+  message: string;
+  severity: "high" | "medium";
+};
+
 export default function AdminActivityLogs() {
   const [logs, setLogs] = useState<ActivityLog[]>([]);
   const [loading, setLoading] = useState(true);
@@ -48,6 +55,8 @@ export default function AdminActivityLogs() {
   const [search, setSearch] = useState("");
   const [filterTable, setFilterTable] = useState("all");
   const [filterAction, setFilterAction] = useState("all");
+  const [anomalies, setAnomalies] = useState<AnomalyAlert[]>([]);
+  const [dismissedAnomalies, setDismissedAnomalies] = useState<Set<string>>(new Set());
 
   // Cache profiles for user names
   const [profileMap, setProfileMap] = useState<Record<string, string>>({});
@@ -90,10 +99,74 @@ export default function AdminActivityLogs() {
     setLoading(false);
   };
 
+  const fetchAnomalies = async () => {
+    const alerts: AnomalyAlert[] = [];
+    const since24h = new Date(Date.now() - 86_400_000).toISOString();
+    const since7d = new Date(Date.now() - 7 * 86_400_000).toISOString();
+
+    // Role escalations in last 24h
+    const { data: roleChanges } = await (supabase.from("activity_logs") as any)
+      .select("id, user_id, created_at, summary")
+      .eq("action", "updated")
+      .eq("table_name", "user_roles")
+      .gte("created_at", since24h)
+      .order("created_at", { ascending: false })
+      .limit(20);
+    if (roleChanges?.length > 0) {
+      alerts.push({
+        id: "role-escalation",
+        severity: "high",
+        message: `${roleChanges.length} role change${roleChanges.length > 1 ? "s" : ""} detected in the last 24 hours — review for unauthorized privilege escalation.`,
+      });
+    }
+
+    // Bulk deletes: any user deleting > 5 records in 24h
+    const { data: deleteRows } = await (supabase.from("activity_logs") as any)
+      .select("user_id")
+      .eq("action", "deleted")
+      .gte("created_at", since24h);
+    if (deleteRows) {
+      const countByUser: Record<string, number> = {};
+      (deleteRows as any[]).forEach((r: any) => {
+        if (r.user_id) countByUser[r.user_id] = (countByUser[r.user_id] ?? 0) + 1;
+      });
+      const highDeleters = Object.entries(countByUser).filter(([, n]) => n > 5);
+      if (highDeleters.length > 0) {
+        alerts.push({
+          id: "bulk-delete",
+          severity: "high",
+          message: `${highDeleters.length} user${highDeleters.length > 1 ? "s have" : " has"} deleted more than 5 records in the last 24 hours — review for data loss.`,
+        });
+      }
+    }
+
+    // Feature flag changes in last 7 days
+    const { data: flagChanges } = await (supabase.from("activity_logs") as any)
+      .select("id, created_at, summary")
+      .eq("table_name", "feature_flags")
+      .gte("created_at", since7d)
+      .order("created_at", { ascending: false })
+      .limit(20);
+    if (flagChanges?.length > 0) {
+      alerts.push({
+        id: "feature-flag-change",
+        severity: "medium",
+        message: `${flagChanges.length} feature flag change${flagChanges.length > 1 ? "s" : ""} in the last 7 days.`,
+      });
+    }
+
+    setAnomalies(alerts);
+  };
+
   useEffect(() => {
     fetchLogs();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, filterTable, filterAction]);
+
+  useEffect(() => {
+    fetchAnomalies();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleSearch = () => {
     setPage(0);
@@ -112,6 +185,36 @@ export default function AdminActivityLogs() {
           </h2>
           <p className="text-muted-foreground">Monitor all changes across the platform</p>
         </div>
+
+        {/* Anomaly Detection */}
+        {anomalies.filter((a) => !dismissedAnomalies.has(a.id)).length > 0 && (
+          <div className="space-y-2">
+            {anomalies
+              .filter((a) => !dismissedAnomalies.has(a.id))
+              .map((alert) => (
+                <Alert
+                  key={alert.id}
+                  variant={alert.severity === "high" ? "destructive" : "default"}
+                  className="flex items-start gap-3"
+                >
+                  <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+                  <div className="flex-1">
+                    <AlertTitle className="text-sm font-semibold">
+                      {alert.severity === "high" ? "Security Alert" : "Notice"}
+                    </AlertTitle>
+                    <AlertDescription className="text-sm">{alert.message}</AlertDescription>
+                  </div>
+                  <button
+                    onClick={() => setDismissedAnomalies((prev) => new Set([...prev, alert.id]))}
+                    className="ml-auto shrink-0 text-muted-foreground hover:text-foreground"
+                    aria-label="Dismiss"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </Alert>
+              ))}
+          </div>
+        )}
 
         {/* Filters */}
         <Card>

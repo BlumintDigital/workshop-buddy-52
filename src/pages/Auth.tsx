@@ -111,12 +111,22 @@ export default function Auth() {
     if (!rememberDevice) return;
     try {
       const label = navigator.userAgent.slice(0, 180);
-      const { data, error } = await supabase.functions.invoke("mfa-trust-device", {
-        body: { device_label: label },
-      });
-      if (error) throw error;
-      if (data?.token) localStorage.setItem("mfa_device_token", data.token);
-    } catch (err: any) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) return;
+      // Token is set as an httpOnly cookie by the edge function — no localStorage needed
+      await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/mfa-trust-device`,
+        {
+          method: "POST",
+          credentials: "include",
+          headers: {
+            "Authorization": `Bearer ${session.access_token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ device_label: label }),
+        }
+      );
+    } catch {
       toast.error("Could not remember this device, but you are signed in.");
     }
   };
@@ -527,6 +537,11 @@ export default function Auth() {
               </Card>
             </TabsContent>
           </Tabs>
+          <p className="text-center text-xs text-muted-foreground mt-6">
+            <Link to="/privacy" className="hover:underline">Privacy Policy</Link>
+            {" · "}
+            <Link to="/terms" className="hover:underline">Terms of Service</Link>
+          </p>
         </div>
       </div>
 

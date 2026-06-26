@@ -1,20 +1,24 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowLeft, Briefcase, Calendar } from "lucide-react";
+import { ArrowLeft, Briefcase, Calendar, UserX, UserCheck } from "lucide-react";
+import { toast } from "sonner";
 
 export default function AdminUserDetail() {
   const { userId } = useParams<{ userId: string }>();
   const navigate = useNavigate();
+  const { role: callerRole, user: callerUser } = useAuth();
   const [profile, setProfile] = useState<any>(null);
   const [role, setRole] = useState<string>("");
   const [jobs, setJobs] = useState<any[]>([]);
   const [appointments, setAppointments] = useState<any[]>([]);
+  const [toggling, setToggling] = useState(false);
 
   useEffect(() => {
     if (!userId) return;
@@ -46,6 +50,22 @@ export default function AdminUserDetail() {
       .then(({ data }) => setAppointments(data || []));
   }, [userId]);
 
+  const handleToggleActive = async () => {
+    if (!userId || !profile) return;
+    setToggling(true);
+    const newState = !profile.is_active;
+    const { error } = await supabase.functions.invoke("admin-toggle-user", {
+      body: { user_id: userId, is_active: newState },
+    });
+    setToggling(false);
+    if (error) {
+      toast.error(`Failed to ${newState ? "activate" : "deactivate"} user: ${error.message}`);
+      return;
+    }
+    setProfile((p: any) => ({ ...p, is_active: newState }));
+    toast.success(`User ${newState ? "activated" : "deactivated"}`);
+  };
+
   const statusColor: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
     pending: "outline",
     in_progress: "secondary",
@@ -58,13 +78,28 @@ export default function AdminUserDetail() {
       <div className="space-y-6">
         <Button variant="ghost" onClick={() => navigate(-1)} className="gap-2"><ArrowLeft className="h-4 w-4" />Back</Button>
 
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight">{profile?.full_name || "User"}</h2>
-          <div className="flex items-center gap-2 mt-1">
-            <Badge variant="secondary" className="capitalize">{role}</Badge>
-            {profile?.phone && <span className="text-sm text-muted-foreground">{profile.phone}</span>}
-            {profile?.is_active === false && <Badge variant="destructive">Inactive</Badge>}
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-3xl font-bold tracking-tight">{profile?.full_name || "User"}</h2>
+            <div className="flex items-center gap-2 mt-1">
+              <Badge variant="secondary" className="capitalize">{role}</Badge>
+              {profile?.phone && <span className="text-sm text-muted-foreground">{profile.phone}</span>}
+              {profile?.is_active === false && <Badge variant="destructive">Inactive</Badge>}
+            </div>
           </div>
+          {callerRole === "admin" && profile && !profile.is_super_admin && callerUser?.id !== userId && (
+            <Button
+              variant={profile.is_active !== false ? "outline" : "default"}
+              size="sm"
+              onClick={handleToggleActive}
+              disabled={toggling}
+              className="shrink-0 gap-2"
+            >
+              {profile.is_active !== false
+                ? <><UserX className="h-4 w-4" />{toggling ? "Deactivating..." : "Deactivate"}</>
+                : <><UserCheck className="h-4 w-4" />{toggling ? "Activating..." : "Activate"}</>}
+            </Button>
+          )}
         </div>
 
         {/* Assigned Jobs */}

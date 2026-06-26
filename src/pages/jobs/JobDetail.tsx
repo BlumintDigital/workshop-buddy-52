@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { jobEditSchema } from "@/lib/schemas/job";
 import { useAuth } from "@/hooks/useAuth";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -434,6 +435,16 @@ export default function JobDetail() {
 
   const handleSaveEdit = async () => {
     if (!job) return;
+    const validation = jobEditSchema.safeParse({
+      ...editForm,
+      estimated_hours: editForm.estimated_hours ? parseFloat(editForm.estimated_hours as string) : null,
+      assigned_staff_id: editForm.assigned_staff_id || null,
+      client_id: editForm.client_id || null,
+    });
+    if (!validation.success) {
+      toast.error(validation.error.issues[0]?.message ?? "Please fix form errors");
+      return;
+    }
     const payload: any = {
       title: editForm.title, description: editForm.description || null, priority: editForm.priority,
       due_date: editForm.due_date || null,

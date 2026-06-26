@@ -61,7 +61,12 @@ serve(async (req) => {
     });
     if (error) throw error;
 
-    return json({ token: opaque, expires_at: expiresAt });
+    const cookieAge = TRUST_DAYS * 24 * 60 * 60;
+    const cookie = `mfa_device_token=${opaque}; HttpOnly; Secure; SameSite=None; Path=/; Max-Age=${cookieAge}`;
+    return new Response(JSON.stringify({ ok: true, expires_at: expiresAt }), {
+      status: 200,
+      headers: { ...corsHeaders, "Content-Type": "application/json", "Set-Cookie": cookie },
+    });
   } catch (err) {
     return json({ error: (err as Error).message }, 500);
   }

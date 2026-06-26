@@ -2,10 +2,20 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import webpush from "npm:web-push@3";
 
 const corsHeaders = {
-  "Access-Control-Allow-Origin": Deno.env.get("ALLOWED_ORIGIN") ?? "*",
+  "Access-Control-Allow-Origin": Deno.env.get("ALLOWED_ORIGIN") ?? "https://ieq.shoplane.uk",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type",
 };
+
+// Simple in-memory IP rate limiter (resets on cold start; provides protection against sustained bursts)
+const _rlMap = new Map<string, number[]>();
+function isRateLimited(ip: string, maxPerMinute = 30): boolean {
+  const now = Date.now();
+  const hits = (_rlMap.get(ip) ?? []).filter((t) => now - t < 60_000);
+  hits.push(now);
+  _rlMap.set(ip, hits);
+  return hits.length > maxPerMinute;
+}
 
 function json(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -34,6 +44,11 @@ Deno.serve(async (req) => {
   }
 
   try {
+    const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+    if (isRateLimited(clientIp)) {
+      return err("Rate limit exceeded. Try again later.", 429);
+    }
+
     const authHeader = req.headers.get("Authorization");
     const secret = Deno.env.get("GLOBAL_ADMIN_SECRET");
     if (!secret) return err("Server misconfigured: missing admin secret", 500);
@@ -124,6 +139,11 @@ Deno.serve(async (req) => {
         const { error } = await supabase
           .from("workshop_settings").update(updates).eq("id", body.id ?? 1);
         if (error) return err(error.message, 500);
+        await supabase.from("activity_logs").insert({
+          action: "updated", table_name: "workshop_settings", record_id: "1",
+          summary: `Workshop config updated via admin API: ${Object.keys(updates).join(", ")}`,
+          details: { fields: Object.keys(updates), source: "admin-api" },
+        });
         return json({ success: true });
       }
 
@@ -155,6 +175,11 @@ Deno.serve(async (req) => {
         const { error } = await supabase
           .from("user_roles").update({ role }).eq("user_id", user_id);
         if (error) return err(error.message, 500);
+        await supabase.from("activity_logs").insert({
+          action: "updated", table_name: "user_roles", record_id: user_id,
+          summary: `Role updated to ${role} for user ${user_id} via admin API`,
+          details: { role, user_id, source: "admin-api" },
+        });
         return json({ success: true });
       }
 
@@ -174,7 +199,11 @@ Deno.serve(async (req) => {
           ban_duration: is_active ? "none" : "876600h", // "none" lifts ban; large value = permanent
         });
         if (authErr) return err(authErr.message, 500);
-
+        await supabase.from("activity_logs").insert({
+          action: "updated", table_name: "profiles", record_id: user_id,
+          summary: `User ${user_id} ${is_active ? "activated" : "deactivated"} via admin API`,
+          details: { user_id, is_active, source: "admin-api" },
+        });
         return json({ success: true });
       }
 
@@ -413,6 +442,11 @@ Deno.serve(async (req) => {
           }
         }
 
+        await supabase.from("activity_logs").insert({
+          action: "created", table_name: "profiles", record_id: newUser.user.id,
+          summary: `New user created via admin API: ${email}`,
+          details: { email, role: role ?? null, source: "admin-api" },
+        });
         return json({ success: true, user_id: newUser.user.id });
       }
 
@@ -686,6 +720,11 @@ Deno.serve(async (req) => {
           .update({ is_super_admin: true })
           .eq("id", userId);
 
+        await supabase.from("activity_logs").insert({
+          action: created ? "created" : "updated", table_name: "profiles", record_id: userId,
+          summary: `Super admin ${created ? "created" : "updated"} for ${email} via admin API`,
+          details: { email, user_id: userId, created, source: "admin-api" },
+        });
         return json({ success: true, user_id: userId, email, created });
       }
 
@@ -703,6 +742,11 @@ Deno.serve(async (req) => {
         if (linkErr) return err(linkErr.message, 500);
         if (!linkData?.properties?.action_link) return err("Failed to generate login link", 500);
 
+        await supabase.from("activity_logs").insert({
+          action: "created", table_name: "auth_events", record_id: email,
+          summary: `Magic link generated for ${email} via admin API`,
+          details: { email, source: "admin-api" },
+        });
         return json({ success: true, link: linkData.properties.action_link });
       }
 
@@ -747,6 +791,11 @@ Deno.serve(async (req) => {
             .delete()
             .eq("id", id);
           if (delErr) return err(delErr.message, 500);
+          await supabase.from("activity_logs").insert({
+            action: "deleted", table_name: "push_subscriptions", record_id: id,
+            summary: `Push subscription removed via admin API`,
+            details: { id, source: "admin-api" },
+          });
           return json({ ok: true });
         }
 
@@ -862,6 +911,11 @@ Deno.serve(async (req) => {
             .select()
             .single();
           if (insErr) return err(insErr.message, 500);
+          await supabase.from("activity_logs").insert({
+            action: "created", table_name: "broadcasts", record_id: data?.id ?? null,
+            summary: `Broadcast created via admin API: "${title}"`,
+            details: { title, severity: sev, source: "admin-api" },
+          });
           return json({ data });
         }
 
@@ -883,6 +937,11 @@ Deno.serve(async (req) => {
             .select()
             .single();
           if (updErr) return err(updErr.message, 500);
+          await supabase.from("activity_logs").insert({
+            action: "updated", table_name: "broadcasts", record_id: id,
+            summary: `Broadcast updated via admin API`,
+            details: { id, fields: Object.keys(patch), source: "admin-api" },
+          });
           return json({ data });
         }
 
@@ -894,6 +953,11 @@ Deno.serve(async (req) => {
             .delete()
             .eq("id", id);
           if (delErr) return err(delErr.message, 500);
+          await supabase.from("activity_logs").insert({
+            action: "deleted", table_name: "broadcasts", record_id: id,
+            summary: `Broadcast deleted via admin API`,
+            details: { id, source: "admin-api" },
+          });
           return json({ ok: true });
         }
 

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { invoiceSchema } from "@/lib/schemas/invoice";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -70,8 +71,16 @@ export default function InvoiceCreate() {
   };
 
   const handleSave = async () => {
-    if (!clientId) { toast.error("Select a client"); return; }
-    if (items.every((i) => !i.description.trim())) { toast.error("Add at least one line item"); return; }
+    const validation = invoiceSchema.safeParse({
+      client_id: clientId,
+      due_date: dueDate || undefined,
+      tax_rate: taxRate,
+      items: items.map((i) => ({ ...i, quantity: Number(i.quantity), unit_price: Number(i.unit_price) })),
+    });
+    if (!validation.success) {
+      toast.error(validation.error.issues[0]?.message ?? "Please fix form errors");
+      return;
+    }
 
     setSaving(true);
     const invoiceNumber = `INV-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;

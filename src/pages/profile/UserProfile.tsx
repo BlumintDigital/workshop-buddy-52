@@ -110,7 +110,6 @@ export default function UserProfile() {
         toast.error(error.message || "Failed to revoke trusted devices");
         return;
       }
-      localStorage.removeItem("mfa_device_token");
       setTrustedDeviceCount(0);
       toast.success("All trusted devices have been revoked");
     } catch (err: any) {
@@ -220,7 +219,6 @@ export default function UserProfile() {
           supabase.from("mfa_trusted_devices").delete().eq("user_id", user.id),
         ]);
       }
-      localStorage.removeItem("mfa_device_token");
       setMfaEnabled(false);
       setFactorId(null);
       setBackupTotal(0);

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { appointmentSchema } from "@/lib/schemas/appointment";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -99,8 +100,12 @@ export default function AdminAppointments() {
 
   // Appointment save (create or update)
   const handleSave = async () => {
-    if (!form.title || !form.client_id || !form.appointment_date || !form.appointment_time) {
-      toast.error("Please fill in all required fields");
+    const validation = appointmentSchema.safeParse({
+      ...form,
+      duration_minutes: parseInt(form.duration_minutes) || 60,
+    });
+    if (!validation.success) {
+      toast.error(validation.error.issues[0]?.message ?? "Please fix form errors");
       return;
     }
     const payload = {

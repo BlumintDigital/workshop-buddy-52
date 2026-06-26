@@ -104,6 +104,19 @@ serve(async (req) => {
   // from workshop_admin_contacts so the platform support email is never exposed to clients.
   // Intentionally bypasses email_notifications_enabled — bug reports are admin-to-admin alerts.
   if (mode === "bug_report") {
+    // Rate limit: max 3 reports per user per hour to prevent inbox spam
+    const { count: recentCount } = await supabase
+      .from("activity_logs")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", user.id)
+      .eq("table_name", "bug_reports")
+      .gte("created_at", new Date(Date.now() - 3_600_000).toISOString()) as unknown as { count: number | null };
+    if ((recentCount ?? 0) >= 3) {
+      return new Response(JSON.stringify({ ok: false, error: "Rate limit: max 3 bug reports per hour" }), {
+        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const [{ data: adminContact }, { data: ws }] = await Promise.all([
       supabase.from("workshop_admin_contacts").select("super_admin_email").eq("id", 1).maybeSingle(),
       supabase.from("workshop_settings").select("from_email").eq("id", 1).maybeSingle(),

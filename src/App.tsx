@@ -40,6 +40,9 @@ const AdminActivityLogs = lazy(() => import("@/pages/admin/AdminActivityLogs"));
 const AdminFeedback = lazy(() => import("@/pages/admin/AdminFeedback"));
 const AdminDeployGuide = lazy(() => import("@/pages/admin/AdminDeployGuide"));
 const AdminSignupCodes = lazy(() => import("@/pages/admin/AdminSignupCodes"));
+const AdminAccessReview = lazy(() => import("@/pages/admin/AdminAccessReview"));
+const Privacy = lazy(() => import("@/pages/Privacy"));
+const Terms = lazy(() => import("@/pages/Terms"));
 
 // Manager pages
 const ManagerDashboard = lazy(() => import("@/pages/manager/ManagerDashboard"));
@@ -153,7 +156,10 @@ function AppRoutes() {
       <Route path="/admin/feedback" element={<ProtectedRoute allowedRoles={["admin"]}><AdminFeedback /></ProtectedRoute>} />
       <Route path="/admin/deploy-guide" element={<ProtectedRoute allowedRoles={["admin"]}><AdminDeployGuide /></ProtectedRoute>} />
       <Route path="/admin/signup-codes" element={<ProtectedRoute allowedRoles={["admin", "manager"]}><AdminSignupCodes /></ProtectedRoute>} />
+      <Route path="/admin/access-review" element={<ProtectedRoute allowedRoles={["admin"]}><AdminAccessReview /></ProtectedRoute>} />
       <Route path="/profile" element={<ProtectedRoute allowedRoles={["admin", "manager", "staff", "client"]}><UserProfile /></ProtectedRoute>} />
+      <Route path="/privacy" element={<Privacy />} />
+      <Route path="/terms" element={<Terms />} />
 
       <Route path="*" element={<NotFound />} />
     </Routes>

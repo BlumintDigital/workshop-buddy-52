@@ -9,12 +9,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
 import { Eye, Search } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 type UserRow = {
   user_id: string;
   full_name: string | null;
   role: string;
   created_at: string;
+  is_active: boolean;
 };
 
 export default function AdminUsers() {
@@ -25,12 +27,19 @@ export default function AdminUsers() {
 
   const fetchUsers = async () => {
     const { data: roles } = await supabase.from("user_roles").select("user_id, role").in("role", ["admin", "manager", "staff"]);
-    const { data: profiles } = await supabase.from("profiles").select("id, full_name, created_at, is_super_admin");
+    const { data: profiles } = await supabase.from("profiles").select("id, full_name, created_at, is_super_admin, is_active");
     if (roles && profiles) {
       const merged = roles
         .map((r) => {
           const p = profiles.find((p) => p.id === r.user_id);
-          return { user_id: r.user_id, full_name: p?.full_name || "Unknown", role: r.role, created_at: p?.created_at || "", is_super_admin: !!(p as any)?.is_super_admin };
+          return {
+            user_id: r.user_id,
+            full_name: p?.full_name || "Unknown",
+            role: r.role,
+            created_at: p?.created_at || "",
+            is_super_admin: !!(p as any)?.is_super_admin,
+            is_active: (p as any)?.is_active !== false,
+          };
         })
         .filter((u) => !u.is_super_admin);
       setUsers(merged);
@@ -94,7 +103,10 @@ export default function AdminUsers() {
                   <TableRow><TableCell colSpan={4} className="text-center py-8 text-muted-foreground">No users found</TableCell></TableRow>
                 ) : filtered.map((u) => (
                   <TableRow key={u.user_id} className="cursor-pointer" onClick={() => navigate(`/admin/users/${u.user_id}`)}>
-                    <TableCell className="font-medium text-primary hover:underline">{u.full_name}</TableCell>
+                    <TableCell className="font-medium">
+                      <span className="text-primary hover:underline">{u.full_name}</span>
+                      {!u.is_active && <Badge variant="destructive" className="ml-2 text-xs">Inactive</Badge>}
+                    </TableCell>
                     <TableCell onClick={(e) => e.stopPropagation()}>
                       <Select value={u.role} onValueChange={(v) => changeRole(u.user_id, v)}>
                         <SelectTrigger className="w-[110px] h-8"><SelectValue /></SelectTrigger>
@@ -126,7 +138,10 @@ export default function AdminUsers() {
             <Card key={u.user_id} className="cursor-pointer" onClick={() => navigate(`/admin/users/${u.user_id}`)}>
               <CardContent className="p-4 flex items-center justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="font-medium text-primary truncate">{u.full_name}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="font-medium text-primary truncate">{u.full_name}</p>
+                    {!u.is_active && <Badge variant="destructive" className="text-xs shrink-0">Inactive</Badge>}
+                  </div>
                   <p className="text-xs text-muted-foreground">{u.created_at ? new Date(u.created_at).toLocaleDateString() : ""}</p>
                 </div>
                 <div onClick={(e) => e.stopPropagation()}>

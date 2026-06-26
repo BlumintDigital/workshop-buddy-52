@@ -133,15 +133,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const checkMfaStatus = async () => {
     const { data } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
     if (data && data.currentLevel === "aal1" && data.nextLevel === "aal2") {
-      // Honor "remember this device"
+      // Honor "remember this device" — token lives in an httpOnly cookie, browser sends it automatically
       try {
-        const token = localStorage.getItem("mfa_device_token");
-        if (token) {
-          const { data: chk } = await supabase.functions.invoke("mfa-check-device", { body: { token } });
-          if (chk?.trusted) {
-            setNeedsMfaVerification(false);
-            return false;
-          }
+        const trusted = await checkTrustedDevice();
+        if (trusted) {
+          setNeedsMfaVerification(false);
+          return false;
         }
       } catch { /* ignore */ }
       setNeedsMfaVerification(true);
@@ -198,12 +195,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const checkTrustedDevice = async (): Promise<boolean> => {
     try {
-      const token = localStorage.getItem("mfa_device_token");
-      if (!token) return false;
-      const { data, error } = await supabase.functions.invoke("mfa-check-device", {
-        body: { token },
-      });
-      if (error) return false;
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) return false;
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/mfa-check-device`,
+        {
+          method: "POST",
+          credentials: "include",
+          headers: {
+            "Authorization": `Bearer ${session.access_token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({}),
+        }
+      );
+      if (!res.ok) return false;
+      const data = await res.json();
       return !!data?.trusted;
     } catch {
       return false;
