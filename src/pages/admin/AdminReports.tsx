@@ -4,6 +4,7 @@ import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Download } from "lucide-react";
 import { downloadCSV } from "@/lib/csv";
 import { useFeature } from "@/hooks/useFeatureFlags";
@@ -34,6 +35,7 @@ export default function AdminReports() {
   const [revenue, setRevenue] = useState<{ month: string; revenue: number }[]>([]);
   const [jobStats, setJobStats] = useState<{ status: string; count: number }[]>([]);
   const [staffStats, setStaffStats] = useState<StaffStat[]>([]);
+  const [isLoadingStaff, setIsLoadingStaff] = useState(true);
 
   useEffect(() => {
     if (appointmentsEnabled) {
@@ -47,12 +49,13 @@ export default function AdminReports() {
   }, [appointmentsEnabled]);
 
   const fetchStaffStats = async () => {
+    setIsLoadingStaff(true);
     const { data: jobs } = await supabase
       .from("jobs")
       .select("assigned_staff_id, actual_hours, estimated_hours, status")
       .not("assigned_staff_id", "is", null);
 
-    if (!jobs || jobs.length === 0) return;
+    if (!jobs || jobs.length === 0) { setIsLoadingStaff(false); return; }
 
     const staffIds = [...new Set(jobs.map(j => j.assigned_staff_id!))];
     const { data: profiles } = await supabase.from("profiles").select("id, full_name").in("id", staffIds);
@@ -75,6 +78,7 @@ export default function AdminReports() {
     }));
 
     setStaffStats(stats.sort((a, b) => b.actual_hours - a.actual_hours));
+    setIsLoadingStaff(false);
   };
 
   return (
@@ -171,7 +175,12 @@ export default function AdminReports() {
 
           <TabsContent value="staff" className="mt-4">
             <div className="space-y-6">
-              {staffStats.length === 0 ? (
+              {isLoadingStaff ? (
+                <>
+                  <Skeleton className="h-64 rounded-xl" />
+                  <Skeleton className="h-52 rounded-xl" />
+                </>
+              ) : staffStats.length === 0 ? (
                 <Card>
                   <CardContent className="py-12 text-center text-muted-foreground">
                     No staff hours data yet. Staff must log actual hours on jobs for this report to populate.

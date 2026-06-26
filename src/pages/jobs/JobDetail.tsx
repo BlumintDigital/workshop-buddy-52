@@ -17,8 +17,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import {
   ArrowLeft, CalendarDays, Clock, History, Pencil, Plus, Trash2, CheckSquare,
   FileUp, FileText, Download, MessageSquare, Paperclip, Package, Star,
-  CheckCircle2, XCircle,
+  CheckCircle2, XCircle, Send,
 } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { DatePickerInput } from "@/components/ui/date-picker-input";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -38,6 +39,13 @@ const taskStatusColors: Record<string, "default" | "secondary" | "outline"> = {
 };
 
 interface UserOption { id: string; full_name: string; }
+interface TaskItem {
+  id: string;
+  title: string;
+  status: string;
+  assigned_to: string | null;
+  assignee_name?: string | null;
+}
 
 const emptyTaskForm = { title: "", description: "", assigned_to: "", status: "pending", due_date: "", value: "" };
 
@@ -61,6 +69,10 @@ export default function JobDetail() {
   const [taskForm, setTaskForm] = useState({ ...emptyTaskForm });
   const [taskPendingFiles, setTaskPendingFiles] = useState<File[]>([]);
   const taskCreateFileRef = useRef<HTMLInputElement>(null);
+  const [handoffTask, setHandoffTask] = useState<TaskItem | null>(null);
+  const [handoffAssignee, setHandoffAssignee] = useState("");
+  const [handoffNote, setHandoffNote] = useState("");
+  const [handingOff, setHandingOff] = useState(false);
 
   // Task detail (notes + files)
   const [viewTask, setViewTask] = useState<any | null>(null);
@@ -521,13 +533,98 @@ export default function JobDetail() {
     }
   };
 
+  const openHandoffDialog = (task: TaskItem) => {
+    setHandoffTask(task);
+    setHandoffAssignee("");
+    setHandoffNote("");
+  };
+
+  const closeHandoffDialog = () => {
+    if (handingOff) return;
+    setHandoffTask(null);
+    setHandoffAssignee("");
+    setHandoffNote("");
+  };
+
+  const handleCompleteAndHandoff = async () => {
+    if (!handoffTask || !user || !job) return;
+    if (!handoffAssignee) { toast.error("Choose who to hand this task to"); return; }
+    if (!handoffNote.trim()) { toast.error("Add a handoff note"); return; }
+
+    const nextAssignee = staffUsers.find((staff) => staff.id === handoffAssignee);
+    if (!nextAssignee) { toast.error("Selected staff member was not found"); return; }
+
+    setHandingOff(true);
+    const { error: taskError } = await supabase
+      .from("job_tasks")
+      .update({ status: "completed", assigned_to: handoffAssignee })
+      .eq("id", handoffTask.id);
+
+    if (taskError) {
+      setHandingOff(false);
+      toast.error(taskError.message);
+      return;
+    }
+
+    const noteText = `Handoff to ${nextAssignee.full_name}: ${handoffNote.trim()}`;
+    const { error: noteError } = await supabase.from("job_task_notes").insert({
+      task_id: handoffTask.id,
+      user_id: user.id,
+      note: noteText,
+    });
+
+    if (noteError) {
+      toast.error(`Task handed off, but note could not be saved: ${noteError.message}`);
+    }
+
+    await sendNotifications([{
+      user_id: handoffAssignee,
+      title: "Task handed off to you",
+      message: `${user.email?.split("@")[0] ?? "A team member"} completed "${handoffTask.title}" and handed it off on job "${job.title}".`,
+      link: `/jobs/${id}`,
+    }]);
+
+    const updatedTask = {
+      ...handoffTask,
+      status: "completed",
+      assigned_to: handoffAssignee,
+      assignee_name: nextAssignee.full_name,
+    };
+    setTasks((prev) => prev.map((task) => task.id === handoffTask.id ? updatedTask : task));
+    if (viewTask?.id === handoffTask.id) {
+      setViewTask(updatedTask);
+      fetchTaskDetails(handoffTask.id);
+    }
+    setHandingOff(false);
+    setHandoffTask(null);
+    setHandoffAssignee("");
+    setHandoffNote("");
+    toast.success(`Task completed and handed off to ${nextAssignee.full_name}`);
+  };
+
   const handleDeleteTask = async (taskId: string) => {
     const { error } = await supabase.from("job_tasks").delete().eq("id", taskId);
     if (error) { toast.error(error.message); return; }
     setTasks(prev => prev.filter(t => t.id !== taskId)); toast.success("Task removed");
   };
 
-  if (!job) return <DashboardLayout><p className="text-muted-foreground p-8">Loading...</p></DashboardLayout>;
+  if (!job) return (
+    <DashboardLayout>
+      <div className="space-y-6 max-w-6xl">
+        <Skeleton className="h-8 w-28" />
+        <div className="flex items-start justify-between gap-4">
+          <div className="space-y-2">
+            <Skeleton className="h-9 w-64" />
+            <Skeleton className="h-4 w-80" />
+          </div>
+          <Skeleton className="h-8 w-32 shrink-0" />
+        </div>
+        <Skeleton className="h-28 rounded-xl" />
+        <Skeleton className="h-24 rounded-xl" />
+        <Skeleton className="h-48 rounded-xl" />
+      </div>
+    </DashboardLayout>
+  );
 
   const backPath = role ? `/${role}/jobs` : "/";
   const hoursProgress = job.estimated_hours && job.actual_hours
@@ -757,6 +854,7 @@ export default function JobDetail() {
                 <div className="divide-y divide-border">
                   {tasks.map(task => {
                     const canChangeStatus = canEdit || task.assigned_to === user?.id;
+                    const canHandOff = role === "staff" && task.assigned_to === user?.id && task.status !== "completed";
                     return (
                       <div key={task.id} className="flex items-start gap-3 py-3">
                         <div className="flex-1 min-w-0">
@@ -798,15 +896,25 @@ export default function JobDetail() {
                             )}
                           </div>
                         </div>
-                        {canEdit && (
+                        {(canHandOff || canEdit) && (
                           <div className="flex gap-1 shrink-0">
-                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleOpenEditTask(task)}>
-                              <Pencil className="h-3 w-3" />
-                            </Button>
-                            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive"
-                              onClick={() => handleDeleteTask(task.id)}>
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
+                            {canHandOff && (
+                              <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => openHandoffDialog(task)}>
+                                <Send className="mr-1 h-3 w-3" />
+                                Hand off
+                              </Button>
+                            )}
+                            {canEdit && (
+                              <>
+                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleOpenEditTask(task)}>
+                                  <Pencil className="h-3 w-3" />
+                                </Button>
+                                <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive"
+                                  onClick={() => handleDeleteTask(task.id)}>
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+                              </>
+                            )}
                           </div>
                         )}
                       </div>
@@ -1115,6 +1223,61 @@ export default function JobDetail() {
                 </Select>
               </div>
               <Button onClick={handleSaveEdit} className="w-full">Save Changes</Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Complete & Hand Off Dialog */}
+        <Dialog open={!!handoffTask} onOpenChange={(open) => { if (!open) closeHandoffDialog(); }}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Complete & hand off</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label>Task</Label>
+                <p className="mt-1 text-sm font-medium">{handoffTask?.title}</p>
+              </div>
+              <div>
+                <Label>Hand off to</Label>
+                <Select value={handoffAssignee} onValueChange={setHandoffAssignee} disabled={handingOff}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Select staff member" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {staffUsers.filter((staff) => staff.id !== user?.id).map((staff) => (
+                      <SelectItem key={staff.id} value={staff.id}>{staff.full_name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {staffUsers.filter((staff) => staff.id !== user?.id).length === 0 && (
+                  <p className="mt-1 text-xs text-muted-foreground">No other staff members are available.</p>
+                )}
+              </div>
+              <div>
+                <Label>Handoff note</Label>
+                <Textarea
+                  value={handoffNote}
+                  onChange={(e) => setHandoffNote(e.target.value)}
+                  placeholder="Completed fabrication, passing to paint."
+                  rows={3}
+                  className="mt-1"
+                  disabled={handingOff}
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button type="button" variant="outline" onClick={closeHandoffDialog} disabled={handingOff}>
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  onClick={handleCompleteAndHandoff}
+                  disabled={handingOff || !handoffAssignee || !handoffNote.trim()}
+                >
+                  <Send className="mr-2 h-4 w-4" />
+                  {handingOff ? "Handing off..." : "Complete & hand off"}
+                </Button>
+              </div>
             </div>
           </DialogContent>
         </Dialog>

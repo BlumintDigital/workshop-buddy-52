@@ -17,6 +17,7 @@ import {
   ArrowLeft, CalendarDays, Clock, User, Tag, Timer, FileText,
   Briefcase, ExternalLink,
 } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 
 const statusColors: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
@@ -160,7 +161,16 @@ export default function AppointmentDetail() {
   if (loading) {
     return (
       <DashboardLayout>
-        <p className="p-8 text-muted-foreground">Loading…</p>
+        <div className="space-y-6 max-w-2xl">
+          <Skeleton className="h-8 w-28" />
+          <div className="space-y-2">
+            <Skeleton className="h-9 w-56" />
+            <Skeleton className="h-5 w-24 rounded-full" />
+          </div>
+          <Skeleton className="h-48 rounded-xl" />
+          <Skeleton className="h-32 rounded-xl" />
+          <Skeleton className="h-24 rounded-xl" />
+        </div>
       </DashboardLayout>
     );
   }

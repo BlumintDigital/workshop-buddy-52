@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowLeft, Plus, Trash2, FileDown, ExternalLink, Link2, Bell } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { DatePickerInput } from "@/components/ui/date-picker-input";
 import { toast } from "sonner";
 import { generateInvoicePDF } from "@/lib/invoicePdf";
@@ -170,7 +171,26 @@ export default function InvoiceDetail() {
     }
   };
 
-  if (!invoice) return <DashboardLayout><p className="p-8 text-muted-foreground">Loading...</p></DashboardLayout>;
+  if (!invoice) return (
+    <DashboardLayout>
+      <div className="space-y-6 max-w-3xl">
+        <Skeleton className="h-8 w-28" />
+        <div className="flex items-start justify-between gap-4">
+          <div className="space-y-2">
+            <Skeleton className="h-9 w-44" />
+            <Skeleton className="h-4 w-36" />
+          </div>
+          <div className="flex gap-2">
+            <Skeleton className="h-8 w-16 rounded-full" />
+            <Skeleton className="h-8 w-20" />
+          </div>
+        </div>
+        <Skeleton className="h-40 rounded-xl" />
+        <Skeleton className="h-56 rounded-xl" />
+        <Skeleton className="h-24 rounded-xl" />
+      </div>
+    </DashboardLayout>
+  );
 
   const backPath = role === "client" ? "/client/invoices" : role === "manager" ? "/manager/invoices" : "/admin/invoices";
 
