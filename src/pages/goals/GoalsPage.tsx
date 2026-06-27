@@ -8,9 +8,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Trophy, Target, TrendingUp, RefreshCw, Maximize2, Minimize2,
-  CalendarDays, Wrench, Flag, Zap, Star,
+  CalendarDays, Flag, Zap, Star,
 } from "lucide-react";
 import { GoalsBackground } from "./GoalsAnimations";
+import { resolveLogoUrl, useDefaultLogoOnError } from "@/lib/branding";
 
 interface LeaderboardEntry {
   user_id: string;
@@ -234,13 +235,7 @@ export default function GoalsPage() {
         {/* Header */}
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div className="flex items-center gap-4">
-            {logoUrl ? (
-              <img src={logoUrl} alt={workshopName} className="h-20 w-20 shrink-0 rounded-2xl object-contain drop-shadow-lg" />
-            ) : (
-              <div className="h-20 w-20 shrink-0 rounded-2xl flex items-center justify-center bg-primary/10">
-                <Wrench className="h-8 w-8 text-primary" />
-              </div>
-            )}
+            <img src={resolveLogoUrl(logoUrl)} alt={workshopName} className="h-20 w-20 shrink-0 rounded-2xl object-contain drop-shadow-lg" onError={useDefaultLogoOnError} />
             <div>
               <h2 className="text-2xl font-bold tracking-tight">{workshopName}</h2>
               <p className="text-muted-foreground text-sm">{monthLabel} · Production Goals</p>
@@ -384,14 +379,12 @@ export default function GoalsPage() {
         <div className="flex items-center justify-between gap-6 shrink-0">
           {/* Logo + name */}
           <div className="flex items-center gap-4">
-            {logoUrl ? (
-              <img src={logoUrl} alt={workshopName}
-                className="h-20 w-20 shrink-0 rounded-2xl object-contain drop-shadow-2xl ring-2 ring-white/10" />
-            ) : (
-              <div className="h-20 w-20 shrink-0 rounded-2xl flex items-center justify-center bg-white/10">
-                <Wrench className="h-9 w-9 text-white/60" />
-              </div>
-            )}
+            <img
+              src={resolveLogoUrl(logoUrl)}
+              alt={workshopName}
+              className="h-20 w-20 shrink-0 rounded-2xl object-contain drop-shadow-2xl ring-2 ring-white/10"
+              onError={useDefaultLogoOnError}
+            />
             <div>
               <p className="text-white/60 text-sm font-medium uppercase tracking-widest">{monthLabel}</p>
               <h1 className="text-3xl font-black text-white leading-tight tracking-tight">{workshopName}</h1>

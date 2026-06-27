@@ -20,6 +20,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
+import { getCustomLogoUrl, resolveLogoUrl, useDefaultLogoOnError } from "@/lib/branding";
+import { useAdminOnboarding } from "@/hooks/useAdminOnboarding";
 
 
 const currencies = [
@@ -95,6 +97,7 @@ const FEATURE_DETAILS: Record<FeatureKey, { label: string; description: string; 
 export default function AdminSettings() {
   const goalsEnabled = useFeature("goals");
   const appointmentsEnabled = useFeature("appointments");
+  const { resetOnboarding, updating: onboardingUpdating } = useAdminOnboarding();
   const [settings, setSettings] = useState<Settings>({ ...defaultSettings });
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -258,7 +261,7 @@ export default function AdminSettings() {
       email_notifications_enabled: settings.email_notifications_enabled,
       from_email: settings.from_email || null,
       login_image_url: settings.login_image_url || null,
-      logo_url: settings.logo_url || null,
+      logo_url: getCustomLogoUrl(settings.logo_url),
     });
     if (error) { setSaving(false); toast.error(error.message); return; }
 
@@ -534,10 +537,17 @@ export default function AdminSettings() {
     }
   };
 
+  const handleResetOnboarding = async () => {
+    await resetOnboarding();
+    toast.success("Onboarding checklist reset");
+  };
+
   const set = (key: keyof Settings, value: string | boolean) =>
     setSettings(prev => ({ ...prev, [key]: value }));
 
   if (loading) return <DashboardLayout><p className="p-8 text-muted-foreground">Loading...</p></DashboardLayout>;
+
+  const customLogoUrl = getCustomLogoUrl(settings.logo_url);
 
   return (
     <DashboardLayout>
@@ -577,30 +587,43 @@ export default function AdminSettings() {
           </TabsList>
 
           <TabsContent value="general" className="mt-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>General</CardTitle>
-                <CardDescription>Basic workshop information</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <Label htmlFor="workshop_name">Workshop Name</Label>
-                  <Input id="workshop_name" value={settings.workshop_name} onChange={(e) => set("workshop_name", e.target.value)} placeholder="My Workshop" className="mt-1" />
-                </div>
-                <div>
-                  <Label htmlFor="contact_email">Contact Email</Label>
-                  <Input id="contact_email" type="email" value={settings.contact_email} onChange={(e) => set("contact_email", e.target.value)} placeholder="contact@workshop.com" className="mt-1" />
-                </div>
-                <div>
-                  <Label htmlFor="phone">Phone</Label>
-                  <Input id="phone" value={settings.phone} onChange={(e) => set("phone", e.target.value)} placeholder="+1 (555) 000-0000" className="mt-1" />
-                </div>
-                <div>
-                  <Label htmlFor="address">Address</Label>
-                  <Input id="address" value={settings.address} onChange={(e) => set("address", e.target.value)} placeholder="123 Workshop St, City, State" className="mt-1" />
-                </div>
-              </CardContent>
-            </Card>
+            <div className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>General</CardTitle>
+                  <CardDescription>Basic workshop information</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <Label htmlFor="workshop_name">Workshop Name</Label>
+                    <Input id="workshop_name" value={settings.workshop_name} onChange={(e) => set("workshop_name", e.target.value)} placeholder="My Workshop" className="mt-1" />
+                  </div>
+                  <div>
+                    <Label htmlFor="contact_email">Contact Email</Label>
+                    <Input id="contact_email" type="email" value={settings.contact_email} onChange={(e) => set("contact_email", e.target.value)} placeholder="contact@workshop.com" className="mt-1" />
+                  </div>
+                  <div>
+                    <Label htmlFor="phone">Phone</Label>
+                    <Input id="phone" value={settings.phone} onChange={(e) => set("phone", e.target.value)} placeholder="+1 (555) 000-0000" className="mt-1" />
+                  </div>
+                  <div>
+                    <Label htmlFor="address">Address</Label>
+                    <Input id="address" value={settings.address} onChange={(e) => set("address", e.target.value)} placeholder="123 Workshop St, City, State" className="mt-1" />
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Onboarding</CardTitle>
+                  <CardDescription>Bring back your admin setup checklist on the dashboard</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Button type="button" variant="outline" onClick={handleResetOnboarding} disabled={onboardingUpdating}>
+                    {onboardingUpdating ? "Resetting..." : "Reset onboarding checklist"}
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
 
           <TabsContent value="billing" className="mt-4">
@@ -728,18 +751,16 @@ export default function AdminSettings() {
                 <CardDescription>Upload a square logo for the login page. Recommended: 512×512 px PNG with transparent background. Minimum 128×128 px.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {settings.logo_url ? (
-                  <div className="relative inline-block rounded-lg overflow-hidden border">
-                    <img src={settings.logo_url} alt="Workshop logo" className="w-24 h-24 object-contain" />
+                <div className="relative inline-block rounded-lg overflow-hidden border">
+                  <img src={resolveLogoUrl(settings.logo_url)} alt="Workshop logo" className="w-24 h-24 object-contain" onError={useDefaultLogoOnError} />
+                  {customLogoUrl && (
                     <Button size="icon" variant="destructive" className="absolute top-1 right-1 h-6 w-6" onClick={handleRemoveLogo}>
                       <X className="h-3 w-3" />
                     </Button>
-                  </div>
-                ) : (
-                  <div className="border border-dashed rounded-lg p-6 flex flex-col items-center justify-center text-center">
-                    <ImageIcon className="h-8 w-8 text-muted-foreground mb-2" />
-                    <p className="text-sm text-muted-foreground">No logo set — wrench icon will be shown</p>
-                  </div>
+                  )}
+                </div>
+                {!customLogoUrl && (
+                  <p className="text-sm text-muted-foreground">No custom logo set. The default Blumint logo will be shown.</p>
                 )}
                 <input ref={logoInputRef} type="file" accept="image/*" className="hidden" onChange={handleUploadLogo} />
                 <Button variant="outline" disabled={uploadingLogo} onClick={() => logoInputRef.current?.click()}>

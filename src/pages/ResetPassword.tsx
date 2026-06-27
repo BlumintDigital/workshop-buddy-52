@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Wrench } from "lucide-react";
+import { resolveLogoUrl, useDefaultLogoOnError } from "@/lib/branding";
 
 export default function ResetPassword() {
   const navigate = useNavigate();
@@ -79,13 +79,7 @@ export default function ResetPassword() {
     <div className="flex min-h-screen items-center justify-center bg-muted/30 p-4">
       <div className="w-full max-w-md space-y-6">
         <div className="flex flex-col items-center gap-2">
-          {logoUrl ? (
-            <img src={logoUrl} alt={workshopName} className="h-40 w-40 rounded-2xl object-contain drop-shadow-md" />
-          ) : (
-            <div className="flex h-40 w-40 items-center justify-center rounded-2xl bg-primary text-primary-foreground">
-              <Wrench className="h-20 w-20" />
-            </div>
-          )}
+          <img src={resolveLogoUrl(logoUrl)} alt={workshopName} className="h-40 w-40 rounded-2xl object-contain drop-shadow-md" onError={useDefaultLogoOnError} />
           <h1 className="text-2xl font-bold tracking-tight">{workshopName}</h1>
         </div>
 
