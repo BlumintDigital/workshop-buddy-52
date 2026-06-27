@@ -15,7 +15,7 @@ import {
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { Database, Trash2, Loader2, Upload, ImageIcon, X, Users, AlertTriangle, Lock, Send } from "lucide-react";
+import { Database, Trash2, Loader2, Upload, ImageIcon, X, Users, AlertTriangle, Lock, Send, Download } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
@@ -68,6 +68,7 @@ export default function AdminSettings() {
   const appointmentsEnabled = useFeature("appointments");
   const canGenerateSampleData = useFeature("generate_sample_data");
   const canSetupDemoUsers = useFeature("setup_demo_users");
+  const canBackupRestore = useFeature("backup_restore");
   const { resetOnboarding, updating: onboardingUpdating } = useAdminOnboarding();
   const [settings, setSettings] = useState<Settings>({ ...defaultSettings });
   const [saving, setSaving] = useState(false);
@@ -78,6 +79,11 @@ export default function AdminSettings() {
   const [resetting, setResetting] = useState(false);
   const [resetConfirmText, setResetConfirmText] = useState("");
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
+  const [backing, setBacking] = useState(false);
+  const [restoring, setRestoring] = useState(false);
+  const [restoreDialogOpen, setRestoreDialogOpen] = useState(false);
+  const [restoreConfirmText, setRestoreConfirmText] = useState("");
+  const [restoreFile, setRestoreFile] = useState<File | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [activeTab, setActiveTab] = useState("general");
@@ -89,6 +95,7 @@ export default function AdminSettings() {
   const [emailTestResult, setEmailTestResult] = useState<{ ok: boolean; message: string } | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
+  const backupFileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -411,6 +418,55 @@ export default function AdminSettings() {
 
     setSettingUpDemo(false);
     toast.success(`Demo environment ready! Users, roles, jobs, and invoices are set${appointmentsEnabled ? ", including appointments" : ""}. Visit /demo to log in.`, { duration: 8000 });
+  };
+
+  const handleBackup = async () => {
+    setBacking(true);
+    const { data, error } = await supabase.functions.invoke("backup-data");
+    setBacking(false);
+    if (error || (data as { error?: string })?.error) {
+      toast.error((data as { error?: string })?.error ?? error?.message ?? "Backup failed");
+      return;
+    }
+    const totalRows = Object.values((data as { manifest?: { row_counts?: Record<string, number> } })?.manifest?.row_counts ?? {}).reduce((a: number, b) => a + (b as number), 0);
+    const date = new Date().toISOString().slice(0, 10);
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `workshop-backup-${date}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success(`Backup downloaded (${totalRows} rows)`);
+  };
+
+  const handleRestoreFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setRestoreFile(e.target.files?.[0] ?? null);
+    e.target.value = "";
+  };
+
+  const handleRestore = async () => {
+    if (!restoreFile) return;
+    setRestoring(true);
+    setRestoreDialogOpen(false);
+    setRestoreConfirmText("");
+    try {
+      const text = await restoreFile.text();
+      const parsed = JSON.parse(text);
+      const { data, error } = await supabase.functions.invoke("restore-data", { body: parsed });
+      if (error || (data as { error?: string })?.error) {
+        toast.error((data as { error?: string })?.error ?? error?.message ?? "Restore failed");
+        return;
+      }
+      const totalRestored = Object.values((data as { restored?: Record<string, number> })?.restored ?? {}).reduce((a: number, b) => a + (b as number), 0);
+      toast.success(`Restore complete — ${totalRestored} rows imported`);
+      setTimeout(() => window.location.reload(), 1500);
+    } catch {
+      toast.error("Failed to read backup file — ensure it is a valid JSON backup");
+    } finally {
+      setRestoring(false);
+      setRestoreFile(null);
+    }
   };
 
   const handleDeleteData = async () => {
@@ -790,6 +846,71 @@ export default function AdminSettings() {
                 </p>
               </CardContent>
             </Card>
+            )}
+            {canBackupRestore && (
+            <>
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2"><Download className="h-5 w-5" />Create Backup</CardTitle>
+                <CardDescription>Export all workshop data to a JSON file you can store securely and restore later.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button onClick={handleBackup} disabled={backing} variant="outline">
+                  {backing ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Creating backup...</> : <><Download className="mr-2 h-4 w-4" />Download Backup</>}
+                </Button>
+                <p className="text-xs text-muted-foreground mt-2">Includes all jobs, clients, inventory, invoices, and settings. Rate limited to 5 per hour.</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2"><Upload className="h-5 w-5" />Restore from Backup</CardTitle>
+                <CardDescription>Overwrite current data with a previously downloaded backup file. This cannot be undone.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <input
+                  ref={backupFileInputRef}
+                  type="file"
+                  accept=".json"
+                  className="hidden"
+                  onChange={handleRestoreFileChange}
+                />
+                <div className="flex items-center gap-3">
+                  <Button variant="outline" onClick={() => backupFileInputRef.current?.click()} disabled={restoring}>
+                    <Upload className="mr-2 h-4 w-4" />Choose Backup File
+                  </Button>
+                  {restoreFile && <span className="text-sm text-muted-foreground">{restoreFile.name}</span>}
+                </div>
+                {restoreFile && (
+                  <Dialog open={restoreDialogOpen} onOpenChange={(open) => { setRestoreDialogOpen(open); if (!open) setRestoreConfirmText(""); }}>
+                    <DialogTrigger asChild>
+                      <Button variant="destructive" disabled={restoring}>
+                        {restoring ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Restoring...</> : "Restore"}
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle className="text-destructive">Restore from Backup</DialogTitle>
+                        <DialogDescription>
+                          This will overwrite <strong>all current business data</strong> with the contents of <strong>{restoreFile.name}</strong>. User accounts are preserved. This action cannot be undone.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="space-y-2">
+                        <Label>Type <span className="font-mono font-bold">RESTORE</span> to confirm</Label>
+                        <Input value={restoreConfirmText} onChange={(e) => setRestoreConfirmText(e.target.value)} placeholder="RESTORE" />
+                      </div>
+                      <DialogFooter>
+                        <Button variant="outline" onClick={() => { setRestoreDialogOpen(false); setRestoreConfirmText(""); }}>Cancel</Button>
+                        <Button variant="destructive" disabled={restoreConfirmText !== "RESTORE" || restoring} onClick={handleRestore}>
+                          Confirm Restore
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                )}
+                <p className="text-xs text-muted-foreground">Only backups from this application are accepted. The file checksum is verified before any data is changed.</p>
+              </CardContent>
+            </Card>
+            </>
             )}
             <Card className="border-destructive/50">
               <CardHeader>

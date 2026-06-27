@@ -16,7 +16,8 @@ export type FeatureKey =
   | "reports"
   | "job_chat"
   | "generate_sample_data"
-  | "setup_demo_users";
+  | "setup_demo_users"
+  | "backup_restore";
 
 export type FeatureFlags = Record<FeatureKey, boolean>;
 
@@ -34,6 +35,7 @@ export const FEATURE_DEFAULTS: FeatureFlags = {
   job_chat: true,
   generate_sample_data: false,
   setup_demo_users: false,
+  backup_restore: false,
 };
 
 const FEATURE_KEYS = Object.keys(FEATURE_DEFAULTS) as FeatureKey[];

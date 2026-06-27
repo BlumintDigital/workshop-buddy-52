@@ -23,6 +23,7 @@ describe("normalizeFeatureFlags", () => {
       reports: true,
       generate_sample_data: false,
       setup_demo_users: false,
+      backup_restore: false,
     });
   });
 
@@ -46,5 +47,11 @@ describe("normalizeFeatureFlags", () => {
       generate_sample_data: true,
       setup_demo_users: true,
     });
+  });
+
+  it("respects stored true value for backup_restore flag", () => {
+    expect(
+      normalizeFeatureFlags([{ key: "backup_restore", enabled: true }])
+    ).toEqual({ ...FEATURE_DEFAULTS, backup_restore: true });
   });
 });
