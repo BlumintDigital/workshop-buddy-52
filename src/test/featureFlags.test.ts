@@ -21,6 +21,8 @@ describe("normalizeFeatureFlags", () => {
       goals: true,
       job_chat: true,
       reports: true,
+      generate_sample_data: false,
+      setup_demo_users: false,
     });
   });
 
@@ -31,5 +33,18 @@ describe("normalizeFeatureFlags", () => {
         { key: "goals", enabled: "false" },
       ])
     ).toEqual(FEATURE_DEFAULTS);
+  });
+
+  it("respects stored true values for flags that default to false", () => {
+    expect(
+      normalizeFeatureFlags([
+        { key: "generate_sample_data", enabled: true },
+        { key: "setup_demo_users", enabled: true },
+      ])
+    ).toEqual({
+      ...FEATURE_DEFAULTS,
+      generate_sample_data: true,
+      setup_demo_users: true,
+    });
   });
 });

@@ -14,7 +14,9 @@ export type FeatureKey =
   | "client_portal"
   | "goals"
   | "reports"
-  | "job_chat";
+  | "job_chat"
+  | "generate_sample_data"
+  | "setup_demo_users";
 
 export type FeatureFlags = Record<FeatureKey, boolean>;
 
@@ -30,6 +32,8 @@ export const FEATURE_DEFAULTS: FeatureFlags = {
   goals: true,
   reports: true,
   job_chat: true,
+  generate_sample_data: false,
+  setup_demo_users: false,
 };
 
 const FEATURE_KEYS = Object.keys(FEATURE_DEFAULTS) as FeatureKey[];

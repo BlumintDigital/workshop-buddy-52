@@ -66,6 +66,8 @@ type Settings = typeof defaultSettings;
 export default function AdminSettings() {
   const goalsEnabled = useFeature("goals");
   const appointmentsEnabled = useFeature("appointments");
+  const canGenerateSampleData = useFeature("generate_sample_data");
+  const canSetupDemoUsers = useFeature("setup_demo_users");
   const { resetOnboarding, updating: onboardingUpdating } = useAdminOnboarding();
   const [settings, setSettings] = useState<Settings>({ ...defaultSettings });
   const [saving, setSaving] = useState(false);
@@ -763,11 +765,12 @@ export default function AdminSettings() {
                 <CardDescription>Create or reset one demo account for each role so the one-click demo page can sign in.</CardDescription>
               </CardHeader>
               <CardContent>
-                <Button onClick={handleSetupDemo} disabled={settingUpDemo} variant="outline">
+                <Button onClick={handleSetupDemo} disabled={settingUpDemo || !canSetupDemoUsers} variant="outline" title={!canSetupDemoUsers ? "Enable via feature flags" : undefined}>
                   {settingUpDemo ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Setting up...</> : <><Users className="mr-2 h-4 w-4" />Setup Demo Users</>}
                 </Button>
                 <p className="text-xs text-muted-foreground mt-2">
                   Existing demo passwords and roles are reset to match the credentials used by <span className="font-mono">/demo</span>.
+                  {!canSetupDemoUsers && <span className="ml-1 text-muted-foreground/60">(disabled — feature flag off)</span>}
                 </p>
               </CardContent>
             </Card>
@@ -777,10 +780,13 @@ export default function AdminSettings() {
                 <CardDescription>Populate the database with realistic sample data for testing.</CardDescription>
               </CardHeader>
               <CardContent>
-                <Button onClick={handleSeedData} disabled={seeding}>
+                <Button onClick={handleSeedData} disabled={seeding || !canGenerateSampleData} title={!canGenerateSampleData ? "Enable via feature flags" : undefined}>
                   {seeding ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Generating...</> : <><Database className="mr-2 h-4 w-4" />Generate Sample Data</>}
                 </Button>
-                <p className="text-xs text-muted-foreground mt-2">Creates ~50+ records across all tables.</p>
+                <p className="text-xs text-muted-foreground mt-2">
+                  Creates ~50+ records across all tables.
+                  {!canGenerateSampleData && <span className="ml-1 text-muted-foreground/60">(disabled — feature flag off)</span>}
+                </p>
               </CardContent>
             </Card>
             <Card className="border-destructive/50">
