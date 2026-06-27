@@ -10,7 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { ShieldCheck, KeyRound } from "lucide-react";
+import { ShieldCheck, KeyRound, Briefcase, User } from "lucide-react";
 import LoadingScreen from "@/components/LoadingScreen";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { useCountdown } from "@/hooks/useCountdown";
@@ -37,6 +37,7 @@ export default function Auth() {
   const [signupFirstName, setSignupFirstName] = useState("");
   const [signupLastName, setSignupLastName] = useState("");
   const [signupInviteCode, setSignupInviteCode] = useState("");
+  const [signupRole, setSignupRole] = useState<"staff" | "client">("client");
   const [submitting, setSubmitting] = useState(false);
   const [loginImageUrl, setLoginImageUrl] = useState<string | null>(null);
   const [workshopName, setWorkshopName] = useState<string>("Workshop Manager");
@@ -312,8 +313,16 @@ export default function Auth() {
         setSubmitting(false);
         return;
       }
+      // If the code is tied to a specific role, ensure the user's selection matches.
+      if (redeemRes.role && redeemRes.role !== signupRole) {
+        toast.error(
+          `This code is for ${redeemRes.role} accounts. Please use the correct code or switch your role selection.`
+        );
+        setSubmitting(false);
+        return;
+      }
       const fullName = `${signupFirstName.trim()} ${signupLastName.trim()}`;
-      await signUp(signupEmail, signupPassword, fullName);
+      await signUp(signupEmail, signupPassword, fullName, signupRole);
       setConfirmationEmail(signupEmail);
       setEmailConfirmationSent(true);
     } catch (err: unknown) {
@@ -554,10 +563,34 @@ export default function Auth() {
               <Card>
                 <CardHeader>
                   <CardTitle>Create account</CardTitle>
-                  <CardDescription>New accounts are assigned the Client role by default</CardDescription>
+                  <CardDescription>Select your role then enter your invite code</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <form onSubmit={handleSignup} className="space-y-4">
+                    {/* Role selector */}
+                    <div className="space-y-2">
+                      <Label>I am a…</Label>
+                      <div className="grid grid-cols-2 gap-3">
+                        <button
+                          type="button"
+                          onClick={() => setSignupRole("client")}
+                          className={`flex flex-col items-center gap-1.5 rounded-lg border-2 p-4 text-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring ${signupRole === "client" ? "border-primary bg-primary/5" : "border-border hover:border-muted-foreground/50"}`}
+                        >
+                          <User className="h-6 w-6" />
+                          <span className="font-medium">Client</span>
+                          <span className="text-xs text-muted-foreground text-center">I'm a customer / client</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSignupRole("staff")}
+                          className={`flex flex-col items-center gap-1.5 rounded-lg border-2 p-4 text-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring ${signupRole === "staff" ? "border-primary bg-primary/5" : "border-border hover:border-muted-foreground/50"}`}
+                        >
+                          <Briefcase className="h-6 w-6" />
+                          <span className="font-medium">Staff</span>
+                          <span className="text-xs text-muted-foreground text-center">I work at the workshop</span>
+                        </button>
+                      </div>
+                    </div>
                     <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-2">
                         <Label htmlFor="signup-first-name">First Name</Label>
