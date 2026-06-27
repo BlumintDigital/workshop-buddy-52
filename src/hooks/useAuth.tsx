@@ -282,6 +282,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { role: null, needsMfa: false };
       }
 
+      // Record sign-in time in profiles for the access review feature.
+      // auth.users.last_sign_in_at is unreliable in some Supabase configurations.
+      void supabase.from("profiles")
+        .update({ last_sign_in_at: new Date().toISOString() })
+        .eq("id", data.user.id);
+
       const nextRole = await fetchUserData(data.user.id);
 
       // Check if MFA is required
