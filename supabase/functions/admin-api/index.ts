@@ -1,11 +1,34 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import webpush from "npm:web-push@3";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": Deno.env.get("ALLOWED_ORIGIN") ?? "https://ieq.shoplane.uk",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-};
+const DEFAULT_ALLOWED_ORIGINS = ["https://ieq.shoplane.uk"];
+
+function getAllowedOrigins() {
+  const configured =
+    Deno.env.get("ALLOWED_ORIGINS") ??
+    Deno.env.get("ALLOWED_ORIGIN") ??
+    DEFAULT_ALLOWED_ORIGINS.join(",");
+
+  return configured
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+}
+
+function corsHeadersFor(req: Request) {
+  const requestOrigin = req.headers.get("Origin") ?? "";
+  const allowedOrigins = getAllowedOrigins();
+  const allowOrigin = allowedOrigins.includes(requestOrigin)
+    ? requestOrigin
+    : allowedOrigins[0] ?? DEFAULT_ALLOWED_ORIGINS[0];
+
+  return {
+    "Access-Control-Allow-Origin": allowOrigin,
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Methods": "GET, POST, PATCH, DELETE, OPTIONS",
+    "Vary": "Origin",
+  };
+}
 
 // Simple in-memory IP rate limiter (resets on cold start; provides protection against sustained bursts)
 const _rlMap = new Map<string, number[]>();
@@ -17,15 +40,15 @@ function isRateLimited(ip: string, maxPerMinute = 30): boolean {
   return hits.length > maxPerMinute;
 }
 
-function json(data: unknown, status = 200) {
+function jsonWithCors(data: unknown, status = 200, corsHeaders: Record<string, string>) {
   return new Response(JSON.stringify(data), {
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 }
 
-function err(message: string, status = 400) {
-  return json({ error: message }, status);
+function errWithCors(message: string, status = 400, corsHeaders: Record<string, string>) {
+  return jsonWithCors({ error: message }, status, corsHeaders);
 }
 
 function getPagination(url: URL) {
@@ -39,6 +62,10 @@ function getDateRange(url: URL) {
 }
 
 Deno.serve(async (req) => {
+  const corsHeaders = corsHeadersFor(req);
+  const json = (data: unknown, status = 200) => jsonWithCors(data, status, corsHeaders);
+  const err = (message: string, status = 400) => errWithCors(message, status, corsHeaders);
+
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
