@@ -149,6 +149,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       supabase.from("profiles").select("full_name, avatar_url").eq("id", userId).maybeSingle(),
     ]);
 
+    if (roleRes.error) throw new Error(`Role fetch failed: ${roleRes.error.message}`);
     const nextRole = (roleRes.data?.role as AppRole | undefined) ?? null;
     setRole(nextRole);
     setProfile(profileRes.data ?? null);
