@@ -8,11 +8,19 @@ import { JobStatusChart } from "@/components/dashboard/JobStatusChart";
 import { ActivityFeed } from "@/components/dashboard/ActivityFeed";
 import { useFeature } from "@/hooks/useFeatureFlags";
 import { Skeleton } from "@/components/ui/skeleton";
+import { AdminOnboardingChecklist } from "@/components/onboarding/AdminOnboardingChecklist";
+
+type RecentJob = {
+  id: string;
+  title: string;
+  status: string;
+  date: string;
+};
 
 export default function AdminDashboard() {
   const appointmentsEnabled = useFeature("appointments");
   const [stats, setStats] = useState({ jobs: 0, appointments: 0, inventory: 0, invoices: 0, users: 0, lowStock: 0 });
-  const [recentJobs, setRecentJobs] = useState<any[]>([]);
+  const [recentJobs, setRecentJobs] = useState<RecentJob[]>([]);
   const [statusData, setStatusData] = useState<{ name: string; value: number }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -64,6 +72,8 @@ export default function AdminDashboard() {
           <h2 className="text-3xl font-bold tracking-tight">Admin Dashboard</h2>
           <p className="text-muted-foreground">Overview of your entire workshop</p>
         </div>
+
+        <AdminOnboardingChecklist />
 
         {isLoading ? (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">

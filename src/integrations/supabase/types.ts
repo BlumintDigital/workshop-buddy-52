@@ -47,6 +47,30 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_onboarding_progress: {
+        Row: {
+          created_at: string
+          dismissed_at: string | null
+          skipped_steps: string[]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          dismissed_at?: string | null
+          skipped_steps?: string[]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          dismissed_at?: string | null
+          skipped_steps?: string[]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       appointments: {
         Row: {
           appointment_date: string
