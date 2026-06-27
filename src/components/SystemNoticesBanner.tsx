@@ -60,9 +60,11 @@ export function SystemNoticesBanner() {
         }
       )
       .subscribe();
+    const interval = window.setInterval(load, 30_000);
 
     return () => {
       cancelled = true;
+      window.clearInterval(interval);
       supabase.removeChannel(channel);
     };
   }, [user]);

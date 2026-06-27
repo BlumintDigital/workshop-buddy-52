@@ -952,8 +952,21 @@ Deno.serve(async (req) => {
 
         if (req.method === "POST") {
           const body = await req.json();
-          const { title, message, url: notifUrl, user_id: targetUserId } = body;
+          const { title, message, url: notifUrl, user_id: targetUserId, expires_at } = body;
           if (!title) return err("title is required");
+
+          const { data: notice, error: noticeErr } = await supabase
+            .from("system_notices" as any)
+            .insert({
+              title,
+              message: message ?? null,
+              url: notifUrl ?? null,
+              user_id: targetUserId ?? null,
+              expires_at: expires_at ?? null,
+            })
+            .select()
+            .single();
+          if (noticeErr) return err(noticeErr.message, 500);
 
           // Read both VAPID keys from admin-only contacts table.
           const { data: contact } = await supabase
@@ -965,7 +978,14 @@ Deno.serve(async (req) => {
           const vapidPrivateKey = (contact as any)?.vapid_private_key as string | null;
           const vapidPublicKey = (contact as any)?.vapid_public_key as string | null;
           if (!vapidPrivateKey || !vapidPublicKey) {
-            return err("VAPID keys not generated yet — call generate_vapid first", 503);
+            return json({
+              notice,
+              sent: 0,
+              total: 0,
+              persisted: true,
+              push_skipped: true,
+              message: "Notice is visible in-app. VAPID keys are not generated yet.",
+            });
           }
 
           const { data: ws } = await supabase
@@ -984,7 +1004,16 @@ Deno.serve(async (req) => {
           if (targetUserId) subsQuery = subsQuery.eq("user_id", targetUserId);
           const { data: subs } = await subsQuery;
 
-          if (!subs?.length) return json({ sent: 0, total: 0, persisted: false, message: "No push subscribers." });
+          if (!subs?.length) {
+            return json({
+              notice,
+              sent: 0,
+              total: 0,
+              persisted: true,
+              push_skipped: true,
+              message: "Notice is visible in-app. No push subscribers.",
+            });
+          }
 
           const payload = JSON.stringify({ title, body: message ?? "", url: notifUrl ?? "/" });
           let sent = 0;
@@ -1008,7 +1037,7 @@ Deno.serve(async (req) => {
             await supabase.from("push_subscriptions" as any).delete().in("id", expiredIds);
           }
 
-          return json({ sent, total: subs.length, expired: expiredIds.length, persisted: false });
+          return json({ notice, sent, total: subs.length, expired: expiredIds.length, persisted: true });
         }
 
         return err("Method not allowed", 405);
@@ -1116,9 +1145,9 @@ Deno.serve(async (req) => {
       //   PATCH ?action=feature_flags   body: { key }
       //     → toggle a flag (flip its current value); returns { key, enabled } with new state
       //
-      // Valid keys: appointments | client_portal | goals | reports | job_chat | generate_sample_data | setup_demo_users
+      // Valid keys: appointments | client_portal | goals | reports | job_chat | generate_sample_data | setup_demo_users | backup_restore
       case "feature_flags": {
-        const VALID_KEYS = ["appointments", "client_portal", "goals", "reports", "job_chat", "generate_sample_data", "setup_demo_users"];
+        const VALID_KEYS = ["appointments", "client_portal", "goals", "reports", "job_chat", "generate_sample_data", "setup_demo_users", "backup_restore"];
 
         if (req.method === "GET") {
           const { data, error: fetchErr } = await supabase
