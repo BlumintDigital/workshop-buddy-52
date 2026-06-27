@@ -128,6 +128,17 @@ export default function AdminSignupCodes() {
     toast.success("Code copied to clipboard");
   };
 
+  const roleBadge = (role: AppRole) => {
+    const config: Record<string, { label: string; className: string }> = {
+      client:  { label: "Client",  className: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-300 dark:border-emerald-800" },
+      staff:   { label: "Staff",   className: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/30 dark:text-blue-300 dark:border-blue-800" },
+      manager: { label: "Manager", className: "bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-950/30 dark:text-violet-300 dark:border-violet-800" },
+      admin:   { label: "Admin",   className: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-300 dark:border-amber-800" },
+    };
+    const c = config[role] ?? { label: role, className: "" };
+    return <Badge variant="outline" className={c.className}>{c.label}</Badge>;
+  };
+
   const statusBadge = (row: SignupCode) => {
     const expired = row.expires_at && new Date(row.expires_at) < new Date();
     const exhausted = row.max_uses !== null && row.uses_count >= row.max_uses;
@@ -282,7 +293,7 @@ export default function AdminSignupCodes() {
                       <TableCell className="font-mono">{row.code}</TableCell>
                       <TableCell>{row.label ?? <span className="text-muted-foreground">—</span>}</TableCell>
                       <TableCell>
-                        <Badge variant="outline" className="capitalize">{row.role}</Badge>
+                        {roleBadge(row.role)}
                       </TableCell>
                       <TableCell>
                         {row.uses_count}

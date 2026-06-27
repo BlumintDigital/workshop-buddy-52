@@ -297,11 +297,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { role: nextRole, needsMfa: false };
   };
 
-  const signUp = async (email: string, password: string, fullName: string, role: AppRole = "client") => {
+  const signUp = async (email: string, password: string, fullName: string, role: AppRole = "client", companyName?: string) => {
     const { error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { full_name: fullName, role }, emailRedirectTo: window.location.origin },
+      options: { data: { full_name: fullName, role, company_name: companyName ?? null }, emailRedirectTo: window.location.origin },
     });
     if (error) throw error;
   };

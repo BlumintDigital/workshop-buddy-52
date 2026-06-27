@@ -38,6 +38,7 @@ export default function Auth() {
   const [signupLastName, setSignupLastName] = useState("");
   const [signupInviteCode, setSignupInviteCode] = useState("");
   const [signupRole, setSignupRole] = useState<"staff" | "client">("client");
+  const [signupCompanyName, setSignupCompanyName] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [loginImageUrl, setLoginImageUrl] = useState<string | null>(null);
   const [workshopName, setWorkshopName] = useState<string>("Workshop Manager");
@@ -297,6 +298,10 @@ export default function Auth() {
       toast.error("First and last name are required");
       return;
     }
+    if (signupRole === "client" && !signupCompanyName.trim()) {
+      toast.error("Company name is required");
+      return;
+    }
     if (!signupInviteCode.trim()) {
       toast.error("An invite code is required to create an account");
       return;
@@ -322,7 +327,7 @@ export default function Auth() {
         return;
       }
       const fullName = `${signupFirstName.trim()} ${signupLastName.trim()}`;
-      await signUp(signupEmail, signupPassword, fullName, signupRole);
+      await signUp(signupEmail, signupPassword, fullName, signupRole, signupCompanyName.trim() || undefined);
       setConfirmationEmail(signupEmail);
       setEmailConfirmationSent(true);
     } catch (err: unknown) {
@@ -573,7 +578,7 @@ export default function Auth() {
                       <div className="grid grid-cols-2 gap-3">
                         <button
                           type="button"
-                          onClick={() => setSignupRole("client")}
+                          onClick={() => { setSignupRole("client"); setSignupCompanyName(""); }}
                           className={`flex flex-col items-center gap-1.5 rounded-lg border-2 p-4 text-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring ${signupRole === "client" ? "border-primary bg-primary/5" : "border-border hover:border-muted-foreground/50"}`}
                         >
                           <User className="h-6 w-6" />
@@ -582,7 +587,7 @@ export default function Auth() {
                         </button>
                         <button
                           type="button"
-                          onClick={() => setSignupRole("staff")}
+                          onClick={() => { setSignupRole("staff"); setSignupCompanyName(""); }}
                           className={`flex flex-col items-center gap-1.5 rounded-lg border-2 p-4 text-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring ${signupRole === "staff" ? "border-primary bg-primary/5" : "border-border hover:border-muted-foreground/50"}`}
                         >
                           <Briefcase className="h-6 w-6" />
@@ -591,13 +596,19 @@ export default function Auth() {
                         </button>
                       </div>
                     </div>
+                    {signupRole === "client" && (
+                      <div className="space-y-2">
+                        <Label htmlFor="signup-company-name">Company Name</Label>
+                        <Input id="signup-company-name" value={signupCompanyName} onChange={(e) => setSignupCompanyName(e.target.value)} required placeholder="Acme Ltd." />
+                      </div>
+                    )}
                     <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-2">
-                        <Label htmlFor="signup-first-name">First Name</Label>
+                        <Label htmlFor="signup-first-name">{signupRole === "client" ? "Contact First Name" : "First Name"}</Label>
                         <Input id="signup-first-name" value={signupFirstName} onChange={(e) => setSignupFirstName(e.target.value)} required placeholder="John" />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="signup-last-name">Last Name</Label>
+                        <Label htmlFor="signup-last-name">{signupRole === "client" ? "Contact Last Name" : "Last Name"}</Label>
                         <Input id="signup-last-name" value={signupLastName} onChange={(e) => setSignupLastName(e.target.value)} required placeholder="Doe" />
                       </div>
                     </div>
