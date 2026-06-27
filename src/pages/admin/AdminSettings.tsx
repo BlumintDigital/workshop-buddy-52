@@ -759,36 +759,38 @@ export default function AdminSettings() {
           </TabsContent>
 
           <TabsContent value="data" className="mt-4 space-y-4">
+            {canSetupDemoUsers && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2"><Users className="h-5 w-5" />Setup Demo Users</CardTitle>
                 <CardDescription>Create or reset one demo account for each role so the one-click demo page can sign in.</CardDescription>
               </CardHeader>
               <CardContent>
-                <Button onClick={handleSetupDemo} disabled={settingUpDemo || !canSetupDemoUsers} variant="outline" title={!canSetupDemoUsers ? "Enable via feature flags" : undefined}>
+                <Button onClick={handleSetupDemo} disabled={settingUpDemo} variant="outline">
                   {settingUpDemo ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Setting up...</> : <><Users className="mr-2 h-4 w-4" />Setup Demo Users</>}
                 </Button>
                 <p className="text-xs text-muted-foreground mt-2">
                   Existing demo passwords and roles are reset to match the credentials used by <span className="font-mono">/demo</span>.
-                  {!canSetupDemoUsers && <span className="ml-1 text-muted-foreground/60">(disabled — feature flag off)</span>}
                 </p>
               </CardContent>
             </Card>
+            )}
+            {canGenerateSampleData && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2"><Database className="h-5 w-5" />Generate Sample Data</CardTitle>
                 <CardDescription>Populate the database with realistic sample data for testing.</CardDescription>
               </CardHeader>
               <CardContent>
-                <Button onClick={handleSeedData} disabled={seeding || !canGenerateSampleData} title={!canGenerateSampleData ? "Enable via feature flags" : undefined}>
+                <Button onClick={handleSeedData} disabled={seeding}>
                   {seeding ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Generating...</> : <><Database className="mr-2 h-4 w-4" />Generate Sample Data</>}
                 </Button>
                 <p className="text-xs text-muted-foreground mt-2">
                   Creates ~50+ records across all tables.
-                  {!canGenerateSampleData && <span className="ml-1 text-muted-foreground/60">(disabled — feature flag off)</span>}
                 </p>
               </CardContent>
             </Card>
+            )}
             <Card className="border-destructive/50">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-destructive"><Trash2 className="h-5 w-5" />Delete All Data</CardTitle>
