@@ -3,10 +3,23 @@ import { ExternalLink, FileText } from "lucide-react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useAuth, type AppRole } from "@/hooks/useAuth";
 import pdfAsset from "../../public/docs/user-guide.pdf.asset.json";
 import guideMarkdown from "../../docs/user-guide.md?raw";
 
 const PDF_URL = pdfAsset.url;
+
+// Which roles can see each top-level ## section (keyed by leading digit(s) before the dot).
+const SECTION_ACCESS: Record<string, AppRole[]> = {
+  "1": ["admin", "manager", "staff", "client"],
+  "2": ["admin", "manager", "staff", "client"],
+  "3": ["admin", "manager", "staff", "client"],
+  "4": ["admin"],
+  "5": ["admin", "manager"],
+  "6": ["admin", "staff"],
+  "7": ["admin", "client"],
+  "8": ["admin", "manager", "staff", "client"],
+};
 
 type Block =
   | { type: "h1" | "h2" | "h3"; text: string; id: string }
@@ -79,8 +92,45 @@ function parse(md: string): Block[] {
   return blocks;
 }
 
+/** Returns the section number string from a ## heading text, e.g. "4. Admin Guide" -> "4". */
+function extractSectionNumber(headingText: string): string | null {
+  const m = headingText.match(/^(\d+)\./);
+  return m ? m[1] : null;
+}
+
+/** Filter blocks to only those visible to the given role. Null role = show all (loading state). */
+function filterBlocksByRole(blocks: Block[], role: AppRole | null): Block[] {
+  // While loading (role is null) or if admin, show everything.
+  if (role === null || role === "admin") return blocks;
+
+  const result: Block[] = [];
+  let currentSectionVisible = true; // blocks before any ## are always shown
+
+  for (const block of blocks) {
+    if (block.type === "h2") {
+      const num = extractSectionNumber(block.text);
+      if (num === null) {
+        // No section number — show it.
+        currentSectionVisible = true;
+      } else {
+        const allowed = SECTION_ACCESS[num];
+        currentSectionVisible = allowed ? allowed.includes(role) : true;
+      }
+      if (currentSectionVisible) result.push(block);
+    } else if (currentSectionVisible) {
+      result.push(block);
+    }
+  }
+
+  return result;
+}
+
 export default function Help() {
-  const blocks = useMemo(() => parse(guideMarkdown), []);
+  const { role } = useAuth();
+  const allBlocks = useMemo(() => parse(guideMarkdown), []);
+
+  const blocks = useMemo(() => filterBlocksByRole(allBlocks, role), [allBlocks, role]);
+
   const toc = useMemo(
     () => blocks.flatMap((b) => (b.type === "h2" ? [{ id: b.id, text: b.text }] : [])),
     [blocks]

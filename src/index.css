@@ -47,6 +47,18 @@
     --sidebar-ring: 217 91% 60%;
   }
 
+  /* Mobile sidebar: match page background so the drawer doesn't clash */
+  @media (max-width: 767px) {
+    :root {
+      --sidebar-background: var(--background);
+      --sidebar-foreground: var(--foreground);
+      --sidebar-accent: var(--accent);
+      --sidebar-accent-foreground: var(--accent-foreground);
+      --sidebar-border: var(--border);
+      --sidebar-ring: var(--ring);
+    }
+  }
+
   .dark {
     --background: 222 28% 9%;
     --foreground: 210 40% 96%;

@@ -269,7 +269,7 @@ export function AppSidebar() {
                 <SidebarMenuButton size="lg" className="min-h-[44px] hover:bg-sidebar-accent/60 transition-colors duration-150">
                   <Avatar className="h-8 w-8">
                     {profile?.avatar_url && <AvatarImage src={profile.avatar_url} alt={profile.full_name || "Avatar"} />}
-                    <AvatarFallback className="bg-white/15 text-white text-xs font-semibold">{initials}</AvatarFallback>
+                    <AvatarFallback className="bg-sidebar-accent text-sidebar-accent-foreground text-xs font-semibold">{initials}</AvatarFallback>
                   </Avatar>
                   {!collapsed && (
                     <div className="flex flex-1 flex-col gap-0.5 leading-none">

@@ -345,32 +345,34 @@ export default function AdminUserDetail() {
               </CardTitle>
             </CardHeader>
             <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Title</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Priority</TableHead>
-                    <TableHead>Due Date</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {jobs.length === 0 ? (
-                    <TableRow><TableCell colSpan={4} className="text-center py-6 text-muted-foreground">No jobs found</TableCell></TableRow>
-                  ) : jobs.map((j) => (
-                    <TableRow key={j.id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/jobs/${j.id}`)}>
-                      <TableCell className="font-medium">{j.title}</TableCell>
-                      <TableCell>
-                        <Badge variant={jobStatusColor[j.status] || "outline"} className="capitalize">
-                          {j.status.replace("_", " ")}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="capitalize">{j.priority}</TableCell>
-                      <TableCell>{j.due_date ? new Date(j.due_date).toLocaleDateString() : "—"}</TableCell>
+              <div className="overflow-x-auto -mx-1">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Title</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Priority</TableHead>
+                      <TableHead>Due Date</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {jobs.length === 0 ? (
+                      <TableRow><TableCell colSpan={4} className="text-center py-6 text-muted-foreground">No jobs found</TableCell></TableRow>
+                    ) : jobs.map((j) => (
+                      <TableRow key={j.id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/jobs/${j.id}`)}>
+                        <TableCell className="font-medium">{j.title}</TableCell>
+                        <TableCell>
+                          <Badge variant={jobStatusColor[j.status] || "outline"} className="capitalize">
+                            {j.status.replace("_", " ")}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="capitalize">{j.priority}</TableCell>
+                        <TableCell>{j.due_date ? new Date(j.due_date).toLocaleDateString() : "—"}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             </CardContent>
           </Card>
         )}
@@ -382,32 +384,34 @@ export default function AdminUserDetail() {
               <CardTitle className="text-lg flex items-center gap-2"><Receipt className="h-5 w-5" />Invoices</CardTitle>
             </CardHeader>
             <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Invoice #</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Total</TableHead>
-                    <TableHead>Due Date</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {invoices.length === 0 ? (
-                    <TableRow><TableCell colSpan={4} className="text-center py-6 text-muted-foreground">No invoices found</TableCell></TableRow>
-                  ) : invoices.map((inv) => (
-                    <TableRow key={inv.id}>
-                      <TableCell className="font-medium">{inv.invoice_number}</TableCell>
-                      <TableCell>
-                        <Badge variant={invoiceStatusColor[inv.status] || "outline"} className="capitalize">
-                          {inv.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>{fmt(inv.total)}</TableCell>
-                      <TableCell>{inv.due_date ? new Date(inv.due_date).toLocaleDateString() : "—"}</TableCell>
+              <div className="overflow-x-auto -mx-1">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Invoice #</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Total</TableHead>
+                      <TableHead>Due Date</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {invoices.length === 0 ? (
+                      <TableRow><TableCell colSpan={4} className="text-center py-6 text-muted-foreground">No invoices found</TableCell></TableRow>
+                    ) : invoices.map((inv) => (
+                      <TableRow key={inv.id}>
+                        <TableCell className="font-medium">{inv.invoice_number}</TableCell>
+                        <TableCell>
+                          <Badge variant={invoiceStatusColor[inv.status] || "outline"} className="capitalize">
+                            {inv.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>{fmt(inv.total)}</TableCell>
+                        <TableCell>{inv.due_date ? new Date(inv.due_date).toLocaleDateString() : "—"}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             </CardContent>
           </Card>
         )}
@@ -418,30 +422,32 @@ export default function AdminUserDetail() {
             <CardTitle className="text-lg flex items-center gap-2"><Calendar className="h-5 w-5" />Appointments</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Title</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Time</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {appointments.length === 0 ? (
-                  <TableRow><TableCell colSpan={5} className="text-center py-6 text-muted-foreground">No appointments</TableCell></TableRow>
-                ) : appointments.map((a) => (
-                  <TableRow key={a.id}>
-                    <TableCell className="font-medium">{a.title}</TableCell>
-                    <TableCell>{a.appointment_date}</TableCell>
-                    <TableCell>{a.appointment_time}</TableCell>
-                    <TableCell className="capitalize">{a.type}</TableCell>
-                    <TableCell><Badge variant="outline">{a.status}</Badge></TableCell>
+            <div className="overflow-x-auto -mx-1">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Title</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Time</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Status</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {appointments.length === 0 ? (
+                    <TableRow><TableCell colSpan={5} className="text-center py-6 text-muted-foreground">No appointments</TableCell></TableRow>
+                  ) : appointments.map((a) => (
+                    <TableRow key={a.id}>
+                      <TableCell className="font-medium">{a.title}</TableCell>
+                      <TableCell>{a.appointment_date}</TableCell>
+                      <TableCell>{a.appointment_time}</TableCell>
+                      <TableCell className="capitalize">{a.type}</TableCell>
+                      <TableCell><Badge variant="outline">{a.status}</Badge></TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           </CardContent>
         </Card>
       </div>
