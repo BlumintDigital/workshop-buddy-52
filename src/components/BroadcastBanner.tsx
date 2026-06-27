@@ -20,7 +20,6 @@ interface Broadcast {
   expires_at: string | null;
 }
 
-const DISMISS_KEY = "dismissed-broadcasts";
 const MAX_VISIBLE = 3;
 
 const severityRank: Record<Severity, number> = { critical: 0, warning: 1, info: 2 };
@@ -52,27 +51,10 @@ function isActive(b: Broadcast): boolean {
   return true;
 }
 
-function readDismissed(): string[] {
-  try {
-    const raw = localStorage.getItem(DISMISS_KEY);
-    return raw ? (JSON.parse(raw) as string[]) : [];
-  } catch {
-    return [];
-  }
-}
-
-function writeDismissed(ids: string[]) {
-  try {
-    localStorage.setItem(DISMISS_KEY, JSON.stringify(ids));
-  } catch {
-    /* ignore */
-  }
-}
-
 export function BroadcastBanner() {
   const { user } = useAuth();
   const [broadcasts, setBroadcasts] = useState<Broadcast[]>([]);
-  const [dismissed, setDismissed] = useState<string[]>(() => readDismissed());
+  const [dismissed, setDismissed] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (!user) return;
@@ -86,6 +68,16 @@ export function BroadcastBanner() {
       if (!cancelled) setBroadcasts(((data as unknown) as Broadcast[]) || []);
     };
     load();
+
+    const loadDismissed = async () => {
+      const { data } = await (supabase.from("dismissed_broadcasts" as any))
+        .select("broadcast_id")
+        .eq("user_id", user.id);
+      if (!cancelled && data) {
+        setDismissed(new Set((data as { broadcast_id: string }[]).map((r) => r.broadcast_id)));
+      }
+    };
+    loadDismissed();
 
     const channel = supabase
       .channel("broadcasts")
@@ -107,15 +99,20 @@ export function BroadcastBanner() {
   const visible = useMemo(() => {
     return broadcasts
       .filter(isActive)
-      .filter((b) => !dismissed.includes(b.id))
+      .filter((b) => !dismissed.has(b.id))
       .sort((a, b) => severityRank[a.severity] - severityRank[b.severity])
       .slice(0, MAX_VISIBLE);
   }, [broadcasts, dismissed]);
 
   const dismiss = (id: string) => {
-    const next = Array.from(new Set([...dismissed, id]));
-    setDismissed(next);
-    writeDismissed(next);
+    // Optimistic update
+    setDismissed((prev) => new Set([...prev, id]));
+    if (user) {
+      (supabase.from("dismissed_broadcasts" as any)).insert({
+        user_id: user.id,
+        broadcast_id: id,
+      });
+    }
   };
 
   if (!user || visible.length === 0) return null;
@@ -148,9 +145,9 @@ export function BroadcastBanner() {
               type="button"
               aria-label="Dismiss broadcast"
               onClick={() => dismiss(b.id)}
-              className="absolute right-2 top-2 inline-flex h-8 w-8 items-center justify-center rounded-md opacity-70 hover:opacity-100 hover:bg-foreground/10 transition-opacity"
+              className="absolute right-2 top-2 inline-flex h-9 w-9 items-center justify-center rounded-md opacity-90 hover:opacity-100 hover:bg-foreground/10 transition-opacity"
             >
-              <X className="h-4 w-4" />
+              <X className="h-4 w-4 text-current" />
             </button>
           </Alert>
         );
