@@ -24,7 +24,7 @@ export default function ClientInvoices() {
   const fetchInvoices = async () => {
     setIsLoading(true);
     if (!user) { setIsLoading(false); return; }
-    const { data } = await supabase.from("invoices").select("*").eq("client_id", user.id).in("status", ["sent", "paid", "overdue"]).order("created_at", { ascending: false });
+    const { data } = await supabase.from("invoices").select("*").eq("client_id", user.id).in("status", ["sent", "paid", "overdue"]).order("created_at", { ascending: false }).limit(200);
     setInvoices(data || []);
     setIsLoading(false);
   };

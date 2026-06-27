@@ -1106,7 +1106,7 @@ export default function JobDetail() {
                 {jobAttachments.map(a => (
                   <div key={a.id} className="relative group border rounded-lg overflow-hidden">
                     {isImage(a.file_type) ? (
-                      <img src={getFileUrl(a.file_path)} alt={a.file_name} className="w-full h-24 object-cover" />
+                      <img src={getFileUrl(a.file_path)} alt={a.file_name} className="w-full h-24 object-cover" loading="lazy" />
                     ) : (
                       <div className="w-full h-24 flex items-center justify-center bg-muted">
                         <FileText className="h-8 w-8 text-muted-foreground" />
@@ -1439,7 +1439,7 @@ export default function JobDetail() {
                     {taskAttachments.map(a => (
                       <div key={a.id} className="relative group border rounded-lg overflow-hidden">
                         {isImage(a.file_type) ? (
-                          <img src={getFileUrl(a.file_path)} alt={a.file_name} className="w-full h-20 object-cover" />
+                          <img src={getFileUrl(a.file_path)} alt={a.file_name} className="w-full h-20 object-cover" loading="lazy" />
                         ) : (
                           <div className="w-full h-20 flex items-center justify-center bg-muted">
                             <FileText className="h-7 w-7 text-muted-foreground" />

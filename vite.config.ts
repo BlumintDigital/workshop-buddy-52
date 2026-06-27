@@ -81,6 +81,7 @@ export default defineConfig(({ mode }) => ({
           if (id.includes("@radix-ui")) return "vendor-radix";
           if (id.includes("react-router")) return "vendor-router";
           if (id.includes("react-dom") || id.includes("/react/")) return "vendor-react";
+          if (id.includes("lucide-react")) return "vendor-icons";
         },
       },
     },

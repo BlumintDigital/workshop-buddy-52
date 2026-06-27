@@ -22,7 +22,10 @@ export default function StaffJobs() {
   const fetchJobs = async () => {
     setIsLoading(true);
     if (!user) { setIsLoading(false); return; }
-    const { data } = await supabase.from("jobs").select("*").order("created_at", { ascending: false });
+    const { data } = await supabase.from("jobs")
+      .select("id, title, status, priority, due_date, assigned_staff_id, client_id, created_at")
+      .order("created_at", { ascending: false })
+      .limit(200);
     setJobs(data || []);
     setIsLoading(false);
   };

@@ -144,19 +144,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [user]);
 
   const fetchUserData = async (userId: string): Promise<AppRole | null> => {
-    const [roleRes, profileRes] = await Promise.all([
+    const [roleRes, profileRes, mfaRes] = await Promise.all([
       supabase.from("user_roles").select("role").eq("user_id", userId).maybeSingle(),
       supabase.from("profiles").select("full_name, avatar_url").eq("id", userId).maybeSingle(),
+      supabase.auth.mfa.listFactors(),
     ]);
 
     if (roleRes.error) throw new Error(`Role fetch failed: ${roleRes.error.message}`);
     const nextRole = (roleRes.data?.role as AppRole | undefined) ?? null;
     setRole(nextRole);
     setProfile(profileRes.data ?? null);
-
-    // Check if user has 2FA enrolled
-    const { data: mfaData } = await supabase.auth.mfa.listFactors();
-    setMfaEnabled(!!(mfaData?.totp?.find((f) => f.status === "verified")));
+    setMfaEnabled(!!(mfaRes.data?.totp?.find((f) => f.status === "verified")));
 
     return nextRole;
   };

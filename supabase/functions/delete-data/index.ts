@@ -135,12 +135,9 @@ serve(async (req) => {
         });
         if (listErr || !userList?.users?.length) break;
 
-        for (const user of userList.users) {
-          if (user.id !== callerId) {
-            await adminClient.auth.admin.deleteUser(user.id);
-            deletedUsers++;
-          }
-        }
+        const toDelete = userList.users.filter((u: any) => u.id !== callerId);
+        await Promise.all(toDelete.map((u: any) => adminClient.auth.admin.deleteUser(u.id)));
+        deletedUsers += toDelete.length;
 
         if (userList.users.length < perPage) break;
         page++;

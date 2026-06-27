@@ -287,16 +287,17 @@ Deno.serve(async (req) => {
 
       // ==================== STATS ====================
       case "stats": {
-        const appointmentsEnabled = await isFeatureEnabled("appointments");
-        const [jobs, users, appointments, invoices, inventory] = await Promise.all([
+        const [flagRow, jobs, users, invoices, inventory] = await Promise.all([
+          supabase.from("feature_flags").select("enabled").eq("key", "appointments").maybeSingle(),
           supabase.from("jobs").select("id", { count: "exact", head: true }),
           supabase.from("profiles").select("id", { count: "exact", head: true }),
-          appointmentsEnabled
-            ? supabase.from("appointments").select("id", { count: "exact", head: true })
-            : Promise.resolve({ count: 0 }),
           supabase.from("invoices").select("id", { count: "exact", head: true }),
           supabase.from("inventory_items").select("id, quantity, min_stock"),
         ]);
+        const appointmentsEnabled = flagRow.data?.enabled ?? true;
+        const appointments = appointmentsEnabled
+          ? await supabase.from("appointments").select("id", { count: "exact", head: true })
+          : { count: 0 };
         const inventoryItems = inventory.data || [];
         const lowStock = inventoryItems.filter((i) => i.quantity <= i.min_stock).length;
         return json({

@@ -30,8 +30,10 @@ export default function AdminUsers() {
 
   const fetchUsers = async () => {
     setIsLoading(true);
-    const { data: roles } = await supabase.from("user_roles").select("user_id, role").in("role", ["admin", "manager", "staff"]);
-    const { data: profiles } = await supabase.from("profiles").select("id, full_name, created_at, is_super_admin, is_active");
+    const [{ data: roles }, { data: profiles }] = await Promise.all([
+      supabase.from("user_roles").select("user_id, role").in("role", ["admin", "manager", "staff"]).limit(500),
+      supabase.from("profiles").select("id, full_name, created_at, is_super_admin, is_active").limit(500),
+    ]);
     if (roles && profiles) {
       const merged = roles
         .map((r) => {

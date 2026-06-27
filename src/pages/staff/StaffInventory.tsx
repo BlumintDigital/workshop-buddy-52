@@ -24,7 +24,10 @@ export default function StaffInventory() {
 
   const fetchItems = async () => {
     setIsLoading(true);
-    const { data } = await supabase.from("inventory_items").select("*").order("name");
+    const { data } = await supabase.from("inventory_items")
+      .select("id, name, sku, quantity, unit, min_stock")
+      .order("name")
+      .limit(500);
     setItems(data || []);
     setIsLoading(false);
   };

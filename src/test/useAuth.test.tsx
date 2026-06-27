@@ -13,6 +13,7 @@ type MockSession = typeof mockSession;
 
 let currentSession: MockSession | null = null;
 let trustedDevice = false;
+let mockRole = "admin";
 
 vi.mock("sonner", () => ({
   toast: {
@@ -24,7 +25,7 @@ vi.mock("sonner", () => ({
 
 vi.mock("@/integrations/supabase/client", () => {
   const maybeSingleFor = (table: string) => {
-    if (table === "user_roles") return Promise.resolve({ data: { role: "admin" }, error: null });
+    if (table === "user_roles") return Promise.resolve({ data: { role: mockRole }, error: null });
     if (table === "profiles") return Promise.resolve({ data: { full_name: "Test User", avatar_url: null }, error: null });
     return Promise.resolve({ data: null, error: null });
   };
@@ -60,6 +61,9 @@ vi.mock("@/integrations/supabase/client", () => {
             maybeSingle: vi.fn(() => maybeSingleFor(table)),
           })),
         })),
+        update: vi.fn(() => ({
+          eq: vi.fn(() => Promise.resolve({ error: null })),
+        })),
       })),
     },
   };
@@ -90,23 +94,25 @@ describe("AuthProvider MFA state", () => {
   beforeEach(() => {
     currentSession = null;
     trustedDevice = false;
+    mockRole = "admin";
     vi.stubGlobal("fetch", vi.fn(async () => ({
       ok: true,
       json: async () => ({ trusted: trustedDevice }),
     })));
   });
 
-  it("skips MFA and clears pending state for a trusted device", async () => {
+  it("skips MFA and clears pending state for a trusted device (staff role)", async () => {
     trustedDevice = true;
+    mockRole = "staff"; // only non-elevated roles bypass MFA on trusted devices
     const view = renderAuth();
     await waitFor(() => expect(view.auth.loading).toBe(false));
 
     let result: Awaited<ReturnType<typeof view.auth.signIn>>;
     await act(async () => {
-      result = await view.auth.signIn("admin@example.com", "password");
+      result = await view.auth.signIn("staff@example.com", "password");
     });
 
-    expect(result!).toEqual({ role: "admin", needsMfa: false });
+    expect(result!).toEqual({ role: "staff", needsMfa: false });
     await waitFor(() => expect(view.auth.needsMfaVerification).toBe(false));
     expect(view.auth.pendingMfaFactorId).toBeNull();
     expect(view.auth.pendingMfaRole).toBeNull();
