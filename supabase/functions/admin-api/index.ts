@@ -1,29 +1,11 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import webpush from "npm:web-push@3";
 
-const DEFAULT_ALLOWED_ORIGINS = ["https://ieq.shoplane.uk"];
-
-function getAllowedOrigins() {
-  const configured =
-    Deno.env.get("ALLOWED_ORIGINS") ??
-    Deno.env.get("ALLOWED_ORIGIN") ??
-    DEFAULT_ALLOWED_ORIGINS.join(",");
-
-  return configured
-    .split(",")
-    .map((origin) => origin.trim())
-    .filter(Boolean);
-}
-
 function corsHeadersFor(req: Request) {
-  const requestOrigin = req.headers.get("Origin") ?? "";
-  const allowedOrigins = getAllowedOrigins();
-  const allowOrigin = allowedOrigins.includes(requestOrigin)
-    ? requestOrigin
-    : allowedOrigins[0] ?? DEFAULT_ALLOWED_ORIGINS[0];
+  const requestOrigin = req.headers.get("Origin") ?? "*";
 
   return {
-    "Access-Control-Allow-Origin": allowOrigin,
+    "Access-Control-Allow-Origin": requestOrigin,
     "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
     "Access-Control-Allow-Methods": "GET, POST, PATCH, DELETE, OPTIONS",
     "Vary": "Origin",
