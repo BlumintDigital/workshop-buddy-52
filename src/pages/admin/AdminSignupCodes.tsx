@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import type { AppRole } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,6 +19,7 @@ type SignupCode = {
   id: string;
   code: string;
   label: string | null;
+  role: AppRole;
   max_uses: number | null;
   uses_count: number;
   expires_at: string | null;
@@ -41,6 +43,7 @@ export default function AdminSignupCodes() {
 
   const [newCode, setNewCode] = useState(generateCode());
   const [newLabel, setNewLabel] = useState("");
+  const [newRole, setNewRole] = useState<AppRole>("client");
   const [newMaxUses, setNewMaxUses] = useState<string>("");
   const [newExpiresAt, setNewExpiresAt] = useState<string>("");
   const [creating, setCreating] = useState(false);
@@ -49,7 +52,7 @@ export default function AdminSignupCodes() {
     setLoading(true);
     const { data, error } = await supabase
       .from("signup_codes")
-      .select("id, code, label, max_uses, uses_count, expires_at, active, created_at")
+      .select("id, code, label, role, max_uses, uses_count, expires_at, active, created_at")
       .order("created_at", { ascending: false });
     if (error) {
       toast.error(error.message);
@@ -64,6 +67,7 @@ export default function AdminSignupCodes() {
   const openCreate = () => {
     setNewCode(generateCode());
     setNewLabel("");
+    setNewRole("client");
     setNewMaxUses("");
     setNewExpiresAt("");
     setDialogOpen(true);
@@ -84,6 +88,7 @@ export default function AdminSignupCodes() {
     const { error } = await supabase.from("signup_codes").insert({
       code: newCode.trim(),
       label: newLabel.trim() || null,
+      role: newRole,
       max_uses: maxUsesNum,
       expires_at: newExpiresAt ? new Date(newExpiresAt).toISOString() : null,
       active: true,
@@ -185,6 +190,19 @@ export default function AdminSignupCodes() {
                     maxLength={120}
                   />
                 </div>
+                <div className="space-y-2">
+                  <Label htmlFor="role">Role</Label>
+                  <select
+                    id="role"
+                    value={newRole}
+                    onChange={(e) => setNewRole(e.target.value as AppRole)}
+                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  >
+                    <option value="client">Client</option>
+                    <option value="staff">Staff</option>
+                    <option value="manager">Manager</option>
+                  </select>
+                </div>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="max-uses">Max uses</Label>
@@ -235,6 +253,7 @@ export default function AdminSignupCodes() {
                 <TableRow>
                   <TableHead>Code</TableHead>
                   <TableHead>Label</TableHead>
+                  <TableHead>Role</TableHead>
                   <TableHead>Uses</TableHead>
                   <TableHead>Expires</TableHead>
                   <TableHead>Status</TableHead>
@@ -246,6 +265,7 @@ export default function AdminSignupCodes() {
                   <TableRow key={i}>
                     <TableCell><Skeleton className="h-4 w-32" /></TableCell>
                     <TableCell><Skeleton className="h-4 w-36" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-16 rounded-full" /></TableCell>
                     <TableCell><Skeleton className="h-4 w-20" /></TableCell>
                     <TableCell><Skeleton className="h-4 w-20" /></TableCell>
                     <TableCell><Skeleton className="h-4 w-20 rounded-full" /></TableCell>
@@ -253,7 +273,7 @@ export default function AdminSignupCodes() {
                   </TableRow>
                 )) : codes.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                       No invite codes yet. Create one to allow new sign-ups.
                     </TableCell>
                   </TableRow>
@@ -261,6 +281,9 @@ export default function AdminSignupCodes() {
                     <TableRow key={row.id}>
                       <TableCell className="font-mono">{row.code}</TableCell>
                       <TableCell>{row.label ?? <span className="text-muted-foreground">—</span>}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="capitalize">{row.role}</Badge>
+                      </TableCell>
                       <TableCell>
                         {row.uses_count}
                         {row.max_uses !== null ? ` / ${row.max_uses}` : " / ∞"}

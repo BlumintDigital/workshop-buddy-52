@@ -28,10 +28,14 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
+    // redeem_signup_code now returns a table row: { valid, role }
     const { data, error } = await admin.rpc("redeem_signup_code", { _code: code });
     if (error) return json({ valid: false, error: error.message }, 500);
 
-    return json({ valid: !!data });
+    // data is an array of rows (RETURNS TABLE); grab the first row.
+    const row = Array.isArray(data) ? data[0] : data;
+    if (!row?.valid) return json({ valid: false });
+    return json({ valid: true, role: row.role });
   } catch (e) {
     return json({ valid: false, error: (e as Error).message }, 500);
   }
