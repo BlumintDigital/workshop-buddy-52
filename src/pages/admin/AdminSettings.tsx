@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { FEATURE_DEFAULTS, useFeature, type FeatureKey } from "@/hooks/useFeatureFlags";
+import { useFeature } from "@/hooks/useFeatureFlags";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,7 +15,7 @@ import {
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { Database, Trash2, Loader2, Upload, ImageIcon, X, Users, AlertTriangle, Lock, SlidersHorizontal, Send } from "lucide-react";
+import { Database, Trash2, Loader2, Upload, ImageIcon, X, Users, AlertTriangle, Lock, Send } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
@@ -62,37 +62,6 @@ const defaultSettings = {
 
 type Settings = typeof defaultSettings;
 
-type FeatureFlagRow = {
-  key: FeatureKey;
-  enabled: boolean;
-  updated_at: string;
-  updated_by: string | null;
-};
-
-const FEATURE_DETAILS: Record<FeatureKey, { label: string; description: string; warning?: string }> = {
-  appointments: {
-    label: "Appointments",
-    description: "Booking, appointment details, calendars, schedules, and appointment analytics.",
-    warning: "Monthly booking charts will be hidden while appointments are disabled.",
-  },
-  client_portal: {
-    label: "Client portal",
-    description: "Client access to jobs, invoices, appointments, updates, and attachments.",
-    warning: "Signed-in clients will see a temporary-unavailable page until access is restored.",
-  },
-  goals: {
-    label: "Goals",
-    description: "Workshop goals dashboard and monthly revenue goal controls.",
-  },
-  reports: {
-    label: "Reports",
-    description: "Administrative analytics, exports, and report RPCs.",
-  },
-  job_chat: {
-    label: "Job chat",
-    description: "In-app comments and discussion threads on job detail pages.",
-  },
-};
 
 export default function AdminSettings() {
   const goalsEnabled = useFeature("goals");
@@ -114,10 +83,6 @@ export default function AdminSettings() {
   const [pastGoals, setPastGoals] = useState<{ year: number; month: number; goal_amount: number }[]>([]);
   const [goalInput, setGoalInput] = useState("");
   const [settingGoal, setSettingGoal] = useState(false);
-  const [featureFlags, setFeatureFlags] = useState<FeatureFlagRow[]>([]);
-  const [featureFlagsLoading, setFeatureFlagsLoading] = useState(true);
-  const [updatingFeature, setUpdatingFeature] = useState<FeatureKey | null>(null);
-  const [pendingFeatureChange, setPendingFeatureChange] = useState<{ key: FeatureKey; enabled: boolean } | null>(null);
   const [testingEmail, setTestingEmail] = useState(false);
   const [emailTestResult, setEmailTestResult] = useState<{ ok: boolean; message: string } | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -152,54 +117,6 @@ export default function AdminSettings() {
       setLoading(false);
     });
   }, []);
-
-  const loadFeatureFlags = async () => {
-    setFeatureFlagsLoading(true);
-    const { data, error } = await supabase
-      .from("feature_flags")
-      .select("key, enabled, updated_at, updated_by")
-      .order("key");
-
-    if (error) {
-      toast.error("Could not load feature flags");
-      setFeatureFlags(
-        (Object.keys(FEATURE_DEFAULTS) as FeatureKey[]).map((key) => ({
-          key,
-          enabled: FEATURE_DEFAULTS[key],
-          updated_at: "",
-          updated_by: null,
-        }))
-      );
-    } else {
-      setFeatureFlags((data || []) as FeatureFlagRow[]);
-    }
-    setFeatureFlagsLoading(false);
-  };
-
-  useEffect(() => {
-    void loadFeatureFlags();
-  }, []);
-
-  const applyFeatureChange = async () => {
-    if (!pendingFeatureChange) return;
-    const { key, enabled } = pendingFeatureChange;
-    setUpdatingFeature(key);
-
-    const { error } = await supabase.rpc("set_feature_flag", {
-      feature_key: key,
-      feature_enabled: enabled,
-    });
-
-    setUpdatingFeature(null);
-    setPendingFeatureChange(null);
-    if (error) {
-      toast.error(error.message || "Feature flag update failed");
-      return;
-    }
-
-    toast.success(`${FEATURE_DETAILS[key].label} ${enabled ? "enabled" : "disabled"}`);
-    await loadFeatureFlags();
-  };
 
   const loadMonthlyGoals = async () => {
     const now = new Date();
@@ -570,7 +487,6 @@ export default function AdminSettings() {
                 <SelectItem value="notifications">Notifications</SelectItem>
                 <SelectItem value="branding">Branding</SelectItem>
                 <SelectItem value="email">Email</SelectItem>
-                <SelectItem value="features">Features</SelectItem>
                 <SelectItem value="data">Data</SelectItem>
               </SelectContent>
             </Select>
@@ -582,7 +498,6 @@ export default function AdminSettings() {
             <TabsTrigger value="notifications" className="text-xs sm:text-sm">Notifications</TabsTrigger>
             <TabsTrigger value="branding" className="text-xs sm:text-sm">Branding</TabsTrigger>
             <TabsTrigger value="email" className="text-xs sm:text-sm">Email</TabsTrigger>
-            <TabsTrigger value="features" className="text-xs sm:text-sm">Features</TabsTrigger>
             <TabsTrigger value="data" className="text-xs sm:text-sm">Data</TabsTrigger>
           </TabsList>
 
@@ -841,60 +756,6 @@ export default function AdminSettings() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="features" className="mt-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <SlidersHorizontal className="h-5 w-5" />
-                  Feature Management
-                </CardTitle>
-                <CardDescription>
-                  Changes apply to all users immediately. Disabling a feature preserves its existing data.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-5">
-                {featureFlagsLoading ? (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Loading features...
-                  </div>
-                ) : (
-                  (Object.keys(FEATURE_DETAILS) as FeatureKey[]).map((key) => {
-                    const row = featureFlags.find((flag) => flag.key === key);
-                    const enabled = row?.enabled ?? FEATURE_DEFAULTS[key];
-                    const details = FEATURE_DETAILS[key];
-                    return (
-                      <div key={key} className="flex items-start justify-between gap-4 border-b pb-5 last:border-0 last:pb-0">
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium">{details.label}</p>
-                          <p className="text-xs text-muted-foreground mt-0.5">{details.description}</p>
-                          {details.warning && <p className="text-xs text-amber-700 dark:text-amber-400 mt-1">{details.warning}</p>}
-                          {row?.updated_at && (
-                            <p className="text-[11px] text-muted-foreground mt-1.5">
-                              Last changed {new Date(row.updated_at).toLocaleString()}
-                            </p>
-                          )}
-                        </div>
-                        <Switch
-                          checked={enabled}
-                          disabled={updatingFeature === key}
-                          onCheckedChange={(next) => {
-                            if (next) {
-                              setPendingFeatureChange({ key, enabled: true });
-                            } else {
-                              setPendingFeatureChange({ key, enabled: false });
-                            }
-                          }}
-                          aria-label={`${enabled ? "Disable" : "Enable"} ${details.label}`}
-                        />
-                      </div>
-                    );
-                  })
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
           <TabsContent value="data" className="mt-4 space-y-4">
             <Card>
               <CardHeader>
@@ -990,33 +851,6 @@ export default function AdminSettings() {
         </Button>
       </div>
 
-      <AlertDialog
-        open={pendingFeatureChange !== null}
-        onOpenChange={(open) => {
-          if (!open && !updatingFeature) setPendingFeatureChange(null);
-        }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {pendingFeatureChange?.enabled ? "Enable" : "Disable"}{" "}
-              {pendingFeatureChange ? FEATURE_DETAILS[pendingFeatureChange.key].label : "feature"}?
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {pendingFeatureChange?.enabled
-                ? "Access will be restored immediately for all users."
-                : "Open sessions will lose access immediately. Existing records will be preserved and restored when the feature is enabled again."}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={updatingFeature !== null}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={applyFeatureChange} disabled={updatingFeature !== null}>
-              {updatingFeature ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Confirm
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </DashboardLayout>
   );
 }
