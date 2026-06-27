@@ -8,9 +8,10 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
-import { Eye, Search } from "lucide-react";
+import { Eye, Search, Trash2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
 type UserRow = {
   user_id: string;
@@ -60,6 +61,18 @@ export default function AdminUsers() {
     });
   }, [users, search, roleFilter]);
 
+  const handleDelete = async (userId: string, name: string) => {
+    const { data, error } = await supabase.functions.invoke("admin-delete-user", {
+      body: { user_id: userId },
+    });
+    if (error || data?.error) {
+      toast.error(data?.error || error?.message || "Failed to delete user");
+      return;
+    }
+    setUsers((prev) => prev.filter((u) => u.user_id !== userId));
+    toast.success(`${name} deleted`);
+  };
+
   const changeRole = async (userId: string, newRole: string) => {
     const { error } = await supabase.from("user_roles").update({ role: newRole } as any).eq("user_id", userId);
     if (error) { toast.error(error.message); return; }
@@ -99,7 +112,7 @@ export default function AdminUsers() {
                   <TableHead>Name</TableHead>
                   <TableHead>Role</TableHead>
                   <TableHead className="hidden md:table-cell">Joined</TableHead>
-                  <TableHead className="w-[80px]">Details</TableHead>
+                  <TableHead className="w-[100px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -131,10 +144,33 @@ export default function AdminUsers() {
                       </Select>
                     </TableCell>
                     <TableCell className="hidden md:table-cell">{u.created_at ? new Date(u.created_at).toLocaleDateString() : "—"}</TableCell>
-                    <TableCell>
-                      <Button variant="ghost" size="icon" onClick={() => navigate(`/admin/users/${u.user_id}`)}>
-                        <Eye className="h-4 w-4" />
-                      </Button>
+                    <TableCell onClick={(e) => e.stopPropagation()}>
+                      <div className="flex items-center gap-1">
+                        <Button variant="ghost" size="icon" onClick={() => navigate(`/admin/users/${u.user_id}`)}>
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        {u.role !== "admin" && (
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="ghost" size="icon" aria-label="Delete user">
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Delete {u.full_name}?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This permanently removes their account and cannot be undone. If this user has existing jobs or records, deletion will fail — deactivate them instead.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleDelete(u.user_id, u.full_name || "User")}>Delete</AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -169,7 +205,7 @@ export default function AdminUsers() {
                   </div>
                   <p className="text-xs text-muted-foreground">{u.created_at ? new Date(u.created_at).toLocaleDateString() : ""}</p>
                 </div>
-                <div onClick={(e) => e.stopPropagation()}>
+                <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
                   <Select value={u.role} onValueChange={(v) => changeRole(u.user_id, v)}>
                     <SelectTrigger className="w-[100px] h-8"><SelectValue /></SelectTrigger>
                     <SelectContent>
@@ -178,6 +214,27 @@ export default function AdminUsers() {
                       <SelectItem value="staff">Staff</SelectItem>
                     </SelectContent>
                   </Select>
+                  {u.role !== "admin" && (
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Delete user">
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete {u.full_name}?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This permanently removes their account and cannot be undone. If this user has existing jobs or records, deletion will fail — deactivate them instead.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => handleDelete(u.user_id, u.full_name || "User")}>Delete</AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  )}
                 </div>
               </CardContent>
             </Card>

@@ -13,8 +13,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
-import { Plus, Search, Pencil, Check, X } from "lucide-react";
+import { Plus, Search, Pencil, Check, X, Trash2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
 type ClientRow = {
   user_id: string;
@@ -112,6 +113,18 @@ export default function AdminClients() {
     } : c)));
     setEditingId(null);
     toast.success("Client updated");
+  };
+
+  const handleDelete = async (userId: string, name: string) => {
+    const { data, error } = await supabase.functions.invoke("admin-delete-user", {
+      body: { user_id: userId },
+    });
+    if (error || data?.error) {
+      toast.error(data?.error || error?.message || "Failed to delete client");
+      return;
+    }
+    setClients((prev) => prev.filter((c) => c.user_id !== userId));
+    toast.success(`${name} deleted`);
   };
 
   const handleAddClient = async () => {
@@ -237,7 +250,28 @@ export default function AdminClients() {
                             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={cancelEditing}><X className="h-4 w-4 text-destructive" /></Button>
                           </div>
                         ) : (
-                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => startEditing(c)}><Pencil className="h-4 w-4" /></Button>
+                          <div className="flex gap-1">
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => startEditing(c)}><Pencil className="h-4 w-4" /></Button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Delete client">
+                                  <Trash2 className="h-4 w-4 text-destructive" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Delete {displayName(c)}?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    This permanently removes their account and cannot be undone. If this client has existing records, deactivation is safer.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction onClick={() => handleDelete(c.user_id, displayName(c))}>Delete</AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
                         )}
                       </TableCell>
                     </TableRow>
@@ -267,8 +301,27 @@ export default function AdminClients() {
               <CardContent className="p-4 space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="font-medium text-primary">{displayName(c)}</span>
-                  <div onClick={(e) => e.stopPropagation()}>
+                  <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                     <Switch checked={c.is_active} onCheckedChange={(v) => toggleActive(c.user_id, v)} />
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Delete client">
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete {displayName(c)}?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This permanently removes their account and cannot be undone. If this client has existing records, deactivation is safer.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => handleDelete(c.user_id, displayName(c))}>Delete</AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </div>
                 </div>
                 {c.contact_person && <p className="text-sm text-muted-foreground">Contact: {c.contact_person}</p>}
