@@ -140,11 +140,11 @@ export default function Auth() {
         setMfaFactorId(result.factorId);
         setPendingRole(result.role);
         toast.info("Please enter your 2FA code");
-      } else {
+      } else if (result.role) {
         toast.success("Signed in successfully");
-        if (result.role) {
-          navigate(getRoleDashboardPath(result.role), { replace: true });
-        }
+        navigate(getRoleDashboardPath(result.role), { replace: true });
+      } else {
+        toast.error("Account has no role assigned — contact your administrator.");
       }
     } catch (err: unknown) {
       toast.error(getErrorMessage(err, "Failed to sign in"));

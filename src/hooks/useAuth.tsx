@@ -19,7 +19,7 @@ interface AuthContextType {
   mfaEnabled: boolean;
   sessionTimeLeft: number;
   signIn: (email: string, password: string) => Promise<{ role: AppRole | null; needsMfa: boolean; factorId?: string }>;
-  signUp: (email: string, password: string, fullName: string, role?: AppRole) => Promise<void>;
+  signUp: (email: string, password: string, fullName: string, role?: AppRole, companyName?: string) => Promise<void>;
   signOut: () => Promise<void>;
   clearMfaFlag: () => void;
   extendSession: () => void;
@@ -185,6 +185,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const currentUserIdRef = useRef<string | null>(null);
   const currentAccessTokenRef = useRef<string | null>(null);
+  const isSigningInRef = useRef(false);
 
   useEffect(() => {
     const handleSession = (session: Session | null) => {
@@ -194,6 +195,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           performSignOut("Session expired. Please sign in again.");
           return;
         }
+
+        // signIn() fires onAuthStateChange synchronously before its Promise resolves.
+        // Yield to signIn() so only one path runs fetchUserData and MFA checks.
+        if (isSigningInRef.current) return;
 
         const sameUser = currentUserIdRef.current === session.user.id;
         const sameToken = currentAccessTokenRef.current === session.access_token;
@@ -261,40 +266,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signIn = async (email: string, password: string) => {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) throw error;
+    isSigningInRef.current = true;
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
 
-    setSession(data.session ?? null);
-    setUser(data.user ?? null);
-    currentUserIdRef.current = data.user?.id ?? null;
-    currentAccessTokenRef.current = data.session?.access_token ?? null;
+      setSession(data.session ?? null);
+      setUser(data.user ?? null);
+      currentUserIdRef.current = data.user?.id ?? null;
+      currentAccessTokenRef.current = data.session?.access_token ?? null;
 
-    if (!data.user) {
-      clearPendingMfa();
-      return { role: null, needsMfa: false };
-    }
-
-    const nextRole = await fetchUserData(data.user.id);
-
-    // Check if MFA is required
-    const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-    if (aalData && aalData.currentLevel === "aal1" && aalData.nextLevel === "aal2") {
-      // Device trust bypass only applies to staff/client roles (same gate as checkMfaStatus).
-      const isElevatedRole = nextRole === "admin" || nextRole === "manager";
-      const trusted = await checkTrustedDevice();
-      if (trusted && !isElevatedRole) {
+      if (!data.user) {
         clearPendingMfa();
-        return { role: nextRole, needsMfa: false };
+        return { role: null, needsMfa: false };
       }
 
-      const { data: factorsData } = await supabase.auth.mfa.listFactors();
-      const totpFactor = factorsData?.totp?.find((f) => f.status === "verified");
-      markPendingMfa(nextRole, totpFactor?.id);
-      return { role: nextRole, needsMfa: true, factorId: totpFactor?.id };
-    }
+      const nextRole = await fetchUserData(data.user.id);
 
-    clearPendingMfa();
-    return { role: nextRole, needsMfa: false };
+      // Check if MFA is required
+      const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+      if (aalData && aalData.currentLevel === "aal1" && aalData.nextLevel === "aal2") {
+        // Device trust bypass only applies to staff/client roles (same gate as checkMfaStatus).
+        const isElevatedRole = nextRole === "admin" || nextRole === "manager";
+        const trusted = await checkTrustedDevice();
+        if (trusted && !isElevatedRole) {
+          clearPendingMfa();
+          return { role: nextRole, needsMfa: false };
+        }
+
+        const { data: factorsData } = await supabase.auth.mfa.listFactors();
+        const totpFactor = factorsData?.totp?.find((f) => f.status === "verified");
+        markPendingMfa(nextRole, totpFactor?.id);
+        return { role: nextRole, needsMfa: true, factorId: totpFactor?.id };
+      }
+
+      clearPendingMfa();
+      return { role: nextRole, needsMfa: false };
+    } finally {
+      isSigningInRef.current = false;
+    }
   };
 
   const signUp = async (email: string, password: string, fullName: string, role: AppRole = "client", companyName?: string) => {
