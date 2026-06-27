@@ -128,7 +128,7 @@ export function SystemNoticesBanner() {
               onClick={() => dismiss(n.id)}
               className="absolute right-2 top-2 inline-flex h-9 w-9 items-center justify-center rounded-md opacity-90 hover:opacity-100 hover:bg-foreground/10 transition-opacity"
             >
-              <X className="h-4 w-4 text-current" />
+              <X className="h-4 w-4 sm:h-5 sm:w-5 text-current" />
             </button>
           </Alert>
         );
