@@ -407,21 +407,25 @@ export default function GoalsPage() {
             {lastRefreshed && (
               <span className="text-slate-500 text-xs hidden lg:block">Updated {lastRefreshed.toLocaleTimeString()}</span>
             )}
-            <button
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={load}
               disabled={refreshing}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/15 bg-white/5 text-white/70 text-sm hover:bg-white/10 transition-colors"
+              className="gap-1.5 border border-white/15 bg-white/5 text-white/70 hover:bg-white/10 hover:text-white/70"
             >
-              <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
+              <RefreshCw className={`h-3.5 w-3.5${refreshing ? " animate-spin" : ""}`} />
               Refresh
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={toggleFullscreen}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/15 bg-white/5 text-white/70 text-sm hover:bg-white/10 transition-colors"
+              className="gap-1.5 border border-white/15 bg-white/5 text-white/70 hover:bg-white/10 hover:text-white/70"
             >
               <Minimize2 className="h-3.5 w-3.5" />
               Exit
-            </button>
+            </Button>
           </div>
         </div>
 

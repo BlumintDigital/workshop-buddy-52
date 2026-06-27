@@ -205,13 +205,15 @@ export default function AdminActivityLogs() {
                     </AlertTitle>
                     <AlertDescription className="text-sm">{alert.message}</AlertDescription>
                   </div>
-                  <button
+                  <Button
+                    variant="ghost"
+                    size="icon"
                     onClick={() => setDismissedAnomalies((prev) => new Set([...prev, alert.id]))}
-                    className="ml-auto shrink-0 text-muted-foreground hover:text-foreground"
+                    className="ml-auto shrink-0"
                     aria-label="Dismiss"
                   >
                     <X className="h-4 w-4" />
-                  </button>
+                  </Button>
                 </Alert>
               ))}
           </div>

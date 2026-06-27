@@ -143,14 +143,16 @@ export function BroadcastBanner() {
                 )}
               </div>
             )}
-            <button
+            <Button
               type="button"
+              variant="ghost"
+              size="icon"
               aria-label="Dismiss broadcast"
               onClick={() => dismiss(b.id)}
-              className="absolute right-2 top-2 inline-flex h-9 w-9 items-center justify-center rounded-md opacity-90 hover:opacity-100 hover:bg-foreground/10 transition-opacity"
+              className="absolute right-2 top-2 h-9 w-9 opacity-90 hover:opacity-100"
             >
               <X className="h-4 w-4 sm:h-5 sm:w-5 text-current" />
-            </button>
+            </Button>
           </Alert>
         );
       })}

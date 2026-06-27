@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import { Bell, X } from "lucide-react";
 
 interface SystemNotice {
@@ -124,14 +125,16 @@ export function SystemNoticesBanner() {
                 )}
               </AlertDescription>
             )}
-            <button
+            <Button
               type="button"
+              variant="ghost"
+              size="icon"
               aria-label="Dismiss notice"
               onClick={() => dismiss(n.id)}
-              className="absolute right-2 top-2 inline-flex h-9 w-9 items-center justify-center rounded-md opacity-90 hover:opacity-100 hover:bg-foreground/10 transition-opacity"
+              className="absolute right-2 top-2 h-9 w-9 opacity-90 hover:opacity-100"
             >
               <X className="h-4 w-4 sm:h-5 sm:w-5 text-current" />
-            </button>
+            </Button>
           </Alert>
         );
       })}

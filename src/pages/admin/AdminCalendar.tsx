@@ -228,12 +228,14 @@ export default function AdminCalendar() {
           <div className="flex items-center gap-1">
             {jobCount > 0 && <span className="text-[9px] bg-secondary text-secondary-foreground rounded-full px-1">{jobCount}J</span>}
             {apptCount > 0 && <span className="text-[9px] bg-primary/10 text-primary rounded-full px-1">{apptCount}A</span>}
-            <button
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={(e) => { e.stopPropagation(); openCreateJob(day); }}
-              className="h-4 w-4 flex items-center justify-center rounded hover:bg-muted text-muted-foreground hover:text-foreground"
+              className="h-5 w-5 p-0 text-muted-foreground"
             >
               <Plus className="h-3 w-3" />
-            </button>
+            </Button>
           </div>
         </div>
         <div className="mt-1 space-y-0.5">

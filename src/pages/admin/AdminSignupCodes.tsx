@@ -10,6 +10,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DatePickerInput } from "@/components/ui/date-picker-input";
 import { Copy, Plus, Trash2, RefreshCw, KeyRound } from "lucide-react";
 import { toast } from "sonner";
 import DashboardLayout from "@/components/layout/DashboardLayout";
@@ -45,7 +47,8 @@ export default function AdminSignupCodes() {
   const [newLabel, setNewLabel] = useState("");
   const [newRole, setNewRole] = useState<AppRole>("client");
   const [newMaxUses, setNewMaxUses] = useState<string>("");
-  const [newExpiresAt, setNewExpiresAt] = useState<string>("");
+  const [newExpiresDate, setNewExpiresDate] = useState<string>("");
+  const [newExpiresTime, setNewExpiresTime] = useState<string>("");
   const [creating, setCreating] = useState(false);
 
   const load = async () => {
@@ -69,7 +72,8 @@ export default function AdminSignupCodes() {
     setNewLabel("");
     setNewRole("client");
     setNewMaxUses("");
-    setNewExpiresAt("");
+    setNewExpiresDate("");
+    setNewExpiresTime("");
     setDialogOpen(true);
   };
 
@@ -90,7 +94,7 @@ export default function AdminSignupCodes() {
       label: newLabel.trim() || null,
       role: newRole,
       max_uses: maxUsesNum,
-      expires_at: newExpiresAt ? new Date(newExpiresAt).toISOString() : null,
+      expires_at: newExpiresDate ? new Date(`${newExpiresDate}T${newExpiresTime || "23:59"}`).toISOString() : null,
       active: true,
       created_by: user?.id ?? null,
     });
@@ -203,16 +207,16 @@ export default function AdminSignupCodes() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="role">Role</Label>
-                  <select
-                    id="role"
-                    value={newRole}
-                    onChange={(e) => setNewRole(e.target.value as AppRole)}
-                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                  >
-                    <option value="client">Client</option>
-                    <option value="staff">Staff</option>
-                    <option value="manager">Manager</option>
-                  </select>
+                  <Select value={newRole} onValueChange={(v) => setNewRole(v as AppRole)}>
+                    <SelectTrigger id="role">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="client">Client</SelectItem>
+                      <SelectItem value="staff">Staff</SelectItem>
+                      <SelectItem value="manager">Manager</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
@@ -227,15 +231,21 @@ export default function AdminSignupCodes() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="expires">Expires</Label>
-                    <Input
-                      id="expires"
-                      type="datetime-local"
-                      value={newExpiresAt}
-                      onChange={(e) => setNewExpiresAt(e.target.value)}
-                    />
+                    <Label>Expiry date</Label>
+                    <DatePickerInput value={newExpiresDate} onChange={setNewExpiresDate} placeholder="No expiry" />
                   </div>
                 </div>
+                {newExpiresDate && (
+                  <div className="space-y-2">
+                    <Label htmlFor="expires-time">Expiry time <span className="text-xs text-muted-foreground">(defaults to end of day)</span></Label>
+                    <Input
+                      id="expires-time"
+                      type="time"
+                      value={newExpiresTime}
+                      onChange={(e) => setNewExpiresTime(e.target.value)}
+                    />
+                  </div>
+                )}
               </div>
               <DialogFooter>
                 <Button variant="ghost" onClick={() => setDialogOpen(false)}>Cancel</Button>
