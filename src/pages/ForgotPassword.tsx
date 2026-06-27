@@ -82,6 +82,7 @@ export default function ForgotPassword() {
             )}
           </CardContent>
         </Card>
+        <p className="text-center text-xs text-muted-foreground">Shoplane is powered by Blumint Workspace · © {new Date().getFullYear()} Blumint Digital Limited · Registered in England and Wales · Company No. 15709531</p>
       </div>
     </div>
   );

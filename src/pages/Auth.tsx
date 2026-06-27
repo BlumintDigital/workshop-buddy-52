@@ -10,7 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { ShieldCheck, KeyRound, Briefcase, User } from "lucide-react";
+import { ShieldCheck, KeyRound, Briefcase, User, Eye, EyeOff } from "lucide-react";
 import LoadingScreen from "@/components/LoadingScreen";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { useCountdown } from "@/hooks/useCountdown";
@@ -20,6 +20,7 @@ export default function Auth() {
   const {
     signIn,
     signUp,
+    signOut,
     user,
     role,
     loading,
@@ -58,6 +59,9 @@ export default function Auth() {
   const [backupError, setBackupError] = useState<string | null>(null);
   const [backupRemainingAttempts, setBackupRemainingAttempts] = useState<number | null>(null);
   const [backupLockoutSec, setBackupLockoutSec] = useState<number | null>(null);
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
+  const [showSignupPassword, setShowSignupPassword] = useState(false);
+  const [showSignupConfirm, setShowSignupConfirm] = useState(false);
   const lockout = useCountdown(backupLockoutSec);
   const isLocked = lockout.remaining > 0;
   const mfaStep = localMfaStep || needsMfaVerification;
@@ -144,7 +148,8 @@ export default function Auth() {
         toast.success("Signed in successfully");
         navigate(getRoleDashboardPath(result.role), { replace: true });
       } else {
-        toast.error("Account has no role assigned — contact your administrator.");
+        toast.error("No role found for this account. If this persists, clear your browser's saved password for this site and try again.");
+        await signOut();
       }
     } catch (err: unknown) {
       toast.error(getErrorMessage(err, "Failed to sign in"));
@@ -551,7 +556,12 @@ export default function Auth() {
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="login-password">Password</Label>
-                      <Input id="login-password" type="password" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} required placeholder="••••••••" />
+                      <div className="relative">
+                        <Input id="login-password" type={showLoginPassword ? "text" : "password"} value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} required placeholder="••••••••" autoComplete="current-password" className="pr-10" />
+                        <button type="button" tabIndex={-1} onClick={() => setShowLoginPassword(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" aria-label={showLoginPassword ? "Hide password" : "Show password"}>
+                          {showLoginPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                      </div>
                     </div>
                     <Button type="submit" className="w-full" disabled={submitting}>
                       {submitting ? "Signing in..." : "Sign In"}
@@ -618,11 +628,21 @@ export default function Auth() {
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="signup-password">Password</Label>
-                      <Input id="signup-password" type="password" value={signupPassword} onChange={(e) => setSignupPassword(e.target.value)} required minLength={6} placeholder="••••••••" />
+                      <div className="relative">
+                        <Input id="signup-password" type={showSignupPassword ? "text" : "password"} value={signupPassword} onChange={(e) => setSignupPassword(e.target.value)} required minLength={6} placeholder="••••••••" autoComplete="new-password" className="pr-10" />
+                        <button type="button" tabIndex={-1} onClick={() => setShowSignupPassword(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" aria-label={showSignupPassword ? "Hide password" : "Show password"}>
+                          {showSignupPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                      </div>
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="signup-confirm-password">Confirm Password</Label>
-                      <Input id="signup-confirm-password" type="password" value={signupConfirmPassword} onChange={(e) => setSignupConfirmPassword(e.target.value)} required minLength={6} placeholder="••••••••" />
+                      <div className="relative">
+                        <Input id="signup-confirm-password" type={showSignupConfirm ? "text" : "password"} value={signupConfirmPassword} onChange={(e) => setSignupConfirmPassword(e.target.value)} required minLength={6} placeholder="••••••••" autoComplete="new-password" className="pr-10" />
+                        <button type="button" tabIndex={-1} onClick={() => setShowSignupConfirm(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" aria-label={showSignupConfirm ? "Hide password" : "Show password"}>
+                          {showSignupConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                      </div>
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="signup-invite-code">Invite Code</Label>
@@ -647,11 +667,14 @@ export default function Auth() {
               </Card>
             </TabsContent>
           </Tabs>
-          <p className="text-center text-xs text-muted-foreground mt-6">
-            <Link to="/privacy" className="hover:underline">Privacy Policy</Link>
-            {" · "}
-            <Link to="/terms" className="hover:underline">Terms of Service</Link>
-          </p>
+          <div className="text-center text-xs text-muted-foreground mt-6 space-y-1">
+            <p>Shoplane is powered by Blumint Workspace · © {new Date().getFullYear()} Blumint Digital Limited · Registered in England and Wales · Company No. 15709531</p>
+            <p>
+              <Link to="/privacy" className="hover:underline">Privacy Policy</Link>
+              {" · "}
+              <Link to="/terms" className="hover:underline">Terms of Service</Link>
+            </p>
+          </div>
         </div>
       </div>
 
