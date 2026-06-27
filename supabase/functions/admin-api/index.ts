@@ -61,6 +61,129 @@ function getDateRange(url: URL) {
   return { from: url.searchParams.get("from"), to: url.searchParams.get("to") };
 }
 
+type ProfileSummary = {
+  full_name: string | null;
+  company_name: string | null;
+};
+
+function isMissingCompanyNameError(error: unknown) {
+  const details = [
+    (error as { message?: string })?.message,
+    (error as { details?: string })?.details,
+    (error as { hint?: string })?.hint,
+    (error as { code?: string })?.code,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  return details.includes("company_name") && (
+    details.includes("column") ||
+    details.includes("schema cache") ||
+    details.includes("42703") ||
+    details.includes("pgrst204")
+  );
+}
+
+function isMissingRelationError(error: unknown) {
+  const details = [
+    (error as { message?: string })?.message,
+    (error as { details?: string })?.details,
+    (error as { hint?: string })?.hint,
+    (error as { code?: string })?.code,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  return (
+    details.includes("does not exist") ||
+    details.includes("schema cache") ||
+    details.includes("42p01") ||
+    details.includes("pgrst205")
+  );
+}
+
+async function getProfileMap(supabase: any, ids: Array<string | null | undefined>) {
+  const profileIds = Array.from(new Set(ids.filter((id): id is string => !!id)));
+  const profiles = new Map<string, ProfileSummary>();
+  if (!profileIds.length) return profiles;
+
+  let { data, error } = await supabase
+    .from("profiles")
+    .select("id, full_name, company_name")
+    .in("id", profileIds);
+
+  if (error) {
+    if (!isMissingCompanyNameError(error)) {
+      console.warn("Profile enrichment skipped:", error.message ?? error);
+      return profiles;
+    }
+    const retry = await supabase
+      .from("profiles")
+      .select("id, full_name")
+      .in("id", profileIds);
+    if (retry.error) {
+      console.warn("Profile enrichment fallback skipped:", retry.error.message ?? retry.error);
+      return profiles;
+    }
+    data = (retry.data ?? []).map((profile: { id: string; full_name: string | null }) => ({
+      ...profile,
+      company_name: null,
+    }));
+  }
+
+  for (const profile of data ?? []) {
+    profiles.set(profile.id, {
+      full_name: profile.full_name ?? null,
+      company_name: profile.company_name ?? null,
+    });
+  }
+
+  return profiles;
+}
+
+function withClientProfiles<T extends { client_id?: string | null }>(
+  rows: T[] | null | undefined,
+  profiles: Map<string, ProfileSummary>
+) {
+  return (rows ?? []).map((row) => ({
+    ...row,
+    client: row.client_id ? profiles.get(row.client_id) ?? null : null,
+  }));
+}
+
+function withClientAndStaffProfiles<
+  T extends { client_id?: string | null; assigned_staff_id?: string | null }
+>(rows: T[] | null | undefined, profiles: Map<string, ProfileSummary>) {
+  return (rows ?? []).map((row) => ({
+    ...row,
+    client: row.client_id ? profiles.get(row.client_id) ?? null : null,
+    staff: row.assigned_staff_id ? profiles.get(row.assigned_staff_id) ?? null : null,
+  }));
+}
+
+async function getJobTitleMap(supabase: any, ids: Array<string | null | undefined>) {
+  const jobIds = Array.from(new Set(ids.filter((id): id is string => !!id)));
+  const jobs = new Map<string, { title: string | null }>();
+  if (!jobIds.length) return jobs;
+
+  const { data, error } = await supabase
+    .from("jobs")
+    .select("id, title")
+    .in("id", jobIds);
+  if (error) {
+    console.warn("Job title enrichment skipped:", error.message ?? error);
+    return jobs;
+  }
+
+  for (const job of data ?? []) {
+    jobs.set(job.id, { title: job.title ?? null });
+  }
+
+  return jobs;
+}
+
 Deno.serve(async (req) => {
   const corsHeaders = corsHeadersFor(req);
   const json = (data: unknown, status = 200) => jsonWithCors(data, status, corsHeaders);
@@ -242,7 +365,7 @@ Deno.serve(async (req) => {
 
         let query = supabase
           .from("jobs")
-          .select("*, client:profiles!client_id(full_name, company_name), staff:profiles!assigned_staff_id(full_name)")
+          .select("*")
           .order("created_at", { ascending: false })
           .range(offset, offset + limit - 1);
 
@@ -252,7 +375,11 @@ Deno.serve(async (req) => {
 
         const { data, error, count } = await query;
         if (error) return err(error.message, 500);
-        return json({ data, total: count, limit, offset });
+        const profiles = await getProfileMap(supabase, [
+          ...(data ?? []).map((job) => job.client_id),
+          ...(data ?? []).map((job) => job.assigned_staff_id),
+        ]);
+        return json({ data: withClientAndStaffProfiles(data, profiles), total: count, limit, offset });
       }
 
       // ==================== INVOICES ====================
@@ -263,7 +390,7 @@ Deno.serve(async (req) => {
 
         let query = supabase
           .from("invoices")
-          .select("*, client:profiles!client_id(full_name, company_name)")
+          .select("*")
           .order("created_at", { ascending: false })
           .range(offset, offset + limit - 1);
 
@@ -273,7 +400,8 @@ Deno.serve(async (req) => {
 
         const { data, error } = await query;
         if (error) return err(error.message, 500);
-        return json({ data, limit, offset });
+        const profiles = await getProfileMap(supabase, (data ?? []).map((invoice) => invoice.client_id));
+        return json({ data: withClientProfiles(data, profiles), limit, offset });
       }
 
       // ==================== REVENUE ====================
@@ -307,7 +435,7 @@ Deno.serve(async (req) => {
 
         let query = supabase
           .from("appointments")
-          .select("*, client:profiles!client_id(full_name, company_name)")
+          .select("*")
           .order("appointment_date", { ascending: false })
           .range(offset, offset + limit - 1);
 
@@ -316,8 +444,10 @@ Deno.serve(async (req) => {
         if (to) query = query.lte("appointment_date", to);
 
         const { data, error } = await query;
+        if (error && isMissingRelationError(error)) return json({ data: [], limit, offset });
         if (error) return err(error.message, 500);
-        return json({ data, limit, offset });
+        const profiles = await getProfileMap(supabase, (data ?? []).map((appointment) => appointment.client_id));
+        return json({ data: withClientProfiles(data, profiles), limit, offset });
       }
 
       // ==================== INVENTORY ====================
@@ -387,7 +517,7 @@ Deno.serve(async (req) => {
         const [ratingsRes, avgRes] = await Promise.all([
           supabase
             .from("job_ratings")
-            .select("*, client:profiles!client_id(full_name, company_name), job:jobs!job_id(title)")
+            .select("*")
             .order("created_at", { ascending: false })
             .range(offset, offset + limit - 1),
           supabase
@@ -395,7 +525,19 @@ Deno.serve(async (req) => {
             .select("rating"),
         ]);
 
+        if (ratingsRes.error && isMissingRelationError(ratingsRes.error)) {
+          return json({ data: [], average_rating: 0, total_ratings: 0, limit, offset });
+        }
         if (ratingsRes.error) return err(ratingsRes.error.message, 500);
+
+        const [profiles, jobs] = await Promise.all([
+          getProfileMap(supabase, (ratingsRes.data ?? []).map((rating) => rating.client_id)),
+          getJobTitleMap(supabase, (ratingsRes.data ?? []).map((rating) => rating.job_id)),
+        ]);
+        const enrichedRatings = withClientProfiles(ratingsRes.data, profiles).map((rating) => ({
+          ...rating,
+          job: rating.job_id ? jobs.get(rating.job_id) ?? null : null,
+        }));
 
         const allRatings = avgRes.data || [];
         const avg = allRatings.length
@@ -403,7 +545,7 @@ Deno.serve(async (req) => {
           : 0;
 
         return json({
-          data: ratingsRes.data,
+          data: enrichedRatings,
           average_rating: Math.round(avg * 100) / 100,
           total_ratings: allRatings.length,
           limit,
