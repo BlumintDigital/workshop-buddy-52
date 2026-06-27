@@ -14,25 +14,7 @@ interface SystemNotice {
   expires_at: string | null;
 }
 
-const DISMISS_KEY = "dismissed-system-notices";
 const MAX_VISIBLE = 5;
-
-function readDismissed(): string[] {
-  try {
-    const raw = localStorage.getItem(DISMISS_KEY);
-    return raw ? (JSON.parse(raw) as string[]) : [];
-  } catch {
-    return [];
-  }
-}
-
-function writeDismissed(ids: string[]) {
-  try {
-    localStorage.setItem(DISMISS_KEY, JSON.stringify(ids));
-  } catch {
-    /* ignore */
-  }
-}
 
 function isActive(n: SystemNotice): boolean {
   if (!n.expires_at) return true;
@@ -42,7 +24,7 @@ function isActive(n: SystemNotice): boolean {
 export function SystemNoticesBanner() {
   const { user } = useAuth();
   const [notices, setNotices] = useState<SystemNotice[]>([]);
-  const [dismissed, setDismissed] = useState<string[]>(() => readDismissed());
+  const [dismissed, setDismissed] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (!user) return;
@@ -57,6 +39,16 @@ export function SystemNoticesBanner() {
       if (!cancelled) setNotices(((data as unknown) as SystemNotice[]) || []);
     };
     load();
+
+    const loadDismissed = async () => {
+      const { data } = await (supabase.from("dismissed_notices" as any))
+        .select("notice_id")
+        .eq("user_id", user.id);
+      if (!cancelled && data) {
+        setDismissed(new Set((data as { notice_id: string }[]).map((r) => r.notice_id)));
+      }
+    };
+    loadDismissed();
 
     const channel = supabase
       .channel("system_notices")
@@ -78,14 +70,19 @@ export function SystemNoticesBanner() {
   const visible = useMemo(() => {
     return notices
       .filter(isActive)
-      .filter((n) => !dismissed.includes(n.id))
+      .filter((n) => !dismissed.has(n.id))
       .slice(0, MAX_VISIBLE);
   }, [notices, dismissed]);
 
   const dismiss = (id: string) => {
-    const next = Array.from(new Set([...dismissed, id]));
-    setDismissed(next);
-    writeDismissed(next);
+    // Optimistic update
+    setDismissed((prev) => new Set([...prev, id]));
+    if (user) {
+      (supabase.from("dismissed_notices" as any)).insert({
+        user_id: user.id,
+        notice_id: id,
+      });
+    }
   };
 
   if (!user || visible.length === 0) return null;
@@ -129,9 +126,9 @@ export function SystemNoticesBanner() {
               type="button"
               aria-label="Dismiss notice"
               onClick={() => dismiss(n.id)}
-              className="absolute right-2 top-2 inline-flex h-8 w-8 items-center justify-center rounded-md opacity-70 hover:opacity-100 hover:bg-foreground/10 transition-opacity"
+              className="absolute right-2 top-2 inline-flex h-9 w-9 items-center justify-center rounded-md opacity-90 hover:opacity-100 hover:bg-foreground/10 transition-opacity"
             >
-              <X className="h-4 w-4" />
+              <X className="h-4 w-4 text-current" />
             </button>
           </Alert>
         );
