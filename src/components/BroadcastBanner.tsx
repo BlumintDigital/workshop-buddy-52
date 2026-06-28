@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -106,14 +107,22 @@ export function BroadcastBanner() {
       .slice(0, MAX_VISIBLE);
   }, [broadcasts, dismissed]);
 
-  const dismiss = (id: string) => {
+  const dismiss = async (id: string) => {
+    if (!user) return;
     // Optimistic update
     setDismissed((prev) => new Set([...prev, id]));
-    if (user) {
-      (supabase.from("dismissed_broadcasts" as any)).insert({
-        user_id: user.id,
-        broadcast_id: id,
+    const { error } = await (supabase.from("dismissed_broadcasts" as any)).insert({
+      user_id: user.id,
+      broadcast_id: id,
+    });
+    if (error) {
+      // Rollback
+      setDismissed((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
       });
+      toast.error("Could not dismiss broadcast. Please try again.");
     }
   };
 
