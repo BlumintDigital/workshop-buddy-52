@@ -1,55 +1,40 @@
-## Goal
+## 1. Align header buttons to the left on mobile
 
-1. Show an invite status column ("Invited" vs "Active") for each user on `/admin/users`, with a "Resend invite" action available on pending users.
-2. Make the mobile "New User" button render identically to the other PageActions buttons (e.g. "New Appointment", "New Invoice"): full-width, same height/style.
+In `src/components/admin/PageActions.tsx`, change the toolbar from `justify-end` to `justify-start sm:justify-end` so action buttons (New Item, New Job, New Client, New User, etc.) align to the left edge of the page on mobile while staying right-aligned on desktop.
 
-## 1. Track invitation state
+No other page changes needed — every admin page already routes its header buttons through `PageActions`.
 
-The current `admin-create-user` flow creates the auth user and calls `generateLink({ type: "recovery" })`, but nothing records whether the invite was sent or accepted.
+## 2. Stop the auth page from flashing after sign-in
 
-**Migration**
-Add two columns to `public.profiles`:
-- `invited_at timestamptz null` — set when admin-create-user (or resend) sends an invite.
-- `invite_accepted_at timestamptz null` — set on first successful sign-in.
+Two causes, both fixed in routing / gating:
 
-No RLS change needed (existing profile policies already cover these columns).
+**Cause A — Root redirect ignores the signed-in user.**
+`src/App.tsx` always renders `<Navigate to="/auth" replace />` for `/`. On a hard refresh of `/` (or the brief moment after `signIn` resolves and before the dashboard chunk loads), the signed-in user is bounced through `/auth`, which renders the login form for a frame before its own effect navigates to the dashboard.
 
-**Edge functions**
-- `admin-create-user`: switch from `generateLink` to `inviteUserByEmail(email, { data: { full_name, role } })` so Supabase actually sends the email via the configured SMTP, then `UPDATE profiles SET invited_at = now()` for the new user.
-- New `admin-resend-invite`:
-  - Same auth/role guard as `admin-create-user` (admin or manager; managers can't target admins).
-  - Body: `{ user_id }`.
-  - Look up the user's email via `auth.admin.getUserById`, call `inviteUserByEmail` (or `generateLink type=recovery` as fallback), then bump `profiles.invited_at = now()`.
-  - Lightweight cooldown: reject if `invited_at > now() - interval '60 seconds'`.
+Fix: replace the static redirect with a small `IndexRedirect` component that:
+- shows `<LoadingScreen />` while `useAuth().loading` is true,
+- sends MFA-pending users to `/auth`,
+- sends signed-in users with a known `role` to `getRoleDashboardPath(role)`,
+- otherwise falls back to `/auth`.
 
-**Marking invite accepted**
-In `src/hooks/useAuth.tsx`, after a successful sign-in where the session user is freshly loaded, if `profiles.invite_accepted_at` is null, `update` it to `now()`. One-time per user.
+**Cause B — Auth page renders its form before the role hydrates / before the MFA step is recognized.**
+Right after `signIn` returns, `loading` is briefly `false` but `role` / `needsMfaVerification` haven't propagated through the auth listener yet. The Auth page falls through the early-return guards and paints the tabs UI for a frame.
 
-## 2. AdminUsers UI
+Fix in `src/pages/Auth.tsx`: before rendering the tabs, also return `<LoadingScreen />` when:
+- `submitting` is true, or
+- `user` exists but `role` is still null and we're not on the MFA step, or
+- `needsMfaVerification` is true but `pendingMfaFactorId` hasn't arrived yet.
 
-In `src/pages/admin/AdminUsers.tsx`:
-- Extend `UserRow` with `invited_at` and `invite_accepted_at`; include them in the `profiles` select.
-- Derive `inviteStatus`: `"accepted"` if `invite_accepted_at` is set, else `"invited"` if `invited_at` is set, else `"active"` (legacy users with no invite metadata — treat as accepted/active so we don't spam them).
-- **Desktop table**: add a new `Invite` column between Role and Joined. Render a `Badge`:
-  - Accepted/active → no badge or subtle "Active" outline badge.
-  - Invited (pending) → amber "Invited {relative time}" badge + a small "Resend" ghost button (Mail icon) that calls `admin-resend-invite`. Show toast on success/error; disable while in-flight; show "Sent" briefly after success.
-- **Mobile cards**: show the same badge + Resend button inline under the name.
-- Skeleton rows updated to include the new column.
+This keeps the loader visible across the gap between "sign-in succeeded" and "dashboard mounted" so the auth form never reappears.
 
-## 3. Mobile button parity
+### Technical notes
 
-The Dialog/DialogTrigger combination in AdminUsers leaves the `Button` as the direct child of `PageActions`, so `[&>*]:w-full` should apply — but the visual mismatch the user is reporting suggests the button isn't stretching like "New Appointment". Fix by:
-- Explicitly adding `className="w-full sm:w-auto"` to the trigger `Button` (matches the implicit behavior every other PageActions child gets through the wrapper).
-- Verifying via Playwright at 390px viewport that the New User and New Appointment buttons render at identical width and styling.
+- `IndexRedirect` lives inside `AppRoutes` so it has access to `useAuth()`; it returns a `<Navigate replace>` once state is known.
+- No changes to `ProtectedRoute`, `useAuth`, or any dashboard page.
+- No backend, schema, or RLS changes.
 
-## Technical notes
+### Files changed
 
-- `inviteUserByEmail` requires the project's Auth → Email templates to be configured; if the call fails we fall back to `generateLink` and return a non-fatal warning (same behavior as today).
-- Cooldown is enforced server-side; the client also disables the button for ~60s after a successful resend.
-- No new tables — just two columns on `profiles` and one new edge function.
-
-## Out of scope
-
-- Bulk resend.
-- Email-template customization.
-- Showing the actual recovery link in the UI.
+- `src/components/admin/PageActions.tsx` — justify class swap.
+- `src/App.tsx` — add `IndexRedirect`, use it for the `/` route.
+- `src/pages/Auth.tsx` — extend the early `LoadingScreen` guard.

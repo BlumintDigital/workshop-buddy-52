@@ -13,7 +13,7 @@ import {
   useFeatureFlags,
   type FeatureKey,
 } from "@/hooks/useFeatureFlags";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth, getRoleDashboardPath } from "@/hooks/useAuth";
 import LoadingScreen from "@/components/LoadingScreen";
 import { ClientPortalUnavailable, DisabledFeatureRedirect } from "@/pages/FeatureUnavailable";
 
@@ -96,6 +96,14 @@ function ClientPortalRoute({ children }: { children: ReactNode }) {
   return <FeatureRoute feature="client_portal">{children}</FeatureRoute>;
 }
 
+function IndexRedirect() {
+  const { user, role, loading, needsMfaVerification } = useAuth();
+  if (loading) return <LoadingScreen />;
+  if (needsMfaVerification) return <Navigate to="/auth" replace />;
+  if (user && role) return <Navigate to={getRoleDashboardPath(role)} replace />;
+  return <Navigate to="/auth" replace />;
+}
+
 function AppRoutes() {
   const { loading } = useFeatureFlags();
   const { user } = useAuth();
@@ -104,7 +112,7 @@ function AppRoutes() {
 
   return (
     <Routes>
-      <Route path="/" element={<Navigate to="/auth" replace />} />
+      <Route path="/" element={<IndexRedirect />} />
       <Route path="/auth" element={<Auth />} />
       <Route path="/demo" element={<Demo />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />

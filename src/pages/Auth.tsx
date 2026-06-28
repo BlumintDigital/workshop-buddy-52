@@ -133,6 +133,9 @@ export default function Auth() {
   }, []);
 
   if (loading) return <LoadingScreen />;
+  // Avoid flashing the auth form while post-signin state is still propagating.
+  if (user && !mfaStep && !role) return <LoadingScreen />;
+  if (needsMfaVerification && !activeMfaFactorId) return <LoadingScreen />;
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
