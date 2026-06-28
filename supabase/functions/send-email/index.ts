@@ -151,6 +151,29 @@ serve(async (req) => {
       });
     }
 
+    // Per-user rate limit: 60 transactional emails per hour, 15-min lockout on overflow.
+    const rl = await checkRateLimit(user.id, "send_email", {
+      limit: 60,
+      windowSec: 3600,
+      lockoutSec: 900,
+    });
+    if (!rl.allowed) {
+      return new Response(
+        JSON.stringify({
+          error: "Rate limit exceeded — too many emails",
+          retryAfterSec: rl.retryAfterSec,
+        }),
+        {
+          status: 429,
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json",
+            "Retry-After": String(rl.retryAfterSec),
+          },
+        },
+      );
+    }
+
     const { data: emailCfg } = await supabase
       .from("workshop_settings")
       .select("email_notifications_enabled, from_email")
