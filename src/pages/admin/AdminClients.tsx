@@ -1,3 +1,4 @@
+import PageActions from "@/components/admin/PageActions";
 import { useEffect, useState, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { usePagination, PAGE_SIZE } from "@/hooks/usePagination";
