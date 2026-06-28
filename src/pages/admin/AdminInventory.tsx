@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Plus, MoreHorizontal } from "lucide-react";
@@ -115,8 +115,11 @@ export default function AdminInventory() {
             <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Inventory</h2>
             <p className="text-muted-foreground">Manage workshop inventory</p>
           </div>
+          <div className="flex gap-2">
           <Dialog open={open} onOpenChange={setOpen}>
-            <Button onClick={() => setOpen(true)}><Plus className="mr-2 h-4 w-4" />Add Item</Button>
+            <DialogTrigger asChild>
+              <Button><Plus className="mr-2 h-4 w-4" />Add Item</Button>
+            </DialogTrigger>
             <DialogContent>
               <DialogHeader><DialogTitle>Add Inventory Item</DialogTitle></DialogHeader>
               <div className="space-y-4">
@@ -134,6 +137,7 @@ export default function AdminInventory() {
               </div>
             </DialogContent>
           </Dialog>
+          </div>
         </div>
 
         <Card>
