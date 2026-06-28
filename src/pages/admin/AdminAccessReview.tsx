@@ -37,42 +37,35 @@ export default function AdminAccessReview() {
 
   const fetchUsers = async () => {
     setLoading(true);
-    const { data: profiles } = await supabase
-      .from("profiles")
-      .select("id, full_name, created_at, is_active, is_super_admin");
-    const { data: roles } = await supabase
-      .from("user_roles")
-      .select("user_id, role");
+    const { data, error } = await supabase.functions.invoke("admin-access-review", {
+      body: {},
+    });
 
-    if (!profiles) { setLoading(false); return; }
+    if (error) {
+      toast.error(error.message || "Failed to load access review");
+      setLoading(false);
+      return;
+    }
 
-    const roleMap = new Map((roles ?? []).map((r) => [r.user_id, r.role]));
-
-    // Auth metadata (last_sign_in_at) requires a server-side global admin call,
-    // which is not available from the browser. Skip — fields stay null and the UI handles that.
-    const authMap = new Map<string, { last_sign_in_at: string | null; email?: string }>();
-
-
-    const merged: ReviewUser[] = profiles
-      .filter((p) => !(p as any).is_super_admin)
-      .map((p) => ({
-        user_id: p.id,
-        full_name: p.full_name,
-        email: authMap.get(p.id)?.email,
-        role: roleMap.get(p.id) ?? "client",
-        is_active: (p as any).is_active !== false,
-        last_sign_in_at: authMap.get(p.id)?.last_sign_in_at ?? null,
-        created_at: p.created_at ?? "",
+    const list: ReviewUser[] = (data?.data ?? [])
+      .filter((u: any) => !u.is_super_admin)
+      .map((u: any) => ({
+        user_id: u.user_id,
+        full_name: u.full_name,
+        email: u.email ?? undefined,
+        role: u.role ?? "",
+        is_active: u.is_active !== false,
+        last_sign_in_at: u.last_sign_in_at ?? null,
+        created_at: u.created_at ?? "",
       }));
 
-    // Sort: stale inactive first, then stale active, then healthy
-    merged.sort((a, b) => {
+    list.sort((a, b) => {
       const aStale = isStale(a.last_sign_in_at) ? 1 : 0;
       const bStale = isStale(b.last_sign_in_at) ? 1 : 0;
       return bStale - aStale;
     });
 
-    setUsers(merged);
+    setUsers(list);
     setLoading(false);
   };
 
