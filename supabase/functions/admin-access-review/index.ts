@@ -30,7 +30,7 @@ serve(async (req) => {
 
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
-      return json({ error: "Unauthorized" }, 401);
+      return json({ error: "Unauthorized" }, 401, cors);
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -41,7 +41,7 @@ serve(async (req) => {
       global: { headers: { Authorization: authHeader } },
     });
     const { data: { user: caller }, error: userErr } = await callerClient.auth.getUser();
-    if (userErr || !caller) return json({ error: "Unauthorized" }, 401);
+    if (userErr || !caller) return json({ error: "Unauthorized" }, 401, cors);
 
     const admin = createClient(supabaseUrl, serviceKey);
     const { data: callerRole, error: roleErr } = await admin
