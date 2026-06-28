@@ -30,19 +30,41 @@ function isStale(lastSignIn: string | null): boolean {
   return daysSince > STALE_DAYS;
 }
 
+function getActivityStatus(lastSignIn: string | null, unavailable: boolean) {
+  if (unavailable) return { label: "Unavailable", stale: false };
+  const stale = isStale(lastSignIn);
+  return { label: stale ? "Stale" : "Active", stale };
+}
+
 export default function AdminAccessReview() {
   const [users, setUsers] = useState<ReviewUser[]>([]);
   const [loading, setLoading] = useState(true);
+  const [lastSignInUnavailable, setLastSignInUnavailable] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   const fetchUsers = async () => {
     setLoading(true);
+    setLastSignInUnavailable(false);
+
+    const { data: sessionData } = await supabase.auth.getSession();
+    const accessToken = sessionData.session?.access_token;
+
+    if (!accessToken) {
+      toast.error("Please sign in again to load the access review.");
+      setLoading(false);
+      return;
+    }
+
     const { data, error } = await supabase.functions.invoke("admin-access-review", {
       body: {},
+      headers: { Authorization: `Bearer ${accessToken}` },
     });
 
     if (error) {
-      toast.error(error.message || "Failed to load access review");
+      const fallback = await fetchUsersFallback();
+      setUsers(fallback);
+      setLastSignInUnavailable(true);
+      toast.error("Access review loaded without sign-in history. Try again shortly for full activity details.");
       setLoading(false);
       return;
     }
@@ -67,6 +89,35 @@ export default function AdminAccessReview() {
 
     setUsers(list);
     setLoading(false);
+  };
+
+  const fetchUsersFallback = async (): Promise<ReviewUser[]> => {
+    const [{ data: profiles, error: profilesError }, { data: roles, error: rolesError }] = await Promise.all([
+      supabase
+        .from("profiles")
+        .select("id, full_name, created_at, is_active, is_super_admin"),
+      supabase
+        .from("user_roles")
+        .select("user_id, role"),
+    ]);
+
+    if (profilesError || rolesError) {
+      toast.error(profilesError?.message || rolesError?.message || "Failed to load access review");
+      return [];
+    }
+
+    const roleMap = new Map((roles ?? []).map((role: any) => [role.user_id, role.role]));
+
+    return (profiles ?? [])
+      .filter((profile: any) => !profile.is_super_admin)
+      .map((profile: any) => ({
+        user_id: profile.id,
+        full_name: profile.full_name,
+        role: roleMap.get(profile.id) ?? "client",
+        is_active: profile.is_active !== false,
+        last_sign_in_at: null,
+        created_at: profile.created_at ?? "",
+      }));
   };
 
   useEffect(() => { fetchUsers(); }, []);
@@ -98,14 +149,14 @@ export default function AdminAccessReview() {
       u.full_name ?? "",
       u.role,
       u.is_active ? "Active" : "Inactive",
-      u.last_sign_in_at ? new Date(u.last_sign_in_at).toISOString() : "Never",
+      lastSignInUnavailable ? "Unavailable" : u.last_sign_in_at ? new Date(u.last_sign_in_at).toISOString() : "Never",
       new Date(u.created_at).toISOString(),
-      isStale(u.last_sign_in_at) ? "Yes" : "No",
+      lastSignInUnavailable ? "Unavailable" : isStale(u.last_sign_in_at) ? "Yes" : "No",
     ]);
     downloadCSV(`access-review-${new Date().toISOString().slice(0, 10)}.csv`, headers, rows);
   };
 
-  const staleCount = users.filter((u) => isStale(u.last_sign_in_at)).length;
+  const staleCount = lastSignInUnavailable ? 0 : users.filter((u) => isStale(u.last_sign_in_at)).length;
 
   return (
     <DashboardLayout>
