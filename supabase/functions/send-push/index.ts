@@ -54,6 +54,29 @@ Deno.serve(async (req) => {
       .maybeSingle();
     if (!roleRow) return err("Forbidden — admin or manager role required", 403);
 
+    // Per-user rate limit: 30 pushes per hour, 15-min lockout on overflow.
+    const rl = await checkRateLimit(callerId, "send_push", {
+      limit: 30,
+      windowSec: 3600,
+      lockoutSec: 900,
+    });
+    if (!rl.allowed) {
+      return new Response(
+        JSON.stringify({
+          error: "Rate limit exceeded — too many push notifications",
+          retryAfterSec: rl.retryAfterSec,
+        }),
+        {
+          status: 429,
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json",
+            "Retry-After": String(rl.retryAfterSec),
+          },
+        },
+      );
+    }
+
     const body = await req.json().catch(() => null);
     if (!body || typeof body !== "object") return err("Invalid JSON body");
     const { user_ids, title, body: message, url } = body as {
