@@ -62,7 +62,7 @@ export function ActivityFeed() {
   }, [appointmentsEnabled]);
 
   return (
-    <Card>
+    <Card className="min-w-0 max-w-full overflow-hidden">
       <CardHeader className="pb-3">
         <CardTitle className="text-lg flex items-center gap-2">
           <Activity className="h-5 w-5" />
@@ -74,7 +74,7 @@ export function ActivityFeed() {
         {loading ? (
           <div className="space-y-3">
             {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="flex items-center gap-3">
+              <div key={i} className="flex min-w-0 items-center gap-3">
                 <Skeleton className="h-5 w-16 rounded-full" />
                 <Skeleton className="h-4 flex-1" />
                 <Skeleton className="h-3 w-16" />
@@ -86,7 +86,7 @@ export function ActivityFeed() {
         ) : (
           <div className="space-y-3">
             {entries.map((e) => (
-              <div key={e.id} className="flex items-start gap-3">
+              <div key={e.id} className="flex min-w-0 items-start gap-3">
                 <Badge variant="secondary" className={`shrink-0 text-[10px] ${actionColors[e.action] || ""}`}>
                   {e.action}
                 </Badge>

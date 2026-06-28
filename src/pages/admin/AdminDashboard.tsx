@@ -67,22 +67,22 @@ export default function AdminDashboard() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight">Admin Dashboard</h2>
+      <div className="min-w-0 max-w-full space-y-6">
+        <div className="min-w-0">
+          <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">Admin Dashboard</h2>
           <p className="text-muted-foreground">Overview of your entire workshop</p>
         </div>
 
         <AdminOnboardingChecklist />
 
         {isLoading ? (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid min-w-0 gap-4 md:grid-cols-2 lg:grid-cols-3">
             {Array.from({ length: 6 }).map((_, i) => (
               <Skeleton key={i} className="h-28 rounded-xl" />
             ))}
           </div>
         ) : (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid min-w-0 gap-4 md:grid-cols-2 lg:grid-cols-3">
             {appointmentsEnabled && <StatCard
               title="Total Jobs"
               value={stats.jobs}
@@ -128,7 +128,7 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid min-w-0 gap-4 md:grid-cols-2">
           <JobStatusChart data={statusData} />
           <RecentActivity activities={recentJobs} title="Recent Jobs" />
         </div>

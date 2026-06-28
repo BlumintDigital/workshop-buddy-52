@@ -20,7 +20,7 @@ const statusVariant = (status: string) => {
 
 export function RecentActivity({ activities, title = "Recent Activity" }: { activities: Activity[]; title?: string }) {
   return (
-    <Card>
+    <Card className="min-w-0 max-w-full overflow-hidden">
       <CardHeader>
         <CardTitle>{title}</CardTitle>
         <CardDescription>Latest updates across the workshop</CardDescription>
@@ -31,12 +31,12 @@ export function RecentActivity({ activities, title = "Recent Activity" }: { acti
         ) : (
           <div className="space-y-4">
             {activities.map((a) => (
-              <div key={a.id} className="flex items-center justify-between">
-                <div className="space-y-1">
-                  <p className="text-sm font-medium leading-none">{a.title}</p>
+              <div key={a.id} className="flex min-w-0 items-center justify-between gap-3">
+                <div className="min-w-0 space-y-1">
+                  <p className="truncate text-sm font-medium leading-none">{a.title}</p>
                   <p className="text-xs text-muted-foreground">{a.date}</p>
                 </div>
-                <Badge variant={statusVariant(a.status)}>{a.status.replace("_", " ")}</Badge>
+                <Badge variant={statusVariant(a.status)} className="shrink-0">{a.status.replace("_", " ")}</Badge>
               </div>
             ))}
           </div>

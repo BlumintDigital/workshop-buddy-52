@@ -115,16 +115,16 @@ export default function AdminAccessReview() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-2">
+      <div className="min-w-0 max-w-full space-y-6">
+        <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <h2 className="flex items-center gap-2 text-2xl font-bold tracking-tight sm:text-3xl">
               <ShieldCheck className="h-6 w-6 sm:h-7 sm:w-7" />
               Access Review
             </h2>
             <p className="text-muted-foreground">Quarterly audit of user accounts and privileges</p>
           </div>
-          <Button variant="outline" size="sm" onClick={handleExport} className="gap-2 shrink-0">
+          <Button variant="outline" size="sm" onClick={handleExport} className="w-full shrink-0 gap-2 sm:w-auto">
             <Download className="h-4 w-4" />
             Export CSV
           </Button>
@@ -169,7 +169,7 @@ export default function AdminAccessReview() {
         )}
 
         {/* User table */}
-        <Card>
+        <Card className="min-w-0 max-w-full overflow-hidden">
           <CardHeader className="pb-3">
             <CardTitle className="text-base">All Users</CardTitle>
             <CardDescription>
@@ -177,7 +177,8 @@ export default function AdminAccessReview() {
             </CardDescription>
           </CardHeader>
           <CardContent className="p-0">
-            <Table>
+            <div className="w-full overflow-x-auto">
+            <Table className="min-w-[760px]">
               <TableHeader>
                 <TableRow>
                   <TableHead>Name</TableHead>
@@ -230,7 +231,7 @@ export default function AdminAccessReview() {
                           : "Never"}
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 whitespace-nowrap">
                           <Button
                             variant="ghost"
                             size="sm"
@@ -261,6 +262,7 @@ export default function AdminAccessReview() {
                 })}
               </TableBody>
             </Table>
+            </div>
           </CardContent>
         </Card>
 
