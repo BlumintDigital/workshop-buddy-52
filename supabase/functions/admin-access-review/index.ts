@@ -1,18 +1,36 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { corsHeaders } from "../_shared/mfa-cors.ts";
+
+const allowedOrigins = (Deno.env.get("ALLOWED_ORIGINS") ?? "*")
+  .split(",")
+  .map((s) => s.trim());
+
+function corsHeaders(origin: string | null) {
+  const allow =
+    !origin || allowedOrigins.includes("*") || allowedOrigins.includes(origin)
+      ? origin ?? "*"
+      : allowedOrigins[0] ?? "*";
+  return {
+    "Access-Control-Allow-Origin": allow,
+    "Access-Control-Allow-Headers":
+      "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    Vary: "Origin",
+  };
+}
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  const cors = corsHeaders(req.headers.get("origin"));
+  if (req.method === "OPTIONS") return new Response(null, { headers: cors });
 
   try {
     if (req.method !== "GET" && req.method !== "POST") {
-      return json({ error: "GET or POST required" }, 405);
+      return json({ error: "GET or POST required" }, 405, cors);
     }
 
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
-      return json({ error: "Unauthorized" }, 401);
+      return json({ error: "Unauthorized" }, 401, cors);
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -23,7 +41,7 @@ serve(async (req) => {
       global: { headers: { Authorization: authHeader } },
     });
     const { data: { user: caller }, error: userErr } = await callerClient.auth.getUser();
-    if (userErr || !caller) return json({ error: "Unauthorized" }, 401);
+    if (userErr || !caller) return json({ error: "Unauthorized" }, 401, cors);
 
     const admin = createClient(supabaseUrl, serviceKey);
     const { data: callerRole, error: roleErr } = await admin
@@ -32,9 +50,9 @@ serve(async (req) => {
       .eq("user_id", caller.id)
       .maybeSingle();
 
-    if (roleErr) return json({ error: roleErr.message }, 500);
+    if (roleErr) return json({ error: roleErr.message }, 500, cors);
     if (callerRole?.role !== "admin") {
-      return json({ error: "Forbidden: admin role required" }, 403);
+      return json({ error: "Forbidden: admin role required" }, 403, cors);
     }
 
     const [{ data: profiles, error: profilesErr }, { data: roles, error: rolesErr }] =
@@ -47,8 +65,8 @@ serve(async (req) => {
           .select("user_id, role"),
       ]);
 
-    if (profilesErr) return json({ error: profilesErr.message }, 500);
-    if (rolesErr) return json({ error: rolesErr.message }, 500);
+    if (profilesErr) return json({ error: profilesErr.message }, 500, cors);
+    if (rolesErr) return json({ error: rolesErr.message }, 500, cors);
 
     const authUsers = await listAllAuthUsers(admin);
     const authMap = new Map(authUsers.map((user: any) => [user.id, user]));
@@ -68,10 +86,10 @@ serve(async (req) => {
       };
     });
 
-    return json({ data: users, total: users.length });
+    return json({ data: users, total: users.length }, 200, cors);
   } catch (e) {
     console.error("admin-access-review error:", e);
-    return json({ error: "Internal server error" }, 500);
+    return json({ error: "Internal server error" }, 500, cors);
   }
 });
 
@@ -91,9 +109,9 @@ async function listAllAuthUsers(admin: any) {
   return users;
 }
 
-function json(body: unknown, status = 200) {
+function json(body: unknown, status = 200, cors: Record<string, string> = {}) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
+    headers: { ...cors, "Content-Type": "application/json" },
   });
 }
