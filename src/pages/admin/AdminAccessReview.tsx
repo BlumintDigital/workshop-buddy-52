@@ -325,9 +325,9 @@ export default function AdminAccessReview() {
               )) : users.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground text-sm">No users found</div>
               ) : users.map((u) => {
-                const stale = isStale(u.last_sign_in_at);
+                const status = getActivityStatus(u.last_sign_in_at, lastSignInUnavailable);
                 return (
-                  <div key={u.user_id} className={`p-4 space-y-2 ${stale ? "bg-amber-50/60 dark:bg-amber-950/10" : ""}`}>
+                  <div key={u.user_id} className={`p-4 space-y-2 ${status.stale ? "bg-amber-50/60 dark:bg-amber-950/10" : ""}`}>
                     <div className="flex items-start justify-between gap-2">
                       <p className="font-medium break-words min-w-0 flex-1">
                         {u.full_name ?? "—"}
@@ -340,16 +340,18 @@ export default function AdminAccessReview() {
                       <span className="capitalize text-muted-foreground">
                         Role: {u.role || "none"}
                       </span>
-                      {stale ? (
-                        <Badge variant="outline" className="text-amber-600 border-amber-400">Stale</Badge>
+                      {status.stale ? (
+                        <Badge variant="outline" className="text-amber-600 border-amber-400">{status.label}</Badge>
                       ) : (
-                        <Badge variant="outline" className="text-emerald-600 border-emerald-400">Active</Badge>
+                        <Badge variant="outline" className="text-emerald-600 border-emerald-400">{status.label}</Badge>
                       )}
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      Last sign-in: {u.last_sign_in_at
-                        ? formatDistanceToNow(new Date(u.last_sign_in_at), { addSuffix: true })
-                        : "Never"}
+                      Last sign-in: {lastSignInUnavailable
+                        ? "Unavailable"
+                        : u.last_sign_in_at
+                          ? formatDistanceToNow(new Date(u.last_sign_in_at), { addSuffix: true })
+                          : "Never"}
                     </p>
                     <div className="flex flex-wrap gap-2 pt-1">
                       <Button
