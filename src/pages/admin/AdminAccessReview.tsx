@@ -188,7 +188,9 @@ export default function AdminAccessReview() {
           <Card className={staleCount > 0 ? "border-amber-400" : ""}>
             <CardContent className="pt-6">
               <p className="text-2xl font-bold text-amber-600">{staleCount}</p>
-              <p className="text-sm text-muted-foreground">Inactive &gt;{STALE_DAYS} days</p>
+              <p className="text-sm text-muted-foreground">
+                {lastSignInUnavailable ? "Sign-in history unavailable" : `Inactive >${STALE_DAYS} days`}
+              </p>
             </CardContent>
           </Card>
           <Card>
@@ -220,7 +222,9 @@ export default function AdminAccessReview() {
           <CardHeader className="pb-3">
             <CardTitle className="text-base">All Users</CardTitle>
             <CardDescription>
-              Rows highlighted in amber have not signed in for {STALE_DAYS}+ days.
+              {lastSignInUnavailable
+                ? "Users loaded, but sign-in history could not be reached right now."
+                : `Rows highlighted in amber have not signed in for ${STALE_DAYS}+ days.`}
             </CardDescription>
           </CardHeader>
           <CardContent className="p-0">
