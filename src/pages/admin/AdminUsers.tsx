@@ -338,17 +338,34 @@ export default function AdminUsers() {
             ))
           ) : filtered.length === 0 ? (
             <p className="text-center py-8 text-muted-foreground">No users found</p>
-          ) : filtered.map((u) => (
+          ) : filtered.map((u) => {
+            const status = inviteStatus(u);
+            return (
             <Card key={u.user_id} className="cursor-pointer" onClick={() => navigate(`/admin/users/${u.user_id}`)}>
               <CardContent className="p-4 flex items-center justify-between gap-3">
                 <div className="min-w-0">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <p className="font-medium text-primary truncate">{u.full_name}</p>
                     {!u.is_active && <Badge variant="destructive" className="text-xs shrink-0">Inactive</Badge>}
+                    {status === "invited" && (
+                      <Badge className="bg-amber-100 text-amber-900 hover:bg-amber-100 text-xs shrink-0">Invite sent</Badge>
+                    )}
                   </div>
                   <p className="text-xs text-muted-foreground">{u.created_at ? new Date(u.created_at).toLocaleDateString() : ""}</p>
                 </div>
                 <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                  {status !== "accepted" && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      aria-label="Resend invite"
+                      disabled={!!resending[u.user_id]}
+                      onClick={() => handleResend(u.user_id, u.full_name || "user")}
+                    >
+                      <Mail className="h-4 w-4" />
+                    </Button>
+                  )}
                   <Select value={u.role ?? ""} onValueChange={(v) => changeRole(u.user_id, v)}>
                     <SelectTrigger className="w-[100px] h-8"><SelectValue placeholder="Assign" /></SelectTrigger>
                     <SelectContent>
@@ -382,7 +399,8 @@ export default function AdminUsers() {
                 </div>
               </CardContent>
             </Card>
-          ))}
+            );
+          })}
         </div>
       </div>
     </DashboardLayout>
