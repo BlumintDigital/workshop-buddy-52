@@ -1,21 +1,26 @@
-## Plan
+## Problem
 
-1. **Make Access Review resilient to edge-function request failures**
-   - Keep using `admin-access-review` as the primary source because it can read real Supabase Auth `last_sign_in_at` values.
-   - Improve the error handling so a failed edge function call does not leave the page as “No users found” without context.
+Dismissing a system notice on the dashboard doesn't persist — after reload, the banner reappears.
 
-2. **Fix the edge function invocation/auth path**
-   - Update the client call to explicitly use the active session access token when invoking `admin-access-review`.
-   - Add a clear fallback message when no session token is available instead of triggering an unauthenticated edge-function request.
+**Root cause:** `public.dismissed_notices` has RLS policies but **no table-level GRANTs**, so PostgREST rejects the insert (and the subsequent select on reload returns nothing). The current dismiss handler also fires the insert without `await` or error handling, so the failure is silent — the optimistic UI hides it until reload. The same gap exists on `public.dismissed_broadcasts`, so broadcast dismissals from the BroadcastBanner share the same bug.
 
-3. **Harden the edge function CORS response**
-   - Replace the custom origin logic with the standard Supabase CORS header pattern used by the rest of the project.
-   - Ensure `OPTIONS`, success, and error responses all include the same required headers.
+## Fix
 
-4. **Add a safe fallback data path**
-   - If the edge function cannot be reached because of a transient preview/network issue, load the admin-visible profile/role data directly from Supabase so the page still shows users.
-   - Mark last sign-in as unavailable only when the edge function fails, instead of incorrectly treating every user as stale.
+1. **Migration** — grant the right privileges so authenticated users can persist their own dismissals:
+   ```sql
+   GRANT SELECT, INSERT ON public.dismissed_notices    TO authenticated;
+   GRANT ALL              ON public.dismissed_notices    TO service_role;
+   GRANT SELECT, INSERT ON public.dismissed_broadcasts TO authenticated;
+   GRANT ALL              ON public.dismissed_broadcasts TO service_role;
+   ```
+   (No DELETE/UPDATE: dismissals are write-once. RLS policies already scope to `auth.uid()`.)
 
-5. **Validate**
-   - Test the deployed `admin-access-review` function directly with the authenticated preview session.
-   - Verify the Access Review page shows the signed-in admin account and does not show the failed edge-function toast on normal load.
+2. **`src/components/SystemNoticesBanner.tsx`** — `await` the insert in `dismiss()`, and on error roll back the optimistic state and show a toast so future failures surface.
+
+3. **`src/components/BroadcastBanner.tsx`** — apply the same `await` + error-rollback pattern for consistency.
+
+## Verification
+
+- Send a notice via admin-api, dismiss it, reload — it should stay dismissed.
+- Confirm a row appears in `dismissed_notices` for the current user.
+- Repeat with a broadcast to confirm `dismissed_broadcasts` works.
