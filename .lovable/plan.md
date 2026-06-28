@@ -1,82 +1,117 @@
-# Production Readiness Audit — Workshop Buddy
+# Plan: Close the three "Needs Work" verdicts from the production audit
 
-Report-only. No code changes. Deliverable: `docs/production-audit.md` committed to the repo plus a chat summary covering the same findings.
+Goal: turn Performance, Reliability, and Code Quality from ⚠️ to ✅. Security housekeeping (P0 items #1–#3) is excluded — it's already ✅ and handled separately.
 
-## Scope
+---
 
-Audit the current state of the app across four areas and rate production readiness per area (Ready / Needs work / Blocker):
+## 1. Performance & scalability
 
-1. Security & RLS posture
-2. Performance & scalability
-3. Reliability & operations
-4. Code quality & UX
+**1.1 Cache hot session reads in React Query**
+- Add a `QueryClient` default of `staleTime: 5 min`, `gcTime: 30 min` (already present? verify in `main.tsx`).
+- Create `useWorkshopSettings()` and `useUserRole()` hooks backed by `useQuery` with keys `["workshop-settings"]` and `["user-role", userId]`, `staleTime: 10 min`.
+- Replace ad-hoc `supabase.from('workshop_settings')` / `user_roles` fetches in `useAuth`, `AppHeader`, `AppSidebar`, `useFeatureFlags`, branding loader, currency hook, etc. with the shared hooks.
+- Invalidate on settings save and on role change events only.
+- Expected impact: removes the top two slow queries (≈15.5s total / 1061 calls).
 
-The audit reflects what is in the repo and Supabase project today — no fixes are applied in this round.
+**1.2 Consolidate banner polling**
+- Merge `broadcasts` + `system_notices` fetches behind one `useNotices()` query, `staleTime: 2 min`, refetch on window focus only (drop interval polling).
+- Single query feeds both `BroadcastBanner` and `SystemNoticesBanner`.
 
-## Method
+**1.3 Indexes**
+- Migration adding:
+  - `CREATE INDEX IF NOT EXISTS idx_notifications_user_created ON notifications(user_id, created_at DESC);`
+  - `CREATE INDEX IF NOT EXISTS idx_activity_logs_created ON activity_logs(created_at DESC);`
+- Confirm with `EXPLAIN` before/after.
 
-Already gathered while preparing this plan:
+**1.4 Bundle audit**
+- Run `vite build`, inspect chunk report.
+- If Remotion isn't on a critical path, lazy-load `GoalsAnimations` only (already lazy in `App.tsx`? confirm) and gate Remotion import behind the `goals` feature flag.
+- Lower `chunkSizeWarningLimit` back to 600 to surface regressions.
 
-- Lovable security scanners (agent, connector, supabase, supabase_lov, supply_chain): **0 open findings**.
-- Supabase DB linter: 1 ERROR (Security Definer View), 8 WARN (SECURITY DEFINER functions executable by authenticated role), 1 WARN (leaked-password protection disabled in Auth).
-- `pg_stat_statements` top queries: `workshop_settings` lookup by id is the hottest read (790 calls, ~11.7s total); `user_roles` by user_id, `broadcasts`, `system_notices`, `activity_logs`, and `notifications` round out the top 7.
-- Repo signals: 73 migrations, 20 edge functions, CI workflow runs typecheck + lint + tests, 7 vitest files, Playwright config present, Sentry wired (`@sentry/react`), PWA via `vite-plugin-pwa` with network-only navigation + offline fallback, Vercel hosting with HSTS + security headers, MFA + trusted-device + backup-code flows, rate-limit helper shared across edge functions, dual auth (Supabase) with role-table pattern using `has_role()` security-definer to avoid RLS recursion.
+**1.5 Service worker scope**
+- Fold `push-sw.js` push/notificationclick handlers into `src/sw.ts` and unregister `push-sw.js` on app boot to remove scope overlap.
 
-For the final report I will additionally:
+---
 
-- Skim every edge function for: JWT validation, CORS origin scoping, service-role usage, rate limits, input validation.
-- Spot-check RLS on the highest-risk tables (`profiles`, `user_roles`, `signup_codes`, `workshop_settings`, `workshop_admin_contacts`, `invoices`, `mfa_*`, `push_subscriptions`, `activity_logs`).
-- Cross-reference open Supabase linter findings against the security memory to flag any that are not yet documented as accepted.
-- Read `vite.config.ts` chunking, `vercel.json` headers, and `sw.ts` for caching/PWA risks.
-- Inventory tests (coverage of auth, RLS-sensitive flows, MFA) and note gaps.
+## 2. Reliability & operations
 
-## Deliverable structure
+**2.1 CI hardening** (`.github/workflows/ci.yml`)
+- Add `build` job running `npm run build`.
+- Add `e2e` job running `npx playwright install --with-deps chromium && npx playwright test` against a built preview.
+- Add `supabase db diff --linked --schema public` dry-run job (non-blocking warning) to catch drifted migrations.
 
-`docs/production-audit.md` will contain:
+**2.2 Playwright smoke specs** (`tests/e2e/`)
+- One spec per role: `admin.spec.ts`, `manager.spec.ts`, `staff.spec.ts`, `client.spec.ts`.
+- Flow: sign in (test user per role from CI secrets) → land on role dashboard → assert key nav item visible.
+- Add a `mfa.spec.ts` covering TOTP + backup-code path using a seeded test user.
 
-1. **Executive summary** — one-paragraph verdict + per-area Ready/Needs work/Blocker table.
-2. **Security & RLS posture**
-   - Auth model (Supabase Auth + roles via `user_roles` + `has_role`), MFA + trusted devices + backup codes.
-   - RLS coverage by table, called out: tables with `anon` grants, tables with sensitive PII, AAL2-restricted tables.
-   - Edge function review (per-function: auth check, CORS, rate limit, service-role scope).
-   - Supabase linter findings reproduced verbatim with a recommendation per item (notably: enable leaked-password protection in Auth dashboard; audit the SECURITY DEFINER view and revoke `EXECUTE` on definer functions not meant for client calls).
-   - Secrets handling (VAPID private key server-side, Resend, GLOBAL_ADMIN_SECRET, ALLOWED_ORIGINS).
-   - Headers and transport (HSTS, X-Frame-Options, Referrer-Policy, Permissions-Policy from `vercel.json`).
-3. **Performance & scalability**
-   - Slow-query top 10 with proposed indexes / caching (e.g. cache `workshop_settings` and `user_roles` per session; current 790-call read pattern suggests no client-side memoization for the hot path).
-   - Bundle: manualChunks splits PDF, charts, supabase, radix, router, react, icons — good. Note `@react-pdf/renderer` + `recharts` + `remotion` are heavy; verify they are lazy-loaded by route.
-   - PWA: network-only for navigations is correct post-deploy; verify `push-sw.js` does not conflict with workbox SW scope.
-   - Realtime: spot-check for unscoped channels or component-scope subscriptions.
-   - Supabase plan sizing recommendation based on query volume.
-4. **Reliability & operations**
-   - CI: typecheck + lint + unit tests on push/PR — present. Missing: build step, e2e (Playwright is configured but not in CI), preview deploy gates, migration dry-run.
-   - Migrations: 73 files, deploy guide switched to `supabase db push`. Confirm CI does not auto-push to prod; document who runs migrations.
-   - Backups: `backup-data` / `restore-data` edge functions exist (admin-only, rate-limited). Verify Supabase PITR is enabled (vendor-risk doc says "verify on Pro plan" — flag as action item).
-   - Monitoring: Sentry wired in frontend with PII scrubbing; no backend error monitoring on edge functions beyond Supabase logs. Recommend uptime monitor on a public health endpoint.
-   - Incident response runbook + vendor risk + data retention + SECURITY.md are all present — strong.
-   - Email: Resend with verified domain, sanitized HTML — good.
-5. **Code quality & UX**
-   - TypeScript strictness (read `tsconfig.app.json`), ESLint config status, dead-code / `any` hotspots.
-   - Test coverage: 7 vitest files (auth, schemas, branding, feature flags, admin onboarding, example). Gaps: invoice flow, RLS policies (pgTAP), edge-function unit tests, MFA flows, push subscription.
-   - Accessibility quick check: semantic HTML on auth + dashboard, focus management on dialogs, keyboard handling on kanban.
-   - Mobile: known recent work on responsive headers and action toolbars; verify all admin pages with `PageActions` and card-mode lists.
-   - Error handling: `ProtectedRoute` handles no-role and MFA; `FeatureUnavailable` page exists; toasts via sonner.
-6. **Risk register** — table with: risk, likelihood, impact, owner, recommended action.
-7. **Recommended action list, prioritised** — P0 (do before next prod traffic spike), P1 (this sprint), P2 (backlog). Each item links back to the section that explains it.
-8. **Appendix** — raw linter output, slow-query top 10, edge function inventory, dependency versions of note.
+**2.3 RLS regression tests**
+- Add `supabase/tests/rls/` with pgTAP specs for `profiles`, `user_roles`, `signup_codes`, `invoices`, `workshop_admin_contacts`, `mfa_*`.
+- New CI job spins up `supabase start`, runs migrations, executes `supabase test db`.
 
-## Chat summary
+**2.4 Edge function tests**
+- Deno tests for `mfa-backup-verify`, `mfa-trust-device`, `admin-create-user`, `validate-signup-code` using `supabase test edge-functions`.
+- Wire into CI.
 
-After writing the doc, I will post a short chat summary with: the per-area verdict table, the P0/P1 items, and a link to the file.
+**2.5 Edge function error reporting**
+- Add `_shared/sentry.ts` wrapping `@sentry/deno` init from `SENTRY_DSN` secret.
+- Wrap every function handler with a `try/catch → Sentry.captureException` helper.
+- New secret: `SENTRY_DSN` (add via `add_secret`).
+
+**2.6 Per-user rate limits**
+- Apply existing `_shared/rate-limit.ts` to `send-push` and `send-email` (e.g. 30/hour/user).
+
+**2.7 Backups & uptime**
+- Document Supabase Pro PITR confirmation step in `docs/incident-response.md` (no code, just runbook update).
+- Add `docs/uptime.md` describing the external monitor (BetterUptime/UptimeRobot) and the `/api/health` style check — implement a tiny `/health` route in `App.tsx` (or a Vercel edge function) returning 200.
+- Optional: GitHub Action running `backup-data` weekly via `curl`, storing the manifest in repo Releases.
+
+---
+
+## 3. Code quality & UX
+
+**3.1 TypeScript strictness, phased**
+- Step A: flip `strictNullChecks: true` in `tsconfig.json` + `tsconfig.app.json`. Fix surfaced errors (expected hotspots: Supabase row types, optional chaining around `profile`, `workshop_settings`, route params).
+- Step B: flip `strict: true`, `noImplicitAny: true`. Fix the remaining errors.
+- Step C: turn on `noUnusedLocals` + `noUnusedParameters` last (cleanup pass).
+- Keep each step in its own PR so CI bisects cleanly.
+
+**3.2 ESLint**
+- Re-enable `@typescript-eslint/no-unused-vars` as `warn` after step C.
+- Add `eslint-plugin-react` recommended rules and `jsx-a11y` recommended for accessibility lint.
+
+**3.3 Unit test depth**
+- Add vitest specs for: `useCurrency`, `useFeatureFlags`, `usePushSubscription`, `lib/email`, `lib/csv`, `lib/notifications`, `redeem_signup_code` client wrapper.
+- Aim for ≥ 30 unit test files (current 7).
+
+**3.4 Accessibility spot-fixes**
+- Keyboard navigation pass on `StaffKanban` (arrow keys to move cards, Enter to open).
+- Focus return after `AlertDialog` close on revoke device flow.
+- Run `@axe-core/playwright` in the e2e suite; fail on serious/critical violations.
+
+**3.5 CSP**
+- Add report-only CSP via `vercel.json` headers, allow-listing Supabase, Sentry, Resend (image), self.
+- After one week of report-only with no real violations, flip to enforced.
+
+---
+
+## Sequencing & rollout
+
+| Sprint | Focus | Owner load |
+|---|---|---|
+| Sprint 1 | 1.1, 1.2, 1.3 caching/indexes; 2.1 CI build + 2.2 Playwright smoke; 3.1A strictNullChecks | High |
+| Sprint 2 | 1.4, 1.5 bundle/SW; 2.3 pgTAP RLS; 2.5 Sentry on edge; 3.1B strict | Medium |
+| Sprint 3 | 2.4 Deno function tests; 2.6 rate limits; 2.7 uptime/PITR; 3.2/3.3/3.4 lint/tests/a11y | Medium |
+| Sprint 4 | 3.5 CSP enforced; 3.1C cleanup; doc the new SLOs in `docs/production-audit.md` | Low |
+
+## Exit criteria
+- All three audit verdicts re-scored to ✅ in an updated `docs/production-audit.md`.
+- CI: typecheck + lint + unit + build + e2e + pgTAP + edge-function tests all green on PR.
+- `pg_stat_statements`: `workshop_settings` and `user_roles` no longer in top 5 by total time.
+- `tsc --noEmit` passes with `strict: true`.
+- External uptime monitor live with 99.9% target; Sentry receives edge-function errors.
 
 ## Out of scope
-
-- No code, schema, RLS, or config changes.
-- No new tests written.
-- No dependency upgrades.
-
-## Technical notes
-
-- File created: `docs/production-audit.md` (single new file).
-- No migrations, no edge function deploys, no secret changes.
-- Sources cited inline with file paths or linter rule IDs so each finding is verifiable.
+- Security P0 items (leaked-password toggle, PITR confirmation, SECURITY DEFINER cleanup) — already tracked in audit §7.
+- New product features.
+- Visual redesign.
