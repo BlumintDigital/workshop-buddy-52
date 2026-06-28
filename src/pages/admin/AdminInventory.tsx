@@ -137,6 +137,7 @@ export default function AdminInventory() {
               </div>
             </DialogContent>
           </Dialog>
+          </div>
         </div>
 
         <Card>
