@@ -121,9 +121,9 @@ export default function AdminJobs() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
+      <div className="min-w-0 max-w-full space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
+          <div className="min-w-0">
             <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Jobs</h2>
             <p className="text-muted-foreground">Manage all workshop jobs</p>
           </div>
@@ -186,7 +186,7 @@ export default function AdminJobs() {
           </Dialog>
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-3">
+        <div className="flex min-w-0 flex-col gap-3 sm:flex-row">
           {/* Mobile dropdown filter */}
           <div className="sm:hidden">
             <Select value={filter} onValueChange={handleFilterChange}>
@@ -223,9 +223,10 @@ export default function AdminJobs() {
           </div>
         </div>
 
-        <Card>
-          <CardContent className="p-0 overflow-x-auto">
-            <Table>
+        <Card className="min-w-0 max-w-full overflow-hidden">
+          <CardContent className="p-0">
+            <div className="w-full overflow-x-auto">
+            <Table className="min-w-[520px] sm:min-w-[720px]">
               <TableHeader>
                 <TableRow>
                   <TableHead>Title</TableHead>
@@ -241,17 +242,17 @@ export default function AdminJobs() {
                   <TableRow key={i}>
                     <TableCell><Skeleton className="h-4 w-40" /></TableCell>
                     <TableCell><Skeleton className="h-4 w-20 rounded-full" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-16" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-28" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-28" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                    <TableCell className="hidden sm:table-cell"><Skeleton className="h-4 w-16" /></TableCell>
+                    <TableCell className="hidden md:table-cell"><Skeleton className="h-4 w-28" /></TableCell>
+                    <TableCell className="hidden md:table-cell"><Skeleton className="h-4 w-28" /></TableCell>
+                    <TableCell className="hidden sm:table-cell"><Skeleton className="h-4 w-20" /></TableCell>
                   </TableRow>
                 )) : jobs.length === 0 ? (
                   <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No jobs found</TableCell></TableRow>
                 ) : jobs.map((job) => (
                   <TableRow key={job.id} className="cursor-pointer hover:bg-muted/50">
                     <TableCell>
-                      <Link to={`/jobs/${job.id}`} className="font-medium text-primary hover:underline">
+                      <Link to={`/jobs/${job.id}`} className="block max-w-[260px] truncate font-medium text-primary hover:underline sm:max-w-none">
                         {job.title}
                       </Link>
                     </TableCell>
@@ -264,11 +265,12 @@ export default function AdminJobs() {
                 ))}
               </TableBody>
             </Table>
+            </div>
           </CardContent>
         </Card>
 
         {totalPages > 1 && (
-          <div className="flex items-center justify-between text-sm text-muted-foreground">
+          <div className="flex flex-col gap-3 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
             <span>Showing {from + 1}–{Math.min(from + PAGE_SIZE, totalCount)} of {totalCount}</span>
             <Pagination>
               <PaginationContent>

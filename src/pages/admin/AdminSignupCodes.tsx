@@ -154,25 +154,25 @@ export default function AdminSignupCodes() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
-        <header className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div className="space-y-1">
-          <h1 className="text-3xl font-bold tracking-tight">Signup Invite Codes</h1>
+      <div className="min-w-0 max-w-full space-y-6">
+        <header className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0 space-y-1">
+          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Signup Invite Codes</h1>
           <p className="text-muted-foreground">
             Issue codes that visitors must enter to create an account. Disable or delete any code to revoke access.
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex w-full gap-2 sm:w-auto">
           <Button variant="outline" size="icon" onClick={() => void load()} aria-label="Refresh">
             <RefreshCw className="h-4 w-4" />
           </Button>
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
-              <Button onClick={openCreate}>
+              <Button onClick={openCreate} className="flex-1 sm:flex-none">
                 <Plus className="mr-2 h-4 w-4" /> New code
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
               <DialogHeader>
                 <DialogTitle>Create invite code</DialogTitle>
                 <DialogDescription>
@@ -182,7 +182,7 @@ export default function AdminSignupCodes() {
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="code">Code</Label>
-                  <div className="flex gap-2">
+                  <div className="flex flex-col gap-2 sm:flex-row">
                     <Input
                       id="code"
                       value={newCode}
@@ -190,7 +190,7 @@ export default function AdminSignupCodes() {
                       className="font-mono"
                       maxLength={64}
                     />
-                    <Button type="button" variant="outline" onClick={() => setNewCode(generateCode())}>
+                    <Button type="button" variant="outline" onClick={() => setNewCode(generateCode())} className="shrink-0">
                       Generate
                     </Button>
                   </div>
@@ -258,7 +258,7 @@ export default function AdminSignupCodes() {
         </div>
       </header>
 
-      <Card>
+      <Card className="min-w-0 max-w-full overflow-hidden">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <KeyRound className="h-5 w-5" /> Active and recent codes
@@ -267,9 +267,9 @@ export default function AdminSignupCodes() {
             New accounts can only be created with a valid, active, non-expired invite code that still has uses remaining.
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <Table>
+        <CardContent className="p-0 sm:p-6">
+          <div className="w-full overflow-x-auto">
+            <Table className="min-w-[860px]">
               <TableHeader>
                 <TableRow>
                   <TableHead>Code</TableHead>
@@ -300,9 +300,9 @@ export default function AdminSignupCodes() {
                   </TableRow>
                 ) : codes.map((row) => (
                     <TableRow key={row.id}>
-                      <TableCell className="font-mono">{row.code}</TableCell>
-                      <TableCell>{row.label ?? <span className="text-muted-foreground">—</span>}</TableCell>
-                      <TableCell>
+                      <TableCell className="max-w-[180px] truncate font-mono">{row.code}</TableCell>
+                      <TableCell className="max-w-[220px] truncate">{row.label ?? <span className="text-muted-foreground">—</span>}</TableCell>
+                      <TableCell className="whitespace-nowrap">
                         {roleBadge(row.role)}
                       </TableCell>
                       <TableCell>
@@ -316,7 +316,7 @@ export default function AdminSignupCodes() {
                       </TableCell>
                       <TableCell>{statusBadge(row)}</TableCell>
                       <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-2">
+                        <div className="flex items-center justify-end gap-2 whitespace-nowrap">
                           <Switch
                             checked={row.active}
                             onCheckedChange={(v) => toggleActive(row, v)}

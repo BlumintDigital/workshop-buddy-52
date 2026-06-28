@@ -34,9 +34,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
   return (
     <SidebarProvider>
-      <div className="flex w-full">
+      <div className="flex min-h-svh w-full max-w-full overflow-x-hidden">
         <AppSidebar />
-        <SidebarInset>
+        <SidebarInset className="min-w-0 max-w-full overflow-x-hidden">
           <AppHeader />
           <BroadcastBanner />
           <SystemNoticesBanner />
@@ -57,7 +57,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             </div>
           )}
 
-          <main className="flex-1 p-3 sm:p-6">{children}</main>
+          <main className="flex-1 min-w-0 max-w-full overflow-x-hidden p-3 sm:p-6">{children}</main>
           <footer className="border-t py-3 px-3 sm:px-6 text-xs text-muted-foreground text-center">
             Shoplane is powered by Blumint Workspace · © {new Date().getFullYear()} Blumint Digital Limited · Registered in England and Wales · Company No. 15709531
           </footer>
