@@ -156,7 +156,7 @@ export default function AdminUsers() {
           <PageActions>
             <Dialog open={createOpen} onOpenChange={setCreateOpen}>
               <DialogTrigger asChild>
-                <Button className="w-full sm:w-auto"><Plus className="mr-2 h-4 w-4" />New User</Button>
+                <Button><Plus className="mr-2 h-4 w-4" />New User</Button>
               </DialogTrigger>
               <DialogContent className="max-h-[90vh] overflow-y-auto">
                 <DialogHeader><DialogTitle>Create New User</DialogTitle></DialogHeader>

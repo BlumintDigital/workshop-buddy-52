@@ -169,6 +169,18 @@ export default function AdminActivityLogs() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Auto-refresh logs every 20s and on window focus so the page never feels stale.
+  useEffect(() => {
+    const interval = setInterval(() => { fetchLogs(); }, 20000);
+    const onFocus = () => fetchLogs();
+    window.addEventListener("focus", onFocus);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("focus", onFocus);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, filterTable, filterAction, search]);
+
   const handleSearch = () => {
     setPage(0);
     fetchLogs();

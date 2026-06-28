@@ -38,27 +38,26 @@ export function ActivityFeed() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let active = true;
     const fetch = async () => {
       const { data } = await supabase
         .from("activity_logs")
         .select("id, action, table_name, summary, created_at")
         .order("created_at", { ascending: false })
         .limit(5);
+      if (!active) return;
       setEntries((data || []).filter((entry) => appointmentsEnabled || entry.table_name !== "appointments"));
       setLoading(false);
     };
     fetch();
-
-    const channel = supabase
-      .channel("activity-feed")
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "activity_logs" }, (payload) => {
-        const newEntry = payload.new as LogEntry;
-        if (!appointmentsEnabled && newEntry.table_name === "appointments") return;
-        setEntries((prev) => [newEntry, ...prev].slice(0, 5));
-      })
-      .subscribe();
-
-    return () => { supabase.removeChannel(channel); };
+    const interval = setInterval(fetch, 15000);
+    const onFocus = () => fetch();
+    window.addEventListener("focus", onFocus);
+    return () => {
+      active = false;
+      clearInterval(interval);
+      window.removeEventListener("focus", onFocus);
+    };
   }, [appointmentsEnabled]);
 
   return (
