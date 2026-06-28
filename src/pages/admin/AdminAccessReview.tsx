@@ -47,15 +47,10 @@ export default function AdminAccessReview() {
 
     const roleMap = new Map((roles ?? []).map((r) => [r.user_id, r.role]));
 
-    // Fetch auth metadata (last_sign_in_at) from admin-api users action
-    let authMap = new Map<string, { last_sign_in_at: string | null; email?: string }>();
-    try {
-      const { data: adminUsers } = await supabase.functions.invoke("admin-api", {
-        body: null,
-        headers: {},
-      });
-      // admin-api users action is called via GET with query param — use a direct approach
-    } catch { /* ignore — auth metadata is best-effort */ }
+    // Auth metadata (last_sign_in_at) requires a server-side global admin call,
+    // which is not available from the browser. Skip — fields stay null and the UI handles that.
+    const authMap = new Map<string, { last_sign_in_at: string | null; email?: string }>();
+
 
     const merged: ReviewUser[] = profiles
       .filter((p) => !(p as any).is_super_admin)
