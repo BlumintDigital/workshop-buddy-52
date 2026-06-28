@@ -34,7 +34,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full">
+      <div className="min-h-screen flex w-full overflow-x-hidden">
         <AppSidebar />
         <SidebarInset>
           <AppHeader />
@@ -45,7 +45,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           {/* 2FA reminder banner — shown to all users without 2FA */}
           {!loading && !mfaEnabled && (
             <div className="bg-amber-50 border-b border-amber-200 dark:bg-amber-950/30 dark:border-amber-800 px-4 py-2.5 flex items-center justify-between gap-3 flex-wrap">
-              <div className="flex items-center gap-2 text-sm text-amber-800 dark:text-amber-300">
+              <div className="flex min-w-0 items-center gap-2 text-sm text-amber-800 dark:text-amber-300">
                 <ShieldAlert className="h-4 w-4 shrink-0" />
                 <span>Your account doesn't have two-factor authentication enabled. Enable it to keep your account secure.</span>
               </div>
@@ -58,7 +58,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           )}
 
           <main className="flex-1 p-3 sm:p-6">{children}</main>
-          <footer className="border-t py-3 px-6 text-xs text-muted-foreground text-center">
+          <footer className="border-t py-3 px-3 sm:px-6 text-xs text-muted-foreground text-center">
             Shoplane is powered by Blumint Workspace · © {new Date().getFullYear()} Blumint Digital Limited · Registered in England and Wales · Company No. 15709531
           </footer>
         </SidebarInset>
