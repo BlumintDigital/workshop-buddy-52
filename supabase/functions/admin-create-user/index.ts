@@ -120,21 +120,21 @@ serve(async (req) => {
       return json({ error: `Created user but role failed: ${roleError.message}` }, 500);
     }
 
-    if (phone) {
-      await adminClient
-        .from("profiles")
-        .update({ phone })
-        .eq("id", newUser.user.id);
-    }
+    const profileUpdate: Record<string, unknown> = { invited_at: new Date().toISOString() };
+    if (phone) profileUpdate.phone = phone;
+    await adminClient.from("profiles").update(profileUpdate).eq("id", newUser.user.id);
 
-    // Send password-reset/invite email so the user can set their password
+    // Send invite email so the user can set their password
     try {
-      await adminClient.auth.admin.generateLink({
-        type: "recovery",
-        email,
+      const { error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(email, {
+        data: { full_name, role },
       });
+      if (inviteError) {
+        // Fallback: generate recovery link (sends recovery email via SMTP)
+        await adminClient.auth.admin.generateLink({ type: "recovery", email });
+      }
     } catch (_) {
-      // non-fatal
+      try { await adminClient.auth.admin.generateLink({ type: "recovery", email }); } catch (_) {}
     }
 
     return json({ success: true, user_id: newUser.user.id });
