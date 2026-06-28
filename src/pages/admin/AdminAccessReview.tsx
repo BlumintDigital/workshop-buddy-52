@@ -124,10 +124,12 @@ export default function AdminAccessReview() {
             </h2>
             <p className="text-muted-foreground">Quarterly audit of user accounts and privileges</p>
           </div>
-          <Button variant="outline" size="sm" onClick={handleExport} className="w-full shrink-0 gap-2 sm:w-auto">
-            <Download className="h-4 w-4" />
-            Export CSV
-          </Button>
+          <PageActions>
+            <Button variant="outline" size="sm" onClick={handleExport} className="gap-2">
+              <Download className="h-4 w-4" />
+              Export CSV
+            </Button>
+          </PageActions>
         </div>
 
         {/* Summary */}

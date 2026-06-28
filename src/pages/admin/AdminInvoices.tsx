@@ -80,9 +80,11 @@ export default function AdminInvoices() {
             <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Invoices</h2>
             <p className="text-muted-foreground">Manage all invoices</p>
           </div>
-          <Link to="/invoices/new">
-            <Button><Plus className="mr-2 h-4 w-4" />New Invoice</Button>
-          </Link>
+          <PageActions>
+            <Link to="/invoices/new">
+              <Button className="w-full"><Plus className="mr-2 h-4 w-4" />New Invoice</Button>
+            </Link>
+          </PageActions>
         </div>
         <Card>
           <CardContent className="p-0 overflow-x-auto">

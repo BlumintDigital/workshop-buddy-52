@@ -239,7 +239,7 @@ export default function AdminAppointments() {
             <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Appointments</h2>
             <p className="text-muted-foreground">Manage all scheduled appointments</p>
           </div>
-          <div className="flex gap-2">
+          <PageActions>
             {appointments.length > 0 && (
               <Button variant="outline" onClick={handleExportCalendar}>
                 <Download className="mr-2 h-4 w-4" />Export to Calendar
@@ -248,7 +248,7 @@ export default function AdminAppointments() {
             <Button onClick={() => { setEditItem(null); setForm({ ...emptyForm }); setOpen(true); }}>
               <Plus className="mr-2 h-4 w-4" />New Appointment
             </Button>
-          </div>
+          </PageActions>
         </div>
 
         <Card>

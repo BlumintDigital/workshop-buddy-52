@@ -162,7 +162,7 @@ export default function AdminClients() {
             <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Clients</h2>
             <p className="text-muted-foreground">Manage client companies and portal access</p>
           </div>
-          <div className="flex gap-2">
+          <PageActions>
           <Dialog open={addOpen} onOpenChange={setAddOpen}>
             <DialogTrigger asChild><Button><Plus className="mr-2 h-4 w-4" />Add Client</Button></DialogTrigger>
             <DialogContent className="max-h-[90vh] overflow-y-auto">
@@ -180,7 +180,7 @@ export default function AdminClients() {
               </div>
             </DialogContent>
           </Dialog>
-          </div>
+          </PageActions>
         </div>
 
 

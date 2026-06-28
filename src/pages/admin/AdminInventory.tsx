@@ -115,7 +115,7 @@ export default function AdminInventory() {
             <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Inventory</h2>
             <p className="text-muted-foreground">Manage workshop inventory</p>
           </div>
-          <div className="flex gap-2">
+          <PageActions>
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
               <Button><Plus className="mr-2 h-4 w-4" />Add Item</Button>
@@ -137,7 +137,7 @@ export default function AdminInventory() {
               </div>
             </DialogContent>
           </Dialog>
-          </div>
+          </PageActions>
         </div>
 
         <Card>
