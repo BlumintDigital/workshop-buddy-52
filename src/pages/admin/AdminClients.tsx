@@ -180,7 +180,9 @@ export default function AdminClients() {
               </div>
             </DialogContent>
           </Dialog>
+          </div>
         </div>
+
 
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1">
