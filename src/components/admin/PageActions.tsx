@@ -16,7 +16,7 @@ export default function PageActions({
   return (
     <div
       className={cn(
-        "flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end [&>*]:w-full sm:[&>*]:w-auto",
+        "flex flex-wrap items-center justify-end gap-2",
         className,
       )}
     >
