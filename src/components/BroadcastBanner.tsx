@@ -74,7 +74,7 @@ export function BroadcastBanner() {
         .select("broadcast_id")
         .eq("user_id", user.id);
       if (!cancelled && data) {
-        setDismissed(new Set((data as { broadcast_id: string }[]).map((r) => r.broadcast_id)));
+        setDismissed(new Set((data as unknown as { broadcast_id: string }[]).map((r) => r.broadcast_id)));
       }
     };
     loadDismissed();
