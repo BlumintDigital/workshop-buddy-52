@@ -78,14 +78,22 @@ export function SystemNoticesBanner() {
       .slice(0, MAX_VISIBLE);
   }, [notices, dismissed]);
 
-  const dismiss = (id: string) => {
+  const dismiss = async (id: string) => {
+    if (!user) return;
     // Optimistic update
     setDismissed((prev) => new Set([...prev, id]));
-    if (user) {
-      (supabase.from("dismissed_notices" as any)).insert({
-        user_id: user.id,
-        notice_id: id,
+    const { error } = await (supabase.from("dismissed_notices" as any)).insert({
+      user_id: user.id,
+      notice_id: id,
+    });
+    if (error) {
+      // Rollback
+      setDismissed((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
       });
+      toast.error("Could not dismiss notice. Please try again.");
     }
   };
 
