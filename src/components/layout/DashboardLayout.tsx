@@ -34,7 +34,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full overflow-x-hidden">
+      <div className="min-h-screen flex w-full">
         <AppSidebar />
         <SidebarInset>
           <AppHeader />
