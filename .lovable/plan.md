@@ -1,48 +1,61 @@
-# Align admin page-header action buttons on mobile
+# Admin toolbar + manual user creation
 
-## Problem
-On mobile, the action buttons on **Jobs (New Job)**, **Inventory (Add Item)**, and **Clients (Add Client)** don't sit the same way as **Appointments (New Appointment)** and **Invoices (New Invoice)**. The wrappers look similar in source, but small structural differences cause them to render differently inside the mobile header row.
+## 1. Reusable action toolbar component
+Create `src/components/admin/PageActions.tsx` — a thin wrapper that gives every admin page header the same mobile-friendly layout:
 
-Notable differences found:
-- `AdminInventory.tsx` — `<Button>` is a direct child of `<Dialog>` (no `DialogTrigger asChild`), so the Dialog passes it through unwrapped and the button doesn't behave like a flex item the same way.
-- `AdminJobs.tsx` — `<DialogTrigger asChild>` wraps the button but sits inside an extra `<Dialog>` element that participates in the parent flex row.
-- `AdminClients.tsx` — same `<DialogTrigger asChild>` pattern inside an extra `<Dialog>`.
-- `AdminAppointments.tsx` / `AdminInvoices.tsx` — button is wrapped in a plain `<div className="flex gap-2">` or a `<Link>`, which acts as a clean inline-block trigger in the flex row.
+```tsx
+// <PageActions>{...buttons}</PageActions>
+<div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-2 sm:flex-wrap sm:justify-end">
+  {children}
+</div>
+```
 
-## Fix
-Standardize the trigger wrapper across the three offenders so the button is a direct flex child of a `div`, matching the Appointments/Invoices pattern. Keep the existing parent header row (`flex flex-col sm:flex-row sm:items-center justify-between gap-4`) unchanged.
+On mobile, buttons stack full-width via a `[&>*]:w-full sm:[&>*]:w-auto` rule so each trigger fills the row (matching the New Appointment / New Invoice baseline). On `sm+`, they sit inline-right.
 
-### Files to update (frontend only)
+Wire it into the page headers of:
+- `src/pages/admin/AdminJobs.tsx` — wraps the `New Job` Dialog trigger.
+- `src/pages/admin/AdminInventory.tsx` — wraps the `Add Item` Dialog trigger (also re-confirm `DialogTrigger` import and `DialogTrigger asChild` usage; the previous fix landed but verify against the current file).
+- `src/pages/admin/AdminClients.tsx` — wraps the `Add Client` Dialog trigger.
+- `src/pages/admin/AdminAccessReview.tsx` — wraps the `Export CSV` button.
+- `src/pages/admin/AdminAppointments.tsx` + `src/pages/admin/AdminInvoices.tsx` — adopt the same wrapper so the visual baseline is preserved everywhere.
 
-1. **`src/pages/admin/AdminJobs.tsx`** — wrap the `<Dialog>` trigger area so the rendered button sits in a `<div className="flex gap-2">` like Appointments:
-   ```tsx
-   <div className="flex gap-2">
-     <Dialog open={open} onOpenChange={setOpen}>
-       <DialogTrigger asChild>
-         <Button onClick={() => fetchUsers()}>
-           <Plus className="mr-2 h-4 w-4" />New Job
-         </Button>
-       </DialogTrigger>
-       <DialogContent>…</DialogContent>
-     </Dialog>
-   </div>
-   ```
+## 2. Mobile audit (no layout/data changes beyond the toolbar)
+Use Playwright at 390×844 with the admin session restored to load `/admin/jobs`, `/admin/inventory`, `/admin/clients`, `/admin/access-review`. For each, screenshot:
+- Skeleton/initial-load frame (catches the "overlaps before loading" flicker).
+- Fully loaded frame.
+- After scrolling to the bottom of the page.
 
-2. **`src/pages/admin/AdminInventory.tsx`** — convert the bare `<Button>` to a proper `<DialogTrigger asChild>` and wrap the Dialog in a `<div className="flex gap-2">`:
-   ```tsx
-   <div className="flex gap-2">
-     <Dialog open={open} onOpenChange={setOpen}>
-       <DialogTrigger asChild>
-         <Button><Plus className="mr-2 h-4 w-4" />Add Item</Button>
-       </DialogTrigger>
-       <DialogContent>…</DialogContent>
-     </Dialog>
-   </div>
-   ```
+Confirm `document.documentElement.scrollWidth === clientWidth` (no horizontal scroll). Any offender gets `min-w-0 max-w-full` on its root + `overflow-hidden` on its card, and skeleton rows aligned to the responsive column visibility already used. No business logic changes.
 
-3. **`src/pages/admin/AdminClients.tsx`** — wrap the existing Dialog in the same `<div className="flex gap-2">`.
+## 3. Admin can manually create users
+Currently `AdminUsers` only lists and deletes — there's no Create User flow. Add one:
 
-No business logic, no data, no styling token changes — purely presentational wrapping so mobile alignment matches the Appointments/Invoices header pattern.
+### Backend
+New edge function `supabase/functions/admin-create-user/index.ts` (modeled on `create-client`):
+- Auth-gated: caller must hold the `admin` role (check via `user_roles` + service-role client).
+- Accepts `{ email, full_name, role, phone?, send_invite? }` where `role ∈ {admin, manager, staff, client}`.
+- Uses `adminClient.auth.admin.createUser({ email, email_confirm: true, user_metadata: { full_name } })`.
+- Inserts/upserts into `public.user_roles` with the chosen role.
+- Updates `profiles` with `full_name` / `phone`.
+- Returns `{ user_id }`.
+
+Guardrail: creating another `admin` requires the caller to be `admin` (managers can only create `manager/staff/client`). This matches the existing manager-escalation policy.
+
+No DB migration is required — `user_roles` already exists with proper RLS, and the edge function uses the service-role client to bypass policies safely.
+
+### Frontend
+Update `src/pages/admin/AdminUsers.tsx`:
+- Add the new `PageActions` toolbar to the page header with a `New User` button.
+- Add a Dialog with fields: Full Name, Email, Role (Select: admin/manager/staff/client; admin option hidden for non-admin callers), Phone (optional).
+- On submit, call `supabase.functions.invoke("admin-create-user", { body })`, toast result, refresh the list.
+- Show inline validation (email format, required fields) and disable submit while in flight.
+
+## Technical details
+- New file: `src/components/admin/PageActions.tsx`.
+- New file: `supabase/functions/admin-create-user/index.ts` (deploys automatically).
+- Edits: `AdminUsers.tsx` (header + dialog), `AdminJobs.tsx`, `AdminInventory.tsx`, `AdminClients.tsx`, `AdminAccessReview.tsx`, `AdminAppointments.tsx`, `AdminInvoices.tsx` (wrap header actions in `PageActions`).
+- No schema migration. No new secrets.
 
 ## Verification
-Drive Playwright at viewport 390×844, restore the admin session, navigate to `/admin/jobs`, `/admin/inventory`, `/admin/clients`, `/admin/appointments`, `/admin/invoices`, and screenshot each header to confirm the trigger button sits in the same position and size across all five.
+- Playwright mobile (390×844) screenshots of `/admin/users`, `/admin/jobs`, `/admin/inventory`, `/admin/clients`, `/admin/access-review` showing aligned, full-width buttons and no horizontal scroll.
+- Manual smoke: open `/admin/users`, click `New User`, create a `staff` user, confirm the row appears and the new user can sign in.

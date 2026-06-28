@@ -1,3 +1,4 @@
+import PageActions from "@/components/admin/PageActions";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Link } from "react-router-dom";
@@ -127,7 +128,7 @@ export default function AdminJobs() {
             <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Jobs</h2>
             <p className="text-muted-foreground">Manage all workshop jobs</p>
           </div>
-          <div className="flex gap-2">
+          <PageActions>
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
               <Button onClick={() => fetchUsers()}><Plus className="mr-2 h-4 w-4" />New Job</Button>
@@ -185,7 +186,7 @@ export default function AdminJobs() {
               </div>
             </DialogContent>
           </Dialog>
-          </div>
+          </PageActions>
         </div>
 
         <div className="flex min-w-0 flex-col gap-3 sm:flex-row">
