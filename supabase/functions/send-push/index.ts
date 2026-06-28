@@ -66,14 +66,17 @@ Deno.serve(async (req) => {
       return err("user_ids (non-empty array) is required");
     }
 
-    // Load VAPID keys
+    // Load VAPID public key from admin contacts; private key from server-side secret only.
     const { data: contact } = await admin
       .from("workshop_admin_contacts" as any)
-      .select("vapid_public_key, vapid_private_key, super_admin_email")
+      .select("vapid_public_key, super_admin_email")
       .eq("id", 1)
       .maybeSingle();
-    const vapidPublicKey = (contact as any)?.vapid_public_key as string | null;
-    const vapidPrivateKey = (contact as any)?.vapid_private_key as string | null;
+    const vapidPublicKey =
+      ((contact as any)?.vapid_public_key as string | null) ||
+      Deno.env.get("VAPID_PUBLIC_KEY") ||
+      null;
+    const vapidPrivateKey = Deno.env.get("VAPID_PRIVATE_KEY") || null;
     if (!vapidPublicKey || !vapidPrivateKey) {
       return err("VAPID keys are not configured for this workshop", 503);
     }

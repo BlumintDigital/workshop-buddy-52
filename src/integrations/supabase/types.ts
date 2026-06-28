@@ -1049,21 +1049,18 @@ export type Database = {
           id: number
           super_admin_email: string | null
           updated_at: string
-          vapid_private_key: string | null
           vapid_public_key: string | null
         }
         Insert: {
           id?: number
           super_admin_email?: string | null
           updated_at?: string
-          vapid_private_key?: string | null
           vapid_public_key?: string | null
         }
         Update: {
           id?: number
           super_admin_email?: string | null
           updated_at?: string
-          vapid_private_key?: string | null
           vapid_public_key?: string | null
         }
         Relationships: []
