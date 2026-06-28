@@ -146,7 +146,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const fetchUserData = async (userId: string): Promise<AppRole | null> => {
     const [roleRes, profileRes, mfaRes] = await Promise.all([
       supabase.from("user_roles").select("role").eq("user_id", userId).maybeSingle(),
-      supabase.from("profiles").select("full_name, avatar_url").eq("id", userId).maybeSingle(),
+      supabase.from("profiles").select("full_name, avatar_url, invite_accepted_at").eq("id", userId).maybeSingle(),
       supabase.auth.mfa.listFactors(),
     ]);
 
@@ -155,6 +155,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setRole(nextRole);
     setProfile(profileRes.data ?? null);
     setMfaEnabled(!!(mfaRes.data?.totp?.find((f) => f.status === "verified")));
+
+    // Mark invite as accepted on first sign-in (one-time)
+    if (profileRes.data && !(profileRes.data as any).invite_accepted_at) {
+      supabase
+        .from("profiles")
+        .update({ invite_accepted_at: new Date().toISOString() } as any)
+        .eq("id", userId)
+        .then(() => {});
+    }
 
     return nextRole;
   };

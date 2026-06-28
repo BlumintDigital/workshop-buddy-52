@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Eye, Plus, Search, Trash2 } from "lucide-react";
+import { Eye, Mail, Plus, Search, Trash2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -23,6 +23,8 @@ type UserRow = {
   role: string | null;
   created_at: string;
   is_active: boolean;
+  invited_at: string | null;
+  invite_accepted_at: string | null;
 };
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -45,10 +47,10 @@ export default function AdminUsers() {
     setIsLoading(true);
     const [{ data: roles }, { data: profiles }] = await Promise.all([
       supabase.from("user_roles").select("user_id, role").limit(500),
-      supabase.from("profiles").select("id, full_name, created_at, is_super_admin, is_active").limit(500),
+      supabase.from("profiles").select("id, full_name, created_at, is_super_admin, is_active, invited_at, invite_accepted_at").limit(500),
     ]);
     if (profiles) {
-      const merged = profiles
+      const merged: UserRow[] = profiles
         .filter((p) => !(p as any).is_super_admin)
         .map((p) => {
           const r = (roles ?? []).find((r) => r.user_id === p.id);
@@ -58,6 +60,8 @@ export default function AdminUsers() {
             role: (r?.role as string | undefined) ?? null,
             created_at: p.created_at || "",
             is_active: (p as any).is_active !== false,
+            invited_at: (p as any).invited_at ?? null,
+            invite_accepted_at: (p as any).invite_accepted_at ?? null,
           };
         });
       setUsers(merged);
@@ -116,6 +120,29 @@ export default function AdminUsers() {
     fetchUsers();
   };
 
+  const [resending, setResending] = useState<Record<string, boolean>>({});
+  const handleResend = async (userId: string, name: string) => {
+    setResending((p) => ({ ...p, [userId]: true }));
+    const { data, error } = await supabase.functions.invoke("admin-resend-invite", {
+      body: { user_id: userId },
+    });
+    setResending((p) => ({ ...p, [userId]: false }));
+    if (error || (data as any)?.error) {
+      toast.error((data as any)?.error || error?.message || "Failed to resend invite");
+      return;
+    }
+    toast.success(`Invite resent to ${name}`);
+    setUsers((prev) =>
+      prev.map((u) => (u.user_id === userId ? { ...u, invited_at: new Date().toISOString() } : u)),
+    );
+  };
+
+  const inviteStatus = (u: UserRow): "accepted" | "invited" | "unknown" => {
+    if (u.invite_accepted_at) return "accepted";
+    if (u.invited_at) return "invited";
+    return "unknown";
+  };
+
   const canAssignAdmin = callerRole === "admin";
 
   return (
@@ -129,7 +156,7 @@ export default function AdminUsers() {
           <PageActions>
             <Dialog open={createOpen} onOpenChange={setCreateOpen}>
               <DialogTrigger asChild>
-                <Button><Plus className="mr-2 h-4 w-4" />New User</Button>
+                <Button className="w-full sm:w-auto"><Plus className="mr-2 h-4 w-4" />New User</Button>
               </DialogTrigger>
               <DialogContent className="max-h-[90vh] overflow-y-auto">
                 <DialogHeader><DialogTitle>Create New User</DialogTitle></DialogHeader>
@@ -198,8 +225,9 @@ export default function AdminUsers() {
                 <TableRow>
                   <TableHead>Name</TableHead>
                   <TableHead>Role</TableHead>
+                  <TableHead>Invite</TableHead>
                   <TableHead className="hidden md:table-cell">Joined</TableHead>
-                  <TableHead className="w-[100px]">Actions</TableHead>
+                  <TableHead className="w-[120px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -208,13 +236,16 @@ export default function AdminUsers() {
                     <TableRow key={i}>
                       <TableCell><Skeleton className="h-4 w-36" /></TableCell>
                       <TableCell><Skeleton className="h-8 w-[110px] rounded-md" /></TableCell>
+                      <TableCell><Skeleton className="h-5 w-20 rounded-full" /></TableCell>
                       <TableCell className="hidden md:table-cell"><Skeleton className="h-4 w-24" /></TableCell>
                       <TableCell><Skeleton className="h-7 w-7 rounded" /></TableCell>
                     </TableRow>
                   ))
                 ) : filtered.length === 0 ? (
-                  <TableRow><TableCell colSpan={4} className="text-center py-8 text-muted-foreground">No users found</TableCell></TableRow>
-                ) : filtered.map((u) => (
+                  <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">No users found</TableCell></TableRow>
+                ) : filtered.map((u) => {
+                  const status = inviteStatus(u);
+                  return (
                   <TableRow key={u.user_id} className="cursor-pointer" onClick={() => navigate(`/admin/users/${u.user_id}`)}>
                     <TableCell className="font-medium">
                       <span className="text-primary hover:underline">{u.full_name}</span>
@@ -231,9 +262,30 @@ export default function AdminUsers() {
                         </SelectContent>
                       </Select>
                     </TableCell>
+                    <TableCell>
+                      {status === "accepted" ? (
+                        <Badge variant="outline" className="text-xs">Active</Badge>
+                      ) : status === "invited" ? (
+                        <Badge className="bg-amber-100 text-amber-900 hover:bg-amber-100 text-xs">Invite sent</Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-xs text-muted-foreground">—</Badge>
+                      )}
+                    </TableCell>
                     <TableCell className="hidden md:table-cell">{u.created_at ? new Date(u.created_at).toLocaleDateString() : "—"}</TableCell>
                     <TableCell onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center gap-1">
+                        {status !== "accepted" && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            aria-label="Resend invite"
+                            title="Resend invite"
+                            disabled={!!resending[u.user_id]}
+                            onClick={() => handleResend(u.user_id, u.full_name || "user")}
+                          >
+                            <Mail className="h-4 w-4" />
+                          </Button>
+                        )}
                         <Button variant="ghost" size="icon" onClick={() => navigate(`/admin/users/${u.user_id}`)}>
                           <Eye className="h-4 w-4" />
                         </Button>
@@ -261,9 +313,11 @@ export default function AdminUsers() {
                       </div>
                     </TableCell>
                   </TableRow>
-                ))}
+                  );
+                })}
               </TableBody>
             </Table>
+
 
           </CardContent>
         </Card>
@@ -284,17 +338,34 @@ export default function AdminUsers() {
             ))
           ) : filtered.length === 0 ? (
             <p className="text-center py-8 text-muted-foreground">No users found</p>
-          ) : filtered.map((u) => (
+          ) : filtered.map((u) => {
+            const status = inviteStatus(u);
+            return (
             <Card key={u.user_id} className="cursor-pointer" onClick={() => navigate(`/admin/users/${u.user_id}`)}>
               <CardContent className="p-4 flex items-center justify-between gap-3">
                 <div className="min-w-0">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <p className="font-medium text-primary truncate">{u.full_name}</p>
                     {!u.is_active && <Badge variant="destructive" className="text-xs shrink-0">Inactive</Badge>}
+                    {status === "invited" && (
+                      <Badge className="bg-amber-100 text-amber-900 hover:bg-amber-100 text-xs shrink-0">Invite sent</Badge>
+                    )}
                   </div>
                   <p className="text-xs text-muted-foreground">{u.created_at ? new Date(u.created_at).toLocaleDateString() : ""}</p>
                 </div>
                 <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                  {status !== "accepted" && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      aria-label="Resend invite"
+                      disabled={!!resending[u.user_id]}
+                      onClick={() => handleResend(u.user_id, u.full_name || "user")}
+                    >
+                      <Mail className="h-4 w-4" />
+                    </Button>
+                  )}
                   <Select value={u.role ?? ""} onValueChange={(v) => changeRole(u.user_id, v)}>
                     <SelectTrigger className="w-[100px] h-8"><SelectValue placeholder="Assign" /></SelectTrigger>
                     <SelectContent>
@@ -328,7 +399,8 @@ export default function AdminUsers() {
                 </div>
               </CardContent>
             </Card>
-          ))}
+            );
+          })}
         </div>
       </div>
     </DashboardLayout>

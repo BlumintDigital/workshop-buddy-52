@@ -888,6 +888,8 @@ export type Database = {
           created_at: string
           full_name: string | null
           id: string
+          invite_accepted_at: string | null
+          invited_at: string | null
           is_active: boolean
           is_super_admin: boolean
           last_sign_in_at: string | null
@@ -902,6 +904,8 @@ export type Database = {
           created_at?: string
           full_name?: string | null
           id: string
+          invite_accepted_at?: string | null
+          invited_at?: string | null
           is_active?: boolean
           is_super_admin?: boolean
           last_sign_in_at?: string | null
@@ -916,6 +920,8 @@ export type Database = {
           created_at?: string
           full_name?: string | null
           id?: string
+          invite_accepted_at?: string | null
+          invited_at?: string | null
           is_active?: boolean
           is_super_admin?: boolean
           last_sign_in_at?: string | null
