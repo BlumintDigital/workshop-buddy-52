@@ -50,9 +50,9 @@ serve(async (req) => {
       .eq("user_id", caller.id)
       .maybeSingle();
 
-    if (roleErr) return json({ error: roleErr.message }, 500);
+    if (roleErr) return json({ error: roleErr.message }, 500, cors);
     if (callerRole?.role !== "admin") {
-      return json({ error: "Forbidden: admin role required" }, 403);
+      return json({ error: "Forbidden: admin role required" }, 403, cors);
     }
 
     const [{ data: profiles, error: profilesErr }, { data: roles, error: rolesErr }] =
@@ -65,8 +65,8 @@ serve(async (req) => {
           .select("user_id, role"),
       ]);
 
-    if (profilesErr) return json({ error: profilesErr.message }, 500);
-    if (rolesErr) return json({ error: rolesErr.message }, 500);
+    if (profilesErr) return json({ error: profilesErr.message }, 500, cors);
+    if (rolesErr) return json({ error: rolesErr.message }, 500, cors);
 
     const authUsers = await listAllAuthUsers(admin);
     const authMap = new Map(authUsers.map((user: any) => [user.id, user]));
@@ -86,10 +86,10 @@ serve(async (req) => {
       };
     });
 
-    return json({ data: users, total: users.length });
+    return json({ data: users, total: users.length }, 200, cors);
   } catch (e) {
     console.error("admin-access-review error:", e);
-    return json({ error: "Internal server error" }, 500);
+    return json({ error: "Internal server error" }, 500, cors);
   }
 });
 
@@ -109,9 +109,9 @@ async function listAllAuthUsers(admin: any) {
   return users;
 }
 
-function json(body: unknown, status = 200) {
+function json(body: unknown, status = 200, cors: Record<string, string> = {}) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
+    headers: { ...cors, "Content-Type": "application/json" },
   });
 }
