@@ -1,30 +1,28 @@
-## Plan
 
-1. **Harden the app shell for mobile widths**
-   - Update `DashboardLayout` so the sidebar/content flex layout cannot force horizontal overflow.
-   - Add `min-w-0`, `max-w-full`, and appropriate `overflow-x-hidden` guards to the main content wrapper.
-   - Keep vertical scrolling intact and avoid clipping page content horizontally.
+## Goal
 
-2. **Make dashboard cards fit on narrow screens**
-   - Adjust `StatCard` spacing, text sizing, icon sizing, and wrapping so values and labels remain visible on mobile.
-   - Add `min-w-0`/`max-w-full` guards to dashboard grids so charts and cards do not push outside the viewport.
-   - Tighten dashboard child cards (`RecentActivity`, `ActivityFeed`, `JobStatusChart`) where long labels or badges can cause overflow.
+Eliminate horizontal scrolling on the three admin pages. On mobile (<sm), render each row as a self-contained card that fits the viewport width. On desktop (≥sm), keep the existing tables unchanged.
 
-3. **Stabilize jobs page during loading**
-   - Give the jobs table a stable minimum width inside an `overflow-x-auto` container so columns scroll instead of overlapping.
-   - Match skeleton row visibility to the responsive columns to prevent the initial loading state from being wider/misaligned than the final table.
-   - Make pagination wrap cleanly on mobile.
+## Pages & changes
 
-4. **Fix Access Review mobile clipping**
-   - Wrap its table in a horizontal scroll container with stable table width.
-   - Make the page header/actions stack cleanly on mobile.
-   - Prevent action buttons and badges from squeezing into overlapping rows.
+### 1. `src/pages/admin/AdminJobs.tsx`
+- Remove the `overflow-x-auto` wrapper and the `min-w-[520px]` constraint on the `Table`.
+- Wrap the `<Table>` in a `hidden sm:block` container so it only renders on desktop.
+- Add a new mobile list (`sm:hidden`) that maps each job to a `Card`/`<Link>` block showing: title (truncated, wrapping allowed), status + priority badges in a row, staff/client lines, created date — all stacked vertically with `flex flex-col gap-1` and `p-4`.
+- Skeleton state on mobile: render 6 stacked skeleton blocks instead of skeleton table rows.
 
-5. **Fix Signup Invite Codes mobile overlap**
-   - Keep its table inside a proper mobile scroll container with a stable table width.
-   - Make the header action buttons and create-code dialog controls wrap/stack on small screens.
-   - Prevent long codes/labels/dates from expanding the viewport.
+### 2. `src/pages/admin/AdminSignupCodes.tsx`
+- Same dual-rendering pattern. Keep desktop table; remove the `overflow-x-auto` + `min-w-[860px]`.
+- Mobile card per code: top row = `code` (mono, truncated) + status badge; second row = role badge + uses (e.g., `2 / 10`); third row = label + expiry; bottom row = action buttons (Switch, Copy, Delete) aligned right.
+- Update loading skeletons to stacked cards on mobile.
+- Update the empty state to render once for both layouts.
 
-6. **Verify in mobile viewport**
-   - Check the affected pages at mobile size after implementation: dashboard, jobs, access review, and signup codes.
-   - Confirm cards are fully visible, tables scroll horizontally where needed, and loading states no longer briefly overlap.
+### 3. `src/pages/admin/AdminAccessReview.tsx`
+- Same dual pattern. Desktop table unchanged.
+- Mobile card per user: name + Inactive badge on first line; role + status (Stale/Active) badges on second; "Last sign-in" line; action buttons (Deactivate, Remove role) wrapped to a new row with `flex-wrap`.
+- Stale rows keep the amber background class on the card.
+- Skeleton: 6 stacked skeleton cards.
+
+## Out of scope
+
+No changes to data fetching, filters, dialogs, or desktop styling. No new components extracted — inline JSX is fine given the limited scope.

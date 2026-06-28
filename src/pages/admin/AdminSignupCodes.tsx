@@ -268,8 +268,9 @@ export default function AdminSignupCodes() {
           </CardDescription>
         </CardHeader>
         <CardContent className="p-0 sm:p-6">
-          <div className="w-full overflow-x-auto">
-            <Table className="min-w-[860px]">
+          {/* Desktop table */}
+          <div className="hidden sm:block">
+            <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Code</TableHead>
@@ -299,58 +300,117 @@ export default function AdminSignupCodes() {
                     </TableCell>
                   </TableRow>
                 ) : codes.map((row) => (
-                    <TableRow key={row.id}>
-                      <TableCell className="max-w-[180px] truncate font-mono">{row.code}</TableCell>
-                      <TableCell className="max-w-[220px] truncate">{row.label ?? <span className="text-muted-foreground">—</span>}</TableCell>
-                      <TableCell className="whitespace-nowrap">
-                        {roleBadge(row.role)}
-                      </TableCell>
-                      <TableCell>
-                        {row.uses_count}
-                        {row.max_uses !== null ? ` / ${row.max_uses}` : " / ∞"}
-                      </TableCell>
-                      <TableCell>
-                        {row.expires_at
-                          ? new Date(row.expires_at).toLocaleString()
-                          : <span className="text-muted-foreground">Never</span>}
-                      </TableCell>
-                      <TableCell>{statusBadge(row)}</TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-2 whitespace-nowrap">
-                          <Switch
-                            checked={row.active}
-                            onCheckedChange={(v) => toggleActive(row, v)}
-                            aria-label="Toggle active"
-                          />
-                          <Button variant="ghost" size="icon" onClick={() => copyCode(row.code)} aria-label="Copy code">
-                            <Copy className="h-4 w-4" />
-                          </Button>
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button variant="ghost" size="icon" aria-label="Delete code">
-                                <Trash2 className="h-4 w-4 text-destructive" />
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Delete this invite code?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Anyone holding this code will no longer be able to use it. This cannot be undone.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => handleDelete(row)}>Delete</AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                  <TableRow key={row.id}>
+                    <TableCell className="max-w-[180px] truncate font-mono">{row.code}</TableCell>
+                    <TableCell className="max-w-[220px] truncate">{row.label ?? <span className="text-muted-foreground">—</span>}</TableCell>
+                    <TableCell className="whitespace-nowrap">{roleBadge(row.role)}</TableCell>
+                    <TableCell>
+                      {row.uses_count}
+                      {row.max_uses !== null ? ` / ${row.max_uses}` : " / ∞"}
+                    </TableCell>
+                    <TableCell>
+                      {row.expires_at
+                        ? new Date(row.expires_at).toLocaleString()
+                        : <span className="text-muted-foreground">Never</span>}
+                    </TableCell>
+                    <TableCell>{statusBadge(row)}</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-2 whitespace-nowrap">
+                        <Switch
+                          checked={row.active}
+                          onCheckedChange={(v) => toggleActive(row, v)}
+                          aria-label="Toggle active"
+                        />
+                        <Button variant="ghost" size="icon" onClick={() => copyCode(row.code)} aria-label="Copy code">
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="ghost" size="icon" aria-label="Delete code">
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Delete this invite code?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Anyone holding this code will no longer be able to use it. This cannot be undone.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => handleDelete(row)}>Delete</AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+
+          {/* Mobile cards */}
+          <div className="sm:hidden divide-y">
+            {loading ? Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="p-4 space-y-2">
+                <Skeleton className="h-4 w-1/2" />
+                <Skeleton className="h-3 w-3/4" />
+                <Skeleton className="h-3 w-1/3" />
+              </div>
+            )) : codes.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground text-sm px-4">
+                No invite codes yet. Create one to allow new sign-ups.
+              </div>
+            ) : codes.map((row) => (
+              <div key={row.id} className="p-4 space-y-2">
+                <div className="flex items-start justify-between gap-2">
+                  <p className="font-mono text-sm break-all min-w-0 flex-1">{row.code}</p>
+                  <div className="shrink-0">{statusBadge(row)}</div>
+                </div>
+                <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                  {roleBadge(row.role)}
+                  <span>Uses: {row.uses_count}{row.max_uses !== null ? ` / ${row.max_uses}` : " / ∞"}</span>
+                </div>
+                {row.label && (
+                  <p className="text-xs text-muted-foreground break-words">{row.label}</p>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  Expires: {row.expires_at ? new Date(row.expires_at).toLocaleString() : "Never"}
+                </p>
+                <div className="flex items-center justify-end gap-2 pt-1">
+                  <Switch
+                    checked={row.active}
+                    onCheckedChange={(v) => toggleActive(row, v)}
+                    aria-label="Toggle active"
+                  />
+                  <Button variant="ghost" size="icon" onClick={() => copyCode(row.code)} aria-label="Copy code">
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="ghost" size="icon" aria-label="Delete code">
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Delete this invite code?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Anyone holding this code will no longer be able to use it. This cannot be undone.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => handleDelete(row)}>Delete</AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
+              </div>
+            ))}
+          </div>
         </CardContent>
       </Card>
       </div>

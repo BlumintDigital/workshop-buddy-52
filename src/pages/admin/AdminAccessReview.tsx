@@ -177,91 +177,155 @@ export default function AdminAccessReview() {
             </CardDescription>
           </CardHeader>
           <CardContent className="p-0">
-            <div className="w-full overflow-x-auto">
-            <Table className="min-w-[760px]">
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Last Sign-In</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {loading ? Array.from({ length: 6 }).map((_, i) => (
-                  <TableRow key={i}>
-                    <TableCell><Skeleton className="h-4 w-36" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-40" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-20 rounded-full" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-20 rounded-full" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-28" /></TableCell>
-                  </TableRow>
-                )) : users.length === 0 ? (
+            {/* Desktop table */}
+            <div className="hidden sm:block">
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
-                      No users found
-                    </TableCell>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Role</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Last Sign-In</TableHead>
+                    <TableHead>Actions</TableHead>
                   </TableRow>
-                ) : users.map((u) => {
-                  const stale = isStale(u.last_sign_in_at);
-                  return (
-                    <TableRow key={u.user_id} className={stale ? "bg-amber-50/60 dark:bg-amber-950/10" : ""}>
-                      <TableCell className="font-medium">
-                        {u.full_name ?? "—"}
-                        {!u.is_active && (
-                          <Badge variant="destructive" className="ml-2 text-xs">Inactive</Badge>
-                        )}
+                </TableHeader>
+                <TableBody>
+                  {loading ? Array.from({ length: 6 }).map((_, i) => (
+                    <TableRow key={i}>
+                      <TableCell><Skeleton className="h-4 w-36" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-40" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-20 rounded-full" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-20 rounded-full" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-28" /></TableCell>
+                    </TableRow>
+                  )) : users.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                        No users found
                       </TableCell>
-                      <TableCell className="capitalize">{u.role || <span className="text-muted-foreground">none</span>}</TableCell>
-                      <TableCell>
-                        {stale ? (
-                          <Badge variant="outline" className="text-amber-600 border-amber-400">
-                            Stale
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline" className="text-emerald-600 border-emerald-400">
-                            Active
-                          </Badge>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {u.last_sign_in_at
-                          ? formatDistanceToNow(new Date(u.last_sign_in_at), { addSuffix: true })
-                          : "Never"}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2 whitespace-nowrap">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="gap-1.5 h-7 text-xs"
-                            disabled={actionLoading === u.user_id + "-toggle"}
-                            onClick={() => toggleActive(u)}
-                          >
-                            {u.is_active
-                              ? <><UserX className="h-3.5 w-3.5" />Deactivate</>
-                              : <><UserCheck className="h-3.5 w-3.5" />Activate</>}
-                          </Button>
-                          {u.role && (
+                    </TableRow>
+                  ) : users.map((u) => {
+                    const stale = isStale(u.last_sign_in_at);
+                    return (
+                      <TableRow key={u.user_id} className={stale ? "bg-amber-50/60 dark:bg-amber-950/10" : ""}>
+                        <TableCell className="font-medium">
+                          {u.full_name ?? "—"}
+                          {!u.is_active && (
+                            <Badge variant="destructive" className="ml-2 text-xs">Inactive</Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className="capitalize">{u.role || <span className="text-muted-foreground">none</span>}</TableCell>
+                        <TableCell>
+                          {stale ? (
+                            <Badge variant="outline" className="text-amber-600 border-amber-400">Stale</Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-emerald-600 border-emerald-400">Active</Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {u.last_sign_in_at
+                            ? formatDistanceToNow(new Date(u.last_sign_in_at), { addSuffix: true })
+                            : "Never"}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2 whitespace-nowrap">
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="gap-1.5 h-7 text-xs text-destructive hover:text-destructive"
-                              disabled={actionLoading === u.user_id + "-role"}
-                              onClick={() => removeRole(u)}
+                              className="gap-1.5 h-7 text-xs"
+                              disabled={actionLoading === u.user_id + "-toggle"}
+                              onClick={() => toggleActive(u)}
                             >
-                              <Trash2 className="h-3.5 w-3.5" />
-                              Remove role
+                              {u.is_active
+                                ? <><UserX className="h-3.5 w-3.5" />Deactivate</>
+                                : <><UserCheck className="h-3.5 w-3.5" />Activate</>}
                             </Button>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+                            {u.role && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="gap-1.5 h-7 text-xs text-destructive hover:text-destructive"
+                                disabled={actionLoading === u.user_id + "-role"}
+                                onClick={() => removeRole(u)}
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                                Remove role
+                              </Button>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+
+            {/* Mobile cards */}
+            <div className="sm:hidden divide-y">
+              {loading ? Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="p-4 space-y-2">
+                  <Skeleton className="h-4 w-1/2" />
+                  <Skeleton className="h-3 w-2/3" />
+                  <Skeleton className="h-3 w-1/3" />
+                </div>
+              )) : users.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground text-sm">No users found</div>
+              ) : users.map((u) => {
+                const stale = isStale(u.last_sign_in_at);
+                return (
+                  <div key={u.user_id} className={`p-4 space-y-2 ${stale ? "bg-amber-50/60 dark:bg-amber-950/10" : ""}`}>
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="font-medium break-words min-w-0 flex-1">
+                        {u.full_name ?? "—"}
+                      </p>
+                      {!u.is_active && (
+                        <Badge variant="destructive" className="shrink-0 text-xs">Inactive</Badge>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 text-xs">
+                      <span className="capitalize text-muted-foreground">
+                        Role: {u.role || "none"}
+                      </span>
+                      {stale ? (
+                        <Badge variant="outline" className="text-amber-600 border-amber-400">Stale</Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-emerald-600 border-emerald-400">Active</Badge>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Last sign-in: {u.last_sign_in_at
+                        ? formatDistanceToNow(new Date(u.last_sign_in_at), { addSuffix: true })
+                        : "Never"}
+                    </p>
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1.5 h-8 text-xs"
+                        disabled={actionLoading === u.user_id + "-toggle"}
+                        onClick={() => toggleActive(u)}
+                      >
+                        {u.is_active
+                          ? <><UserX className="h-3.5 w-3.5" />Deactivate</>
+                          : <><UserCheck className="h-3.5 w-3.5" />Activate</>}
+                      </Button>
+                      {u.role && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="gap-1.5 h-8 text-xs text-destructive hover:text-destructive"
+                          disabled={actionLoading === u.user_id + "-role"}
+                          onClick={() => removeRole(u)}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                          Remove role
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </CardContent>
         </Card>

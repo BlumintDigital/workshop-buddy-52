@@ -225,46 +225,79 @@ export default function AdminJobs() {
 
         <Card className="min-w-0 max-w-full overflow-hidden">
           <CardContent className="p-0">
-            <div className="w-full overflow-x-auto">
-            <Table className="min-w-[520px] sm:min-w-[720px]">
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Title</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="hidden sm:table-cell">Priority</TableHead>
-                  <TableHead className="hidden md:table-cell">Staff</TableHead>
-                  <TableHead className="hidden md:table-cell">Client</TableHead>
-                  <TableHead className="hidden sm:table-cell">Created</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {isLoading ? Array.from({ length: 6 }).map((_, i) => (
-                  <TableRow key={i}>
-                    <TableCell><Skeleton className="h-4 w-40" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-20 rounded-full" /></TableCell>
-                    <TableCell className="hidden sm:table-cell"><Skeleton className="h-4 w-16" /></TableCell>
-                    <TableCell className="hidden md:table-cell"><Skeleton className="h-4 w-28" /></TableCell>
-                    <TableCell className="hidden md:table-cell"><Skeleton className="h-4 w-28" /></TableCell>
-                    <TableCell className="hidden sm:table-cell"><Skeleton className="h-4 w-20" /></TableCell>
+            {/* Desktop table */}
+            <div className="hidden sm:block">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Title</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Priority</TableHead>
+                    <TableHead className="hidden md:table-cell">Staff</TableHead>
+                    <TableHead className="hidden md:table-cell">Client</TableHead>
+                    <TableHead>Created</TableHead>
                   </TableRow>
-                )) : jobs.length === 0 ? (
-                  <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No jobs found</TableCell></TableRow>
-                ) : jobs.map((job) => (
-                  <TableRow key={job.id} className="cursor-pointer hover:bg-muted/50">
-                    <TableCell>
-                      <Link to={`/jobs/${job.id}`} className="block max-w-[260px] truncate font-medium text-primary hover:underline sm:max-w-none">
-                        {job.title}
-                      </Link>
-                    </TableCell>
-                    <TableCell><Badge variant={statusColors[job.status]}>{job.status.replace("_", " ")}</Badge></TableCell>
-                    <TableCell className="capitalize hidden sm:table-cell">{job.priority}</TableCell>
-                    <TableCell className="hidden md:table-cell">{job.staff_name}</TableCell>
-                    <TableCell className="hidden md:table-cell">{job.client_name}</TableCell>
-                    <TableCell className="hidden sm:table-cell">{new Date(job.created_at).toLocaleDateString()}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {isLoading ? Array.from({ length: 6 }).map((_, i) => (
+                    <TableRow key={i}>
+                      <TableCell><Skeleton className="h-4 w-40" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-20 rounded-full" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+                      <TableCell className="hidden md:table-cell"><Skeleton className="h-4 w-28" /></TableCell>
+                      <TableCell className="hidden md:table-cell"><Skeleton className="h-4 w-28" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                    </TableRow>
+                  )) : jobs.length === 0 ? (
+                    <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No jobs found</TableCell></TableRow>
+                  ) : jobs.map((job) => (
+                    <TableRow key={job.id} className="cursor-pointer hover:bg-muted/50">
+                      <TableCell>
+                        <Link to={`/jobs/${job.id}`} className="block font-medium text-primary hover:underline">
+                          {job.title}
+                        </Link>
+                      </TableCell>
+                      <TableCell><Badge variant={statusColors[job.status]}>{job.status.replace("_", " ")}</Badge></TableCell>
+                      <TableCell className="capitalize">{job.priority}</TableCell>
+                      <TableCell className="hidden md:table-cell">{job.staff_name}</TableCell>
+                      <TableCell className="hidden md:table-cell">{job.client_name}</TableCell>
+                      <TableCell>{new Date(job.created_at).toLocaleDateString()}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+
+            {/* Mobile cards */}
+            <div className="sm:hidden divide-y">
+              {isLoading ? Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="p-4 space-y-2">
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-3 w-1/2" />
+                  <Skeleton className="h-3 w-2/3" />
+                </div>
+              )) : jobs.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground text-sm">No jobs found</div>
+              ) : jobs.map((job) => (
+                <Link
+                  key={job.id}
+                  to={`/jobs/${job.id}`}
+                  className="block p-4 hover:bg-muted/50 active:bg-muted"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="font-medium text-primary break-words min-w-0 flex-1">{job.title}</p>
+                    <Badge variant={statusColors[job.status]} className="shrink-0">{job.status.replace("_", " ")}</Badge>
+                  </div>
+                  <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                    <span className="capitalize">Priority: {job.priority}</span>
+                    <span>{new Date(job.created_at).toLocaleDateString()}</span>
+                  </div>
+                  <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                    <span className="truncate">Staff: {job.staff_name}</span>
+                    <span className="truncate">Client: {job.client_name}</span>
+                  </div>
+                </Link>
+              ))}
             </div>
           </CardContent>
         </Card>
