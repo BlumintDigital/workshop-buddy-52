@@ -23,6 +23,8 @@ type UserRow = {
   role: string | null;
   created_at: string;
   is_active: boolean;
+  invited_at: string | null;
+  invite_accepted_at: string | null;
 };
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
