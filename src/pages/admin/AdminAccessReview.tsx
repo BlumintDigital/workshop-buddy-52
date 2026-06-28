@@ -256,9 +256,9 @@ export default function AdminAccessReview() {
                       </TableCell>
                     </TableRow>
                   ) : users.map((u) => {
-                    const stale = isStale(u.last_sign_in_at);
+                    const status = getActivityStatus(u.last_sign_in_at, lastSignInUnavailable);
                     return (
-                      <TableRow key={u.user_id} className={stale ? "bg-amber-50/60 dark:bg-amber-950/10" : ""}>
+                      <TableRow key={u.user_id} className={status.stale ? "bg-amber-50/60 dark:bg-amber-950/10" : ""}>
                         <TableCell className="font-medium">
                           {u.full_name ?? "—"}
                           {!u.is_active && (
@@ -267,16 +267,18 @@ export default function AdminAccessReview() {
                         </TableCell>
                         <TableCell className="capitalize">{u.role || <span className="text-muted-foreground">none</span>}</TableCell>
                         <TableCell>
-                          {stale ? (
-                            <Badge variant="outline" className="text-amber-600 border-amber-400">Stale</Badge>
+                          {status.stale ? (
+                            <Badge variant="outline" className="text-amber-600 border-amber-400">{status.label}</Badge>
                           ) : (
-                            <Badge variant="outline" className="text-emerald-600 border-emerald-400">Active</Badge>
+                            <Badge variant="outline" className="text-emerald-600 border-emerald-400">{status.label}</Badge>
                           )}
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">
-                          {u.last_sign_in_at
-                            ? formatDistanceToNow(new Date(u.last_sign_in_at), { addSuffix: true })
-                            : "Never"}
+                          {lastSignInUnavailable
+                            ? "Unavailable"
+                            : u.last_sign_in_at
+                              ? formatDistanceToNow(new Date(u.last_sign_in_at), { addSuffix: true })
+                              : "Never"}
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2 whitespace-nowrap">
