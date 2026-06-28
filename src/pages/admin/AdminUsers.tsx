@@ -1,3 +1,4 @@
+import PageActions from "@/components/admin/PageActions";
 import { useEffect, useState, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
@@ -5,13 +6,16 @@ import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Eye, Search, Trash2 } from "lucide-react";
+import { Eye, Plus, Search, Trash2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { useAuth } from "@/hooks/useAuth";
 
 type UserRow = {
   user_id: string;
@@ -21,12 +25,21 @@ type UserRow = {
   is_active: boolean;
 };
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 export default function AdminUsers() {
   const [users, setUsers] = useState<UserRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
   const navigate = useNavigate();
+  const { role: callerRole } = useAuth();
+
+  // Create user dialog
+  const [createOpen, setCreateOpen] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const emptyForm = { full_name: "", email: "", role: "staff" as string, phone: "" };
+  const [form, setForm] = useState(emptyForm);
 
   const fetchUsers = async () => {
     setIsLoading(true);
@@ -83,12 +96,81 @@ export default function AdminUsers() {
     toast.success("Role updated");
   };
 
+  const handleCreate = async () => {
+    const full_name = form.full_name.trim();
+    const email = form.email.trim().toLowerCase();
+    if (!full_name) { toast.error("Full name is required"); return; }
+    if (!EMAIL_RE.test(email)) { toast.error("Enter a valid email"); return; }
+    setCreating(true);
+    const { data, error } = await supabase.functions.invoke("admin-create-user", {
+      body: { full_name, email, role: form.role, phone: form.phone.trim() || undefined },
+    });
+    setCreating(false);
+    if (error || (data as any)?.error) {
+      toast.error((data as any)?.error || error?.message || "Failed to create user");
+      return;
+    }
+    toast.success(`${full_name} created. They'll receive an email to set their password.`);
+    setForm(emptyForm);
+    setCreateOpen(false);
+    fetchUsers();
+  };
+
+  const canAssignAdmin = callerRole === "admin";
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div>
-          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Users</h2>
-          <p className="text-muted-foreground">Manage all users and roles</p>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Users</h2>
+            <p className="text-muted-foreground">Manage all users and roles</p>
+          </div>
+          <PageActions>
+            <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+              <DialogTrigger asChild>
+                <Button><Plus className="mr-2 h-4 w-4" />New User</Button>
+              </DialogTrigger>
+              <DialogContent className="max-h-[90vh] overflow-y-auto">
+                <DialogHeader><DialogTitle>Create New User</DialogTitle></DialogHeader>
+                <div className="space-y-4">
+                  <div>
+                    <Label>Full Name *</Label>
+                    <Input value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} placeholder="Jane Doe" maxLength={100} />
+                  </div>
+                  <div>
+                    <Label>Email *</Label>
+                    <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="jane@example.com" maxLength={255} />
+                  </div>
+                  <div>
+                    <Label>Role *</Label>
+                    <Select value={form.role} onValueChange={(v) => setForm({ ...form, role: v })}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {canAssignAdmin && <SelectItem value="admin">Admin</SelectItem>}
+                        <SelectItem value="manager">Manager</SelectItem>
+                        <SelectItem value="staff">Staff</SelectItem>
+                        <SelectItem value="client">Client</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Phone</Label>
+                    <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="+1 555 0123" maxLength={32} />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    The user will receive an email to set their password via "Forgot Password".
+                  </p>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setCreateOpen(false)} disabled={creating}>Cancel</Button>
+                  <Button onClick={handleCreate} disabled={creating || !form.full_name || !form.email}>
+                    {creating ? "Creating…" : "Create User"}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </PageActions>
         </div>
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1">
