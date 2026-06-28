@@ -46,7 +46,7 @@ export function SystemNoticesBanner() {
         .select("notice_id")
         .eq("user_id", user.id);
       if (!cancelled && data) {
-        setDismissed(new Set((data as { notice_id: string }[]).map((r) => r.notice_id)));
+        setDismissed(new Set((data as unknown as { notice_id: string }[]).map((r) => r.notice_id)));
       }
     };
     loadDismissed();
