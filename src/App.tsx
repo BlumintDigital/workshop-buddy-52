@@ -77,7 +77,16 @@ const AppointmentDetail = lazy(() => import("@/pages/appointments/AppointmentDet
 const ReportIssue = lazy(() => import("@/pages/support/ReportIssue"));
 const Help = lazy(() => import("@/pages/Help"));
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000, // 5 min — most pages share session-scoped data
+      gcTime: 30 * 60 * 1000,
+      refetchOnWindowFocus: false,
+      retry: 1,
+    },
+  },
+});
 
 function FeatureRoute({ feature, children }: { feature: FeatureKey; children: ReactNode }) {
   const enabled = useFeature(feature);
