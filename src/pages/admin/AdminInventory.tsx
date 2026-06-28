@@ -115,8 +115,11 @@ export default function AdminInventory() {
             <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Inventory</h2>
             <p className="text-muted-foreground">Manage workshop inventory</p>
           </div>
+          <div className="flex gap-2">
           <Dialog open={open} onOpenChange={setOpen}>
-            <Button onClick={() => setOpen(true)}><Plus className="mr-2 h-4 w-4" />Add Item</Button>
+            <DialogTrigger asChild>
+              <Button><Plus className="mr-2 h-4 w-4" />Add Item</Button>
+            </DialogTrigger>
             <DialogContent>
               <DialogHeader><DialogTitle>Add Inventory Item</DialogTitle></DialogHeader>
               <div className="space-y-4">
