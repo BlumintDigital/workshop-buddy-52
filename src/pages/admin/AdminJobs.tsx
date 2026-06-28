@@ -185,6 +185,7 @@ export default function AdminJobs() {
               </div>
             </DialogContent>
           </Dialog>
+          </div>
         </div>
 
         <div className="flex min-w-0 flex-col gap-3 sm:flex-row">
