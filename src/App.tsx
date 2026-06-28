@@ -13,7 +13,7 @@ import {
   useFeatureFlags,
   type FeatureKey,
 } from "@/hooks/useFeatureFlags";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth, getRoleDashboardPath } from "@/hooks/useAuth";
 import LoadingScreen from "@/components/LoadingScreen";
 import { ClientPortalUnavailable, DisabledFeatureRedirect } from "@/pages/FeatureUnavailable";
 
