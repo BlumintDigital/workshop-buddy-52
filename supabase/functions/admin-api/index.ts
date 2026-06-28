@@ -935,15 +935,16 @@ Deno.serve(async (req) => {
       //   supabase secrets set VAPID_PRIVATE_KEY=<privateKey> --project-ref <ref>
       case "generate_vapid": {
         const keys = webpush.generateVAPIDKeys();
-        // Store BOTH keys server-side in admin-only table; never return the private key.
+        // Store only the PUBLIC key in DB. The private key MUST be set as a
+        // Supabase Edge Function secret (VAPID_PRIVATE_KEY) — never persisted.
         await (supabase.from("workshop_admin_contacts") as any).upsert({
           id: 1,
           vapid_public_key: keys.publicKey,
-          vapid_private_key: keys.privateKey,
         });
         return json({
           public_key: keys.publicKey,
-          note: "VAPID keys generated. Private key stored securely server-side and never exposed in API responses.",
+          private_key: keys.privateKey,
+          note: "Set VAPID_PRIVATE_KEY as a Supabase Edge Function secret. This is the only time the private key is returned.",
         });
       }
 
@@ -995,15 +996,18 @@ Deno.serve(async (req) => {
             .single();
           if (noticeErr) return err(noticeErr.message, 500);
 
-          // Read both VAPID keys from admin-only contacts table.
+          // VAPID public key from DB; private key from server-side secret only.
           const { data: contact } = await supabase
             .from("workshop_admin_contacts" as any)
-            .select("vapid_public_key, vapid_private_key")
+            .select("vapid_public_key")
             .eq("id", 1)
             .maybeSingle();
 
-          const vapidPrivateKey = (contact as any)?.vapid_private_key as string | null;
-          const vapidPublicKey = (contact as any)?.vapid_public_key as string | null;
+          const vapidPrivateKey = Deno.env.get("VAPID_PRIVATE_KEY") || null;
+          const vapidPublicKey =
+            ((contact as any)?.vapid_public_key as string | null) ||
+            Deno.env.get("VAPID_PUBLIC_KEY") ||
+            null;
           if (!vapidPrivateKey || !vapidPublicKey) {
             return json({
               notice,

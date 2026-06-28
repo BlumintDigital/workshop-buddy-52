@@ -167,7 +167,6 @@ serve(async (req) => {
         id: 1,
         super_admin_email: null,
         vapid_public_key: null,
-        vapid_private_key: null,
       });
     }
 
