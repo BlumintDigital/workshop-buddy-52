@@ -30,19 +30,41 @@ function isStale(lastSignIn: string | null): boolean {
   return daysSince > STALE_DAYS;
 }
 
+function getActivityStatus(lastSignIn: string | null, unavailable: boolean) {
+  if (unavailable) return { label: "Unavailable", stale: false };
+  const stale = isStale(lastSignIn);
+  return { label: stale ? "Stale" : "Active", stale };
+}
+
 export default function AdminAccessReview() {
   const [users, setUsers] = useState<ReviewUser[]>([]);
   const [loading, setLoading] = useState(true);
+  const [lastSignInUnavailable, setLastSignInUnavailable] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   const fetchUsers = async () => {
     setLoading(true);
+    setLastSignInUnavailable(false);
+
+    const { data: sessionData } = await supabase.auth.getSession();
+    const accessToken = sessionData.session?.access_token;
+
+    if (!accessToken) {
+      toast.error("Please sign in again to load the access review.");
+      setLoading(false);
+      return;
+    }
+
     const { data, error } = await supabase.functions.invoke("admin-access-review", {
       body: {},
+      headers: { Authorization: `Bearer ${accessToken}` },
     });
 
     if (error) {
-      toast.error(error.message || "Failed to load access review");
+      const fallback = await fetchUsersFallback();
+      setUsers(fallback);
+      setLastSignInUnavailable(true);
+      toast.error("Access review loaded without sign-in history. Try again shortly for full activity details.");
       setLoading(false);
       return;
     }
@@ -67,6 +89,35 @@ export default function AdminAccessReview() {
 
     setUsers(list);
     setLoading(false);
+  };
+
+  const fetchUsersFallback = async (): Promise<ReviewUser[]> => {
+    const [{ data: profiles, error: profilesError }, { data: roles, error: rolesError }] = await Promise.all([
+      supabase
+        .from("profiles")
+        .select("id, full_name, created_at, is_active, is_super_admin"),
+      supabase
+        .from("user_roles")
+        .select("user_id, role"),
+    ]);
+
+    if (profilesError || rolesError) {
+      toast.error(profilesError?.message || rolesError?.message || "Failed to load access review");
+      return [];
+    }
+
+    const roleMap = new Map((roles ?? []).map((role: any) => [role.user_id, role.role]));
+
+    return (profiles ?? [])
+      .filter((profile: any) => !profile.is_super_admin)
+      .map((profile: any) => ({
+        user_id: profile.id,
+        full_name: profile.full_name,
+        role: roleMap.get(profile.id) ?? "client",
+        is_active: profile.is_active !== false,
+        last_sign_in_at: null,
+        created_at: profile.created_at ?? "",
+      }));
   };
 
   useEffect(() => { fetchUsers(); }, []);
@@ -98,14 +149,14 @@ export default function AdminAccessReview() {
       u.full_name ?? "",
       u.role,
       u.is_active ? "Active" : "Inactive",
-      u.last_sign_in_at ? new Date(u.last_sign_in_at).toISOString() : "Never",
+      lastSignInUnavailable ? "Unavailable" : u.last_sign_in_at ? new Date(u.last_sign_in_at).toISOString() : "Never",
       new Date(u.created_at).toISOString(),
-      isStale(u.last_sign_in_at) ? "Yes" : "No",
+      lastSignInUnavailable ? "Unavailable" : isStale(u.last_sign_in_at) ? "Yes" : "No",
     ]);
     downloadCSV(`access-review-${new Date().toISOString().slice(0, 10)}.csv`, headers, rows);
   };
 
-  const staleCount = users.filter((u) => isStale(u.last_sign_in_at)).length;
+  const staleCount = lastSignInUnavailable ? 0 : users.filter((u) => isStale(u.last_sign_in_at)).length;
 
   return (
     <DashboardLayout>
@@ -137,7 +188,9 @@ export default function AdminAccessReview() {
           <Card className={staleCount > 0 ? "border-amber-400" : ""}>
             <CardContent className="pt-6">
               <p className="text-2xl font-bold text-amber-600">{staleCount}</p>
-              <p className="text-sm text-muted-foreground">Inactive &gt;{STALE_DAYS} days</p>
+              <p className="text-sm text-muted-foreground">
+                {lastSignInUnavailable ? "Sign-in history unavailable" : `Inactive >${STALE_DAYS} days`}
+              </p>
             </CardContent>
           </Card>
           <Card>
@@ -169,7 +222,9 @@ export default function AdminAccessReview() {
           <CardHeader className="pb-3">
             <CardTitle className="text-base">All Users</CardTitle>
             <CardDescription>
-              Rows highlighted in amber have not signed in for {STALE_DAYS}+ days.
+              {lastSignInUnavailable
+                ? "Users loaded, but sign-in history could not be reached right now."
+                : `Rows highlighted in amber have not signed in for ${STALE_DAYS}+ days.`}
             </CardDescription>
           </CardHeader>
           <CardContent className="p-0">
@@ -201,9 +256,9 @@ export default function AdminAccessReview() {
                       </TableCell>
                     </TableRow>
                   ) : users.map((u) => {
-                    const stale = isStale(u.last_sign_in_at);
+                    const status = getActivityStatus(u.last_sign_in_at, lastSignInUnavailable);
                     return (
-                      <TableRow key={u.user_id} className={stale ? "bg-amber-50/60 dark:bg-amber-950/10" : ""}>
+                      <TableRow key={u.user_id} className={status.stale ? "bg-amber-50/60 dark:bg-amber-950/10" : ""}>
                         <TableCell className="font-medium">
                           {u.full_name ?? "—"}
                           {!u.is_active && (
@@ -212,16 +267,18 @@ export default function AdminAccessReview() {
                         </TableCell>
                         <TableCell className="capitalize">{u.role || <span className="text-muted-foreground">none</span>}</TableCell>
                         <TableCell>
-                          {stale ? (
-                            <Badge variant="outline" className="text-amber-600 border-amber-400">Stale</Badge>
+                          {status.stale ? (
+                            <Badge variant="outline" className="text-amber-600 border-amber-400">{status.label}</Badge>
                           ) : (
-                            <Badge variant="outline" className="text-emerald-600 border-emerald-400">Active</Badge>
+                            <Badge variant="outline" className="text-emerald-600 border-emerald-400">{status.label}</Badge>
                           )}
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">
-                          {u.last_sign_in_at
-                            ? formatDistanceToNow(new Date(u.last_sign_in_at), { addSuffix: true })
-                            : "Never"}
+                          {lastSignInUnavailable
+                            ? "Unavailable"
+                            : u.last_sign_in_at
+                              ? formatDistanceToNow(new Date(u.last_sign_in_at), { addSuffix: true })
+                              : "Never"}
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2 whitespace-nowrap">
@@ -268,9 +325,9 @@ export default function AdminAccessReview() {
               )) : users.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground text-sm">No users found</div>
               ) : users.map((u) => {
-                const stale = isStale(u.last_sign_in_at);
+                const status = getActivityStatus(u.last_sign_in_at, lastSignInUnavailable);
                 return (
-                  <div key={u.user_id} className={`p-4 space-y-2 ${stale ? "bg-amber-50/60 dark:bg-amber-950/10" : ""}`}>
+                  <div key={u.user_id} className={`p-4 space-y-2 ${status.stale ? "bg-amber-50/60 dark:bg-amber-950/10" : ""}`}>
                     <div className="flex items-start justify-between gap-2">
                       <p className="font-medium break-words min-w-0 flex-1">
                         {u.full_name ?? "—"}
@@ -283,16 +340,18 @@ export default function AdminAccessReview() {
                       <span className="capitalize text-muted-foreground">
                         Role: {u.role || "none"}
                       </span>
-                      {stale ? (
-                        <Badge variant="outline" className="text-amber-600 border-amber-400">Stale</Badge>
+                      {status.stale ? (
+                        <Badge variant="outline" className="text-amber-600 border-amber-400">{status.label}</Badge>
                       ) : (
-                        <Badge variant="outline" className="text-emerald-600 border-emerald-400">Active</Badge>
+                        <Badge variant="outline" className="text-emerald-600 border-emerald-400">{status.label}</Badge>
                       )}
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      Last sign-in: {u.last_sign_in_at
-                        ? formatDistanceToNow(new Date(u.last_sign_in_at), { addSuffix: true })
-                        : "Never"}
+                      Last sign-in: {lastSignInUnavailable
+                        ? "Unavailable"
+                        : u.last_sign_in_at
+                          ? formatDistanceToNow(new Date(u.last_sign_in_at), { addSuffix: true })
+                          : "Never"}
                     </p>
                     <div className="flex flex-wrap gap-2 pt-1">
                       <Button

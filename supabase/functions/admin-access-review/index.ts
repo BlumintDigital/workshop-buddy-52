@@ -1,36 +1,24 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const allowedOrigins = (Deno.env.get("ALLOWED_ORIGINS") ?? "*")
-  .split(",")
-  .map((s) => s.trim());
-
-function corsHeaders(origin: string | null) {
-  const allow =
-    !origin || allowedOrigins.includes("*") || allowedOrigins.includes(origin)
-      ? origin ?? "*"
-      : allowedOrigins[0] ?? "*";
-  return {
-    "Access-Control-Allow-Origin": allow,
-    "Access-Control-Allow-Headers":
-      "authorization, x-client-info, apikey, content-type",
-    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-    Vary: "Origin",
-  };
-}
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+};
 
 serve(async (req) => {
-  const cors = corsHeaders(req.headers.get("origin"));
-  if (req.method === "OPTIONS") return new Response(null, { headers: cors });
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
     if (req.method !== "GET" && req.method !== "POST") {
-      return json({ error: "GET or POST required" }, 405, cors);
+      return json({ error: "GET or POST required" }, 405);
     }
 
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
-      return json({ error: "Unauthorized" }, 401, cors);
+      return json({ error: "Unauthorized" }, 401);
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -41,7 +29,7 @@ serve(async (req) => {
       global: { headers: { Authorization: authHeader } },
     });
     const { data: { user: caller }, error: userErr } = await callerClient.auth.getUser();
-    if (userErr || !caller) return json({ error: "Unauthorized" }, 401, cors);
+    if (userErr || !caller) return json({ error: "Unauthorized" }, 401);
 
     const admin = createClient(supabaseUrl, serviceKey);
     const { data: callerRole, error: roleErr } = await admin
@@ -50,9 +38,9 @@ serve(async (req) => {
       .eq("user_id", caller.id)
       .maybeSingle();
 
-    if (roleErr) return json({ error: roleErr.message }, 500, cors);
+    if (roleErr) return json({ error: roleErr.message }, 500);
     if (callerRole?.role !== "admin") {
-      return json({ error: "Forbidden: admin role required" }, 403, cors);
+      return json({ error: "Forbidden: admin role required" }, 403);
     }
 
     const [{ data: profiles, error: profilesErr }, { data: roles, error: rolesErr }] =
@@ -65,8 +53,8 @@ serve(async (req) => {
           .select("user_id, role"),
       ]);
 
-    if (profilesErr) return json({ error: profilesErr.message }, 500, cors);
-    if (rolesErr) return json({ error: rolesErr.message }, 500, cors);
+    if (profilesErr) return json({ error: profilesErr.message }, 500);
+    if (rolesErr) return json({ error: rolesErr.message }, 500);
 
     const authUsers = await listAllAuthUsers(admin);
     const authMap = new Map(authUsers.map((user: any) => [user.id, user]));
@@ -86,10 +74,10 @@ serve(async (req) => {
       };
     });
 
-    return json({ data: users, total: users.length }, 200, cors);
+    return json({ data: users, total: users.length });
   } catch (e) {
     console.error("admin-access-review error:", e);
-    return json({ error: "Internal server error" }, 500, cors);
+    return json({ error: "Internal server error" }, 500);
   }
 });
 
@@ -109,9 +97,9 @@ async function listAllAuthUsers(admin: any) {
   return users;
 }
 
-function json(body: unknown, status = 200, cors: Record<string, string> = {}) {
+function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { ...cors, "Content-Type": "application/json" },
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 }
