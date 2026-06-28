@@ -120,6 +120,29 @@ export default function AdminUsers() {
     fetchUsers();
   };
 
+  const [resending, setResending] = useState<Record<string, boolean>>({});
+  const handleResend = async (userId: string, name: string) => {
+    setResending((p) => ({ ...p, [userId]: true }));
+    const { data, error } = await supabase.functions.invoke("admin-resend-invite", {
+      body: { user_id: userId },
+    });
+    setResending((p) => ({ ...p, [userId]: false }));
+    if (error || (data as any)?.error) {
+      toast.error((data as any)?.error || error?.message || "Failed to resend invite");
+      return;
+    }
+    toast.success(`Invite resent to ${name}`);
+    setUsers((prev) =>
+      prev.map((u) => (u.user_id === userId ? { ...u, invited_at: new Date().toISOString() } : u)),
+    );
+  };
+
+  const inviteStatus = (u: UserRow): "accepted" | "invited" | "unknown" => {
+    if (u.invite_accepted_at) return "accepted";
+    if (u.invited_at) return "invited";
+    return "unknown";
+  };
+
   const canAssignAdmin = callerRole === "admin";
 
   return (
