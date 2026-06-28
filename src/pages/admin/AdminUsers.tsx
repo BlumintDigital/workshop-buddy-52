@@ -16,7 +16,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 type UserRow = {
   user_id: string;
   full_name: string | null;
-  role: string;
+  role: string | null;
   created_at: string;
   is_active: boolean;
 };
@@ -31,23 +31,22 @@ export default function AdminUsers() {
   const fetchUsers = async () => {
     setIsLoading(true);
     const [{ data: roles }, { data: profiles }] = await Promise.all([
-      supabase.from("user_roles").select("user_id, role").in("role", ["admin", "manager", "staff"]).limit(500),
+      supabase.from("user_roles").select("user_id, role").limit(500),
       supabase.from("profiles").select("id, full_name, created_at, is_super_admin, is_active").limit(500),
     ]);
-    if (roles && profiles) {
-      const merged = roles
-        .map((r) => {
-          const p = profiles.find((p) => p.id === r.user_id);
+    if (profiles) {
+      const merged = profiles
+        .filter((p) => !(p as any).is_super_admin)
+        .map((p) => {
+          const r = (roles ?? []).find((r) => r.user_id === p.id);
           return {
-            user_id: r.user_id,
-            full_name: p?.full_name || "Unknown",
-            role: r.role,
-            created_at: p?.created_at || "",
-            is_super_admin: !!(p as any)?.is_super_admin,
-            is_active: (p as any)?.is_active !== false,
+            user_id: p.id,
+            full_name: (p as any).full_name || "Unknown",
+            role: (r?.role as string | undefined) ?? null,
+            created_at: p.created_at || "",
+            is_active: (p as any).is_active !== false,
           };
-        })
-        .filter((u) => !u.is_super_admin);
+        });
       setUsers(merged);
     }
     setIsLoading(false);
@@ -58,7 +57,7 @@ export default function AdminUsers() {
   const filtered = useMemo(() => {
     return users.filter((u) => {
       const matchesSearch = !search || (u.full_name || "").toLowerCase().includes(search.toLowerCase());
-      const matchesRole = roleFilter === "all" || u.role === roleFilter;
+      const matchesRole = roleFilter === "all" || (roleFilter === "none" ? u.role === null : u.role === roleFilter);
       return matchesSearch && matchesRole;
     });
   }, [users, search, roleFilter]);
@@ -76,7 +75,9 @@ export default function AdminUsers() {
   };
 
   const changeRole = async (userId: string, newRole: string) => {
-    const { error } = await supabase.from("user_roles").update({ role: newRole } as any).eq("user_id", userId);
+    const { error } = await supabase
+      .from("user_roles")
+      .upsert({ user_id: userId, role: newRole } as any, { onConflict: "user_id" });
     if (error) { toast.error(error.message); return; }
     setUsers((prev) => prev.map((u) => (u.user_id === userId ? { ...u, role: newRole } : u)));
     toast.success("Role updated");
@@ -101,6 +102,8 @@ export default function AdminUsers() {
               <SelectItem value="admin">Admin</SelectItem>
               <SelectItem value="manager">Manager</SelectItem>
               <SelectItem value="staff">Staff</SelectItem>
+              <SelectItem value="client">Client</SelectItem>
+              <SelectItem value="none">No role</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -136,12 +139,13 @@ export default function AdminUsers() {
                       {!u.is_active && <Badge variant="destructive" className="ml-2 text-xs">Inactive</Badge>}
                     </TableCell>
                     <TableCell onClick={(e) => e.stopPropagation()}>
-                      <Select value={u.role} onValueChange={(v) => changeRole(u.user_id, v)}>
-                        <SelectTrigger className="w-[110px] h-8"><SelectValue /></SelectTrigger>
+                      <Select value={u.role ?? ""} onValueChange={(v) => changeRole(u.user_id, v)}>
+                        <SelectTrigger className="w-[110px] h-8"><SelectValue placeholder="Assign role" /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value="admin">Admin</SelectItem>
                           <SelectItem value="manager">Manager</SelectItem>
                           <SelectItem value="staff">Staff</SelectItem>
+                          <SelectItem value="client">Client</SelectItem>
                         </SelectContent>
                       </Select>
                     </TableCell>
@@ -178,6 +182,7 @@ export default function AdminUsers() {
                 ))}
               </TableBody>
             </Table>
+
           </CardContent>
         </Card>
 
@@ -208,12 +213,13 @@ export default function AdminUsers() {
                   <p className="text-xs text-muted-foreground">{u.created_at ? new Date(u.created_at).toLocaleDateString() : ""}</p>
                 </div>
                 <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
-                  <Select value={u.role} onValueChange={(v) => changeRole(u.user_id, v)}>
-                    <SelectTrigger className="w-[100px] h-8"><SelectValue /></SelectTrigger>
+                  <Select value={u.role ?? ""} onValueChange={(v) => changeRole(u.user_id, v)}>
+                    <SelectTrigger className="w-[100px] h-8"><SelectValue placeholder="Assign" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="admin">Admin</SelectItem>
                       <SelectItem value="manager">Manager</SelectItem>
                       <SelectItem value="staff">Staff</SelectItem>
+                      <SelectItem value="client">Client</SelectItem>
                     </SelectContent>
                   </Select>
                   {u.role !== "admin" && (

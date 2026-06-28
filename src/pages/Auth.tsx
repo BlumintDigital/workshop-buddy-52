@@ -148,7 +148,7 @@ export default function Auth() {
         toast.success("Signed in successfully");
         navigate(getRoleDashboardPath(result.role), { replace: true });
       } else {
-        toast.error("No role found for this account. If this persists, clear your browser's saved password for this site and try again.");
+        toast.error("Your account hasn't been set up yet. Please contact your administrator to get access.");
         await signOut();
       }
     } catch (err: unknown) {
