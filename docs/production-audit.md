@@ -3,7 +3,7 @@
 **Date:** 28 June 2026
 **Scope:** Security & RLS, Performance & scalability, Reliability & ops, Code quality & UX
 **Method:** Lovable security scanners, Supabase DB linter, `pg_stat_statements`, static review of the repo (73 migrations, 20 edge functions, frontend + CI + hosting config).
-**Status:** Report only — no code, schema, or config changes were made.
+**Status:** Sprint 1 partially landed (28 Jun 2026) — see § 9 below.
 
 ---
 
