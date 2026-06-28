@@ -1,61 +1,55 @@
-# Admin toolbar + manual user creation
+## Goal
 
-## 1. Reusable action toolbar component
-Create `src/components/admin/PageActions.tsx` — a thin wrapper that gives every admin page header the same mobile-friendly layout:
+1. Show an invite status column ("Invited" vs "Active") for each user on `/admin/users`, with a "Resend invite" action available on pending users.
+2. Make the mobile "New User" button render identically to the other PageActions buttons (e.g. "New Appointment", "New Invoice"): full-width, same height/style.
 
-```tsx
-// <PageActions>{...buttons}</PageActions>
-<div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-2 sm:flex-wrap sm:justify-end">
-  {children}
-</div>
-```
+## 1. Track invitation state
 
-On mobile, buttons stack full-width via a `[&>*]:w-full sm:[&>*]:w-auto` rule so each trigger fills the row (matching the New Appointment / New Invoice baseline). On `sm+`, they sit inline-right.
+The current `admin-create-user` flow creates the auth user and calls `generateLink({ type: "recovery" })`, but nothing records whether the invite was sent or accepted.
 
-Wire it into the page headers of:
-- `src/pages/admin/AdminJobs.tsx` — wraps the `New Job` Dialog trigger.
-- `src/pages/admin/AdminInventory.tsx` — wraps the `Add Item` Dialog trigger (also re-confirm `DialogTrigger` import and `DialogTrigger asChild` usage; the previous fix landed but verify against the current file).
-- `src/pages/admin/AdminClients.tsx` — wraps the `Add Client` Dialog trigger.
-- `src/pages/admin/AdminAccessReview.tsx` — wraps the `Export CSV` button.
-- `src/pages/admin/AdminAppointments.tsx` + `src/pages/admin/AdminInvoices.tsx` — adopt the same wrapper so the visual baseline is preserved everywhere.
+**Migration**
+Add two columns to `public.profiles`:
+- `invited_at timestamptz null` — set when admin-create-user (or resend) sends an invite.
+- `invite_accepted_at timestamptz null` — set on first successful sign-in.
 
-## 2. Mobile audit (no layout/data changes beyond the toolbar)
-Use Playwright at 390×844 with the admin session restored to load `/admin/jobs`, `/admin/inventory`, `/admin/clients`, `/admin/access-review`. For each, screenshot:
-- Skeleton/initial-load frame (catches the "overlaps before loading" flicker).
-- Fully loaded frame.
-- After scrolling to the bottom of the page.
+No RLS change needed (existing profile policies already cover these columns).
 
-Confirm `document.documentElement.scrollWidth === clientWidth` (no horizontal scroll). Any offender gets `min-w-0 max-w-full` on its root + `overflow-hidden` on its card, and skeleton rows aligned to the responsive column visibility already used. No business logic changes.
+**Edge functions**
+- `admin-create-user`: switch from `generateLink` to `inviteUserByEmail(email, { data: { full_name, role } })` so Supabase actually sends the email via the configured SMTP, then `UPDATE profiles SET invited_at = now()` for the new user.
+- New `admin-resend-invite`:
+  - Same auth/role guard as `admin-create-user` (admin or manager; managers can't target admins).
+  - Body: `{ user_id }`.
+  - Look up the user's email via `auth.admin.getUserById`, call `inviteUserByEmail` (or `generateLink type=recovery` as fallback), then bump `profiles.invited_at = now()`.
+  - Lightweight cooldown: reject if `invited_at > now() - interval '60 seconds'`.
 
-## 3. Admin can manually create users
-Currently `AdminUsers` only lists and deletes — there's no Create User flow. Add one:
+**Marking invite accepted**
+In `src/hooks/useAuth.tsx`, after a successful sign-in where the session user is freshly loaded, if `profiles.invite_accepted_at` is null, `update` it to `now()`. One-time per user.
 
-### Backend
-New edge function `supabase/functions/admin-create-user/index.ts` (modeled on `create-client`):
-- Auth-gated: caller must hold the `admin` role (check via `user_roles` + service-role client).
-- Accepts `{ email, full_name, role, phone?, send_invite? }` where `role ∈ {admin, manager, staff, client}`.
-- Uses `adminClient.auth.admin.createUser({ email, email_confirm: true, user_metadata: { full_name } })`.
-- Inserts/upserts into `public.user_roles` with the chosen role.
-- Updates `profiles` with `full_name` / `phone`.
-- Returns `{ user_id }`.
+## 2. AdminUsers UI
 
-Guardrail: creating another `admin` requires the caller to be `admin` (managers can only create `manager/staff/client`). This matches the existing manager-escalation policy.
+In `src/pages/admin/AdminUsers.tsx`:
+- Extend `UserRow` with `invited_at` and `invite_accepted_at`; include them in the `profiles` select.
+- Derive `inviteStatus`: `"accepted"` if `invite_accepted_at` is set, else `"invited"` if `invited_at` is set, else `"active"` (legacy users with no invite metadata — treat as accepted/active so we don't spam them).
+- **Desktop table**: add a new `Invite` column between Role and Joined. Render a `Badge`:
+  - Accepted/active → no badge or subtle "Active" outline badge.
+  - Invited (pending) → amber "Invited {relative time}" badge + a small "Resend" ghost button (Mail icon) that calls `admin-resend-invite`. Show toast on success/error; disable while in-flight; show "Sent" briefly after success.
+- **Mobile cards**: show the same badge + Resend button inline under the name.
+- Skeleton rows updated to include the new column.
 
-No DB migration is required — `user_roles` already exists with proper RLS, and the edge function uses the service-role client to bypass policies safely.
+## 3. Mobile button parity
 
-### Frontend
-Update `src/pages/admin/AdminUsers.tsx`:
-- Add the new `PageActions` toolbar to the page header with a `New User` button.
-- Add a Dialog with fields: Full Name, Email, Role (Select: admin/manager/staff/client; admin option hidden for non-admin callers), Phone (optional).
-- On submit, call `supabase.functions.invoke("admin-create-user", { body })`, toast result, refresh the list.
-- Show inline validation (email format, required fields) and disable submit while in flight.
+The Dialog/DialogTrigger combination in AdminUsers leaves the `Button` as the direct child of `PageActions`, so `[&>*]:w-full` should apply — but the visual mismatch the user is reporting suggests the button isn't stretching like "New Appointment". Fix by:
+- Explicitly adding `className="w-full sm:w-auto"` to the trigger `Button` (matches the implicit behavior every other PageActions child gets through the wrapper).
+- Verifying via Playwright at 390px viewport that the New User and New Appointment buttons render at identical width and styling.
 
-## Technical details
-- New file: `src/components/admin/PageActions.tsx`.
-- New file: `supabase/functions/admin-create-user/index.ts` (deploys automatically).
-- Edits: `AdminUsers.tsx` (header + dialog), `AdminJobs.tsx`, `AdminInventory.tsx`, `AdminClients.tsx`, `AdminAccessReview.tsx`, `AdminAppointments.tsx`, `AdminInvoices.tsx` (wrap header actions in `PageActions`).
-- No schema migration. No new secrets.
+## Technical notes
 
-## Verification
-- Playwright mobile (390×844) screenshots of `/admin/users`, `/admin/jobs`, `/admin/inventory`, `/admin/clients`, `/admin/access-review` showing aligned, full-width buttons and no horizontal scroll.
-- Manual smoke: open `/admin/users`, click `New User`, create a `staff` user, confirm the row appears and the new user can sign in.
+- `inviteUserByEmail` requires the project's Auth → Email templates to be configured; if the call fails we fall back to `generateLink` and return a non-fatal warning (same behavior as today).
+- Cooldown is enforced server-side; the client also disables the button for ~60s after a successful resend.
+- No new tables — just two columns on `profiles` and one new edge function.
+
+## Out of scope
+
+- Bulk resend.
+- Email-template customization.
+- Showing the actual recovery link in the UI.
