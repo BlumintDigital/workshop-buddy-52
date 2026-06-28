@@ -47,10 +47,10 @@ export default function AdminUsers() {
     setIsLoading(true);
     const [{ data: roles }, { data: profiles }] = await Promise.all([
       supabase.from("user_roles").select("user_id, role").limit(500),
-      supabase.from("profiles").select("id, full_name, created_at, is_super_admin, is_active").limit(500),
+      supabase.from("profiles").select("id, full_name, created_at, is_super_admin, is_active, invited_at, invite_accepted_at").limit(500),
     ]);
     if (profiles) {
-      const merged = profiles
+      const merged: UserRow[] = profiles
         .filter((p) => !(p as any).is_super_admin)
         .map((p) => {
           const r = (roles ?? []).find((r) => r.user_id === p.id);
@@ -60,6 +60,8 @@ export default function AdminUsers() {
             role: (r?.role as string | undefined) ?? null,
             created_at: p.created_at || "",
             is_active: (p as any).is_active !== false,
+            invited_at: (p as any).invited_at ?? null,
+            invite_accepted_at: (p as any).invite_accepted_at ?? null,
           };
         });
       setUsers(merged);
