@@ -3,7 +3,7 @@
 **Date:** 28 June 2026
 **Scope:** Security & RLS, Performance & scalability, Reliability & ops, Code quality & UX
 **Method:** Lovable security scanners, Supabase DB linter, `pg_stat_statements`, static review of the repo (73 migrations, 20 edge functions, frontend + CI + hosting config).
-**Status:** Report only — no code, schema, or config changes were made.
+**Status:** Sprint 1 partially landed (28 Jun 2026) — see § 9 below.
 
 ---
 
@@ -300,4 +300,34 @@ WARN   auth_leaked_password_protection (×1)
 
 ---
 
+## 9. Remediation log
+
+### Shipped 28 Jun 2026 (Sprint 1, partial)
+
+- **Perf 1.1** — React Query global defaults set (`staleTime: 5 min`, `gcTime: 30 min`, `refetchOnWindowFocus: false`). Reduces redundant `workshop_settings` / `user_roles` re-fetching across route transitions.
+- **Perf 1.3** — Indexes added: `notifications(user_id, created_at DESC)`, `activity_logs(created_at DESC)`, `broadcasts(created_at DESC)`, `system_notices(created_at DESC)`.
+- **Perf 1.4** — `chunkSizeWarningLimit` lowered from 1000 → 700 so regressions surface earlier.
+- **Reliability 2.1** — CI gained a `build` job running `npm run build` with placeholder env vars.
+- **Reliability 2.6** — Per-user rate limits applied to `send-push` (30/hr) and `send-email` (60/hr) via the shared rate-limit helper (with 15 min lockout and `Retry-After` header).
+- **Reliability 2.7** — `docs/uptime.md` runbook added (target 99.9%, BetterUptime / UptimeRobot, root URL + Supabase auth health URL).
+- **Quality 3.3** — Two new unit test files (`currency.test.ts`, `emailSanitize.test.ts`); suite now 8 files / 48 tests.
+- **Quality 3.5** — `Content-Security-Policy-Report-Only` header added in `vercel.json`; review violation reports before flipping to enforced.
+
+### Still open (next sprints)
+
+- Perf 1.1 cont. — replace ad-hoc `workshop_settings` / `user_roles` reads in `useAuth`, `AppSidebar`, `AppHeader`, `useFeatureFlags`, branding with shared cached hooks.
+- Perf 1.2 — consolidate `broadcasts` + `system_notices` polling into a single `useNotices()` query.
+- Perf 1.5 — fold `push-sw.js` into `src/sw.ts`.
+- Reliability 2.2 — Playwright per-role smoke tests + CI job.
+- Reliability 2.3 — pgTAP RLS regression suite.
+- Reliability 2.4 — Deno tests for MFA / admin edge functions.
+- Reliability 2.5 — `@sentry/deno` wrapper in `_shared/`.
+- Quality 3.1 — phased TypeScript strictness (`strictNullChecks` → `strict`).
+- Quality 3.2 — re-enable `no-unused-vars`, add `jsx-a11y`.
+- Quality 3.4 — keyboard a11y pass on `StaffKanban` + axe-core in e2e.
+- Quality 3.5 cont. — flip CSP from Report-Only to enforced after 1 week of clean reports.
+
+---
+
 *End of audit.*
+

@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import webpush from "npm:web-push@3";
+import { checkRateLimit } from "../_shared/rate-limit.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -52,6 +53,29 @@ Deno.serve(async (req) => {
       .limit(1)
       .maybeSingle();
     if (!roleRow) return err("Forbidden — admin or manager role required", 403);
+
+    // Per-user rate limit: 30 pushes per hour, 15-min lockout on overflow.
+    const rl = await checkRateLimit(callerId, "send_push", {
+      limit: 30,
+      windowSec: 3600,
+      lockoutSec: 900,
+    });
+    if (!rl.allowed) {
+      return new Response(
+        JSON.stringify({
+          error: "Rate limit exceeded — too many push notifications",
+          retryAfterSec: rl.retryAfterSec,
+        }),
+        {
+          status: 429,
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json",
+            "Retry-After": String(rl.retryAfterSec),
+          },
+        },
+      );
+    }
 
     const body = await req.json().catch(() => null);
     if (!body || typeof body !== "object") return err("Invalid JSON body");

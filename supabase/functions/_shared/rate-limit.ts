@@ -1,6 +1,11 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-export type RateLimitAction = "backup_generate" | "trust_device" | "backup_verify";
+export type RateLimitAction =
+  | "backup_generate"
+  | "trust_device"
+  | "backup_verify"
+  | "send_push"
+  | "send_email";
 
 export interface RateLimitResult {
   allowed: boolean;
