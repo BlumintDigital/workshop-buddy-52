@@ -1,28 +1,48 @@
+# Align admin page-header action buttons on mobile
 
-## Goal
+## Problem
+On mobile, the action buttons on **Jobs (New Job)**, **Inventory (Add Item)**, and **Clients (Add Client)** don't sit the same way as **Appointments (New Appointment)** and **Invoices (New Invoice)**. The wrappers look similar in source, but small structural differences cause them to render differently inside the mobile header row.
 
-Eliminate horizontal scrolling on the three admin pages. On mobile (<sm), render each row as a self-contained card that fits the viewport width. On desktop (≥sm), keep the existing tables unchanged.
+Notable differences found:
+- `AdminInventory.tsx` — `<Button>` is a direct child of `<Dialog>` (no `DialogTrigger asChild`), so the Dialog passes it through unwrapped and the button doesn't behave like a flex item the same way.
+- `AdminJobs.tsx` — `<DialogTrigger asChild>` wraps the button but sits inside an extra `<Dialog>` element that participates in the parent flex row.
+- `AdminClients.tsx` — same `<DialogTrigger asChild>` pattern inside an extra `<Dialog>`.
+- `AdminAppointments.tsx` / `AdminInvoices.tsx` — button is wrapped in a plain `<div className="flex gap-2">` or a `<Link>`, which acts as a clean inline-block trigger in the flex row.
 
-## Pages & changes
+## Fix
+Standardize the trigger wrapper across the three offenders so the button is a direct flex child of a `div`, matching the Appointments/Invoices pattern. Keep the existing parent header row (`flex flex-col sm:flex-row sm:items-center justify-between gap-4`) unchanged.
 
-### 1. `src/pages/admin/AdminJobs.tsx`
-- Remove the `overflow-x-auto` wrapper and the `min-w-[520px]` constraint on the `Table`.
-- Wrap the `<Table>` in a `hidden sm:block` container so it only renders on desktop.
-- Add a new mobile list (`sm:hidden`) that maps each job to a `Card`/`<Link>` block showing: title (truncated, wrapping allowed), status + priority badges in a row, staff/client lines, created date — all stacked vertically with `flex flex-col gap-1` and `p-4`.
-- Skeleton state on mobile: render 6 stacked skeleton blocks instead of skeleton table rows.
+### Files to update (frontend only)
 
-### 2. `src/pages/admin/AdminSignupCodes.tsx`
-- Same dual-rendering pattern. Keep desktop table; remove the `overflow-x-auto` + `min-w-[860px]`.
-- Mobile card per code: top row = `code` (mono, truncated) + status badge; second row = role badge + uses (e.g., `2 / 10`); third row = label + expiry; bottom row = action buttons (Switch, Copy, Delete) aligned right.
-- Update loading skeletons to stacked cards on mobile.
-- Update the empty state to render once for both layouts.
+1. **`src/pages/admin/AdminJobs.tsx`** — wrap the `<Dialog>` trigger area so the rendered button sits in a `<div className="flex gap-2">` like Appointments:
+   ```tsx
+   <div className="flex gap-2">
+     <Dialog open={open} onOpenChange={setOpen}>
+       <DialogTrigger asChild>
+         <Button onClick={() => fetchUsers()}>
+           <Plus className="mr-2 h-4 w-4" />New Job
+         </Button>
+       </DialogTrigger>
+       <DialogContent>…</DialogContent>
+     </Dialog>
+   </div>
+   ```
 
-### 3. `src/pages/admin/AdminAccessReview.tsx`
-- Same dual pattern. Desktop table unchanged.
-- Mobile card per user: name + Inactive badge on first line; role + status (Stale/Active) badges on second; "Last sign-in" line; action buttons (Deactivate, Remove role) wrapped to a new row with `flex-wrap`.
-- Stale rows keep the amber background class on the card.
-- Skeleton: 6 stacked skeleton cards.
+2. **`src/pages/admin/AdminInventory.tsx`** — convert the bare `<Button>` to a proper `<DialogTrigger asChild>` and wrap the Dialog in a `<div className="flex gap-2">`:
+   ```tsx
+   <div className="flex gap-2">
+     <Dialog open={open} onOpenChange={setOpen}>
+       <DialogTrigger asChild>
+         <Button><Plus className="mr-2 h-4 w-4" />Add Item</Button>
+       </DialogTrigger>
+       <DialogContent>…</DialogContent>
+     </Dialog>
+   </div>
+   ```
 
-## Out of scope
+3. **`src/pages/admin/AdminClients.tsx`** — wrap the existing Dialog in the same `<div className="flex gap-2">`.
 
-No changes to data fetching, filters, dialogs, or desktop styling. No new components extracted — inline JSX is fine given the limited scope.
+No business logic, no data, no styling token changes — purely presentational wrapping so mobile alignment matches the Appointments/Invoices header pattern.
+
+## Verification
+Drive Playwright at viewport 390×844, restore the admin session, navigate to `/admin/jobs`, `/admin/inventory`, `/admin/clients`, `/admin/appointments`, `/admin/invoices`, and screenshot each header to confirm the trigger button sits in the same position and size across all five.
