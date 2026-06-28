@@ -97,7 +97,7 @@ export default function AdminUserDetail() {
       const resolvedRole = roleData?.role || "";
       setRole(resolvedRole);
 
-      const fetches: Promise<unknown>[] = [
+      const fetches: PromiseLike<unknown>[] = [
         supabase
           .from("appointments")
           .select("id, title, appointment_date, appointment_time, status, type")

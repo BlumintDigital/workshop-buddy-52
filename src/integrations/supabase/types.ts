@@ -191,6 +191,58 @@ export type Database = {
         }
         Relationships: []
       }
+      dismissed_broadcasts: {
+        Row: {
+          broadcast_id: string
+          dismissed_at: string | null
+          user_id: string
+        }
+        Insert: {
+          broadcast_id: string
+          dismissed_at?: string | null
+          user_id: string
+        }
+        Update: {
+          broadcast_id?: string
+          dismissed_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dismissed_broadcasts_broadcast_id_fkey"
+            columns: ["broadcast_id"]
+            isOneToOne: false
+            referencedRelation: "broadcasts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dismissed_notices: {
+        Row: {
+          dismissed_at: string | null
+          notice_id: string
+          user_id: string
+        }
+        Insert: {
+          dismissed_at?: string | null
+          notice_id: string
+          user_id: string
+        }
+        Update: {
+          dismissed_at?: string | null
+          notice_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dismissed_notices_notice_id_fkey"
+            columns: ["notice_id"]
+            isOneToOne: false
+            referencedRelation: "system_notices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       feature_flags: {
         Row: {
           enabled: boolean
@@ -838,6 +890,7 @@ export type Database = {
           id: string
           is_active: boolean
           is_super_admin: boolean
+          last_sign_in_at: string | null
           phone: string | null
           updated_at: string
         }
@@ -851,6 +904,7 @@ export type Database = {
           id: string
           is_active?: boolean
           is_super_admin?: boolean
+          last_sign_in_at?: string | null
           phone?: string | null
           updated_at?: string
         }
@@ -864,6 +918,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           is_super_admin?: boolean
+          last_sign_in_at?: string | null
           phone?: string | null
           updated_at?: string
         }
@@ -909,6 +964,7 @@ export type Database = {
           id: string
           label: string | null
           max_uses: number | null
+          role: Database["public"]["Enums"]["app_role"]
           updated_at: string
           uses_count: number
         }
@@ -921,6 +977,7 @@ export type Database = {
           id?: string
           label?: string | null
           max_uses?: number | null
+          role?: Database["public"]["Enums"]["app_role"]
           updated_at?: string
           uses_count?: number
         }
@@ -933,6 +990,7 @@ export type Database = {
           id?: string
           label?: string | null
           max_uses?: number | null
+          role?: Database["public"]["Enums"]["app_role"]
           updated_at?: string
           uses_count?: number
         }
@@ -991,21 +1049,18 @@ export type Database = {
           id: number
           super_admin_email: string | null
           updated_at: string
-          vapid_private_key: string | null
           vapid_public_key: string | null
         }
         Insert: {
           id?: number
           super_admin_email?: string | null
           updated_at?: string
-          vapid_private_key?: string | null
           vapid_public_key?: string | null
         }
         Update: {
           id?: number
           super_admin_email?: string | null
           updated_at?: string
-          vapid_private_key?: string | null
           vapid_public_key?: string | null
         }
         Relationships: []
@@ -1134,7 +1189,13 @@ export type Database = {
         Returns: boolean
       }
       is_feature_enabled: { Args: { feature_key: string }; Returns: boolean }
-      redeem_signup_code: { Args: { _code: string }; Returns: boolean }
+      redeem_signup_code: {
+        Args: { _code: string }
+        Returns: {
+          role: Database["public"]["Enums"]["app_role"]
+          valid: boolean
+        }[]
+      }
       set_feature_flag: {
         Args: { feature_enabled: boolean; feature_key: string }
         Returns: {

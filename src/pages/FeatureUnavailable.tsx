@@ -13,6 +13,9 @@ const LABELS: Record<FeatureKey, string> = {
   goals: "Goals",
   reports: "Reports",
   job_chat: "Job Chat",
+  backup_restore: "Backup & Restore",
+  generate_sample_data: "Sample data generation",
+  setup_demo_users: "Demo user setup",
 };
 
 export function DisabledFeatureRedirect({ feature }: { feature: FeatureKey }) {
