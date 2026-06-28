@@ -225,8 +225,9 @@ export default function AdminUsers() {
                 <TableRow>
                   <TableHead>Name</TableHead>
                   <TableHead>Role</TableHead>
+                  <TableHead>Invite</TableHead>
                   <TableHead className="hidden md:table-cell">Joined</TableHead>
-                  <TableHead className="w-[100px]">Actions</TableHead>
+                  <TableHead className="w-[120px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -235,13 +236,16 @@ export default function AdminUsers() {
                     <TableRow key={i}>
                       <TableCell><Skeleton className="h-4 w-36" /></TableCell>
                       <TableCell><Skeleton className="h-8 w-[110px] rounded-md" /></TableCell>
+                      <TableCell><Skeleton className="h-5 w-20 rounded-full" /></TableCell>
                       <TableCell className="hidden md:table-cell"><Skeleton className="h-4 w-24" /></TableCell>
                       <TableCell><Skeleton className="h-7 w-7 rounded" /></TableCell>
                     </TableRow>
                   ))
                 ) : filtered.length === 0 ? (
-                  <TableRow><TableCell colSpan={4} className="text-center py-8 text-muted-foreground">No users found</TableCell></TableRow>
-                ) : filtered.map((u) => (
+                  <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">No users found</TableCell></TableRow>
+                ) : filtered.map((u) => {
+                  const status = inviteStatus(u);
+                  return (
                   <TableRow key={u.user_id} className="cursor-pointer" onClick={() => navigate(`/admin/users/${u.user_id}`)}>
                     <TableCell className="font-medium">
                       <span className="text-primary hover:underline">{u.full_name}</span>
@@ -258,9 +262,30 @@ export default function AdminUsers() {
                         </SelectContent>
                       </Select>
                     </TableCell>
+                    <TableCell>
+                      {status === "accepted" ? (
+                        <Badge variant="outline" className="text-xs">Active</Badge>
+                      ) : status === "invited" ? (
+                        <Badge className="bg-amber-100 text-amber-900 hover:bg-amber-100 text-xs">Invite sent</Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-xs text-muted-foreground">—</Badge>
+                      )}
+                    </TableCell>
                     <TableCell className="hidden md:table-cell">{u.created_at ? new Date(u.created_at).toLocaleDateString() : "—"}</TableCell>
                     <TableCell onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center gap-1">
+                        {status !== "accepted" && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            aria-label="Resend invite"
+                            title="Resend invite"
+                            disabled={!!resending[u.user_id]}
+                            onClick={() => handleResend(u.user_id, u.full_name || "user")}
+                          >
+                            <Mail className="h-4 w-4" />
+                          </Button>
+                        )}
                         <Button variant="ghost" size="icon" onClick={() => navigate(`/admin/users/${u.user_id}`)}>
                           <Eye className="h-4 w-4" />
                         </Button>
@@ -288,9 +313,11 @@ export default function AdminUsers() {
                       </div>
                     </TableCell>
                   </TableRow>
-                ))}
+                  );
+                })}
               </TableBody>
             </Table>
+
 
           </CardContent>
         </Card>
