@@ -18,13 +18,31 @@ const SECTION_ACCESS: Record<string, AppRole[]> = {
   "5": ["admin", "manager"],
   "6": ["admin", "staff"],
   "7": ["admin", "client"],
-  // Core Workflows expose end-to-end lifecycles across roles — only admins/managers need the full picture.
-  "8": ["admin", "manager"],
+  "8": ["admin", "manager", "staff", "client"],
   "9": ["admin", "manager", "staff", "client"],
   "10": ["admin", "manager", "staff", "client"],
   "11": ["admin", "manager", "staff", "client"],
   "12": ["admin", "manager", "staff", "client"],
 };
+
+// Inline role tag at end of a heading/paragraph/list-item, e.g. "Foo {roles: admin,manager}"
+const ROLE_TAG_RE = /\s*\{roles:\s*([a-z, ]+)\}\s*$/i;
+
+function parseRoleTag(text: string): { text: string; roles: AppRole[] | null } {
+  const m = text.match(ROLE_TAG_RE);
+  if (!m) return { text, roles: null };
+  const roles = m[1]
+    .split(",")
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean) as AppRole[];
+  return { text: text.replace(ROLE_TAG_RE, "").trim(), roles };
+}
+
+function visibleTo(roles: AppRole[] | null, role: AppRole): boolean {
+  if (!roles) return true;
+  if (role === "admin") return true; // admins see everything
+  return roles.includes(role);
+}
 
 type Block =
   | { type: "h1" | "h2" | "h3"; text: string; id: string }
@@ -63,7 +81,7 @@ function parse(md: string): Block[] {
     }
     if (!line.trim()) { i++; continue; }
     if (line.startsWith("### ")) {
-      const text = line.slice(4); blocks.push({ type: "h3", text, id: slug(text) }); i++; continue;
+      const text = line.slice(4); blocks.push({ type: "h3", text, id: slug(parseRoleTag(text).text) }); i++; continue;
     }
     if (line.startsWith("## ")) {
       const text = line.slice(3); blocks.push({ type: "h2", text, id: slug(text) }); i++; continue;
@@ -103,28 +121,47 @@ function extractSectionNumber(headingText: string): string | null {
   return m ? m[1] : null;
 }
 
-/** Filter blocks to only those visible to the given role. Null role = show all (loading state). */
+/** Filter blocks by role: section (h2), subsection (h3), and per-paragraph/list-item role tags. */
 function filterBlocksByRole(blocks: Block[], role: AppRole | null): Block[] {
-  // While loading (role is null) or if admin, show everything.
-  if (role === null || role === "admin") return blocks;
+  if (role === null) return blocks; // loading
 
   const result: Block[] = [];
-  let currentSectionVisible = true; // blocks before any ## are always shown
+  let sectionVisible = true; // h2 gate
+  let subsectionVisible = true; // h3 gate within visible section
 
   for (const block of blocks) {
     if (block.type === "h2") {
       const num = extractSectionNumber(block.text);
-      if (num === null) {
-        // No section number — show it.
-        currentSectionVisible = true;
-      } else {
-        const allowed = SECTION_ACCESS[num];
-        currentSectionVisible = allowed ? allowed.includes(role) : true;
-      }
-      if (currentSectionVisible) result.push(block);
-    } else if (currentSectionVisible) {
-      result.push(block);
+      const allowed = num ? SECTION_ACCESS[num] : null;
+      sectionVisible = allowed ? allowed.includes(role) : true;
+      subsectionVisible = true;
+      if (sectionVisible) result.push(block);
+      continue;
     }
+    if (!sectionVisible) continue;
+
+    if (block.type === "h3") {
+      const { text, roles } = parseRoleTag(block.text);
+      subsectionVisible = visibleTo(roles, role);
+      if (subsectionVisible) result.push({ ...block, text });
+      continue;
+    }
+    if (!subsectionVisible) continue;
+
+    if (block.type === "p") {
+      const { text, roles } = parseRoleTag(block.text);
+      if (visibleTo(roles, role)) result.push({ ...block, text });
+      continue;
+    }
+    if (block.type === "ul" || block.type === "ol") {
+      const items = block.items
+        .map((it) => parseRoleTag(it))
+        .filter(({ roles }) => visibleTo(roles, role))
+        .map(({ text }) => text);
+      if (items.length) result.push({ ...block, items });
+      continue;
+    }
+    result.push(block);
   }
 
   return result;
