@@ -1,0 +1,1 @@
+UPDATE public.workshop_settings SET currency = 'USD', enabled_currencies = ARRAY['USD','NGN','EUR','GBP']::text[] WHERE id = 1;
