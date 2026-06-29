@@ -15,6 +15,7 @@ import { useFeature } from "@/hooks/useFeatureFlags";
 import { useCurrency } from "@/hooks/useCurrency";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Card, CardContent } from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
@@ -134,8 +135,14 @@ export default function ClientDashboard() {
             <p className="text-sm text-muted-foreground">
               {new Date().toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" })}
             </p>
-            <h1 className="text-display text-4xl leading-tight sm:text-5xl">
-              Welcome, <span className="text-primary">{firstName}</span>
+            <h1 className="mt-1 flex items-center gap-3 text-display text-4xl leading-tight sm:text-5xl">
+              <Avatar className="h-10 w-10 sm:h-14 sm:w-14 ring-2 ring-primary/20 shrink-0">
+                {profile?.avatar_url && <AvatarImage src={profile.avatar_url} alt={firstName} />}
+                <AvatarFallback className="bg-primary/10 text-primary text-base sm:text-xl font-semibold">
+                  {firstName.slice(0, 2).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <span>Welcome, <span className="text-primary">{firstName}</span></span>
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">Your jobs, appointments, and invoices in one place.</p>
           </div>
