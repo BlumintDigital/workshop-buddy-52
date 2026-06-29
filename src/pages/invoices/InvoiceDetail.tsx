@@ -423,6 +423,17 @@ export default function InvoiceDetail() {
           </div>
         )}
 
+        {canManage && invoice.client_marked_paid_at && invoice.status !== "paid" && (
+          <div className="rounded-xl border border-primary/30 bg-tile-butter/40 px-4 py-3 text-sm flex items-center justify-between gap-3 flex-wrap">
+            <span>The client marked this invoice as paid on {new Date(invoice.client_marked_paid_at).toLocaleString()}.</span>
+            <Button size="sm" onClick={() => void markPaymentReceived()} disabled={confirmingPaid}>
+              {confirmingPaid ? "Saving..." : "Confirm payment received"}
+            </Button>
+          </div>
+        )}
+
+
+
 
 
         {/* Invoice meta */}
