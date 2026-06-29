@@ -55,6 +55,24 @@ export default function ClientDashboard() {
     return full.split(/\s+|@/)[0];
   }, [profile, user]);
 
+  // Clients are companies — prefer the company name in the greeting so it reads
+  // "Welcome, Acme Limited" instead of the contact person's first name.
+  const greetingName = useMemo(() => {
+    const company = profile?.company_name?.trim();
+    if (company) return company;
+    return firstName;
+  }, [profile, firstName]);
+
+  const missingContactDetails = useMemo(() => {
+    if (!profile) return [] as string[];
+    const missing: string[] = [];
+    if (!profile.company_name?.trim()) missing.push("company name");
+    if (!profile.phone?.trim()) missing.push("phone number");
+    if (!profile.address?.trim()) missing.push("address");
+    return missing;
+  }, [profile]);
+
+
   useEffect(() => {
     if (!user) return;
     setIsLoading(true);
