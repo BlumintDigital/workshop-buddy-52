@@ -2,7 +2,7 @@
 
 ## Reporting a Vulnerability
 
-Email **security@shoplane.uk** with a description of the issue and steps to reproduce.
+Email **security@example.com** with a description of the issue and steps to reproduce.
 
 **Do not open a public GitHub issue for security vulnerabilities.**
 
@@ -10,7 +10,7 @@ We acknowledge reports within 48 hours and aim to remediate critical issues with
 
 ## Supported Versions
 
-Only the current production deployment at [ieq.shoplane.uk](https://ieq.shoplane.uk) receives security updates.
+Only the current production deployment at [your-domain.example.com](https://your-domain.example.com) receives security updates.
 
 ## Security Posture
 

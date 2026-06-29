@@ -130,7 +130,7 @@ Log in as the admin and go to **Settings** to configure:
 - Contact email, phone, address
 - Currency and default tax rate
 
-The footer is fixed ("Shoplane is powered by Blumint Workspace") — no settings needed.
+The footer is fixed (the configured footer text) — no settings needed.
 
 ---
 

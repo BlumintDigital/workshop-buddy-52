@@ -1,6 +1,6 @@
 # Incident Response Runbook
 
-**Owner:** Platform Security (security@shoplane.uk)
+**Owner:** Platform Security (security@example.com)
 **Review cadence:** Annually, or after any P1/P2 incident
 
 ---
@@ -24,7 +24,7 @@
 | Supabase logs | Edge function errors, database slow queries, auth failures | Supabase Dashboard → Logs |
 | Anomaly detection (Admin UI) | Role escalations, bulk deletes, feature flag changes in last 24–72h | Admin → Activity Logs |
 | `activity_logs` table | All data mutations | Supabase Studio or Admin → Activity Logs |
-| User reports | Bug reports via "Report an Issue" page → delivered to `security@shoplane.uk` | Email inbox |
+| User reports | Bug reports via "Report an Issue" page → delivered to `security@example.com` | Email inbox |
 | Uptime monitoring | Service availability | BetterUptime / UptimeRobot alerts |
 
 ---
@@ -47,7 +47,7 @@
 ### 3. Notify
 - [ ] **P1/P2:** Notify affected users within 72 hours (UK GDPR Article 34 requirement if personal data is involved)
 - [ ] **P1:** Notify the ICO within 72 hours of becoming aware if a personal data breach is likely to affect individuals' rights and freedoms (UK GDPR Article 33)
-- [ ] Internal stakeholders: notify via `security@shoplane.uk` thread
+- [ ] Internal stakeholders: notify via `security@example.com` thread
 
 ICO report portal: https://ico.org.uk/for-organisations/report-a-breach/
 
@@ -68,8 +68,8 @@ ICO report portal: https://ico.org.uk/for-organisations/report-a-breach/
 
 | Role | Contact |
 |------|---------|
-| Security incidents | security@shoplane.uk |
-| Privacy/GDPR | privacy@shoplane.uk |
+| Security incidents | security@example.com |
+| Privacy/GDPR | privacy@example.com |
 | Platform (Supabase) | support.supabase.com |
 | Hosting (Vercel) | vercel.com/support |
 | Email delivery (Resend) | resend.com/support |
