@@ -19,7 +19,7 @@ export function StatCard({ title, value, description, icon: Icon, trend, iconCla
   const trendIsPositive = trend && !trend.startsWith("-");
 
   return (
-    <Card className="group min-w-0 max-w-full overflow-hidden transition-all hover:-translate-y-0.5 hover:card-glow">
+    <Card className="group min-w-0 max-w-full overflow-hidden transition-all hover:-translate-y-0.5 hover:shadow-elevation">
       <CardContent className="p-5 sm:p-6">
         <div className="flex min-w-0 items-start justify-between gap-3">
           <div className="min-w-0 flex-1">

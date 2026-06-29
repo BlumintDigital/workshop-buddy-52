@@ -14,17 +14,18 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ['Geist Variable', 'Geist', 'system-ui', 'sans-serif'],
-        display: ['Instrument Serif', 'Times New Roman', 'serif'],
+        sans: ['Figtree', 'system-ui', 'sans-serif'],
+        display: ['Outfit', 'Figtree', 'system-ui', 'sans-serif'],
       },
       backgroundImage: {
-        'gradient-violet': 'var(--gradient-violet)',
+        'gradient-sage': 'var(--gradient-sage)',
         'gradient-surface': 'var(--gradient-surface)',
         'gradient-hero': 'var(--gradient-hero)',
+        'gradient-soft': 'var(--gradient-soft)',
       },
       boxShadow: {
-        'glow': 'var(--shadow-glow)',
-        'card-elevated': 'var(--shadow-card)',
+        'soft': 'var(--shadow-soft)',
+        'elevation': 'var(--shadow-elevation)',
       },
       colors: {
         border: "hsl(var(--border))",
