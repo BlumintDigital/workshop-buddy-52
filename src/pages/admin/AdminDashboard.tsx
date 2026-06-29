@@ -217,7 +217,7 @@ export default function AdminDashboard() {
     };
 
     Promise.all([run(), fetchRecent()]).finally(() => setIsLoading(false));
-  }, [appointmentsEnabled]);
+  }, [appointmentsEnabled, jobsFilter]);
 
   const maxLoad = Math.max(1, ...staffLoad.map((s) => s.jobs));
   const deltaPositive = stats.revenueDelta >= 0;
