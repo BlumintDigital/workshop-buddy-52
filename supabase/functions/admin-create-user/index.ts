@@ -63,8 +63,8 @@ serve(async (req) => {
       console.error("admin-create-user: role lookup failed", roleLookupError.message);
       return json({ error: "Role lookup failed" }, 500);
     }
-    if (!callerRole || !["admin", "manager"].includes(callerRole.role)) {
-      return json({ error: "Forbidden: admin or manager role required" }, 403);
+    if (!callerRole || callerRole.role !== "admin") {
+      return json({ error: "Forbidden: admin role required" }, 403);
     }
 
     const body = await req.json().catch(() => ({}));
@@ -82,14 +82,6 @@ serve(async (req) => {
     }
     if (!VALID_ROLES.includes(role)) {
       return json({ error: "Invalid role" }, 400);
-    }
-
-    // Privilege guardrail: only admin can create admin or manager
-    if (
-      (role === "admin" || role === "manager") &&
-      callerRole.role !== "admin"
-    ) {
-      return json({ error: `Only admins can create ${role} accounts` }, 403);
     }
 
     // Create the user and send Supabase's invite email so they can set a password.
