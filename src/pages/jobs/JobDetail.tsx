@@ -134,7 +134,7 @@ export default function JobDetail() {
       setActualHoursInput(jobData.actual_hours?.toString() ?? "");
       setUpdates(upd || []);
 
-      const ids = [jobData.assigned_staff_id, jobData.client_id].filter(Boolean);
+      const ids = [jobData.assigned_staff_id, jobData.client_id].filter((v): v is string => !!v);
       if (ids.length) {
         const { data: profiles } = await supabase.from("profiles").select("id, full_name").in("id", ids);
         profiles?.forEach((p) => {
