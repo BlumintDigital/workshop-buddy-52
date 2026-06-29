@@ -510,7 +510,7 @@ export default function AdminSettings() {
     toast.success("Onboarding checklist reset");
   };
 
-  const set = (key: keyof Settings, value: string | boolean) =>
+  const set = (key: keyof Settings, value: string | boolean | string[]) =>
     setSettings(prev => ({ ...prev, [key]: value }));
 
   if (loading) return <DashboardLayout><p className="p-8 text-muted-foreground">Loading...</p></DashboardLayout>;
