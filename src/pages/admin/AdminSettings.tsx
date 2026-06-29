@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/dialog";
 import { getCustomLogoUrl, resolveLogoUrl, useDefaultLogoOnError } from "@/lib/branding";
 import { useAdminOnboarding } from "@/hooks/useAdminOnboarding";
+import { useAuth } from "@/hooks/useAuth";
 
 
 import { CURRENCIES } from "@/lib/currencies";
@@ -53,6 +54,8 @@ type Settings = typeof defaultSettings;
 
 
 export default function AdminSettings() {
+  const { role, loading: authLoading } = useAuth();
+  const isAdmin = role === "admin";
   const goalsEnabled = useFeature("goals");
   const appointmentsEnabled = useFeature("appointments");
   const canGenerateSampleData = useFeature("generate_sample_data");
@@ -165,6 +168,7 @@ export default function AdminSettings() {
   };
 
   const handleSave = async () => {
+    if (!isAdmin) { toast.error("Only administrators can update workshop settings."); return; }
     setSaving(true);
     const { error } = await (supabase.from("workshop_settings") as any).upsert({
       id: 1,
@@ -520,7 +524,20 @@ export default function AdminSettings() {
   const set = (key: keyof Settings, value: string | boolean | string[]) =>
     setSettings(prev => ({ ...prev, [key]: value }));
 
-  if (loading) return <DashboardLayout><p className="p-8 text-muted-foreground">Loading...</p></DashboardLayout>;
+  if (loading || authLoading) return <DashboardLayout><p className="p-8 text-muted-foreground">Loading...</p></DashboardLayout>;
+
+  if (!isAdmin) return (
+    <DashboardLayout>
+      <div className="max-w-2xl">
+        <Alert variant="destructive">
+          <Lock className="h-4 w-4" />
+          <AlertDescription>
+            You don't have permission to view or update workshop settings. Administrator access is required.
+          </AlertDescription>
+        </Alert>
+      </div>
+    </DashboardLayout>
+  );
 
   const customLogoUrl = getCustomLogoUrl(settings.logo_url);
 
