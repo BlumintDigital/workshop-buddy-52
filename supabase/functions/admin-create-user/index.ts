@@ -85,8 +85,13 @@ serve(async (req) => {
     }
 
     // Create the user and send Supabase's invite email so they can set a password.
+    // Prefer PUBLIC_SITE_URL (a stable, public app URL) so the email link doesn't
+    // point at a Lovable preview domain that forces a lovable.dev login.
     const origin = req.headers.get("origin") || req.headers.get("referer")?.replace(/\/$/, "") || "";
-    const redirectTo = origin ? `${origin}/reset-password` : undefined;
+    const publicSite = (Deno.env.get("PUBLIC_SITE_URL") || "").replace(/\/$/, "");
+    const isPreview = /lovableproject\.com|lovable\.app|localhost/i.test(origin);
+    const base = publicSite || (origin && !isPreview ? origin : "") || origin;
+    const redirectTo = base ? `${base}/reset-password` : undefined;
     const { data: newUser, error: createError } =
       await adminClient.auth.admin.inviteUserByEmail(email, {
         data: { full_name, role },

@@ -85,10 +85,13 @@ serve(async (req) => {
     }
     const email = targetUser.user.email;
 
-    // Try invite first; if the user already exists in auth, fall back to a recovery email
-    // so they can set/reset their password and complete onboarding.
+    // Prefer PUBLIC_SITE_URL so links don't go through a Lovable preview domain
+    // (which would force users into lovable.dev login before reaching the app).
     const origin = req.headers.get("origin") || req.headers.get("referer")?.replace(/\/$/, "") || "";
-    const redirectTo = origin ? `${origin}/reset-password` : undefined;
+    const publicSite = (Deno.env.get("PUBLIC_SITE_URL") || "").replace(/\/$/, "");
+    const isPreview = /lovableproject\.com|lovable\.app|localhost/i.test(origin);
+    const base = publicSite || (origin && !isPreview ? origin : "") || origin;
+    const redirectTo = base ? `${base}/reset-password` : undefined;
     const { error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(email, {
       redirectTo,
     });
