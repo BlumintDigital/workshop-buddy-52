@@ -112,7 +112,9 @@ export default function InvoiceDetail() {
       due_date: invoice.due_date || null,
       notes: invoice.notes || null,
       stripe_payment_url: invoice.stripe_payment_url || null,
+      payment_instructions: invoice.payment_instructions || null,
     }).eq("id", invoice.id);
+
 
     if (invError) {
       toast.error(friendlyErrorMessageSync(invError, "Couldn't save invoice changes."));
@@ -282,11 +284,12 @@ export default function InvoiceDetail() {
           <div className="flex items-center gap-2 shrink-0 flex-wrap">
             {isClient ? (
               <Badge variant={clientStatusTone[invoice.status] || "outline"}>
-                {clientFriendlyInvoiceStatus(invoice.status)}
+                {clientFriendlyInvoiceStatus(invoice.status, invoice.client_marked_paid_at)}
               </Badge>
             ) : (
               <Badge variant={statusColors[invoice.status]}>{invoice.status}</Badge>
             )}
+
             <Button variant="outline" size="sm" onClick={handleDownloadPDF} disabled={downloading}>
               <FileDown className="mr-2 h-4 w-4" />{downloading ? "Generating..." : "PDF"}
             </Button>
