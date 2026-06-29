@@ -58,6 +58,15 @@ export function invoiceSentEmailHtml(invoiceNumber: string, total: number, curre
 </div>`;
 }
 
+export function requestApprovedEmailHtml(requestTitle: string, jobLink: string): string {
+  return `<div style="font-family:system-ui,sans-serif;max-width:600px;margin:0 auto;padding:32px 24px;background:#fff">
+  <h2 style="font-size:20px;font-weight:700;margin:0 0 8px">Your request has been approved</h2>
+  <p style="color:#555;margin:0 0 20px">Good news — your request <strong>${requestTitle}</strong> has been approved and we've opened a job to track the work. Click below to follow progress.</p>
+  <a href="${jobLink}" style="display:inline-block;background:#0f172a;color:#fff;padding:10px 22px;border-radius:6px;text-decoration:none;font-weight:500;font-size:14px">View job →</a>
+</div>`;
+}
+
+
 // ── Auth email templates (for Supabase Dashboard → Auth → Email Templates) ──
 // These are static HTML strings with Supabase template variables preserved as
 // literal text (e.g. {{ .ConfirmationURL }}). Supabase substitutes them at send time.
