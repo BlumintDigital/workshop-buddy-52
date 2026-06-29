@@ -87,7 +87,11 @@ serve(async (req) => {
 
     // Try invite first; if the user already exists in auth, fall back to a recovery email
     // so they can set/reset their password and complete onboarding.
-    const { error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(email);
+    const origin = req.headers.get("origin") || req.headers.get("referer")?.replace(/\/$/, "") || "";
+    const redirectTo = origin ? `${origin}/reset-password` : undefined;
+    const { error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(email, {
+      redirectTo,
+    });
     if (inviteError) {
       const msg = inviteError.message || "";
       const alreadyExists =
@@ -106,7 +110,9 @@ serve(async (req) => {
         );
       }
 
-      const { error: recoveryError } = await anonClient.auth.resetPasswordForEmail(email);
+      const { error: recoveryError } = await anonClient.auth.resetPasswordForEmail(email, {
+        redirectTo,
+      });
       if (recoveryError) {
         console.error("admin-resend-invite: resetPasswordForEmail failed", recoveryError.message);
         return json(
