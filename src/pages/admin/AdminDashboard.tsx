@@ -198,11 +198,14 @@ export default function AdminDashboard() {
     };
 
     const fetchRecent = async () => {
-      const { data } = await supabase
+      let q = supabase
         .from("jobs")
         .select("id, title, status, created_at")
         .order("created_at", { ascending: false })
         .limit(5);
+      if (jobsFilter === "active") q = q.not("status", "in", "(completed,cancelled)");
+      if (jobsFilter === "completed") q = q.eq("status", "completed");
+      const { data } = await q;
       setRecentJobs(
         (data || []).map((j: any) => ({
           id: j.id,
