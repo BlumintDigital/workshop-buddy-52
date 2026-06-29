@@ -11,7 +11,7 @@ interface AuthContextType {
   session: Session | null;
   user: User | null;
   role: AppRole | null;
-  profile: { full_name: string | null; avatar_url: string | null } | null;
+  profile: { full_name: string | null; avatar_url: string | null; company_name: string | null; phone: string | null; address: string | null } | null;
   loading: boolean;
   needsMfaVerification: boolean;
   pendingMfaFactorId: string | null;
