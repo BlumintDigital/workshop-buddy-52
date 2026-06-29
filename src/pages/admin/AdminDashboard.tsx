@@ -122,7 +122,7 @@ export default function AdminDashboard() {
         supabase.from("inventory_items").select("quantity, min_stock"),
         supabase
           .from("invoices")
-          .select("total, created_at")
+          .select("base_total, total, status, paid_at, created_at")
           .gte("created_at", since6mo.toISOString()),
         appointmentsEnabled
           ? supabase
@@ -136,7 +136,7 @@ export default function AdminDashboard() {
         supabase.from("jobs").select("*", { count: "exact", head: true }).eq("status", "review"),
         supabase.from("invoices").select("*", { count: "exact", head: true }).eq("status", "overdue"),
         supabase.from("profiles").select("id, full_name").limit(50),
-        supabase.from("jobs").select("assigned_to").not("status", "in", "(completed,cancelled)"),
+        supabase.from("jobs").select("assigned_staff_id").not("status", "in", "(completed,cancelled)"),
       ]);
 
       const buckets: Record<string, number> = {};
