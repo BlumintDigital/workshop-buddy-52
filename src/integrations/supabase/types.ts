@@ -532,6 +532,7 @@ export type Database = {
         Row: {
           base_total: number | null
           client_id: string
+          client_marked_paid_at: string | null
           created_at: string
           currency: string
           due_date: string | null
@@ -541,6 +542,7 @@ export type Database = {
           job_id: string | null
           notes: string | null
           paid_at: string | null
+          payment_instructions: string | null
           status: string
           stripe_payment_url: string | null
           subtotal: number
@@ -552,6 +554,7 @@ export type Database = {
         Insert: {
           base_total?: number | null
           client_id: string
+          client_marked_paid_at?: string | null
           created_at?: string
           currency?: string
           due_date?: string | null
@@ -561,6 +564,7 @@ export type Database = {
           job_id?: string | null
           notes?: string | null
           paid_at?: string | null
+          payment_instructions?: string | null
           status?: string
           stripe_payment_url?: string | null
           subtotal?: number
@@ -572,6 +576,7 @@ export type Database = {
         Update: {
           base_total?: number | null
           client_id?: string
+          client_marked_paid_at?: string | null
           created_at?: string
           currency?: string
           due_date?: string | null
@@ -581,6 +586,7 @@ export type Database = {
           job_id?: string | null
           notes?: string | null
           paid_at?: string | null
+          payment_instructions?: string | null
           status?: string
           stripe_payment_url?: string | null
           subtotal?: number
@@ -1385,6 +1391,10 @@ export type Database = {
       }
       client_decide_quote: {
         Args: { _approve: boolean; _reason?: string; _request_id: string }
+        Returns: string
+      }
+      client_mark_invoice_paid: {
+        Args: { _invoice_id: string }
         Returns: string
       }
       decline_client_request: {

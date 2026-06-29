@@ -112,7 +112,9 @@ export default function InvoiceDetail() {
       due_date: invoice.due_date || null,
       notes: invoice.notes || null,
       stripe_payment_url: invoice.stripe_payment_url || null,
+      payment_instructions: invoice.payment_instructions || null,
     }).eq("id", invoice.id);
+
 
     if (invError) {
       toast.error(friendlyErrorMessageSync(invError, "Couldn't save invoice changes."));
@@ -240,6 +242,50 @@ export default function InvoiceDetail() {
     }
   };
 
+  // Client confirms they have paid out-of-band. Admin/manager still needs to verify.
+  const [markingPaid, setMarkingPaid] = useState(false);
+  const clientMarkPaid = async () => {
+    if (!invoice) return;
+    setMarkingPaid(true);
+    try {
+      const { data, error } = await supabase.rpc("client_mark_invoice_paid", { _invoice_id: invoice.id });
+      if (error) { toast.error(friendlyErrorMessageSync(error, "Couldn't submit your payment notice.")); return; }
+      setInvoice({ ...invoice, client_marked_paid_at: data });
+      toast.success("Thanks — we'll confirm shortly.");
+    } finally {
+      setMarkingPaid(false);
+    }
+  };
+
+  // Admin/manager confirms payment was received → status becomes paid.
+  const [confirmingPaid, setConfirmingPaid] = useState(false);
+  const markPaymentReceived = async () => {
+    if (!invoice) return;
+    setConfirmingPaid(true);
+    try {
+      const paidAt = new Date().toISOString();
+      const { error } = await supabase.from("invoices").update({ status: "paid", paid_at: paidAt }).eq("id", invoice.id);
+      if (error) { toast.error(friendlyErrorMessageSync(error, "Couldn't mark as paid.")); return; }
+      setInvoice({ ...invoice, status: "paid", paid_at: paidAt });
+      toast.success("Marked as paid.");
+      if (invoice.client_id) {
+        sendEmail({
+          to_user_id: invoice.client_id,
+          subject: `Payment received — ${invoice.invoice_number}`,
+          html: invoiceSentEmailHtml(
+            invoice.invoice_number,
+            total,
+            invoice.currency ?? "USD",
+            `${window.location.origin}/invoices/${invoice.id}`,
+          ),
+        }).catch(() => {});
+      }
+    } finally {
+      setConfirmingPaid(false);
+    }
+  };
+
+
 
 
   if (!invoice) return (
@@ -282,11 +328,12 @@ export default function InvoiceDetail() {
           <div className="flex items-center gap-2 shrink-0 flex-wrap">
             {isClient ? (
               <Badge variant={clientStatusTone[invoice.status] || "outline"}>
-                {clientFriendlyInvoiceStatus(invoice.status)}
+                {clientFriendlyInvoiceStatus(invoice.status, invoice.client_marked_paid_at)}
               </Badge>
             ) : (
               <Badge variant={statusColors[invoice.status]}>{invoice.status}</Badge>
             )}
+
             <Button variant="outline" size="sm" onClick={handleDownloadPDF} disabled={downloading}>
               <FileDown className="mr-2 h-4 w-4" />{downloading ? "Generating..." : "PDF"}
             </Button>
@@ -317,6 +364,28 @@ export default function InvoiceDetail() {
                 <Bell className="mr-2 h-4 w-4" />{notifying ? "Sending..." : "Remind client"}
               </Button>
             )}
+
+            {canManage && invoice.status !== "paid" && invoice.status !== "draft" && invoice.status !== "cancelled" && (
+              <Button
+                variant="default"
+                size="sm"
+                disabled={confirmingPaid}
+                onClick={() => void markPaymentReceived()}
+              >
+                {confirmingPaid ? "Saving..." : invoice.client_marked_paid_at ? "Confirm payment received" : "Mark payment received"}
+              </Button>
+            )}
+
+            {isClient && (invoice.status === "sent" || invoice.status === "overdue") && !invoice.client_marked_paid_at && (
+              <Button
+                size="sm"
+                disabled={markingPaid}
+                onClick={() => void clientMarkPaid()}
+              >
+                {markingPaid ? "Submitting..." : "I've paid"}
+              </Button>
+            )}
+
 
             {role === "admin" && (
               <AlertDialog>
@@ -353,6 +422,17 @@ export default function InvoiceDetail() {
             </Link>
           </div>
         )}
+
+        {canManage && invoice.client_marked_paid_at && invoice.status !== "paid" && (
+          <div className="rounded-xl border border-primary/30 bg-tile-butter/40 px-4 py-3 text-sm flex items-center justify-between gap-3 flex-wrap">
+            <span>The client marked this invoice as paid on {new Date(invoice.client_marked_paid_at).toLocaleString()}.</span>
+            <Button size="sm" onClick={() => void markPaymentReceived()} disabled={confirmingPaid}>
+              {confirmingPaid ? "Saving..." : "Confirm payment received"}
+            </Button>
+          </div>
+        )}
+
+
 
 
 
@@ -451,6 +531,33 @@ export default function InvoiceDetail() {
               </div>
             )}
 
+            {/* Payment instructions — used when no payment link is available (e.g. bank transfer) */}
+            {canManage && (
+              <div>
+                <Label className="text-xs text-muted-foreground">Payment Instructions</Label>
+                <Textarea
+                  value={invoice.payment_instructions || ""}
+                  onChange={(e) => setInvoice({ ...invoice, payment_instructions: e.target.value })}
+                  placeholder="e.g. Bank transfer to Acme Ltd, Sort code 12-34-56, Account 12345678. Reference: invoice number."
+                  className="mt-1 min-h-[80px]"
+                />
+                <p className="text-xs text-muted-foreground mt-1">Shown to the client when no payment link is set. Save the invoice to apply changes.</p>
+              </div>
+            )}
+
+            {isClient && !invoice.stripe_payment_url && invoice.payment_instructions && invoice.status !== "paid" && (
+              <div className="rounded-xl border border-primary/30 bg-tile-sage/40 px-4 py-3">
+                <p className="text-xs font-medium text-foreground mb-1">Payment instructions</p>
+                <p className="text-sm whitespace-pre-wrap text-foreground/80">{invoice.payment_instructions}</p>
+              </div>
+            )}
+
+            {isClient && invoice.client_marked_paid_at && invoice.status !== "paid" && (
+              <div className="rounded-xl border border-primary/30 bg-tile-butter/40 px-4 py-3 text-sm">
+                You've let us know you paid on {new Date(invoice.client_marked_paid_at).toLocaleString()}. We'll confirm shortly.
+              </div>
+            )}
+
             {/* Pay Now button for clients */}
             {role === "client" && invoice.stripe_payment_url && invoice.status !== "paid" && (
               <Button asChild className="w-full sm:w-auto">
@@ -459,6 +566,7 @@ export default function InvoiceDetail() {
                 </a>
               </Button>
             )}
+
           </CardContent>
         </Card>
 

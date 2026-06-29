@@ -69,7 +69,7 @@ export default function ClientInvoices() {
                     <TableCell className="font-medium">
                       <Link to={`/invoices/${inv.id}`} className="text-primary hover:underline">{inv.invoice_number}</Link>
                     </TableCell>
-                    <TableCell><Badge variant={clientStatusTone[inv.status] || "outline"}>{clientFriendlyInvoiceStatus(inv.status)}</Badge></TableCell>
+                    <TableCell><Badge variant={clientStatusTone[inv.status] || "outline"}>{clientFriendlyInvoiceStatus(inv.status, inv.client_marked_paid_at)}</Badge></TableCell>
                     <TableCell>{fmt(Number(inv.total), (inv as any).currency)}</TableCell>
                     <TableCell className="hidden sm:table-cell">{inv.due_date || "—"}</TableCell>
                     <TableCell>
