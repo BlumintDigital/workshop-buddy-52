@@ -277,24 +277,38 @@ export default function ClientDashboard() {
             </Card>
 
             {/* Recent jobs full width */}
-            <Card tone="default" className="lg:col-span-12">
-              <CardContent className="p-6">
+            <Card tone="default" className="col-span-2 lg:col-span-12">
+              <CardContent className="p-5 sm:p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Recent</p>
-                    <h3 className="text-display text-2xl">Your jobs</h3>
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground sm:text-xs">Recent</p>
+                    <h3 className="mt-1 text-display text-2xl">Your jobs</h3>
                   </div>
                   <Link to="/client/jobs" className="text-xs text-primary hover:underline">All</Link>
                 </div>
-                <div className="mt-4 space-y-2">
+                <div className="mt-3 inline-flex rounded-full border border-border/70 bg-card/60 p-1 text-[11px]">
+                  {(["active", "completed", "all"] as const).map((f) => (
+                    <button
+                      key={f}
+                      onClick={() => setJobsFilter(f)}
+                      className={cn(
+                        "rounded-full px-2.5 py-1 capitalize transition-colors min-h-[28px]",
+                        jobsFilter === f ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground",
+                      )}
+                    >
+                      {f}
+                    </button>
+                  ))}
+                </div>
+                <div className="mt-3 space-y-1.5">
                   {recentJobs.length === 0 ? (
-                    <p className="py-3 text-sm text-muted-foreground">No jobs yet.</p>
+                    <p className="py-3 text-sm text-muted-foreground">No jobs match this filter.</p>
                   ) : (
                     recentJobs.map((j) => (
                       <Link
                         key={j.id}
                         to={`/client/jobs/${j.id}`}
-                        className="flex items-center justify-between gap-2 rounded-xl px-3 py-2 hover:bg-secondary"
+                        className="flex items-center justify-between gap-2 rounded-xl px-3 py-3 min-h-[48px] hover:bg-secondary"
                       >
                         <div className="min-w-0">
                           <p className="truncate text-sm font-medium">{j.title}</p>
