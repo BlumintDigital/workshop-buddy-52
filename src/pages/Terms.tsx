@@ -117,7 +117,7 @@ export default function Terms() {
             <h2 className="text-xl font-semibold text-foreground mb-3">11. Contact</h2>
             <p>
               Blumint Digital Limited<br />
-              Email: <a href="mailto:legal@shoplane.uk" className="underline text-foreground">legal@shoplane.uk</a>
+              Email: <a href="mailto:legal@blumintdigital.uk" className="underline text-foreground">legal@blumintdigital.uk</a>
             </p>
           </section>
         </div>
