@@ -11,7 +11,7 @@ interface AuthContextType {
   session: Session | null;
   user: User | null;
   role: AppRole | null;
-  profile: { full_name: string | null; avatar_url: string | null } | null;
+  profile: { full_name: string | null; avatar_url: string | null; company_name: string | null; phone: string | null; address: string | null } | null;
   loading: boolean;
   needsMfaVerification: boolean;
   pendingMfaFactorId: string | null;
@@ -33,7 +33,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [role, setRole] = useState<AppRole | null>(null);
-  const [profile, setProfile] = useState<{ full_name: string | null; avatar_url: string | null } | null>(null);
+  const [profile, setProfile] = useState<{ full_name: string | null; avatar_url: string | null; company_name: string | null; phone: string | null; address: string | null } | null>(null);
   const [loading, setLoading] = useState(true);
   const [needsMfaVerification, setNeedsMfaVerification] = useState(false);
   const [pendingMfaFactorId, setPendingMfaFactorId] = useState<string | null>(null);
@@ -140,7 +140,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // would otherwise hide the row.
     const { data } = await supabase.rpc("get_my_basic_profile");
     const row = Array.isArray(data) ? data[0] : data;
-    setProfile(row ? { full_name: row.full_name ?? null, avatar_url: row.avatar_url ?? null } : null);
+    setProfile(row ? { full_name: row.full_name ?? null, avatar_url: row.avatar_url ?? null, company_name: row.company_name ?? null, phone: row.phone ?? null, address: row.address ?? null } : null);
   }, [user]);
 
   const fetchUserData = async (userId: string): Promise<AppRole | null> => {
@@ -158,7 +158,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const nextRole = (roleRes.data as AppRole | null | undefined) ?? null;
     setRole(nextRole);
     const profileRow = Array.isArray(profileRes.data) ? profileRes.data[0] : profileRes.data;
-    setProfile(profileRow ? { full_name: profileRow.full_name ?? null, avatar_url: profileRow.avatar_url ?? null } : null);
+    setProfile(profileRow ? { full_name: profileRow.full_name ?? null, avatar_url: profileRow.avatar_url ?? null, company_name: profileRow.company_name ?? null, phone: profileRow.phone ?? null, address: profileRow.address ?? null } : null);
     setMfaEnabled(!!(mfaRes.data?.totp?.find((f) => f.status === "verified")));
 
     // Mark invite as accepted on first sign-in (one-time)
