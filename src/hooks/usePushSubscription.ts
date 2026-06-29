@@ -56,7 +56,7 @@ export function usePushSubscription(): PushState {
     setLoading(true);
     try {
       const { data: ws } = await supabase
-        .from("workshop_settings")
+        .from("workshop_settings_public" as any)
         .select("vapid_public_key")
         .eq("id", 1)
         .maybeSingle();
