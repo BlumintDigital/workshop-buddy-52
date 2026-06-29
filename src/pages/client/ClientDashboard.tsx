@@ -61,19 +61,13 @@ export default function ClientDashboard() {
     const today = new Date().toISOString().slice(0, 10);
 
     const run = async () => {
-      const [jobsCnt, openJobsCnt, apptsCnt, invsCnt, recent, apptsRes, invRes] = await Promise.all([
+      const [jobsCnt, openJobsCnt, apptsCnt, invsCnt, apptsRes, invRes] = await Promise.all([
         supabase.from("jobs").select("*", { count: "exact", head: true }).eq("client_id", user.id),
         supabase.from("jobs").select("*", { count: "exact", head: true }).eq("client_id", user.id).not("status", "in", "(completed,cancelled)"),
         appointmentsEnabled
           ? supabase.from("appointments").select("*", { count: "exact", head: true }).eq("client_id", user.id)
           : Promise.resolve({ count: 0 } as any),
         supabase.from("invoices").select("*", { count: "exact", head: true }).eq("client_id", user.id),
-        supabase
-          .from("jobs")
-          .select("id, title, status, created_at")
-          .eq("client_id", user.id)
-          .order("created_at", { ascending: false })
-          .limit(5),
         appointmentsEnabled
           ? supabase
               .from("appointments")
@@ -86,7 +80,7 @@ export default function ClientDashboard() {
           : Promise.resolve({ data: [] } as any),
         supabase
           .from("invoices")
-          .select("id, total, currency, status, created_at")
+          .select("id, total, base_total, currency, status, created_at")
           .eq("client_id", user.id)
           .in("status", ["sent", "overdue"])
           .order("created_at", { ascending: false })
@@ -94,7 +88,8 @@ export default function ClientDashboard() {
       ]);
 
       const open = (invRes.data || []) as Invoice[];
-      const balance = open.reduce((sum, i) => sum + (Number(i.total) || 0), 0);
+      // Sum balance in workshop base currency for accuracy across currencies
+      const balance = open.reduce((sum, i) => sum + (Number(i.base_total ?? i.total) || 0), 0);
 
       setStats({
         jobs: jobsCnt.count || 0,
@@ -104,20 +99,32 @@ export default function ClientDashboard() {
         unpaid: open.length,
         balance,
       });
+      setUpcomingAppts((apptsRes.data || []) as Appointment[]);
+      setOpenInvoices(open);
+    };
+
+    const fetchJobs = async () => {
+      let q = supabase
+        .from("jobs")
+        .select("id, title, status, created_at")
+        .eq("client_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(5);
+      if (jobsFilter === "active") q = q.not("status", "in", "(completed,cancelled)");
+      else if (jobsFilter === "completed") q = q.eq("status", "completed");
+      const { data } = await q;
       setRecentJobs(
-        (recent.data || []).map((j: any) => ({
+        (data || []).map((j: any) => ({
           id: j.id,
           title: j.title,
           status: j.status,
           date: new Date(j.created_at).toLocaleDateString(),
         })),
       );
-      setUpcomingAppts((apptsRes.data || []) as Appointment[]);
-      setOpenInvoices(open);
     };
 
-    run().finally(() => setIsLoading(false));
-  }, [user, appointmentsEnabled]);
+    Promise.all([run(), fetchJobs()]).finally(() => setIsLoading(false));
+  }, [user, appointmentsEnabled, jobsFilter]);
 
   return (
     <DashboardLayout>
