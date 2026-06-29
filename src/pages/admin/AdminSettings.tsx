@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/dialog";
 import { getCustomLogoUrl, resolveLogoUrl, useDefaultLogoOnError } from "@/lib/branding";
 import { useAdminOnboarding } from "@/hooks/useAdminOnboarding";
+import { useAuth } from "@/hooks/useAuth";
 
 
 import { CURRENCIES } from "@/lib/currencies";
@@ -53,6 +54,8 @@ type Settings = typeof defaultSettings;
 
 
 export default function AdminSettings() {
+  const { role, loading: authLoading } = useAuth();
+  const isAdmin = role === "admin";
   const goalsEnabled = useFeature("goals");
   const appointmentsEnabled = useFeature("appointments");
   const canGenerateSampleData = useFeature("generate_sample_data");
