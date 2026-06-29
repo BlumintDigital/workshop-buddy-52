@@ -1253,6 +1253,14 @@ export type Database = {
           revenue: number
         }[]
       }
+      get_my_basic_profile: {
+        Args: never
+        Returns: {
+          avatar_url: string
+          full_name: string
+          invite_accepted_at: string
+        }[]
+      }
       get_user_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]

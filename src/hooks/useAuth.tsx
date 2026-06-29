@@ -135,32 +135,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refreshProfile = useCallback(async () => {
     if (!user) return;
-    const { data } = await supabase
-      .from("profiles")
-      .select("full_name, avatar_url")
-      .eq("id", user.id)
-      .maybeSingle();
-    setProfile(data ?? null);
+    // SECURITY DEFINER RPC so admin/manager users can read their own profile
+    // even at AAL1 (pre-MFA), when the restrictive RLS policy on `profiles`
+    // would otherwise hide the row.
+    const { data } = await supabase.rpc("get_my_basic_profile");
+    const row = Array.isArray(data) ? data[0] : data;
+    setProfile(row ? { full_name: row.full_name ?? null, avatar_url: row.avatar_url ?? null } : null);
   }, [user]);
 
   const fetchUserData = async (userId: string): Promise<AppRole | null> => {
     const [roleRes, profileRes, mfaRes] = await Promise.all([
-      // Use SECURITY DEFINER RPC: the restrictive RLS policy on user_roles hides
-      // admin/manager rows until the session reaches aal2, which hasn't happened yet
-      // at this point in the login flow. The RPC bypasses RLS safely.
+      // Use SECURITY DEFINER RPCs: the restrictive RLS policies on `user_roles`
+      // and `profiles` hide admin/manager rows until the session reaches aal2,
+      // which hasn't happened yet at this point in the login flow. The RPCs
+      // bypass RLS safely and only return the caller's own data.
       supabase.rpc("get_user_role", { _user_id: userId }),
-      supabase.from("profiles").select("full_name, avatar_url, invite_accepted_at").eq("id", userId).maybeSingle(),
+      supabase.rpc("get_my_basic_profile"),
       supabase.auth.mfa.listFactors(),
     ]);
 
     if (roleRes.error) throw new Error(`Role fetch failed: ${roleRes.error.message}`);
     const nextRole = (roleRes.data as AppRole | null | undefined) ?? null;
     setRole(nextRole);
-    setProfile(profileRes.data ?? null);
+    const profileRow = Array.isArray(profileRes.data) ? profileRes.data[0] : profileRes.data;
+    setProfile(profileRow ? { full_name: profileRow.full_name ?? null, avatar_url: profileRow.avatar_url ?? null } : null);
     setMfaEnabled(!!(mfaRes.data?.totp?.find((f) => f.status === "verified")));
 
     // Mark invite as accepted on first sign-in (one-time)
-    if (profileRes.data && !(profileRes.data as any).invite_accepted_at) {
+    if (profileRow && !profileRow.invite_accepted_at) {
       supabase
         .from("profiles")
         .update({ invite_accepted_at: new Date().toISOString() } as any)
