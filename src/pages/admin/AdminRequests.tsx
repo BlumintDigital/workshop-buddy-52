@@ -89,7 +89,6 @@ export default function AdminRequests() {
     setProcessing(r.id);
     const { data, error } = await supabase.rpc("accept_client_request", {
       _request_id: r.id,
-      _assigned_staff_id: null,
     });
     setProcessing(null);
     if (error) { toast.error(error.message); return; }
