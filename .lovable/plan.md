@@ -1,53 +1,37 @@
-## Goal
+## Plan
 
-1. Confirm post-login redirects route every role to its own dashboard.
-2. Make sure admin edits to workshop company details (logo, address, phone, email, name) flow into the invoice form and live PDF preview without a page reload.
+1. **Replace broken role upserts**
+   - Remove every `onConflict: "user_id"` write against `user_roles` in the admin user flow.
+   - Use an atomic database function that assigns exactly one role by deleting the old role row(s) and inserting the requested role.
+   - This directly fixes: `there is no unique or exclusion constraint matching the ON CONFLICT specification`.
 
-## 1. Login redirect verification (no code changes)
+2. **Add a safe role-change backend path**
+   - Add a `set_user_role` RPC or Edge Function-backed flow that:
+     - Requires the caller to be an admin.
+     - Allows admin to change another admin to staff/manager/client.
+     - Prevents changing your own role.
+     - Prevents demoting the last remaining admin.
+     - Blocks changes to super-admin accounts.
+   - Update `/admin/users` role dropdowns to call this backend path instead of direct Supabase `upsert`.
 
-`src/hooks/useAuth.tsx` already exports `getRoleDashboardPath`:
+3. **Fix admin-created users becoming “half-created”**
+   - Update `admin-create-user` so after Auth creates the account it assigns the role with the same safe role assignment logic.
+   - If a role/profile step fails after Auth user creation, roll back by deleting the newly-created Auth user so the UI does not show a false success/partial account.
+   - Return clear duplicate-email errors when the user already exists.
 
-- admin → `/admin/dashboard`
-- manager → `/manager/dashboard`
-- staff → `/staff/dashboard`
-- client → `/client/dashboard`
+4. **Allow admin deletion of another admin safely**
+   - Update `admin-delete-user` to remove the blanket “Cannot delete another admin account” block.
+   - Keep protections for:
+     - self-deletion,
+     - super-admin deletion,
+     - deleting the last remaining admin,
+     - users with dependent records that should be deactivated instead.
+   - Update `/admin/users` UI so delete controls are available for admin users where allowed.
 
-`src/pages/Auth.tsx` calls it in all three post-auth paths (already-logged-in redirect, password sign-in, MFA verification). `ProtectedRoute` also redirects mismatched roles to their own dashboard. I will add a short Vitest case asserting `getRoleDashboardPath` returns the right path for each of the four roles + `null`, so any future regression is caught.
-
-## 2. Admin "Workshop company details" propagation
-
-Today `src/pages/admin/AdminSettings.tsx` already edits `workshop_name`, `contact_email`, `phone`, `address`, and `logo_url` on `workshop_settings` (id = 1). The gap is purely propagation: `InvoiceCreate.tsx` fetches workshop details once on mount, and `src/lib/invoicePdf.tsx` re-fetches per PDF export — so an admin saving new details in another tab doesn't refresh the open invoice form/preview.
-
-Changes:
-
-1. **New hook `src/hooks/useWorkshopDetails.ts`**
-   - Fetches `workshop_name, address, phone, contact_email, logo_url, currency` from `workshop_settings` once.
-   - Subscribes to Supabase Realtime on `workshop_settings` (`UPDATE` where `id = 1`) and refetches on change.
-   - Returns `{ workshop, currency, loading }`.
-   - Cleanup removes the channel.
-
-2. **Enable realtime for `workshop_settings`**
-   - Migration: `ALTER PUBLICATION supabase_realtime ADD TABLE public.workshop_settings;` (idempotent guard with `DO $$ ... EXCEPTION WHEN duplicate_object`).
-   - Existing RLS already allows admins/managers/staff to read the row, so realtime payloads respect access.
-
-3. **`src/pages/invoices/InvoiceCreate.tsx`**
-   - Replace the one-shot `supabase.from("workshop_settings")` fetch with `useWorkshopDetails()`.
-   - Pass the live `workshop` into `<InvoicePdfPreview workshop={workshop} />`; the existing 350 ms debounce in the preview already re-renders the PDF when props change.
-
-4. **`src/lib/invoicePdf.tsx`**
-   - `generateInvoicePDF` (used by Download PDF on `InvoiceDetail`) keeps its own fetch, but switch it to the same column list and accept an optional `workshop` override so callers that already have live data can skip the round trip.
-
-5. **`AdminSettings.tsx`**
-   - After a successful save of the General tab, emit a lightweight `toast.success("Company details updated — invoices will refresh")` (purely UX confirmation; the realtime subscription does the actual refresh elsewhere).
-   - No structural redesign of the form; the fields already exist.
-
-## Out of scope
-
-- No changes to customer-facing branding/footers.
-- No changes to PDF layout itself.
-- No new admin permissions or RLS rules.
-
-## Verification
-
-- `getRoleDashboardPath` unit test (4 roles + null).
-- Manual: open Create Invoice in one tab, edit address/phone/logo in `/admin/settings` in another tab, confirm the live preview header updates within ~1 s.
+5. **Verify deployed behavior**
+   - Check recent Edge Function logs for `admin-create-user` and `admin-delete-user`.
+   - Validate these flows after implementation:
+     - create a staff/client/manager/admin user,
+     - change admin → staff,
+     - delete another admin when at least one admin remains,
+     - confirm last-admin and self-delete protections still work.
