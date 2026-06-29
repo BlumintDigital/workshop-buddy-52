@@ -2,7 +2,9 @@ import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
-const SW_PATH = "/push-sw.js";
+// Push notifications now ride on the main Workbox-generated SW at /sw.js.
+// The legacy /push-sw.js worker is shipped as a self-unregistering stub.
+const SW_PATH = "/sw.js";
 
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
@@ -23,9 +25,11 @@ export interface PushState {
 }
 
 async function getOrRegisterWorker(): Promise<ServiceWorkerRegistration> {
+  // Prefer the already-registered Workbox SW. Fall back to ready() to wait
+  // for the VitePWA registration that PwaStatus kicked off at boot.
   const existing = await navigator.serviceWorker.getRegistration(SW_PATH);
   if (existing) return existing;
-  return await navigator.serviceWorker.register(SW_PATH, { scope: "/" });
+  return await navigator.serviceWorker.ready;
 }
 
 export function usePushSubscription(): PushState {
