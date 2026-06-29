@@ -526,7 +526,7 @@ export default function AdminSettings() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6 max-w-2xl">
+      <div className="space-y-6 max-w-6xl">
         <div>
           <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Settings</h2>
           <p className="text-muted-foreground">Workshop configuration</p>
@@ -639,7 +639,7 @@ export default function AdminSettings() {
           </TabsContent>
 
 
-          <TabsContent value="billing" className="mt-4">
+          <TabsContent value="billing" className="mt-4 max-w-2xl">
             <Card>
               <CardHeader>
                 <CardTitle>Billing</CardTitle>
@@ -757,7 +757,7 @@ export default function AdminSettings() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="notifications" className="mt-4">
+          <TabsContent value="notifications" className="mt-4 max-w-2xl">
             <Card>
               <CardHeader>
                 <CardTitle>In-app Notifications</CardTitle>
@@ -789,7 +789,7 @@ export default function AdminSettings() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="branding" className="mt-4 space-y-4">
+          <TabsContent value="branding" className="mt-4 space-y-4 max-w-2xl">
             <Card>
               <CardHeader>
                 <CardTitle>Workshop Logo</CardTitle>
@@ -920,7 +920,7 @@ export default function AdminSettings() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="email" className="mt-4 space-y-4">
+          <TabsContent value="email" className="mt-4 space-y-4 max-w-2xl">
             <Card>
               <CardHeader>
                 <CardTitle>Email Notifications</CardTitle>
@@ -966,7 +966,7 @@ export default function AdminSettings() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="data" className="mt-4 space-y-4">
+          <TabsContent value="data" className="mt-4 space-y-4 max-w-2xl">
             {canSetupDemoUsers && (
             <Card>
               <CardHeader>
