@@ -45,6 +45,7 @@ export default function ClientDashboard() {
 
   const [stats, setStats] = useState({ jobs: 0, openJobs: 0, appointments: 0, invoices: 0, unpaid: 0, balance: 0 });
   const [recentJobs, setRecentJobs] = useState<Job[]>([]);
+  const [jobsFilter, setJobsFilter] = useState<"active" | "completed" | "all">("active");
   const [upcomingAppts, setUpcomingAppts] = useState<Appointment[]>([]);
   const [openInvoices, setOpenInvoices] = useState<Invoice[]>([]);
   const [isLoading, setIsLoading] = useState(true);
