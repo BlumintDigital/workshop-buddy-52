@@ -250,9 +250,15 @@ export default function InvoiceCreate() {
 
         <Card>
           <CardContent className="pt-6 space-y-2">
-            <div className="flex justify-between text-sm"><span>Subtotal</span><span>{fmt(subtotal)}</span></div>
-            <div className="flex justify-between text-sm"><span>Tax ({taxRate}%)</span><span>{fmt(taxAmount)}</span></div>
-            <div className="flex justify-between font-bold text-lg border-t pt-2"><span>Total</span><span>{fmt(total)}</span></div>
+            <div className="flex justify-between text-sm"><span>Subtotal</span><span>{fmt(subtotal, currency)}</span></div>
+            <div className="flex justify-between text-sm"><span>Tax ({taxRate}%)</span><span>{fmt(taxAmount, currency)}</span></div>
+            <div className="flex justify-between font-bold text-lg border-t pt-2"><span>Total</span><span>{fmt(total, currency)}</span></div>
+            {currency !== baseCurrency && (
+              <div className="flex justify-between text-xs text-muted-foreground pt-1">
+                <span>Equivalent in {baseCurrency}</span>
+                <span>{fmt(total * (fxRate > 0 ? fxRate : 1), baseCurrency)}</span>
+              </div>
+            )}
           </CardContent>
         </Card>
 
