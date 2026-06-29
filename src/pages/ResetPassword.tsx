@@ -92,8 +92,12 @@ export default function ResetPassword() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Reset Password</CardTitle>
-            <CardDescription>Enter your new password</CardDescription>
+            <CardTitle>{isInvite ? "Set Your Password" : "Reset Password"}</CardTitle>
+            <CardDescription>
+              {isInvite
+                ? "Welcome! Create a password to activate your account."
+                : "Enter your new password"}
+            </CardDescription>
           </CardHeader>
           <CardContent>
             {!ready ? (
