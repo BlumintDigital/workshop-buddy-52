@@ -19,6 +19,8 @@ import { generateInvoicePDF } from "@/lib/invoicePdf";
 import { sendEmail, invoiceSentEmailHtml } from "@/lib/email";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useCurrency } from "@/hooks/useCurrency";
+import InvoicePdfVersions from "@/components/invoices/InvoicePdfVersions";
+import { useWorkshopDetails } from "@/hooks/useWorkshopDetails";
 
 const statusColors: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
   draft: "outline", sent: "secondary", paid: "default", overdue: "destructive", cancelled: "destructive",
@@ -36,6 +38,7 @@ export default function InvoiceDetail() {
   const { role } = useAuth();
   const navigate = useNavigate();
   const { format: fmt } = useCurrency();
+  const { workshop } = useWorkshopDetails();
 
   const [invoice, setInvoice] = useState<any>(null);
   const [clientName, setClientName] = useState("—");
@@ -455,6 +458,15 @@ export default function InvoiceDetail() {
             {saving ? "Saving..." : "Save Changes"}
           </Button>
         )}
+
+        <InvoicePdfVersions
+          invoice={invoice}
+          clientName={clientName}
+          items={items}
+          workshop={workshop}
+          currency={invoice.currency || "USD"}
+          canGenerate={canManage}
+        />
       </div>
     </DashboardLayout>
   );

@@ -389,6 +389,47 @@ export type Database = {
           },
         ]
       }
+      invoice_pdf_versions: {
+        Row: {
+          file_path: string
+          file_size: number | null
+          generated_at: string
+          generated_by: string | null
+          id: string
+          invoice_id: string
+          status_at_generation: string | null
+          version: number
+        }
+        Insert: {
+          file_path: string
+          file_size?: number | null
+          generated_at?: string
+          generated_by?: string | null
+          id?: string
+          invoice_id: string
+          status_at_generation?: string | null
+          version: number
+        }
+        Update: {
+          file_path?: string
+          file_size?: number | null
+          generated_at?: string
+          generated_by?: string | null
+          id?: string
+          invoice_id?: string
+          status_at_generation?: string | null
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_pdf_versions_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoices: {
         Row: {
           base_total: number | null
