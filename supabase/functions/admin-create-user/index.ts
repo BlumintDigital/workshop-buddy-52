@@ -85,9 +85,12 @@ serve(async (req) => {
     }
 
     // Create the user and send Supabase's invite email so they can set a password.
+    const origin = req.headers.get("origin") || req.headers.get("referer")?.replace(/\/$/, "") || "";
+    const redirectTo = origin ? `${origin}/reset-password` : undefined;
     const { data: newUser, error: createError } =
       await adminClient.auth.admin.inviteUserByEmail(email, {
         data: { full_name, role },
+        redirectTo,
       });
 
     if (createError || !newUser?.user) {
