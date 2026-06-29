@@ -279,26 +279,45 @@ export default function InvoiceDetail() {
               Client: <span className="font-medium text-foreground">{clientName}</span>
             </p>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <Badge variant={statusColors[invoice.status]}>{invoice.status}</Badge>
+          <div className="flex items-center gap-2 shrink-0 flex-wrap">
+            {isClient ? (
+              <Badge variant={clientStatusTone[invoice.status] || "outline"}>
+                {clientFriendlyInvoiceStatus(invoice.status)}
+              </Badge>
+            ) : (
+              <Badge variant={statusColors[invoice.status]}>{invoice.status}</Badge>
+            )}
             <Button variant="outline" size="sm" onClick={handleDownloadPDF} disabled={downloading}>
               <FileDown className="mr-2 h-4 w-4" />{downloading ? "Generating..." : "PDF"}
             </Button>
-            {canManage && invoice.client_id && (
+            {canManage && invoice.client_id && invoice.status !== "paid" && invoice.status !== "cancelled" && (
+              <Button
+                size="sm"
+                disabled={sending || notifying}
+                onClick={() => void sendInvoiceToClient()}
+              >
+                <Send className="mr-2 h-4 w-4" />
+                {sending
+                  ? "Sending..."
+                  : invoice.status === "draft" ? "Send to client" : "Resend to client"}
+              </Button>
+            )}
+            {canManage && invoice.client_id && invoice.status !== "draft" && (
               <Button
                 variant="outline"
                 size="sm"
-                disabled={notifying}
+                disabled={notifying || sending}
                 onClick={() =>
                   void notifyClient(
-                    `Invoice ${invoice.invoice_number}`,
-                    `Status: ${invoice.status} • Total: ${fmt(total, invoice.currency)}`,
+                    `Invoice ${invoice.invoice_number} reminder`,
+                    `Total: ${fmt(total, invoice.currency)} — view and pay online.`,
                   )
                 }
               >
-                <Bell className="mr-2 h-4 w-4" />{notifying ? "Sending..." : "Notify client"}
+                <Bell className="mr-2 h-4 w-4" />{notifying ? "Sending..." : "Remind client"}
               </Button>
             )}
+
             {role === "admin" && (
               <AlertDialog>
                 <AlertDialogTrigger asChild>
