@@ -1083,6 +1083,8 @@ export type Database = {
       workshop_settings: {
         Row: {
           address: string | null
+          brand_accent_hsl: string | null
+          brand_primary_hsl: string | null
           contact_email: string | null
           currency: string | null
           default_tax_rate: number | null
@@ -1104,6 +1106,8 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          brand_accent_hsl?: string | null
+          brand_primary_hsl?: string | null
           contact_email?: string | null
           currency?: string | null
           default_tax_rate?: number | null
@@ -1125,6 +1129,8 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          brand_accent_hsl?: string | null
+          brand_primary_hsl?: string | null
           contact_email?: string | null
           currency?: string | null
           default_tax_rate?: number | null
