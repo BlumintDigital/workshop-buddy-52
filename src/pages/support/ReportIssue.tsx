@@ -110,7 +110,7 @@ export default function ReportIssue() {
 
   return (
     <DashboardLayout>
-      <div className="max-w-lg space-y-6">
+      <div className="max-w-6xl space-y-6">
         <div>
           <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Report an Issue</h2>
           <p className="text-muted-foreground">
@@ -118,72 +118,120 @@ export default function ReportIssue() {
           </p>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <AlertCircle className="h-4 w-4 text-amber-500" />
-              Issue Details
-            </CardTitle>
-            <CardDescription>Describe what happened as clearly as possible.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <Label htmlFor="issue-title">Title *</Label>
-                <Input
-                  id="issue-title"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="e.g. Invoice PDF download not working"
-                  className="mt-1"
-                  required
-                />
-              </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+          <div className="lg:col-span-2 min-w-0">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <AlertCircle className="h-4 w-4 text-amber-500" />
+                  Issue Details
+                </CardTitle>
+                <CardDescription>Describe what happened as clearly as possible.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div>
+                    <Label htmlFor="issue-title">Title *</Label>
+                    <Input
+                      id="issue-title"
+                      value={title}
+                      onChange={(e) => setTitle(e.target.value)}
+                      placeholder="e.g. Invoice PDF download not working"
+                      className="mt-1"
+                      required
+                    />
+                  </div>
 
-              <div>
-                <Label htmlFor="issue-severity">Severity</Label>
-                <Select value={severity} onValueChange={setSeverity}>
-                  <SelectTrigger className="mt-1">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="low">Low — minor inconvenience</SelectItem>
-                    <SelectItem value="medium">Medium — functionality affected</SelectItem>
-                    <SelectItem value="high">High — blocking my work</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+                  <div>
+                    <Label htmlFor="issue-severity">Severity</Label>
+                    <Select value={severity} onValueChange={setSeverity}>
+                      <SelectTrigger className="mt-1">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="low">Low — minor inconvenience</SelectItem>
+                        <SelectItem value="medium">Medium — functionality affected</SelectItem>
+                        <SelectItem value="high">High — blocking my work</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-              <div>
-                <Label htmlFor="issue-description">Description *</Label>
-                <Textarea
-                  id="issue-description"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Describe what you were doing, what you expected to happen, and what actually happened..."
-                  rows={5}
-                  className="mt-1"
-                  required
-                />
-              </div>
+                  <div>
+                    <Label htmlFor="issue-description">Description *</Label>
+                    <Textarea
+                      id="issue-description"
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      placeholder="Describe what you were doing, what you expected to happen, and what actually happened..."
+                      rows={6}
+                      className="mt-1"
+                      required
+                    />
+                  </div>
 
-              <div>
-                <Label htmlFor="issue-page">Page / URL</Label>
-                <Input
-                  id="issue-page"
-                  value={pageUrl}
-                  onChange={(e) => setPageUrl(e.target.value)}
-                  placeholder="Which page were you on?"
-                  className="mt-1"
-                />
-              </div>
+                  <div>
+                    <Label htmlFor="issue-page">Page / URL</Label>
+                    <Input
+                      id="issue-page"
+                      value={pageUrl}
+                      onChange={(e) => setPageUrl(e.target.value)}
+                      placeholder="Which page were you on?"
+                      className="mt-1"
+                    />
+                  </div>
 
-              <Button type="submit" className="w-full" disabled={submitting}>
-                {submitting ? "Submitting…" : "Submit Report"}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
+                  <Button type="submit" className="w-full" disabled={submitting}>
+                    {submitting ? "Submitting…" : "Submit Report"}
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+          </div>
+
+          <aside className="space-y-6 lg:sticky lg:top-6">
+            <Card tone="butter">
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <Lightbulb className="h-5 w-5 text-primary" />
+                  <CardTitle className="text-lg">Write a great report</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm text-muted-foreground">
+                <p>• Include the steps you took before the problem appeared.</p>
+                <p>• Mention what you expected vs. what actually happened.</p>
+                <p>• Note error messages word-for-word if you saw any.</p>
+                <p>• Pick the severity that matches the impact on your work.</p>
+              </CardContent>
+            </Card>
+
+            <Card tone="mist">
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <LifeBuoy className="h-5 w-5 text-primary" />
+                  <CardTitle className="text-lg">What happens next</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm text-muted-foreground">
+                <p>Admins are notified instantly in-app and by email.</p>
+                <p>High-severity reports are triaged first.</p>
+              </CardContent>
+            </Card>
+
+            <Card tone="sky">
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <Clock className="h-5 w-5 text-primary" />
+                  <CardTitle className="text-lg">Response times</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm">
+                <div className="flex justify-between"><span className="text-muted-foreground">High</span><span className="font-medium">Within 1 business day</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Medium</span><span className="font-medium">2–3 business days</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Low</span><span className="font-medium">Next release</span></div>
+              </CardContent>
+            </Card>
+          </aside>
+        </div>
       </div>
     </DashboardLayout>
   );
