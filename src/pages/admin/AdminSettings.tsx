@@ -44,6 +44,8 @@ const defaultSettings = {
   super_admin_email: "",
   login_image_url: "",
   logo_url: "",
+  brand_primary_hsl: "" as string,
+  brand_accent_hsl: "" as string,
 };
 
 type Settings = typeof defaultSettings;
