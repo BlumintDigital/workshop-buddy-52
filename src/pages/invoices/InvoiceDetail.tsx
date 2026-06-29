@@ -307,7 +307,7 @@ export default function InvoiceDetail() {
                       const update: any = { status: v };
                       if (v === "paid") update.paid_at = new Date().toISOString();
                       const { error } = await supabase.from("invoices").update(update).eq("id", invoice.id);
-                      if (error) { toast.error(error.message); return; }
+                      if (error) { toast.error(friendlyErrorMessageSync(error, "Couldn't update invoice status.")); return; }
                       setInvoice({ ...invoice, status: v });
                       toast.success(`Status updated to ${v}`);
                       if (v === "sent" && invoice.client_id) {
