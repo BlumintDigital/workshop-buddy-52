@@ -165,11 +165,38 @@ export default function InvoiceCreate() {
                 <DatePickerInput value={dueDate} onChange={setDueDate} />
               </div>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <Label>Tax Rate (%)</Label>
                 <Input type="number" min={0} step={0.5} value={taxRate} onChange={(e) => setTaxRate(Number(e.target.value))} />
               </div>
+              <div>
+                <Label>Currency</Label>
+                <Select value={currency} onValueChange={setCurrency}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {enabledCurrencies.map((c) => (
+                      <SelectItem key={c} value={c}>{c}{c === baseCurrency ? " (base)" : ""}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {currency !== baseCurrency && (
+                <div>
+                  <Label>Exchange rate to {baseCurrency}</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    step="0.0001"
+                    value={fxRate}
+                    onChange={(e) => setFxRate(Number(e.target.value))}
+                    placeholder="e.g. 1450"
+                  />
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    1 {currency} = {fxRate || 0} {baseCurrency}
+                  </p>
+                </div>
+              )}
             </div>
             <div>
               <Label>Notes</Label>
