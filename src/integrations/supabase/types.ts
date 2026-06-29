@@ -191,6 +191,89 @@ export type Database = {
         }
         Relationships: []
       }
+      client_requests: {
+        Row: {
+          client_id: string
+          converted_job_id: string | null
+          created_at: string
+          decline_reason: string | null
+          description: string | null
+          id: string
+          preferred_date: string | null
+          priority: string
+          quoted_invoice_id: string | null
+          request_type: Database["public"]["Enums"]["client_request_type"]
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: Database["public"]["Enums"]["client_request_status"]
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          converted_job_id?: string | null
+          created_at?: string
+          decline_reason?: string | null
+          description?: string | null
+          id?: string
+          preferred_date?: string | null
+          priority?: string
+          quoted_invoice_id?: string | null
+          request_type: Database["public"]["Enums"]["client_request_type"]
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: Database["public"]["Enums"]["client_request_status"]
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          converted_job_id?: string | null
+          created_at?: string
+          decline_reason?: string | null
+          description?: string | null
+          id?: string
+          preferred_date?: string | null
+          priority?: string
+          quoted_invoice_id?: string | null
+          request_type?: Database["public"]["Enums"]["client_request_type"]
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: Database["public"]["Enums"]["client_request_status"]
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_requests_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_requests_converted_job_id_fkey"
+            columns: ["converted_job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_requests_quoted_invoice_id_fkey"
+            columns: ["quoted_invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_requests_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dismissed_broadcasts: {
         Row: {
           broadcast_id: string
@@ -1224,6 +1307,10 @@ export type Database = {
       }
     }
     Functions: {
+      accept_client_request: {
+        Args: { _assigned_staff_id?: string; _request_id: string }
+        Returns: string
+      }
       admin_set_user_role: {
         Args: {
           _caller_user_id: string
@@ -1231,6 +1318,10 @@ export type Database = {
           _target_user_id: string
         }
         Returns: Database["public"]["Enums"]["app_role"]
+      }
+      decline_client_request: {
+        Args: { _reason: string; _request_id: string }
+        Returns: undefined
       }
       get_job_completion_stats: {
         Args: never
@@ -1299,6 +1390,14 @@ export type Database = {
     Enums: {
       app_role: "admin" | "manager" | "staff" | "client"
       broadcast_severity: "info" | "warning" | "critical"
+      client_request_status:
+        | "pending"
+        | "quoted"
+        | "accepted"
+        | "declined"
+        | "cancelled"
+        | "converted"
+      client_request_type: "quote" | "job"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1428,6 +1527,15 @@ export const Constants = {
     Enums: {
       app_role: ["admin", "manager", "staff", "client"],
       broadcast_severity: ["info", "warning", "critical"],
+      client_request_status: [
+        "pending",
+        "quoted",
+        "accepted",
+        "declined",
+        "cancelled",
+        "converted",
+      ],
+      client_request_type: ["quote", "job"],
     },
   },
 } as const
