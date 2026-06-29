@@ -58,38 +58,14 @@ export default function Privacy() {
 
           <section>
             <h2 className="text-xl font-semibold mb-3">5. Third-party processors</h2>
-            <p className="text-muted-foreground mb-3">
-              We share data with the following sub-processors. Each processes data only as instructed by us:
+            <p className="text-muted-foreground">
+              We use a small number of trusted sub-processors to host the application, store data,
+              and deliver transactional emails. All processors are bound by data-processing
+              agreements and process data only as instructed by us. A current list is available on
+              request.
             </p>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm border-collapse">
-                <thead>
-                  <tr className="border-b">
-                    <th className="text-left py-2 pr-4 font-medium">Processor</th>
-                    <th className="text-left py-2 pr-4 font-medium">Purpose</th>
-                    <th className="text-left py-2 font-medium">Location</th>
-                  </tr>
-                </thead>
-                <tbody className="text-muted-foreground">
-                  <tr className="border-b">
-                    <td className="py-2 pr-4">Supabase</td>
-                    <td className="py-2 pr-4">Database, authentication, and file storage</td>
-                    <td className="py-2">EU (AWS eu-west-2)</td>
-                  </tr>
-                  <tr className="border-b">
-                    <td className="py-2 pr-4">Vercel</td>
-                    <td className="py-2 pr-4">Hosting the web application</td>
-                    <td className="py-2">EU edge network</td>
-                  </tr>
-                  <tr>
-                    <td className="py-2 pr-4">Resend</td>
-                    <td className="py-2 pr-4">Transactional email delivery</td>
-                    <td className="py-2">USA (SCCs in place)</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
           </section>
+
 
           <section>
             <h2 className="text-xl font-semibold mb-3">6. Your rights</h2>
