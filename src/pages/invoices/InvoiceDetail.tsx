@@ -365,6 +365,28 @@ export default function InvoiceDetail() {
               </Button>
             )}
 
+            {canManage && invoice.status !== "paid" && invoice.status !== "draft" && invoice.status !== "cancelled" && (
+              <Button
+                variant="default"
+                size="sm"
+                disabled={confirmingPaid}
+                onClick={() => void markPaymentReceived()}
+              >
+                {confirmingPaid ? "Saving..." : invoice.client_marked_paid_at ? "Confirm payment received" : "Mark payment received"}
+              </Button>
+            )}
+
+            {isClient && (invoice.status === "sent" || invoice.status === "overdue") && !invoice.client_marked_paid_at && (
+              <Button
+                size="sm"
+                disabled={markingPaid}
+                onClick={() => void clientMarkPaid()}
+              >
+                {markingPaid ? "Submitting..." : "I've paid"}
+              </Button>
+            )}
+
+
             {role === "admin" && (
               <AlertDialog>
                 <AlertDialogTrigger asChild>
