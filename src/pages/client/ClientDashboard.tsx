@@ -20,7 +20,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
 type Job = { id: string; title: string; status: string; date: string };
-type Invoice = { id: string; total: number; currency?: string | null; status: string; created_at: string };
+type Invoice = { id: string; total: number; base_total?: number | null; currency?: string | null; status: string; created_at: string };
 type Appointment = { id: string; title: string | null; appointment_date: string; appointment_time: string };
 
 const statusTone: Record<string, string> = {
