@@ -24,23 +24,8 @@ import { getCustomLogoUrl, resolveLogoUrl, useDefaultLogoOnError } from "@/lib/b
 import { useAdminOnboarding } from "@/hooks/useAdminOnboarding";
 
 
-const currencies = [
-  { value: "USD", label: "USD — US Dollar" },
-  { value: "EUR", label: "EUR — Euro" },
-  { value: "GBP", label: "GBP — British Pound" },
-  { value: "CAD", label: "CAD — Canadian Dollar" },
-  { value: "AUD", label: "AUD — Australian Dollar" },
-  { value: "NGN", label: "NGN — Nigerian Naira" },
-  { value: "ZAR", label: "ZAR — South African Rand" },
-  { value: "KES", label: "KES — Kenyan Shilling" },
-  { value: "GHS", label: "GHS — Ghanaian Cedi" },
-  { value: "INR", label: "INR — Indian Rupee" },
-  { value: "JPY", label: "JPY — Japanese Yen" },
-  { value: "CNY", label: "CNY — Chinese Yuan" },
-  { value: "BRL", label: "BRL — Brazilian Real" },
-  { value: "MXN", label: "MXN — Mexican Peso" },
-  { value: "AED", label: "AED — UAE Dirham" },
-];
+import { CURRENCIES } from "@/lib/currencies";
+const currencies = CURRENCIES;
 
 const defaultSettings = {
   workshop_name: "",
