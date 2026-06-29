@@ -35,6 +35,7 @@ const defaultSettings = {
   default_tax_rate: "0",
   monthly_goal: "",
   currency: "USD",
+  enabled_currencies: ["USD"] as string[],
   notify_job_status: true,
   notify_new_appointment: true,
   notify_low_inventory: true,
