@@ -415,9 +415,11 @@ export default function InvoiceDetail() {
                   >
                     <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      {["draft", "sent", "paid", "overdue", "cancelled"].map((s) => (
+                      {/* `draft` and `sent` are controlled by the explicit Send to client button to avoid confusion. */}
+                      {["paid", "overdue", "cancelled"].map((s) => (
                         <SelectItem key={s} value={s}>{s}</SelectItem>
                       ))}
+
                     </SelectContent>
                   </Select>
                 </div>
