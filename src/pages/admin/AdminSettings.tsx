@@ -170,6 +170,9 @@ export default function AdminSettings() {
       default_tax_rate: parseFloat(settings.default_tax_rate) || 0,
       monthly_goal: parseFloat(settings.monthly_goal) || null,
       currency: settings.currency || "USD",
+      enabled_currencies: settings.enabled_currencies?.includes(settings.currency)
+        ? settings.enabled_currencies
+        : [...(settings.enabled_currencies ?? []), settings.currency || "USD"],
       notify_job_status: settings.notify_job_status,
       notify_new_appointment: settings.notify_new_appointment,
       notify_low_inventory: settings.notify_low_inventory,
