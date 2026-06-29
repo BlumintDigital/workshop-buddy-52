@@ -297,14 +297,14 @@ export default function AdminDashboard() {
 
 
             {/* Today's schedule — 4 cols, spans 2 rows */}
-            <Card tone="mist" className="lg:col-span-4 lg:row-span-2">
-              <CardContent className="flex h-full flex-col p-6">
+            <Card tone="mist" className="col-span-2 lg:col-span-4 lg:row-span-2">
+              <CardContent className="flex h-full flex-col p-5 sm:p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Today</p>
-                    <h3 className="text-display text-2xl">Schedule</h3>
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground sm:text-xs">Today</p>
+                    <h3 className="mt-1 text-display text-2xl tracking-tight">Schedule</h3>
                   </div>
-                  <Link to="/admin/appointments" className="text-xs text-primary hover:underline">Open</Link>
+                  <Link to="/admin/appointments" className="text-xs font-medium text-primary hover:underline">Open</Link>
                 </div>
                 <div className="mt-5 flex-1 space-y-2 overflow-auto">
                   {!appointmentsEnabled ? (
@@ -316,12 +316,12 @@ export default function AdminDashboard() {
                     </div>
                   ) : (
                     todayAppts.map((a) => (
-                      <div key={a.id} className="flex items-center justify-between gap-3 rounded-xl bg-card/70 px-3 py-2.5">
+                      <div key={a.id} className="flex items-center justify-between gap-3 rounded-xl bg-card/70 px-3 py-2.5 ring-1 ring-foreground/5">
                         <div className="min-w-0">
                           <p className="truncate text-sm font-medium">{a.title || "Appointment"}</p>
                           <p className="text-xs text-muted-foreground">{(a.appointment_time || "").slice(0, 5)}</p>
                         </div>
-                        <span className="rounded-full bg-tile-sage px-2 py-0.5 text-[11px] text-foreground/80">Today</span>
+                        <span className="rounded-full bg-tile-sage px-2 py-0.5 text-[11px] font-medium text-foreground/80">Today</span>
                       </div>
                     ))
                   )}
@@ -332,55 +332,56 @@ export default function AdminDashboard() {
             {/* Metric tiles row */}
             <Card tone="sage" className="lg:col-span-3">
               <CardContent className="p-5">
-                <div className="flex items-center justify-between text-xs font-medium uppercase tracking-wider text-foreground/70">
+                <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.18em] text-foreground/70 sm:text-xs">
                   Active jobs <Briefcase className="h-4 w-4" />
                 </div>
-                <p className="mt-3 text-display text-4xl tabular-nums">{stats.activeJobs}</p>
-                <Link to="/admin/jobs" className="mt-2 inline-block text-xs text-primary hover:underline">View jobs →</Link>
+                <p className="mt-3 text-display text-[2.25rem] leading-none tabular-nums sm:text-4xl">{stats.activeJobs}</p>
+                <Link to="/admin/jobs" className="mt-2 inline-block text-xs font-medium text-primary hover:underline">View jobs →</Link>
               </CardContent>
             </Card>
 
             <Card tone="butter" className="lg:col-span-3">
               <CardContent className="p-5">
-                <div className="flex items-center justify-between text-xs font-medium uppercase tracking-wider text-foreground/70">
+                <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.18em] text-foreground/70 sm:text-xs">
                   Pending review <Clock className="h-4 w-4" />
                 </div>
-                <p className="mt-3 text-display text-4xl tabular-nums">{stats.pendingApprovals}</p>
-                <Link to="/admin/jobs" className="mt-2 inline-block text-xs text-primary hover:underline">Approve →</Link>
+                <p className="mt-3 text-display text-[2.25rem] leading-none tabular-nums sm:text-4xl">{stats.pendingApprovals}</p>
+                <Link to="/admin/jobs" className="mt-2 inline-block text-xs font-medium text-primary hover:underline">Approve →</Link>
               </CardContent>
             </Card>
 
             <Card tone="blush" className="lg:col-span-2">
               <CardContent className="p-5">
-                <div className="flex items-center justify-between text-xs font-medium uppercase tracking-wider text-foreground/70">
+                <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.18em] text-foreground/70 sm:text-xs">
                   Low stock <AlertTriangle className="h-4 w-4" />
                 </div>
-                <p className="mt-3 text-display text-4xl tabular-nums">{stats.lowStock}</p>
-                <Link to="/admin/inventory" className="mt-2 inline-block text-xs text-primary hover:underline">Inventory →</Link>
+                <p className="mt-3 text-display text-[2.25rem] leading-none tabular-nums sm:text-4xl">{stats.lowStock}</p>
+                <Link to="/admin/inventory" className="mt-2 inline-block text-xs font-medium text-primary hover:underline">Inventory →</Link>
               </CardContent>
             </Card>
 
-            <Card tone="sky" className="lg:col-span-4">
+            <Card tone="sky" className="col-span-2 lg:col-span-4">
               <CardContent className="p-5">
-                <div className="grid grid-cols-3 gap-3">
-                  <Link to="/admin/jobs" className="flex flex-col items-center gap-1 rounded-xl bg-card/70 p-3 text-center hover:bg-card">
+                <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                  <Link to="/admin/jobs" className="flex flex-col items-center gap-1 rounded-xl bg-card/70 p-3 text-center ring-1 ring-foreground/5 transition hover:bg-card hover:ring-foreground/10">
                     <Briefcase className="h-4 w-4 text-primary" />
-                    <span className="text-xs">Jobs</span>
-                    <span className="text-sm font-semibold tabular-nums">{stats.jobs}</span>
+                    <span className="text-xs text-muted-foreground">Jobs</span>
+                    <span className="text-base font-semibold tabular-nums">{stats.jobs}</span>
                   </Link>
-                  <Link to="/admin/invoices" className="flex flex-col items-center gap-1 rounded-xl bg-card/70 p-3 text-center hover:bg-card">
+                  <Link to="/admin/invoices" className="flex flex-col items-center gap-1 rounded-xl bg-card/70 p-3 text-center ring-1 ring-foreground/5 transition hover:bg-card hover:ring-foreground/10">
                     <Receipt className="h-4 w-4 text-primary" />
-                    <span className="text-xs">Invoices</span>
-                    <span className="text-sm font-semibold tabular-nums">{stats.invoices}</span>
+                    <span className="text-xs text-muted-foreground">Invoices</span>
+                    <span className="text-base font-semibold tabular-nums">{stats.invoices}</span>
                   </Link>
-                  <Link to="/admin/users" className="flex flex-col items-center gap-1 rounded-xl bg-card/70 p-3 text-center hover:bg-card">
+                  <Link to="/admin/users" className="flex flex-col items-center gap-1 rounded-xl bg-card/70 p-3 text-center ring-1 ring-foreground/5 transition hover:bg-card hover:ring-foreground/10">
                     <Users className="h-4 w-4 text-primary" />
-                    <span className="text-xs">Users</span>
-                    <span className="text-sm font-semibold tabular-nums">{stats.users}</span>
+                    <span className="text-xs text-muted-foreground">Users</span>
+                    <span className="text-base font-semibold tabular-nums">{stats.users}</span>
                   </Link>
                 </div>
               </CardContent>
             </Card>
+
 
             {/* Staff load — 8 cols */}
             <Card tone="default" className="lg:col-span-8">
