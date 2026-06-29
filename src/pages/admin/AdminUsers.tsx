@@ -35,7 +35,7 @@ export default function AdminUsers() {
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
   const navigate = useNavigate();
-  const { role: callerRole } = useAuth();
+  const { role: callerRole, user: currentUser } = useAuth();
 
   // Create user dialog
   const [createOpen, setCreateOpen] = useState(false);
@@ -92,10 +92,13 @@ export default function AdminUsers() {
   };
 
   const changeRole = async (userId: string, newRole: string) => {
-    const { error } = await supabase
-      .from("user_roles")
-      .upsert({ user_id: userId, role: newRole } as any, { onConflict: "user_id" });
-    if (error) { toast.error(error.message); return; }
+    const { data, error } = await supabase.functions.invoke("admin-set-user-role", {
+      body: { user_id: userId, role: newRole },
+    });
+    if (error || (data as any)?.error) {
+      toast.error((data as any)?.error || error?.message || "Failed to update role");
+      return;
+    }
     setUsers((prev) => prev.map((u) => (u.user_id === userId ? { ...u, role: newRole } : u)));
     toast.success("Role updated");
   };
@@ -289,7 +292,7 @@ export default function AdminUsers() {
                         <Button variant="ghost" size="icon" onClick={() => navigate(`/admin/users/${u.user_id}`)}>
                           <Eye className="h-4 w-4" />
                         </Button>
-                        {u.role !== "admin" && (
+                        {u.user_id !== currentUser?.id && (
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
                               <Button variant="ghost" size="icon" aria-label="Delete user">
@@ -375,7 +378,7 @@ export default function AdminUsers() {
                       <SelectItem value="client">Client</SelectItem>
                     </SelectContent>
                   </Select>
-                  {u.role !== "admin" && (
+                  {u.user_id !== currentUser?.id && (
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
                         <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Delete user">
