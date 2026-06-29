@@ -526,7 +526,7 @@ export default function AdminSettings() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6 max-w-2xl">
+      <div className="space-y-6 max-w-6xl">
         <div>
           <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Settings</h2>
           <p className="text-muted-foreground">Workshop configuration</p>
