@@ -285,13 +285,23 @@ export default function UserProfile() {
     }
   };
 
+  const joinedDate = user?.created_at
+    ? new Date(user.created_at).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })
+    : null;
+  const lastSignIn = (user as any)?.last_sign_in_at
+    ? new Date((user as any).last_sign_in_at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })
+    : null;
+
   return (
     <DashboardLayout>
-      <div className="space-y-6 max-w-lg">
+      <div className="max-w-6xl space-y-6">
         <div>
           <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Profile</h2>
           <p className="text-muted-foreground">Manage your account information</p>
         </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+          <div className="space-y-6 lg:col-span-2 min-w-0">
 
         <Card>
           <CardHeader>
