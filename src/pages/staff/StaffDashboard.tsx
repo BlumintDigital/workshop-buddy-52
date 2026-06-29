@@ -27,10 +27,13 @@ const statusTone: Record<string, string> = {
   cancelled: "bg-muted text-muted-foreground",
 };
 
+type QueueFilter = "active" | "in_progress" | "pending" | "completed";
+
 export default function StaffDashboard() {
   const { user, profile } = useAuth();
   const [stats, setStats] = useState({ assigned: 0, inProgress: 0, pending: 0, completed: 0 });
   const [myJobs, setMyJobs] = useState<Job[]>([]);
+  const [queueFilter, setQueueFilter] = useState<QueueFilter>("active");
   const [todayAppts, setTodayAppts] = useState<Appointment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -46,21 +49,14 @@ export default function StaffDashboard() {
     startToday.setHours(0, 0, 0, 0);
 
     const run = async () => {
-      const [all, ip, pend, done, recent, apptsRes] = await Promise.all([
+      const [all, ip, pend, done, apptsRes] = await Promise.all([
         supabase.from("jobs").select("*", { count: "exact", head: true }).eq("assigned_staff_id", user.id),
         supabase.from("jobs").select("*", { count: "exact", head: true }).eq("assigned_staff_id", user.id).eq("status", "in_progress"),
         supabase.from("jobs").select("*", { count: "exact", head: true }).eq("assigned_staff_id", user.id).eq("status", "pending"),
         supabase.from("jobs").select("*", { count: "exact", head: true }).eq("assigned_staff_id", user.id).eq("status", "completed"),
         supabase
-          .from("jobs")
-          .select("id, title, status, priority, created_at")
-          .eq("assigned_staff_id", user.id)
-          .not("status", "in", "(completed,cancelled)")
-          .order("created_at", { ascending: false })
-          .limit(6),
-        supabase
           .from("appointments")
-          .select("id, title, appointment_date, appointment_time, staff_id")
+          .select("id, title, appointment_date, appointment_time")
           .eq("appointment_date", startToday.toISOString().slice(0, 10))
           .order("appointment_time", { ascending: true })
           .limit(6),
@@ -72,8 +68,23 @@ export default function StaffDashboard() {
         pending: pend.count || 0,
         completed: done.count || 0,
       });
+      setTodayAppts((apptsRes.data || []) as Appointment[]);
+    };
+
+    const fetchQueue = async () => {
+      let q = supabase
+        .from("jobs")
+        .select("id, title, status, priority, created_at")
+        .eq("assigned_staff_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(6);
+      if (queueFilter === "active") q = q.not("status", "in", "(completed,cancelled)");
+      else if (queueFilter === "in_progress") q = q.eq("status", "in_progress");
+      else if (queueFilter === "pending") q = q.eq("status", "pending");
+      else if (queueFilter === "completed") q = q.eq("status", "completed");
+      const { data } = await q;
       setMyJobs(
-        (recent.data || []).map((j: any) => ({
+        (data || []).map((j: any) => ({
           id: j.id,
           title: j.title,
           status: j.status,
@@ -81,21 +92,20 @@ export default function StaffDashboard() {
           date: new Date(j.created_at).toLocaleDateString(),
         })),
       );
-      setTodayAppts(((apptsRes.data || []) as any[]).filter((a) => !a.staff_id || a.staff_id === user.id));
     };
 
-    run().finally(() => setIsLoading(false));
-  }, [user]);
+    Promise.all([run(), fetchQueue()]).finally(() => setIsLoading(false));
+  }, [user, queueFilter]);
 
   return (
     <DashboardLayout>
-      <div className="min-w-0 max-w-full space-y-6">
+      <div className="min-w-0 max-w-full space-y-5 sm:space-y-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div className="min-w-0">
             <p className="text-sm text-muted-foreground">
               {new Date().toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" })}
             </p>
-            <h1 className="text-display text-4xl leading-tight sm:text-5xl">
+            <h1 className="text-display text-[2rem] leading-[1.05] tracking-tight sm:text-5xl">
               Hey, <span className="text-primary">{firstName}</span>
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">Your work for today, in one calm view.</p>
@@ -108,35 +118,49 @@ export default function StaffDashboard() {
         </div>
 
         {isLoading ? (
-          <div className="grid gap-4 lg:grid-cols-12">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-12">
             {Array.from({ length: 6 }).map((_, i) => (
-              <Skeleton key={i} className={cn("h-40 rounded-2xl", i === 0 ? "lg:col-span-8" : i === 1 ? "lg:col-span-4" : "lg:col-span-3")} />
+              <Skeleton key={i} className={cn("h-40 rounded-2xl col-span-2", i === 0 ? "lg:col-span-8" : i === 1 ? "lg:col-span-4" : "lg:col-span-3")} />
             ))}
           </div>
         ) : (
-          <div className="grid gap-4 lg:grid-cols-12">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-12 lg:auto-rows-[minmax(0,auto)]">
             {/* My jobs — hero */}
-            <Card tone="cream" className="lg:col-span-8 lg:row-span-2">
-              <CardContent className="p-6">
-                <div className="flex items-start justify-between">
+            <Card tone="cream" className="col-span-2 lg:col-span-8 lg:row-span-2">
+              <CardContent className="p-5 sm:p-6">
+                <div className="flex items-start justify-between gap-3">
                   <div>
-                    <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">My queue</p>
-                    <h3 className="text-display text-3xl">Active jobs</h3>
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground sm:text-xs">My queue</p>
+                    <h3 className="mt-1 text-display text-2xl sm:text-3xl">Jobs</h3>
                   </div>
-                  <Link to="/staff/jobs" className="text-xs text-primary hover:underline">View all</Link>
+                  <Link to="/staff/jobs" className="text-xs font-medium text-primary hover:underline">All</Link>
                 </div>
-                <div className="mt-5 space-y-2">
+                <div className="mt-3 flex flex-wrap gap-1 rounded-full border border-border/70 bg-card/60 p-1 text-[11px] sm:inline-flex sm:w-auto">
+                  {(["active", "in_progress", "pending", "completed"] as const).map((f) => (
+                    <button
+                      key={f}
+                      onClick={() => setQueueFilter(f)}
+                      className={cn(
+                        "rounded-full px-2.5 py-1 capitalize transition-colors min-h-[28px]",
+                        queueFilter === f ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground",
+                      )}
+                    >
+                      {f.replace("_", " ")}
+                    </button>
+                  ))}
+                </div>
+                <div className="mt-4 space-y-2">
                   {myJobs.length === 0 ? (
                     <div className="flex flex-col items-center gap-2 py-12 text-sm text-muted-foreground">
                       <CheckCircle2 className="h-6 w-6 text-primary" />
-                      Nothing on your plate — enjoy the calm.
+                      Nothing in this view.
                     </div>
                   ) : (
                     myJobs.map((j) => (
                       <Link
                         key={j.id}
                         to={`/staff/jobs/${j.id}`}
-                        className="flex items-center justify-between gap-3 rounded-xl bg-card/70 px-3 py-2.5 hover:bg-card"
+                        className="flex items-center justify-between gap-3 rounded-xl bg-card/70 px-3 py-3 min-h-[52px] hover:bg-card"
                       >
                         <div className="min-w-0">
                           <p className="truncate text-sm font-medium">{j.title}</p>
@@ -160,14 +184,14 @@ export default function StaffDashboard() {
             </Card>
 
             {/* Today's schedule */}
-            <Card tone="mist" className="lg:col-span-4 lg:row-span-2">
-              <CardContent className="flex h-full flex-col p-6">
+            <Card tone="mist" className="col-span-2 lg:col-span-4 lg:row-span-2">
+              <CardContent className="flex h-full flex-col p-5 sm:p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Today</p>
-                    <h3 className="text-display text-2xl">Schedule</h3>
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground sm:text-xs">Today</p>
+                    <h3 className="mt-1 text-display text-2xl">Schedule</h3>
                   </div>
-                  <Link to="/staff/schedule" className="text-xs text-primary hover:underline">Open</Link>
+                  <Link to="/staff/schedule" className="text-xs font-medium text-primary hover:underline">Open</Link>
                 </div>
                 <div className="mt-5 flex-1 space-y-2 overflow-auto">
                   {todayAppts.length === 0 ? (
@@ -177,7 +201,7 @@ export default function StaffDashboard() {
                     </div>
                   ) : (
                     todayAppts.map((a) => (
-                      <div key={a.id} className="flex items-center justify-between gap-3 rounded-xl bg-card/70 px-3 py-2.5">
+                      <div key={a.id} className="flex items-center justify-between gap-3 rounded-xl bg-card/70 px-3 py-3 min-h-[52px]">
                         <div className="min-w-0">
                           <p className="truncate text-sm font-medium">{a.title || "Appointment"}</p>
                           <p className="text-xs text-muted-foreground">{(a.appointment_time || "").slice(0, 5)}</p>
@@ -192,37 +216,37 @@ export default function StaffDashboard() {
 
             <Card tone="sage" className="lg:col-span-3">
               <CardContent className="p-5">
-                <div className="flex items-center justify-between text-xs font-medium uppercase tracking-wider text-foreground/70">
+                <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.18em] text-foreground/70 sm:text-xs">
                   Assigned <Briefcase className="h-4 w-4" />
                 </div>
-                <p className="mt-3 text-display text-4xl tabular-nums">{stats.assigned}</p>
+                <p className="mt-3 text-display text-[2rem] leading-none tabular-nums sm:text-4xl">{stats.assigned}</p>
                 <p className="mt-1 text-xs text-muted-foreground">All your jobs</p>
               </CardContent>
             </Card>
             <Card tone="sky" className="lg:col-span-3">
               <CardContent className="p-5">
-                <div className="flex items-center justify-between text-xs font-medium uppercase tracking-wider text-foreground/70">
+                <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.18em] text-foreground/70 sm:text-xs">
                   In progress <Clock className="h-4 w-4" />
                 </div>
-                <p className="mt-3 text-display text-4xl tabular-nums">{stats.inProgress}</p>
+                <p className="mt-3 text-display text-[2rem] leading-none tabular-nums sm:text-4xl">{stats.inProgress}</p>
                 <p className="mt-1 text-xs text-muted-foreground">Currently working on</p>
               </CardContent>
             </Card>
             <Card tone="butter" className="lg:col-span-3">
               <CardContent className="p-5">
-                <div className="flex items-center justify-between text-xs font-medium uppercase tracking-wider text-foreground/70">
+                <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.18em] text-foreground/70 sm:text-xs">
                   Pending <ListChecks className="h-4 w-4" />
                 </div>
-                <p className="mt-3 text-display text-4xl tabular-nums">{stats.pending}</p>
+                <p className="mt-3 text-display text-[2rem] leading-none tabular-nums sm:text-4xl">{stats.pending}</p>
                 <p className="mt-1 text-xs text-muted-foreground">Waiting to start</p>
               </CardContent>
             </Card>
             <Card tone="blush" className="lg:col-span-3">
               <CardContent className="p-5">
-                <div className="flex items-center justify-between text-xs font-medium uppercase tracking-wider text-foreground/70">
+                <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.18em] text-foreground/70 sm:text-xs">
                   Completed <CheckCircle2 className="h-4 w-4" />
                 </div>
-                <p className="mt-3 text-display text-4xl tabular-nums">{stats.completed}</p>
+                <p className="mt-3 text-display text-[2rem] leading-none tabular-nums sm:text-4xl">{stats.completed}</p>
                 <p className="mt-1 text-xs text-muted-foreground">Great work!</p>
               </CardContent>
             </Card>

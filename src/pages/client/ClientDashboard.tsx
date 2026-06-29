@@ -20,7 +20,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
 type Job = { id: string; title: string; status: string; date: string };
-type Invoice = { id: string; total: number; currency?: string | null; status: string; created_at: string };
+type Invoice = { id: string; total: number; base_total?: number | null; currency?: string | null; status: string; created_at: string };
 type Appointment = { id: string; title: string | null; appointment_date: string; appointment_time: string };
 
 const statusTone: Record<string, string> = {
@@ -45,6 +45,7 @@ export default function ClientDashboard() {
 
   const [stats, setStats] = useState({ jobs: 0, openJobs: 0, appointments: 0, invoices: 0, unpaid: 0, balance: 0 });
   const [recentJobs, setRecentJobs] = useState<Job[]>([]);
+  const [jobsFilter, setJobsFilter] = useState<"active" | "completed" | "all">("active");
   const [upcomingAppts, setUpcomingAppts] = useState<Appointment[]>([]);
   const [openInvoices, setOpenInvoices] = useState<Invoice[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -60,19 +61,13 @@ export default function ClientDashboard() {
     const today = new Date().toISOString().slice(0, 10);
 
     const run = async () => {
-      const [jobsCnt, openJobsCnt, apptsCnt, invsCnt, recent, apptsRes, invRes] = await Promise.all([
+      const [jobsCnt, openJobsCnt, apptsCnt, invsCnt, apptsRes, invRes] = await Promise.all([
         supabase.from("jobs").select("*", { count: "exact", head: true }).eq("client_id", user.id),
         supabase.from("jobs").select("*", { count: "exact", head: true }).eq("client_id", user.id).not("status", "in", "(completed,cancelled)"),
         appointmentsEnabled
           ? supabase.from("appointments").select("*", { count: "exact", head: true }).eq("client_id", user.id)
           : Promise.resolve({ count: 0 } as any),
         supabase.from("invoices").select("*", { count: "exact", head: true }).eq("client_id", user.id),
-        supabase
-          .from("jobs")
-          .select("id, title, status, created_at")
-          .eq("client_id", user.id)
-          .order("created_at", { ascending: false })
-          .limit(5),
         appointmentsEnabled
           ? supabase
               .from("appointments")
@@ -85,7 +80,7 @@ export default function ClientDashboard() {
           : Promise.resolve({ data: [] } as any),
         supabase
           .from("invoices")
-          .select("id, total, currency, status, created_at")
+          .select("id, total, base_total, currency, status, created_at")
           .eq("client_id", user.id)
           .in("status", ["sent", "overdue"])
           .order("created_at", { ascending: false })
@@ -93,7 +88,8 @@ export default function ClientDashboard() {
       ]);
 
       const open = (invRes.data || []) as Invoice[];
-      const balance = open.reduce((sum, i) => sum + (Number(i.total) || 0), 0);
+      // Sum balance in workshop base currency for accuracy across currencies
+      const balance = open.reduce((sum, i) => sum + (Number(i.base_total ?? i.total) || 0), 0);
 
       setStats({
         jobs: jobsCnt.count || 0,
@@ -103,20 +99,32 @@ export default function ClientDashboard() {
         unpaid: open.length,
         balance,
       });
+      setUpcomingAppts((apptsRes.data || []) as Appointment[]);
+      setOpenInvoices(open);
+    };
+
+    const fetchJobs = async () => {
+      let q = supabase
+        .from("jobs")
+        .select("id, title, status, created_at")
+        .eq("client_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(5);
+      if (jobsFilter === "active") q = q.not("status", "in", "(completed,cancelled)");
+      else if (jobsFilter === "completed") q = q.eq("status", "completed");
+      const { data } = await q;
       setRecentJobs(
-        (recent.data || []).map((j: any) => ({
+        (data || []).map((j: any) => ({
           id: j.id,
           title: j.title,
           status: j.status,
           date: new Date(j.created_at).toLocaleDateString(),
         })),
       );
-      setUpcomingAppts((apptsRes.data || []) as Appointment[]);
-      setOpenInvoices(open);
     };
 
-    run().finally(() => setIsLoading(false));
-  }, [user, appointmentsEnabled]);
+    Promise.all([run(), fetchJobs()]).finally(() => setIsLoading(false));
+  }, [user, appointmentsEnabled, jobsFilter]);
 
   return (
     <DashboardLayout>
@@ -141,20 +149,20 @@ export default function ClientDashboard() {
         </div>
 
         {isLoading ? (
-          <div className="grid gap-4 lg:grid-cols-12">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-12">
             {Array.from({ length: 6 }).map((_, i) => (
-              <Skeleton key={i} className={cn("h-40 rounded-2xl", i === 0 ? "lg:col-span-8" : i === 1 ? "lg:col-span-4" : "lg:col-span-4")} />
+              <Skeleton key={i} className={cn("h-40 rounded-2xl col-span-2", i === 0 ? "lg:col-span-8" : i === 1 ? "lg:col-span-4" : "lg:col-span-3")} />
             ))}
           </div>
         ) : (
-          <div className="grid gap-4 lg:grid-cols-12">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-12 lg:auto-rows-[minmax(0,auto)]">
             {/* Balance hero */}
-            <Card tone="cream" className="lg:col-span-8 lg:row-span-2">
-              <CardContent className="flex h-full flex-col gap-6 p-6">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Outstanding balance</p>
-                    <p className="mt-2 text-display text-5xl leading-none tabular-nums sm:text-6xl">
+            <Card tone="cream" className="col-span-2 lg:col-span-8 lg:row-span-2">
+              <CardContent className="flex h-full flex-col gap-6 p-5 sm:p-6">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground sm:text-xs">Outstanding balance</p>
+                    <p className="mt-2 text-display text-[2.25rem] leading-none tabular-nums sm:text-5xl lg:text-6xl break-words">
                       {format(stats.balance)}
                     </p>
                     <p className="mt-2 text-sm text-muted-foreground">
@@ -176,7 +184,7 @@ export default function ClientDashboard() {
                       <Link
                         key={inv.id}
                         to={`/client/invoices/${inv.id}`}
-                        className="flex items-center justify-between gap-3 rounded-xl bg-card/70 px-3 py-2.5 hover:bg-card"
+                        className="flex items-center justify-between gap-3 rounded-xl bg-card/70 px-3 py-3 min-h-[52px] hover:bg-card"
                       >
                         <div className="min-w-0">
                           <p className="truncate text-sm font-medium">Invoice #{inv.id.slice(0, 8)}</p>
@@ -196,7 +204,7 @@ export default function ClientDashboard() {
             </Card>
 
             {/* Upcoming appointments */}
-            <Card tone="mist" className="lg:col-span-4 lg:row-span-2">
+            <Card tone="mist" className="col-span-2 lg:col-span-4 lg:row-span-2">
               <CardContent className="flex h-full flex-col p-6">
                 <div className="flex items-center justify-between">
                   <div>
@@ -231,7 +239,7 @@ export default function ClientDashboard() {
               </CardContent>
             </Card>
 
-            <Card tone="sage" className="lg:col-span-3">
+            <Card tone="sage" className="col-span-1 lg:col-span-3">
               <CardContent className="p-5">
                 <div className="flex items-center justify-between text-xs font-medium uppercase tracking-wider text-foreground/70">
                   Open jobs <Briefcase className="h-4 w-4" />
@@ -240,7 +248,7 @@ export default function ClientDashboard() {
                 <Link to="/client/jobs" className="mt-2 inline-block text-xs text-primary hover:underline">View →</Link>
               </CardContent>
             </Card>
-            <Card tone="sky" className="lg:col-span-3">
+            <Card tone="sky" className="col-span-1 lg:col-span-3">
               <CardContent className="p-5">
                 <div className="flex items-center justify-between text-xs font-medium uppercase tracking-wider text-foreground/70">
                   Total jobs <FileText className="h-4 w-4" />
@@ -249,7 +257,7 @@ export default function ClientDashboard() {
                 <p className="mt-1 text-xs text-muted-foreground">All time</p>
               </CardContent>
             </Card>
-            <Card tone="butter" className="lg:col-span-3">
+            <Card tone="butter" className="col-span-1 lg:col-span-3">
               <CardContent className="p-5">
                 <div className="flex items-center justify-between text-xs font-medium uppercase tracking-wider text-foreground/70">
                   Invoices <Receipt className="h-4 w-4" />
@@ -258,7 +266,7 @@ export default function ClientDashboard() {
                 <Link to="/client/invoices" className="mt-2 inline-block text-xs text-primary hover:underline">View →</Link>
               </CardContent>
             </Card>
-            <Card tone="blush" className="lg:col-span-3">
+            <Card tone="blush" className="col-span-1 lg:col-span-3">
               <CardContent className="p-5">
                 <div className="flex items-center justify-between text-xs font-medium uppercase tracking-wider text-foreground/70">
                   Appointments <Calendar className="h-4 w-4" />
@@ -269,24 +277,38 @@ export default function ClientDashboard() {
             </Card>
 
             {/* Recent jobs full width */}
-            <Card tone="default" className="lg:col-span-12">
-              <CardContent className="p-6">
+            <Card tone="default" className="col-span-2 lg:col-span-12">
+              <CardContent className="p-5 sm:p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Recent</p>
-                    <h3 className="text-display text-2xl">Your jobs</h3>
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground sm:text-xs">Recent</p>
+                    <h3 className="mt-1 text-display text-2xl">Your jobs</h3>
                   </div>
                   <Link to="/client/jobs" className="text-xs text-primary hover:underline">All</Link>
                 </div>
-                <div className="mt-4 space-y-2">
+                <div className="mt-3 inline-flex rounded-full border border-border/70 bg-card/60 p-1 text-[11px]">
+                  {(["active", "completed", "all"] as const).map((f) => (
+                    <button
+                      key={f}
+                      onClick={() => setJobsFilter(f)}
+                      className={cn(
+                        "rounded-full px-2.5 py-1 capitalize transition-colors min-h-[28px]",
+                        jobsFilter === f ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground",
+                      )}
+                    >
+                      {f}
+                    </button>
+                  ))}
+                </div>
+                <div className="mt-3 space-y-1.5">
                   {recentJobs.length === 0 ? (
-                    <p className="py-3 text-sm text-muted-foreground">No jobs yet.</p>
+                    <p className="py-3 text-sm text-muted-foreground">No jobs match this filter.</p>
                   ) : (
                     recentJobs.map((j) => (
                       <Link
                         key={j.id}
                         to={`/client/jobs/${j.id}`}
-                        className="flex items-center justify-between gap-2 rounded-xl px-3 py-2 hover:bg-secondary"
+                        className="flex items-center justify-between gap-2 rounded-xl px-3 py-3 min-h-[48px] hover:bg-secondary"
                       >
                         <div className="min-w-0">
                           <p className="truncate text-sm font-medium">{j.title}</p>

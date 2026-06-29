@@ -75,6 +75,7 @@ export default function AdminDashboard() {
     revenueDelta: 0,
   });
   const [recentJobs, setRecentJobs] = useState<RecentJob[]>([]);
+  const [jobsFilter, setJobsFilter] = useState<"all" | "active" | "completed">("active");
   const [revenueSeries, setRevenueSeries] = useState<{ label: string; value: number }[]>([]);
   const [todayAppts, setTodayAppts] = useState<Appointment[]>([]);
   const [staffLoad, setStaffLoad] = useState<{ name: string; jobs: number }[]>([]);
@@ -122,7 +123,7 @@ export default function AdminDashboard() {
         supabase.from("inventory_items").select("quantity, min_stock"),
         supabase
           .from("invoices")
-          .select("total, created_at")
+          .select("base_total, total, status, paid_at, created_at")
           .gte("created_at", since6mo.toISOString()),
         appointmentsEnabled
           ? supabase
@@ -136,7 +137,7 @@ export default function AdminDashboard() {
         supabase.from("jobs").select("*", { count: "exact", head: true }).eq("status", "review"),
         supabase.from("invoices").select("*", { count: "exact", head: true }).eq("status", "overdue"),
         supabase.from("profiles").select("id, full_name").limit(50),
-        supabase.from("jobs").select("assigned_to").not("status", "in", "(completed,cancelled)"),
+        supabase.from("jobs").select("assigned_staff_id").not("status", "in", "(completed,cancelled)"),
       ]);
 
       const buckets: Record<string, number> = {};
@@ -151,9 +152,12 @@ export default function AdminDashboard() {
         order.push(`${key}|${label}`);
       }
       (revInvoices.data || []).forEach((row: any) => {
-        const d = new Date(row.created_at);
+        const d = new Date(row.paid_at || row.created_at);
         const key = `${d.getFullYear()}-${d.getMonth()}`;
-        if (key in buckets) buckets[key] += Number(row.total) || 0;
+        if (key in buckets) {
+          // Prefer base_total (workshop currency), fall back to total for legacy rows
+          buckets[key] += Number(row.base_total ?? row.total) || 0;
+        }
       });
       const series = order.map((k) => {
         const [key, label] = k.split("|");
@@ -165,7 +169,7 @@ export default function AdminDashboard() {
 
       const loadMap: Record<string, number> = {};
       (staffJobsRes.data || []).forEach((j: any) => {
-        if (j.assigned_to) loadMap[j.assigned_to] = (loadMap[j.assigned_to] || 0) + 1;
+        if (j.assigned_staff_id) loadMap[j.assigned_staff_id] = (loadMap[j.assigned_staff_id] || 0) + 1;
       });
       const nameMap = new Map<string, string>(
         (staffRolesRes.data || []).map((p: any) => [p.id, p.full_name || "Unnamed"]),
@@ -194,11 +198,14 @@ export default function AdminDashboard() {
     };
 
     const fetchRecent = async () => {
-      const { data } = await supabase
+      let q = supabase
         .from("jobs")
         .select("id, title, status, created_at")
         .order("created_at", { ascending: false })
         .limit(5);
+      if (jobsFilter === "active") q = q.not("status", "in", "(completed,cancelled)");
+      if (jobsFilter === "completed") q = q.eq("status", "completed");
+      const { data } = await q;
       setRecentJobs(
         (data || []).map((j: any) => ({
           id: j.id,
@@ -210,7 +217,7 @@ export default function AdminDashboard() {
     };
 
     Promise.all([run(), fetchRecent()]).finally(() => setIsLoading(false));
-  }, [appointmentsEnabled]);
+  }, [appointmentsEnabled, jobsFilter]);
 
   const maxLoad = Math.max(1, ...staffLoad.map((s) => s.jobs));
   const deltaPositive = stats.revenueDelta >= 0;
@@ -426,7 +433,21 @@ export default function AdminDashboard() {
                   </div>
                   <Link to="/admin/jobs" className="text-xs font-medium text-primary hover:underline">All</Link>
                 </div>
-                <div className="mt-4 space-y-1.5">
+                <div className="mt-3 inline-flex rounded-full border border-border/70 bg-card/60 p-1 text-[11px]">
+                  {(["active", "completed", "all"] as const).map((f) => (
+                    <button
+                      key={f}
+                      onClick={() => setJobsFilter(f)}
+                      className={cn(
+                        "rounded-full px-2.5 py-1 capitalize transition-colors min-h-[28px]",
+                        jobsFilter === f ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground",
+                      )}
+                    >
+                      {f}
+                    </button>
+                  ))}
+                </div>
+                <div className="mt-3 space-y-1.5">
                   {recentJobs.length === 0 ? (
                     <p className="py-3 text-sm text-muted-foreground">No jobs yet.</p>
                   ) : (
