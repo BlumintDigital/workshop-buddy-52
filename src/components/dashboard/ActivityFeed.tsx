@@ -17,9 +17,9 @@ type LogEntry = {
 };
 
 const actionColors: Record<string, string> = {
-  created: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400",
-  updated: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
-  deleted: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
+  created: "bg-accent/15 text-accent border-accent/30",
+  updated: "bg-primary/15 text-primary border-primary/30",
+  deleted: "bg-destructive/15 text-destructive border-destructive/30",
 };
 
 const tableLabels: Record<string, string> = {

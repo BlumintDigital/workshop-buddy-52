@@ -11,30 +11,35 @@ interface StatCardProps {
   iconClassName?: string;
 }
 
+/**
+ * Legacy StatCard — kept for callers that haven't migrated to MetricCard.
+ * Restyled to match the 2026 dark/violet system.
+ */
 export function StatCard({ title, value, description, icon: Icon, trend, iconClassName }: StatCardProps) {
   const trendIsPositive = trend && !trend.startsWith("-");
 
   return (
-    <Card className="min-w-0 max-w-full overflow-hidden border-0 shadow-[0_1px_2px_hsl(222_47%_11%/0.04),0_4px_12px_hsl(222_47%_11%/0.07),0_0_0_1px_hsl(var(--border))]">
-      <CardContent className="p-4 sm:p-6">
+    <Card className="group min-w-0 max-w-full overflow-hidden transition-all hover:-translate-y-0.5 hover:card-glow">
+      <CardContent className="p-5 sm:p-6">
         <div className="flex min-w-0 items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
-            <p className="break-words text-sm font-medium text-muted-foreground">{title}</p>
-            <p className="mt-2 break-words text-2xl font-bold tracking-tight tabular-nums sm:text-3xl">{value}</p>
+            <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{title}</p>
+            <p className="mt-3 text-display text-4xl leading-none tracking-tight tabular-nums sm:text-5xl">{value}</p>
             {trend && (
-              <p className={cn("mt-1 text-xs font-medium", trendIsPositive ? "text-emerald-600 dark:text-emerald-400" : "text-red-500")}>
-                {trendIsPositive ? "↑" : "↓"} {trend}
+              <p className={cn("mt-2 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium tabular-nums",
+                trendIsPositive ? "border-accent/30 bg-accent/10 text-accent" : "border-destructive/30 bg-destructive/10 text-destructive")}>
+                {trendIsPositive ? "↑" : "↓"} {trend.replace(/^-/, "")}
               </p>
             )}
             {description && !trend && (
-              <p className="mt-1 text-xs text-muted-foreground">{description}</p>
+              <p className="mt-2 text-xs text-muted-foreground">{description}</p>
             )}
           </div>
           <div className={cn(
-            "shrink-0 rounded-xl p-2.5 sm:p-3",
-            iconClassName ?? "bg-gradient-to-br from-slate-600 to-slate-800"
+            "shrink-0 rounded-xl border border-primary/30 bg-primary/10 p-2.5 text-primary",
+            iconClassName,
           )}>
-            <Icon className="h-5 w-5 text-white sm:h-6 sm:w-6" />
+            <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
           </div>
         </div>
       </CardContent>
