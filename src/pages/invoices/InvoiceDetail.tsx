@@ -178,7 +178,7 @@ export default function InvoiceDetail() {
         toast.error("Notification could not be delivered.");
       }
     } catch (e: any) {
-      toast.error(e?.message || "Failed to send push notification.");
+      toast.error(await friendlyErrorMessage(e, "Couldn't send the push notification. Please try again shortly."));
     } finally {
       setNotifying(false);
     }
