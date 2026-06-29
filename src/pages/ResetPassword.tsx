@@ -117,6 +117,11 @@ export default function ResetPassword() {
       setResolvedRole(role);
       setSuccess(true);
       toast.success("Password updated successfully");
+      // Auto-redirect to role-specific dashboard
+      const target = getRoleDashboardPath(role);
+      if (target && target !== "/auth") {
+        window.setTimeout(() => navigate(target, { replace: true }), 1500);
+      }
     } catch (err: any) {
       toast.error(err.message || "Failed to update password");
     } finally {
