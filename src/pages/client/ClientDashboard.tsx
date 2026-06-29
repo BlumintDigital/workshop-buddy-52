@@ -18,6 +18,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import NotificationsPanel from "@/components/client/NotificationsPanel";
 
 type Job = { id: string; title: string; status: string; date: string };
 type Invoice = { id: string; total: number; base_total?: number | null; currency?: string | null; status: string; created_at: string };
