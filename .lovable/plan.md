@@ -1,25 +1,39 @@
-## Goal
-Split the full-width "Live Activity Feed" tile on the Admin Dashboard into a two-column row, with the feed on the left and a new "Pending Actions" panel on the right.
+## 1. Verify USD base aggregation
+Audit existing dashboards and confirm/normalize that all aggregated values use `base_total` (workshop base currency) and surface the base currency code from `useCurrency()`.
 
-## Changes
+Findings from audit:
+- `AdminDashboard` revenue + sparkline: uses `base_total ?? total`. ✓
+- `ManagerDashboard` overdue amount: uses `base_total ?? total`. ✓
+- `ClientDashboard` outstanding balance: uses `base_total ?? total`. ✓
+- `StaffDashboard`: no revenue/totals rendered. ✓
+- `get_monthly_revenue()` RPC already sums `base_total`. ✓
 
-### 1. `src/pages/admin/AdminDashboard.tsx`
-- Wrap the existing `ActivityFeed` in a 2-column grid (`grid grid-cols-1 lg:grid-cols-2 gap-4`) so it stacks on mobile and sits side-by-side on desktop.
-- Drop in a new `<PendingActions />` component as the second column.
+Fixes to apply:
+- `ClientDashboard` per-invoice line currently formats `inv.total` with `inv.currency` — keep as-is (per-invoice native currency is correct), but add a small "(≈ {base})" hint when the invoice currency differs from the workshop base, using `base_total`.
+- Add a one-line caption under every aggregate tile that shows "in USD" (or the active base) so users know totals are in base currency, not the displayed-invoice currency.
 
-### 2. New `src/components/dashboard/PendingActions.tsx`
-A pastel `Card` matching the feed's tone, titled "Pending actions" with subtitle "Items that need your attention." Fetches counts in parallel and renders a list of clickable rows. Each row: icon, label, count badge, chevron — navigates to the relevant admin page.
+## 2. Standardize currency display
+Update `src/lib/currencies.ts` `formatMoney` to:
+- Use `currencyDisplay: "code"` (renders "USD 1,234.56" instead of "$1,234.56") so ISO code is always visible.
+- For zero-decimal currencies (JPY), use `minimumFractionDigits: 0`; all others fixed at 2 decimals.
+- Keep `Intl.NumberFormat` for thousands separators; fallback string also uses 2 decimals.
 
-Rows (hidden when count is 0, plus an empty state if all clear):
-- Jobs awaiting review — `jobs` where `status = 'pending_review'` → `/admin/jobs?status=pending_review`
-- Overdue invoices — `invoices` where `status != 'paid'` and `due_date < now()` → `/admin/invoices?filter=overdue`
-- Low stock items — `inventory_items` where `quantity <= reorder_level` → `/admin/inventory?filter=low`
-- Pending user invites — `profiles` where `invited_at is not null and invite_accepted_at is null` → `/admin/users?filter=pending`
-- Open bug reports — `bug_reports` where `status = 'open'` → `/admin/bug-reports` (only if route exists; otherwise omit)
+Touch points reusing `format()` from `useCurrency` automatically inherit the change: AdminDashboard, ManagerDashboard, ClientDashboard, InvoiceDetail, InvoiceCreate, AdminInvoices, ClientInvoices, invoicePdf. No per-file edits needed beyond the lib change.
 
-Use `Promise.all` with head-count queries (`{ count: 'exact', head: true }`). Refresh on window focus + 60s polling, mirroring `ActivityFeed`. Loading skeleton while counts resolve.
+## 3. Brand color customization (feasibility: light lift)
+Not heavy — the app already drives theme via HSL CSS variables in `src/index.css`. Add a small branding-color picker and inject overrides at runtime.
 
-### Out of scope
-- No backend/RLS changes (existing admin policies already permit these reads).
-- No changes to manager/staff/client dashboards.
-- No new routes or filters wired beyond passing query params already supported.
+Implementation:
+- Migration: add columns to `workshop_settings`:
+  - `brand_primary_hsl text` (e.g. "110 14% 54%")
+  - `brand_accent_hsl text` (optional second color)
+- `src/lib/branding.ts`: add `applyBrandColors({ primary, accent })` that sets CSS vars on `document.documentElement` for `--primary`, `--sidebar-primary`, `--ring`, and `--accent` (derived shades computed by adjusting L by ±10%).
+- New `BrandColorProvider` mounted in `App.tsx` that loads `workshop_settings` once + subscribes to realtime changes and calls `applyBrandColors`.
+- `AdminSettings.tsx` → Branding tab: add a `<ColorPicker>` (hex input + 6 preset swatches: Sage default, Indigo, Rose, Amber, Teal, Slate). Convert hex → HSL on save. Live-preview by calling `applyBrandColors` on change before persisting.
+- Reset button restores defaults (clears columns → falls back to CSS-defined values).
+
+Scope guardrails:
+- Only `--primary` and `--accent` families are overridden. Background, foreground, card, and destructive tokens stay fixed to preserve contrast and legibility.
+- Dark mode uses the same hue/saturation with adjusted lightness.
+
+Estimated effort: ~1 short build (one migration, one provider, one settings UI block, ~150 LOC total).
