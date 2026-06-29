@@ -14,7 +14,17 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ['Geist', 'system-ui', 'sans-serif'],
+        sans: ['Geist Variable', 'Geist', 'system-ui', 'sans-serif'],
+        display: ['Instrument Serif', 'Times New Roman', 'serif'],
+      },
+      backgroundImage: {
+        'gradient-violet': 'var(--gradient-violet)',
+        'gradient-surface': 'var(--gradient-surface)',
+        'gradient-hero': 'var(--gradient-hero)',
+      },
+      boxShadow: {
+        'glow': 'var(--shadow-glow)',
+        'card-elevated': 'var(--shadow-card)',
       },
       colors: {
         border: "hsl(var(--border))",
