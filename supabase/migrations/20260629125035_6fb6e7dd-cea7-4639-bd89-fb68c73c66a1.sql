@@ -1,0 +1,1 @@
+UPDATE public.system_notices SET expires_at = now() WHERE id = 'efd35cbd-c94a-4e41-98ae-ed6732f572e5';
