@@ -110,6 +110,23 @@ export default function AdminRequests() {
     return () => { supabase.removeChannel(channel); };
   }, []);
 
+  // Focus a specific request when arriving via ?focus=<id> (e.g. from JobDetail).
+  useEffect(() => {
+    if (!focusId || loading || requests.length === 0) return;
+    const el = cardRefs.current[focusId];
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    setHighlightId(focusId);
+    const t = setTimeout(() => {
+      setHighlightId(null);
+      // Drop the query param so a refresh doesn't keep re-highlighting.
+      searchParams.delete("focus");
+      setSearchParams(searchParams, { replace: true });
+    }, 2200);
+    return () => clearTimeout(t);
+  }, [focusId, loading, requests.length]);
+
+
   const accept = async (r: Req) => {
     setProcessing(r.id);
     const { data, error } = await supabase.rpc("accept_client_request", {
