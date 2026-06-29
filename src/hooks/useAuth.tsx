@@ -145,13 +145,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const fetchUserData = async (userId: string): Promise<AppRole | null> => {
     const [roleRes, profileRes, mfaRes] = await Promise.all([
-      supabase.from("user_roles").select("role").eq("user_id", userId).maybeSingle(),
+      // Use SECURITY DEFINER RPC: the restrictive RLS policy on user_roles hides
+      // admin/manager rows until the session reaches aal2, which hasn't happened yet
+      // at this point in the login flow. The RPC bypasses RLS safely.
+      supabase.rpc("get_user_role", { _user_id: userId }),
       supabase.from("profiles").select("full_name, avatar_url, invite_accepted_at").eq("id", userId).maybeSingle(),
       supabase.auth.mfa.listFactors(),
     ]);
 
     if (roleRes.error) throw new Error(`Role fetch failed: ${roleRes.error.message}`);
-    const nextRole = (roleRes.data?.role as AppRole | undefined) ?? null;
+    const nextRole = (roleRes.data as AppRole | null | undefined) ?? null;
     setRole(nextRole);
     setProfile(profileRes.data ?? null);
     setMfaEnabled(!!(mfaRes.data?.totp?.find((f) => f.status === "verified")));
