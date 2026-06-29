@@ -728,11 +728,12 @@ export default function JobDetail() {
         {job.source_request_id && (role === "admin" || role === "manager") && (
           <div className="rounded-md border border-primary/20 bg-tile-sage/40 px-4 py-2 text-sm flex items-center justify-between gap-3 flex-wrap">
             <span className="text-foreground/80">This job was created from an approved client request.</span>
-            <Link to="/admin/requests" className="text-primary font-medium hover:underline">
+            <Link to={`/admin/requests?focus=${job.source_request_id}`} className="text-primary font-medium hover:underline">
               View request →
             </Link>
           </div>
         )}
+
 
 
 
