@@ -1,5 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { captureEdgeError } from "../_shared/sentry.ts";
+
 
 const allowedOrigins = (Deno.env.get("ALLOWED_ORIGINS") ?? "*")
   .split(",")
@@ -139,6 +141,7 @@ serve(async (req) => {
 
     return json({ success: true, user_id: newUser.user.id });
   } catch (err) {
+    await captureEdgeError(err, "admin-create-user");
     return json({ error: (err as Error).message }, 500);
   }
 });

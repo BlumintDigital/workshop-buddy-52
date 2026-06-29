@@ -58,3 +58,22 @@ jobs:
           VITE_SUPABASE_URL: https://example.supabase.co
           VITE_SUPABASE_PUBLISHABLE_KEY: ci-build-placeholder
           VITE_SUPABASE_PROJECT_ID: ci-build
+
+  rls-tests:
+    name: RLS (pgTAP)
+    runs-on: ubuntu-latest
+    # Non-blocking until the suite is fully fleshed out; flips to required
+    # in Sprint 3 once every user-facing table has coverage.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Start Supabase
+        run: supabase start
+      - name: Apply migrations
+        run: supabase db reset --no-seed
+      - name: Run database tests
+        run: supabase test db
+

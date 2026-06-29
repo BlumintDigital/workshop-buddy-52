@@ -134,7 +134,7 @@ export default function JobDetail() {
       setActualHoursInput(jobData.actual_hours?.toString() ?? "");
       setUpdates(upd || []);
 
-      const ids = [jobData.assigned_staff_id, jobData.client_id].filter(Boolean);
+      const ids = [jobData.assigned_staff_id, jobData.client_id].filter((v): v is string => !!v);
       if (ids.length) {
         const { data: profiles } = await supabase.from("profiles").select("id, full_name").in("id", ids);
         profiles?.forEach((p) => {
@@ -176,7 +176,7 @@ export default function JobDetail() {
   };
 
   const fetchTasks = async () => {
-    const { data } = await supabase.from("job_tasks").select("*").eq("job_id", id).order("created_at");
+    const { data } = await supabase.from("job_tasks").select("*").eq("job_id", id as string).order("created_at");
     if (!data) return;
     const assigneeIds = [...new Set(data.filter(t => t.assigned_to).map(t => t.assigned_to as string))];
     let nameMap: Record<string, string> = {};

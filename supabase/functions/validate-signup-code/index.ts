@@ -1,4 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { captureEdgeError } from "../_shared/sentry.ts";
+
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -37,6 +39,7 @@ Deno.serve(async (req) => {
     if (!row?.valid) return json({ valid: false });
     return json({ valid: true, role: row.role });
   } catch (e) {
+    await captureEdgeError(e, "validate-signup-code");
     return json({ valid: false, error: (e as Error).message }, 500);
   }
 });

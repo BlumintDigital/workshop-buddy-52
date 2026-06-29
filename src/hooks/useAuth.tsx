@@ -11,7 +11,7 @@ interface AuthContextType {
   session: Session | null;
   user: User | null;
   role: AppRole | null;
-  profile: { full_name: string; avatar_url: string | null } | null;
+  profile: { full_name: string | null; avatar_url: string | null } | null;
   loading: boolean;
   needsMfaVerification: boolean;
   pendingMfaFactorId: string | null;
@@ -33,7 +33,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [role, setRole] = useState<AppRole | null>(null);
-  const [profile, setProfile] = useState<{ full_name: string; avatar_url: string | null } | null>(null);
+  const [profile, setProfile] = useState<{ full_name: string | null; avatar_url: string | null } | null>(null);
   const [loading, setLoading] = useState(true);
   const [needsMfaVerification, setNeedsMfaVerification] = useState(false);
   const [pendingMfaFactorId, setPendingMfaFactorId] = useState<string | null>(null);

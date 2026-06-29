@@ -144,7 +144,7 @@ export default function Auth() {
       const result = await signIn(loginEmail, loginPassword);
       if (result.needsMfa) {
         setLocalMfaStep(true);
-        setMfaFactorId(result.factorId);
+        setMfaFactorId(result.factorId ?? null);
         setPendingRole(result.role);
         toast.info("Please enter your 2FA code");
       } else if (result.role) {

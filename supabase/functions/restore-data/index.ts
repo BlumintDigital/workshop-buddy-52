@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders, sha256Hex } from "../_shared/mfa-cors.ts";
 import { checkRateLimit } from "../_shared/rate-limit.ts";
+import { captureEdgeError } from "../_shared/sentry.ts";
 
 // Delete order is reverse of insert order (children before parents).
 // Intentionally excludes profiles/user_roles/auth.users — the calling admin
@@ -218,6 +219,7 @@ serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
+    await captureEdgeError(err, "restore-data");
     return new Response(JSON.stringify({ error: (err as Error).message }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },

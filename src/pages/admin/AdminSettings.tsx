@@ -282,6 +282,7 @@ export default function AdminSettings() {
 
     const profileMap: Record<string, string> = {}; // full_name -> id
     for (const profile of demoProfiles || []) {
+      if (!profile.full_name) continue;
       const role = DEMO_ROLE_MAP[profile.full_name];
       if (role) {
         await supabase.from("user_roles").update({ role } as any).eq("user_id", profile.id);

@@ -55,7 +55,7 @@ function DotGrid({ width, height }: { width: number; height: number }) {
   const spacing = 60;
   const cols = Math.ceil(width / spacing);
   const rows = Math.ceil(height / spacing);
-  const dots = [];
+  const dots: JSX.Element[] = [];
   for (let r = 0; r <= rows; r++) {
     for (let c = 0; c <= cols; c++) {
       const x = c * spacing;
