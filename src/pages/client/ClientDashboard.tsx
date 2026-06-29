@@ -41,8 +41,19 @@ const invoiceTone: Record<string, string> = {
 
 export default function ClientDashboard() {
   const appointmentsEnabled = useFeature("appointments");
-  const { user, profile } = useAuth();
+  const { user, profile, refreshProfile } = useAuth();
   const { format } = useCurrency();
+
+  // Ensure the "Finish setting up your profile" banner reflects the latest
+  // saved contact details — refresh on mount and whenever the tab regains
+  // focus (e.g. user returns from /profile after saving).
+  useEffect(() => {
+    refreshProfile();
+    const onFocus = () => refreshProfile();
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [refreshProfile]);
+
 
   const [stats, setStats] = useState({ jobs: 0, openJobs: 0, appointments: 0, invoices: 0, unpaid: 0, balance: 0 });
   const [recentJobs, setRecentJobs] = useState<Job[]>([]);
