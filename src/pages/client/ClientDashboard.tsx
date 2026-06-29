@@ -318,6 +318,9 @@ export default function ClientDashboard() {
               </CardContent>
             </Card>
 
+            {/* Notifications panel */}
+            <NotificationsPanel />
+
             {/* Recent jobs full width */}
             <Card tone="default" className="col-span-2 lg:col-span-12">
               <CardContent className="p-5 sm:p-6">
