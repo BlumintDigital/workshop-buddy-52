@@ -152,6 +152,17 @@ export default function JobDetail() {
     if (role === "admin" || role === "manager") fetchJobLogs();
   }, [id]);
 
+  // Mark any unread notifications that link to this job as read
+  useEffect(() => {
+    if (!id || !user?.id) return;
+    void supabase
+      .from("notifications")
+      .update({ read: true })
+      .eq("user_id", user.id)
+      .eq("read", false)
+      .eq("link", `/jobs/${id}`);
+  }, [id, user?.id]);
+
   // Real-time job status updates
   useEffect(() => {
     if (!id) return;
