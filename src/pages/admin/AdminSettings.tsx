@@ -196,7 +196,7 @@ export default function AdminSettings() {
     });
     setSaving(false);
     if (adminErr) { toast.error(adminErr.message); return; }
-    toast.success("Settings saved");
+    toast.success("Settings saved — invoices and PDFs will refresh");
   };
 
   const handleUploadLoginImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
