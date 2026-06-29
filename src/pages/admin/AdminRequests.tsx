@@ -29,6 +29,10 @@ type Req = {
   status: string;
   decline_reason: string | null;
   converted_job_id: string | null;
+  quoted_total: number | null;
+  quoted_currency: string | null;
+  quote_expires_at: string | null;
+  client_decision_at: string | null;
   created_at: string;
 };
 
@@ -37,21 +41,34 @@ type ClientInfo = { full_name: string | null; company_name: string | null };
 const statusTone: Record<string, string> = {
   pending: "bg-tile-butter text-foreground/80",
   quoted: "bg-tile-sky text-foreground/80",
+  approved: "bg-tile-sage text-foreground/80",
+  declined_by_client: "bg-tile-blush text-foreground/80",
   converted: "bg-tile-sage text-foreground/80",
-  accepted: "bg-tile-sage text-foreground/80",
   declined: "bg-tile-blush text-foreground/80",
   cancelled: "bg-muted text-muted-foreground",
 };
 
+const statusLabel: Record<string, string> = {
+  pending: "Pending review",
+  quoted: "Quote sent — awaiting client",
+  approved: "Client approved",
+  declined_by_client: "Client declined quote",
+  converted: "Converted to job",
+  declined: "Declined",
+  cancelled: "Cancelled",
+};
+
 export default function AdminRequests() {
   const navigate = useNavigate();
+  const { format: fmt } = useCurrency();
   const [requests, setRequests] = useState<Req[]>([]);
   const [clients, setClients] = useState<Record<string, ClientInfo>>({});
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<"pending" | "quoted" | "all">("pending");
+  const [tab, setTab] = useState<"pending" | "quoted" | "approved" | "all">("pending");
   const [declineFor, setDeclineFor] = useState<Req | null>(null);
   const [declineReason, setDeclineReason] = useState("");
   const [processing, setProcessing] = useState<string | null>(null);
+  const [quoteFor, setQuoteFor] = useState<Req | null>(null);
 
   const fetchRequests = async () => {
     setLoading(true);
