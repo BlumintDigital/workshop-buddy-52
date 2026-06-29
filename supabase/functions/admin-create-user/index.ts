@@ -103,7 +103,7 @@ serve(async (req) => {
     if (createError || !newUser?.user) {
       console.error("admin-create-user: createUser failed", createError?.message);
       return json(
-        { error: createError?.message ?? "Failed to create user" },
+        { error: friendlyCreateError(createError?.message) },
         400,
       );
     }
