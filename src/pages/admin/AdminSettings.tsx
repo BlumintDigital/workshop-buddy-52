@@ -99,6 +99,9 @@ export default function AdminSettings() {
           default_tax_rate: data.default_tax_rate?.toString() ?? "0",
           monthly_goal: (data as any).monthly_goal?.toString() ?? "",
           currency: data.currency ?? "USD",
+          enabled_currencies: Array.isArray((data as any).enabled_currencies) && (data as any).enabled_currencies.length > 0
+            ? (data as any).enabled_currencies
+            : [data.currency ?? "USD"],
           notify_job_status: data.notify_job_status ?? true,
           notify_new_appointment: data.notify_new_appointment ?? true,
           notify_low_inventory: data.notify_low_inventory ?? true,
