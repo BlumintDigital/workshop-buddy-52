@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
-import { User, ShieldCheck, ShieldOff, Copy, Loader2, KeyRound, RefreshCw, Upload, BadgeCheck, CalendarDays, Mail, Smartphone, Lightbulb } from "lucide-react";
+import { User, ShieldCheck, ShieldOff, Copy, Loader2, KeyRound, RefreshCw, Upload, BadgeCheck, CalendarDays, Mail, Smartphone, Lightbulb, Lock, Eye, EyeOff } from "lucide-react";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import BackupCodesDialog from "@/components/mfa/BackupCodesDialog";
 import {
