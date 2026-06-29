@@ -1279,6 +1279,13 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      set_user_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _target_user_id: string
+        }
+        Returns: Database["public"]["Enums"]["app_role"]
+      }
     }
     Enums: {
       app_role: "admin" | "manager" | "staff" | "client"
