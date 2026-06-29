@@ -110,6 +110,25 @@ serve(async (req) => {
 
     const newUserId = newUser.user.id;
 
+    const { error: initialProfileError } = await adminClient
+      .from("profiles")
+      .upsert({
+        id: newUserId,
+        full_name,
+        is_active: true,
+        updated_at: new Date().toISOString(),
+      });
+    if (initialProfileError) {
+      console.error("admin-create-user: profile setup failed", initialProfileError.message);
+      await adminClient.auth.admin.deleteUser(newUserId).catch((cleanupError) => {
+        console.error("admin-create-user: cleanup failed", cleanupError.message);
+      });
+      return json(
+        { error: `User creation was rolled back because profile setup failed: ${initialProfileError.message}` },
+        500,
+      );
+    }
+
     // Assign exactly one role without relying on a non-existent UNIQUE(user_id) constraint.
     const { error: roleError } = await adminClient.rpc("admin_set_user_role", {
       _caller_user_id: callerId,
