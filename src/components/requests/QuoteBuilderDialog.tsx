@@ -68,8 +68,8 @@ export default function QuoteBuilderDialog({ open, onOpenChange, requestId, requ
     const { error } = await supabase.rpc("submit_quote", {
       _request_id: requestId,
       _currency: currency,
-      _notes: notes || null,
-      _expires_at: expires ? new Date(expires).toISOString() : null,
+      _notes: notes || (null as any),
+      _expires_at: expires ? new Date(expires).toISOString() : (null as any),
       _items: clean as any,
     });
     setSubmitting(false);
