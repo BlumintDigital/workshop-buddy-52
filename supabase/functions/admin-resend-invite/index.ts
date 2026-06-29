@@ -85,16 +85,38 @@ serve(async (req) => {
     }
     const email = targetUser.user.email;
 
+    // Try invite first; if the user already exists in auth, fall back to a recovery email
+    // so they can set/reset their password and complete onboarding.
     const { error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(email);
     if (inviteError) {
-      console.error("admin-resend-invite: inviteUserByEmail failed", inviteError.message);
-      return json(
-        {
-          error: `Invite email was not sent: ${inviteError.message}`,
-          hint: "Check Supabase Auth email settings, SMTP/provider delivery logs, and whether this user has already accepted an invite.",
-        },
-        502,
-      );
+      const msg = inviteError.message || "";
+      const alreadyExists =
+        /already.*registered/i.test(msg) ||
+        /already exists/i.test(msg) ||
+        (inviteError as { code?: string }).code === "email_exists";
+
+      if (!alreadyExists) {
+        console.error("admin-resend-invite: inviteUserByEmail failed", msg);
+        return json(
+          {
+            error: `Invite email was not sent: ${msg}`,
+            hint: "Check Supabase Auth email settings, SMTP/provider delivery logs, and whether this user has already accepted an invite.",
+          },
+          502,
+        );
+      }
+
+      const { error: recoveryError } = await anonClient.auth.resetPasswordForEmail(email);
+      if (recoveryError) {
+        console.error("admin-resend-invite: resetPasswordForEmail failed", recoveryError.message);
+        return json(
+          {
+            error: `Invite email was not sent: ${recoveryError.message}`,
+            hint: "Check Supabase Auth email settings and SMTP/provider delivery logs.",
+          },
+          502,
+        );
+      }
     }
 
     await adminClient
