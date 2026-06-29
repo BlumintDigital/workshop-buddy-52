@@ -138,9 +138,28 @@ export default function AdminRequests() {
     setProcessing(null);
     if (error) { toast.error(error.message); return; }
     toast.success("Request accepted and job created");
+
+    // Notify the client (in-app + email). Fire-and-forget — helpers swallow errors.
+    if (data && r.client_id) {
+      const jobLink = `${window.location.origin}/jobs/${data}`;
+      const kind = r.request_type === "quote" ? "quote" : "job";
+      void sendNotification({
+        user_id: r.client_id,
+        title: "Your request was approved",
+        message: `Your ${kind} request "${r.title}" is now an active job.`,
+        link: `/jobs/${data}`,
+      });
+      void sendEmail({
+        to_user_id: r.client_id,
+        subject: `Your request "${r.title}" has been approved`,
+        html: requestApprovedEmailHtml(r.title, jobLink),
+      });
+    }
+
     if (data) navigate(`/jobs/${data}`);
     else fetchRequests();
   };
+
 
   const decline = async () => {
     if (!declineFor) return;
