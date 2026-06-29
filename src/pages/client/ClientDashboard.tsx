@@ -147,11 +147,11 @@ export default function ClientDashboard() {
             <p className="mt-1 text-sm text-muted-foreground">Your jobs, appointments, and invoices in one place.</p>
           </div>
           <div className="flex flex-wrap gap-2">
+            <Button asChild variant="glow" size="sm"><Link to="/client/requests"><FileText className="h-4 w-4" />Request quote or job</Link></Button>
             {appointmentsEnabled && (
-              <Button asChild variant="glow" size="sm"><Link to="/client/appointments"><CalendarPlus className="h-4 w-4" />Book appointment</Link></Button>
+              <Button asChild variant="soft" size="sm"><Link to="/client/appointments"><CalendarPlus className="h-4 w-4" />Book appointment</Link></Button>
             )}
             <Button asChild variant="soft" size="sm"><Link to="/client/invoices"><Receipt className="h-4 w-4" />Invoices</Link></Button>
-            <Button asChild variant="soft" size="sm"><Link to="/client/messages"><MessageSquare className="h-4 w-4" />Messages</Link></Button>
           </div>
         </div>
 

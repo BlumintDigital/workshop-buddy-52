@@ -106,6 +106,10 @@ export default function ClientAppointments() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
+        <div className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-foreground/80">
+          Appointments are for consultations, drop-offs, or site visits. To request a quote or have work done, use{" "}
+          <Link to="/client/requests" className="font-medium text-primary hover:underline">My Requests</Link>.
+        </div>
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-3xl font-bold tracking-tight">Appointments</h2>
