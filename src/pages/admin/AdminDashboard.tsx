@@ -75,7 +75,7 @@ export default function AdminDashboard() {
     revenueDelta: 0,
   });
   const [recentJobs, setRecentJobs] = useState<RecentJob[]>([]);
-  const [jobsFilter, setJobsFilter] = useState<"all" | "active" | "completed">("active");
+  
   const [revenueSeries, setRevenueSeries] = useState<{ label: string; value: number }[]>([]);
   const [todayAppts, setTodayAppts] = useState<Appointment[]>([]);
   const [staffLoad, setStaffLoad] = useState<{ name: string; jobs: number }[]>([]);
