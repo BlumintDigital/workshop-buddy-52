@@ -34,7 +34,7 @@ export function MetricCard({
   return (
     <Card
       className={cn(
-        "group min-w-0 max-w-full overflow-hidden transition-all hover:-translate-y-0.5 hover:card-glow",
+        "group min-w-0 max-w-full overflow-hidden transition-all hover:-translate-y-0.5 hover:shadow-elevation",
         onClick && "cursor-pointer",
       )}
       onClick={onClick}

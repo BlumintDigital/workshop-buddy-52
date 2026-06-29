@@ -299,7 +299,7 @@ export default function AdminDashboard() {
                       </div>
                       <div className="h-2 overflow-hidden rounded-full bg-muted">
                         <div
-                          className="h-full rounded-full bg-gradient-violet"
+                          className="h-full rounded-full bg-gradient-sage"
                           style={{ width: `${(s.jobs / maxLoad) * 100}%` }}
                         />
                       </div>

@@ -20,7 +20,7 @@ const toneMap: Record<NonNullable<TickerItem["tone"]>, string> = {
 
 export function LiveTickerStrip({ items }: { items: TickerItem[] }) {
   return (
-    <div className="rounded-2xl border border-border/60 bg-card/60 backdrop-blur-xl card-elevated surface-violet">
+    <div className="rounded-2xl border border-border/60 bg-card/60 backdrop-blur-xl card-elevated surface-sage">
       <div className="grid divide-y divide-border/50 sm:grid-cols-2 sm:divide-y-0 sm:divide-x lg:grid-cols-4">
         {items.map((item) => {
           const content = (

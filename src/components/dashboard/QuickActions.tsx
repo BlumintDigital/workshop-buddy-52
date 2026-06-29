@@ -19,7 +19,7 @@ export function QuickActions({ actions }: { actions: QuickAction[] }) {
           className={cn(
             "inline-flex h-10 items-center gap-2 rounded-full border px-4 text-sm font-medium transition-all",
             a.primary
-              ? "border-transparent bg-gradient-violet text-primary-foreground shadow-glow hover:brightness-110"
+              ? "border-transparent bg-gradient-sage text-primary-foreground shadow-elevation hover:brightness-110"
               : "border-border/70 bg-card/60 text-foreground backdrop-blur hover:border-primary/50 hover:text-primary",
           )}
         >
