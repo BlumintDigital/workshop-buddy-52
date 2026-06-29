@@ -127,18 +127,62 @@ serve(async (req) => {
     }
     from = (ws as any)?.from_email || Deno.env.get("FROM_EMAIL") || "noreply@workshopmanager.com";
 
-    // Sanitize client-supplied content — strip tags, escape remaining chars.
+    // Sanitize client-supplied content — never trust raw HTML.
     const rawSubject = typeof subject === "string" ? subject : "";
     const safeSubject = rawSubject.replace(/[\r\n]+/g, " ").trim().slice(0, 200) || "(no subject)";
     subject = `[Bug Report] ${safeSubject}`;
 
-    const rawHtml = typeof html === "string" ? html : "";
-    const plain = rawHtml.replace(/<[^>]*>/g, " ").slice(0, 10000);
-    html = `<div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.5;color:#111">
-  <p><strong>Submitted by:</strong> ${escapeHtml(user.email ?? user.id)}</p>
-  <hr/>
-  <pre style="white-space:pre-wrap;font-family:inherit">${escapeHtml(plain)}</pre>
-</div>`;
+    const report = (body as any).report ?? {};
+    const rep = {
+      title: String(report.title ?? "").slice(0, 200),
+      description: String(report.description ?? "").slice(0, 10000),
+      severity: ["low", "medium", "high"].includes(String(report.severity)) ? String(report.severity) : "medium",
+      pageUrl: String(report.pageUrl ?? "").slice(0, 500),
+      submitterName: String(report.submitterName ?? user.email ?? "A user").slice(0, 200),
+      feedbackLink: String(report.feedbackLink ?? "").slice(0, 500),
+    };
+
+    // Legacy fallback: caller sent only `html`. Strip tags into plain text.
+    if (!rep.title && !rep.description && typeof html === "string") {
+      rep.description = html.replace(/<[^>]*>/g, " ").trim().slice(0, 10000);
+    }
+
+    const sevColor = rep.severity === "high" ? "#dc2626" : rep.severity === "medium" ? "#d97706" : "#16a34a";
+    const sevBg = rep.severity === "high" ? "#fef2f2" : rep.severity === "medium" ? "#fffbeb" : "#f0fdf4";
+    const safePageUrl = /^https?:\/\//i.test(rep.pageUrl) ? rep.pageUrl : "";
+    const safeFeedback = /^https?:\/\//i.test(rep.feedbackLink) ? rep.feedbackLink : "";
+    const submitterEmail = user.email ?? "";
+
+    html = `<!doctype html>
+<html><body style="margin:0;padding:0;background:#f3f4f6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;color:#111827">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6;padding:24px 0">
+    <tr><td align="center">
+      <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.08);border:1px solid #e5e7eb">
+        <tr><td style="background:linear-gradient(135deg,#0f172a 0%,#1e293b 100%);padding:28px 32px;color:#ffffff">
+          <div style="font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:#94a3b8;margin-bottom:6px">Workshop Manager &middot; Issue Report</div>
+          <div style="font-size:22px;font-weight:700;line-height:1.3;color:#ffffff">${escapeHtml(rep.title || "(no title)")}</div>
+        </td></tr>
+        <tr><td style="padding:28px 32px">
+          <div style="margin-bottom:20px">
+            <span style="display:inline-block;background:${sevBg};color:${sevColor};border:1px solid ${sevColor}33;padding:4px 12px;border-radius:999px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em">${escapeHtml(rep.severity)} severity</span>
+          </div>
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;margin-bottom:20px">
+            <tr><td style="padding:14px 16px;font-size:13px;color:#374151">
+              <div style="margin-bottom:6px"><strong style="color:#111827">Submitted by:</strong> ${escapeHtml(rep.submitterName)}${submitterEmail ? ` &lt;${escapeHtml(submitterEmail)}&gt;` : ""}</div>
+              ${safePageUrl ? `<div><strong style="color:#111827">Page:</strong> <a href="${escapeHtml(safePageUrl)}" style="color:#2563eb;text-decoration:none">${escapeHtml(safePageUrl)}</a></div>` : ""}
+            </td></tr>
+          </table>
+          <div style="font-size:12px;font-weight:700;color:#6b7280;letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px">Description</div>
+          <div style="font-size:15px;line-height:1.6;color:#1f2937;white-space:pre-wrap;background:#ffffff;border-left:3px solid ${sevColor};padding:8px 0 8px 14px;margin-bottom:28px">${escapeHtml(rep.description || "(no description)")}</div>
+          ${safeFeedback ? `<div style="text-align:center;margin-top:8px"><a href="${escapeHtml(safeFeedback)}" style="display:inline-block;background:#0f172a;color:#ffffff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px">View in dashboard &rarr;</a></div>` : ""}
+        </td></tr>
+        <tr><td style="background:#f9fafb;padding:16px 32px;border-top:1px solid #e5e7eb;font-size:12px;color:#6b7280;text-align:center">
+          This is an automated issue report from Workshop Manager.
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>`;
   } else {
     // All other emails: admin or manager only, and respect the notification toggle.
     if (!roleRow || !["admin", "manager"].includes(roleRow.role)) {
