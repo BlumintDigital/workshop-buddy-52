@@ -200,7 +200,10 @@ export default function InvoiceCreate() {
               </div>
               <div>
                 <Label>Currency</Label>
-                <Select value={currency} onValueChange={setCurrency}>
+                <Select
+                  value={currency}
+                  onValueChange={(v) => { setUserPickedCurrency(true); setCurrency(v); }}
+                >
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {enabledCurrencies.map((c) => (
@@ -218,10 +221,13 @@ export default function InvoiceCreate() {
                     step="0.0001"
                     value={fxRate}
                     onChange={(e) => setFxRate(Number(e.target.value))}
-                    placeholder="e.g. 1450"
+                    placeholder={fxLoading ? "Fetching…" : "e.g. 0.00062"}
+                    disabled={fxLoading}
                   />
                   <p className="mt-1 text-xs text-muted-foreground">
-                    1 {currency} = {fxRate || 0} {baseCurrency}
+                    {fxLoading
+                      ? "Fetching live rate…"
+                      : <>1 {currency} = {fxRate || 0} {baseCurrency}{fxFetchedAt ? " · live rate" : " · manual"}</>}
                   </p>
                 </div>
               )}
