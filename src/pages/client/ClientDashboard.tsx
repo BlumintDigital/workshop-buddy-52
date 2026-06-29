@@ -149,15 +149,15 @@ export default function ClientDashboard() {
         </div>
 
         {isLoading ? (
-          <div className="grid gap-4 lg:grid-cols-12">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-12">
             {Array.from({ length: 6 }).map((_, i) => (
-              <Skeleton key={i} className={cn("h-40 rounded-2xl", i === 0 ? "lg:col-span-8" : i === 1 ? "lg:col-span-4" : "lg:col-span-4")} />
+              <Skeleton key={i} className={cn("h-40 rounded-2xl col-span-2", i === 0 ? "lg:col-span-8" : i === 1 ? "lg:col-span-4" : "lg:col-span-3")} />
             ))}
           </div>
         ) : (
-          <div className="grid gap-4 lg:grid-cols-12">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-12 lg:auto-rows-[minmax(0,auto)]">
             {/* Balance hero */}
-            <Card tone="cream" className="lg:col-span-8 lg:row-span-2">
+            <Card tone="cream" className="col-span-2 lg:col-span-8 lg:row-span-2">
               <CardContent className="flex h-full flex-col gap-6 p-6">
                 <div className="flex items-start justify-between">
                   <div>
