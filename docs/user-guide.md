@@ -309,7 +309,7 @@ Every role has a **Report Issue** link in the sidebar. Describe what you were do
 ## 11. FAQ & Troubleshooting
 
 **My currency still shows dollars after I changed it.**
-Refresh the page. The new currency applies to invoices, jobs, and reports automatically.
+Refresh the page. The new currency applies to invoices, jobs, and reports automatically. {roles: admin,manager}
 
 **MFA keeps prompting me even after I selected "Trust this device for 30 days".**
 Your browser may be blocking cookies for the site, or you may be in a private/incognito window. Sign in on a non-private window and retry the trust action.
@@ -333,18 +333,18 @@ Contact your admin. They can reset MFA on your account from **Admin → Users**.
 
 ## 12. Glossary
 
-- **Admin** — top-level role with full access to settings, users, and security.
-- **Manager** — runs operations; cannot manage workspace settings or users.
-- **Staff** — works on assigned jobs only.
+- **Admin** — top-level role with full access to settings, users, and security. {roles: admin,manager}
+- **Manager** — runs operations; cannot manage workspace settings or users. {roles: admin,manager}
+- **Staff** — works on assigned jobs only. {roles: admin,manager,staff}
 - **Client** — external customer with portal access to their own jobs and invoices.
-- **Job** — a unit of work, with status, assigned staff, parts, time, and comments.
+- **Job** — a unit of work, with status, assigned staff, parts, time, and comments. {roles: admin,manager,staff}
 - **Appointment** — a scheduled calendar slot, optionally linked to a job.
 - **Invoice** — billing document, can be Draft, Sent, Viewed, Paid, Overdue, Void.
-- **Invite code** — token required for public sign-up; managed by admins.
+- **Invite code** — token required for public sign-up; managed by admins. {roles: admin,manager}
 - **Trusted device** — a browser you've marked to skip MFA for 30 days.
 - **Backup codes** — one-time recovery codes for MFA, generated 10 at a time.
 - **Broadcast** — workspace-wide banner notice from your admin or the platform.
-- **Factory reset** — destructive admin action that wipes all operational data.
+- **Factory reset** — destructive admin action that wipes all operational data. {roles: admin}
 
 ---
 
