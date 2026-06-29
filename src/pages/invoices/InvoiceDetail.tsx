@@ -220,6 +220,28 @@ export default function InvoiceDetail() {
     else toast.success(`Client notified via ${channels.join(", ")}.`);
   };
 
+  // Explicit Send/Resend to client: marks status `sent`, then notifies via in-app + email (+ push best-effort).
+  const sendInvoiceToClient = async () => {
+    if (!invoice?.client_id) { toast.error("This invoice has no client to send to."); return; }
+    if (sending) return;
+    setSending(true);
+    try {
+      if (invoice.status === "draft") {
+        const { error } = await supabase.from("invoices").update({ status: "sent" }).eq("id", invoice.id);
+        if (error) { toast.error(friendlyErrorMessageSync(error, "Couldn't update invoice status.")); return; }
+        setInvoice({ ...invoice, status: "sent" });
+      }
+      await notifyClient(
+        `Invoice ${invoice.invoice_number}`,
+        `Total: ${fmt(total, invoice.currency)} — view and pay online.`,
+      );
+    } finally {
+      setSending(false);
+    }
+  };
+
+
+
   if (!invoice) return (
     <DashboardLayout>
       <div className="space-y-6 max-w-3xl">
