@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
-import { User, ShieldCheck, ShieldOff, Copy, Loader2, KeyRound, RefreshCw, Upload, BadgeCheck, CalendarDays, Mail, Smartphone, Lightbulb } from "lucide-react";
+import { User, ShieldCheck, ShieldOff, Copy, Loader2, KeyRound, RefreshCw, Upload, BadgeCheck, CalendarDays, Mail, Smartphone, Lightbulb, Lock, Eye, EyeOff } from "lucide-react";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import BackupCodesDialog from "@/components/mfa/BackupCodesDialog";
 import {
@@ -28,10 +28,21 @@ export default function UserProfile() {
   const { user, profile, role, refreshMfaStatus, refreshProfile } = useAuth();
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
+  const [companyName, setCompanyName] = useState("");
+  const [contactPerson, setContactPerson] = useState("");
+  const [address, setAddress] = useState("");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const [saving, setSaving] = useState(false);
+
+  // Password change
+  const [currentPwd, setCurrentPwd] = useState("");
+  const [newPwd, setNewPwd] = useState("");
+  const [confirmPwd, setConfirmPwd] = useState("");
+  const [showPwd, setShowPwd] = useState(false);
+  const [pwdSaving, setPwdSaving] = useState(false);
+  const [pwdError, setPwdError] = useState<string | null>(null);
 
   // MFA state
   const [mfaEnabled, setMfaEnabled] = useState(false);
@@ -128,9 +139,19 @@ export default function UserProfile() {
       setAvatarUrl(profile.avatar_url ?? null);
     }
     if (user) {
-      supabase.from("profiles").select("phone").eq("id", user.id).maybeSingle().then(({ data }) => {
-        if (data) setPhone((data as any).phone || "");
-      });
+      supabase
+        .from("profiles")
+        .select("phone, company_name, contact_person, address")
+        .eq("id", user.id)
+        .maybeSingle()
+        .then(({ data }) => {
+          if (data) {
+            setPhone((data as any).phone || "");
+            setCompanyName((data as any).company_name || "");
+            setContactPerson((data as any).contact_person || "");
+            setAddress((data as any).address || "");
+          }
+        });
     }
   }, [profile, user]);
 
@@ -200,11 +221,62 @@ export default function UserProfile() {
     const { error } = await supabase.from("profiles").update({
       full_name: fullName || null,
       phone: phone || null,
+      company_name: companyName || null,
+      contact_person: contactPerson || null,
+      address: address || null,
       avatar_url: avatarUrl,
     } as any).eq("id", user.id);
     setSaving(false);
     if (error) { toast.error(error.message); return; }
+    await refreshProfile();
     toast.success("Profile updated");
+  };
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPwdError(null);
+    if (!user?.email) return;
+    if (newPwd.length < 8) {
+      setPwdError("New password must be at least 8 characters.");
+      return;
+    }
+    if (!/[A-Z]/.test(newPwd) || !/[a-z]/.test(newPwd) || !/[0-9]/.test(newPwd)) {
+      setPwdError("Use a mix of uppercase, lowercase, and numbers.");
+      return;
+    }
+    if (newPwd !== confirmPwd) {
+      setPwdError("New password and confirmation do not match.");
+      return;
+    }
+    if (newPwd === currentPwd) {
+      setPwdError("New password must be different from the current one.");
+      return;
+    }
+    setPwdSaving(true);
+    try {
+      // Verify current password by re-authenticating.
+      const { error: signInErr } = await supabase.auth.signInWithPassword({
+        email: user.email,
+        password: currentPwd,
+      });
+      if (signInErr) {
+        setPwdError("Current password is incorrect.");
+        return;
+      }
+      const { error: updErr } = await supabase.auth.updateUser({ password: newPwd });
+      if (updErr) {
+        setPwdError(updErr.message);
+        return;
+      }
+      setCurrentPwd("");
+      setNewPwd("");
+      setConfirmPwd("");
+      toast.success("Password updated");
+    } catch (err: any) {
+      setPwdError(err?.message || "Could not change password");
+    } finally {
+      setPwdSaving(false);
+    }
   };
 
   const handleEnroll2FA = async () => {
@@ -335,24 +407,109 @@ export default function UserProfile() {
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div>
-              <Label htmlFor="profile-name">Full Name</Label>
-              <Input id="profile-name" value={fullName} onChange={(e) => setFullName(e.target.value)} className="mt-1" />
-            </div>
-            <div>
-              <Label htmlFor="profile-email">Email</Label>
-              <Input id="profile-email" value={user?.email || ""} disabled className="mt-1" />
-              <p className="text-xs text-muted-foreground mt-1">Email cannot be changed here</p>
-            </div>
-            <div>
-              <Label htmlFor="profile-phone">Phone</Label>
-              <Input id="profile-phone" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+1 555 0123" className="mt-1" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="profile-name">Full Name</Label>
+                <Input id="profile-name" value={fullName} onChange={(e) => setFullName(e.target.value)} className="mt-1" />
+              </div>
+              <div>
+                <Label htmlFor="profile-email">Email</Label>
+                <Input id="profile-email" value={user?.email || ""} disabled className="mt-1" />
+                <p className="text-xs text-muted-foreground mt-1">Email cannot be changed here</p>
+              </div>
+              <div>
+                <Label htmlFor="profile-phone">Phone</Label>
+                <Input id="profile-phone" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+1 555 0123" className="mt-1" />
+              </div>
+              <div>
+                <Label htmlFor="profile-contact">Contact Person</Label>
+                <Input id="profile-contact" value={contactPerson} onChange={(e) => setContactPerson(e.target.value)} placeholder="Primary contact name" className="mt-1" />
+              </div>
+              <div className="sm:col-span-2">
+                <Label htmlFor="profile-company">Company / Organization</Label>
+                <Input id="profile-company" value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="Optional" className="mt-1" />
+              </div>
+              <div className="sm:col-span-2">
+                <Label htmlFor="profile-address">Address</Label>
+                <Input id="profile-address" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Street, City, Country" className="mt-1" />
+              </div>
             </div>
             <Button onClick={handleSave} disabled={saving}>
               {saving ? "Saving..." : "Save Changes"}
             </Button>
           </CardContent>
         </Card>
+
+        {/* Security — Change Password */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Lock className="h-5 w-5 text-primary" />
+              <CardTitle className="text-lg">Security</CardTitle>
+            </div>
+            <CardDescription>Change your password. Use at least 8 characters with upper, lower, and a number.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleChangePassword} className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="sm:col-span-2">
+                  <Label htmlFor="pwd-current">Current Password</Label>
+                  <div className="relative mt-1">
+                    <Input
+                      id="pwd-current"
+                      type={showPwd ? "text" : "password"}
+                      value={currentPwd}
+                      onChange={(e) => setCurrentPwd(e.target.value)}
+                      autoComplete="current-password"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPwd((s) => !s)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      aria-label={showPwd ? "Hide passwords" : "Show passwords"}
+                    >
+                      {showPwd ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                </div>
+                <div>
+                  <Label htmlFor="pwd-new">New Password</Label>
+                  <Input
+                    id="pwd-new"
+                    type={showPwd ? "text" : "password"}
+                    value={newPwd}
+                    onChange={(e) => setNewPwd(e.target.value)}
+                    autoComplete="new-password"
+                    className="mt-1"
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="pwd-confirm">Confirm New Password</Label>
+                  <Input
+                    id="pwd-confirm"
+                    type={showPwd ? "text" : "password"}
+                    value={confirmPwd}
+                    onChange={(e) => setConfirmPwd(e.target.value)}
+                    autoComplete="new-password"
+                    className={`mt-1 ${confirmPwd && confirmPwd !== newPwd ? "border-destructive" : ""}`}
+                    required
+                  />
+                </div>
+              </div>
+              {pwdError && (
+                <p className="text-sm text-destructive flex items-center gap-1">
+                  <ShieldOff className="h-3.5 w-3.5" /> {pwdError}
+                </p>
+              )}
+              <Button type="submit" disabled={pwdSaving || !currentPwd || !newPwd || !confirmPwd}>
+                {pwdSaving ? "Updating..." : "Update Password"}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+
 
         {/* Two-Factor Authentication Card */}
         <Card>
