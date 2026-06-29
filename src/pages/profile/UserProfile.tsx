@@ -510,8 +510,6 @@ export default function UserProfile() {
           </CardContent>
         </Card>
 
-          </CardContent>
-        </Card>
 
         {/* Two-Factor Authentication Card */}
         <Card>
