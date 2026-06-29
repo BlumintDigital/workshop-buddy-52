@@ -158,11 +158,11 @@ export default function ClientDashboard() {
           <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-12 lg:auto-rows-[minmax(0,auto)]">
             {/* Balance hero */}
             <Card tone="cream" className="col-span-2 lg:col-span-8 lg:row-span-2">
-              <CardContent className="flex h-full flex-col gap-6 p-6">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Outstanding balance</p>
-                    <p className="mt-2 text-display text-5xl leading-none tabular-nums sm:text-6xl">
+              <CardContent className="flex h-full flex-col gap-6 p-5 sm:p-6">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground sm:text-xs">Outstanding balance</p>
+                    <p className="mt-2 text-display text-[2.25rem] leading-none tabular-nums sm:text-5xl lg:text-6xl break-words">
                       {format(stats.balance)}
                     </p>
                     <p className="mt-2 text-sm text-muted-foreground">
