@@ -148,7 +148,9 @@ export default function ResetPassword() {
                 </div>
                 <CardTitle>You're all set!</CardTitle>
                 <CardDescription>
-                  {isInvite ? "Your account is now active." : "Your password has been updated."}
+                  {resolvedRole
+                    ? "Redirecting you to your dashboard..."
+                    : isInvite ? "Your account is now active." : "Your password has been updated."}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
