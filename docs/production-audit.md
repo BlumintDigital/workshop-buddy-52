@@ -331,3 +331,20 @@ WARN   auth_leaked_password_protection (×1)
 
 *End of audit.*
 
+
+### Shipped 29 Jun 2026 (Sprint 2)
+
+- **Perf 1.5** — `push-sw.js` collapsed into the main `/sw.js`; the legacy file is now a self-unregistering stub for returning users.
+- **Reliability 2.3** — pgTAP RLS spec scaffolded in `supabase/tests/rls/` (profiles, user_roles, signup_codes) with a non-blocking `rls-tests` CI job.
+- **Reliability 2.5** — `_shared/sentry.ts` helper added and wired into 5 high-impact edge functions (`send-push`, `validate-signup-code`, `admin-create-user`, `backup-data`, `restore-data`). Set `SENTRY_DSN` in the Supabase function secrets to activate.
+- **Quality 3.1** — phase A complete: `strictNullChecks: true` enabled in `tsconfig.json` and `tsconfig.app.json`. All resulting nullability errors fixed (JobStatusChart, useAuth profile type, Auth.tsx factorId, AdminSettings demo seed, GoalsAnimations dot array, JobDetail filter/id).
+
+### Still open (Sprint 3+)
+
+- Perf 1.1 cont., Perf 1.2 — cached shared hooks for settings/roles, notices polling consolidation.
+- Reliability 2.2 — Playwright per-role smoke tests + CI job.
+- Reliability 2.4 — Deno tests for MFA / admin edge functions.
+- Reliability 2.5 cont. — extend Sentry to remaining edge functions; add release tagging.
+- Quality 3.1 cont. — phase B: enable `strict: true` and `noImplicitAny`.
+- Quality 3.2, 3.4 — lint hardening, a11y pass + axe-core in e2e.
+- Quality 3.5 cont. — flip CSP from Report-Only to enforced after 1 week of clean reports.
