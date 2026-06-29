@@ -25,6 +25,7 @@ import { useAdminOnboarding } from "@/hooks/useAdminOnboarding";
 
 
 import { CURRENCIES } from "@/lib/currencies";
+import { PRESETS, hexToHslString, hslStringToHex, applyBrandColors, DEFAULT_BRAND } from "@/lib/brand-colors";
 const currencies = CURRENCIES;
 
 const defaultSettings = {
