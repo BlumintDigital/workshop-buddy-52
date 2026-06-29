@@ -184,7 +184,7 @@ export default function ClientDashboard() {
                       <Link
                         key={inv.id}
                         to={`/client/invoices/${inv.id}`}
-                        className="flex items-center justify-between gap-3 rounded-xl bg-card/70 px-3 py-2.5 hover:bg-card"
+                        className="flex items-center justify-between gap-3 rounded-xl bg-card/70 px-3 py-3 min-h-[52px] hover:bg-card"
                       >
                         <div className="min-w-0">
                           <p className="truncate text-sm font-medium">Invoice #{inv.id.slice(0, 8)}</p>
