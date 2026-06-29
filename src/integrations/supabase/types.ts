@@ -1415,9 +1415,12 @@ export type Database = {
       get_my_basic_profile: {
         Args: never
         Returns: {
+          address: string
           avatar_url: string
+          company_name: string
           full_name: string
           invite_accepted_at: string
+          phone: string
         }[]
       }
       get_user_role: {
