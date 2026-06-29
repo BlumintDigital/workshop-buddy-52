@@ -92,12 +92,10 @@ serve(async (req) => {
       return json({ error: `Only admins can create ${role} accounts` }, 403);
     }
 
-    // Create the user (auto-confirmed; they'll set password via recovery link)
+    // Create the user and send Supabase's invite email so they can set a password.
     const { data: newUser, error: createError } =
-      await adminClient.auth.admin.createUser({
-        email,
-        email_confirm: true,
-        user_metadata: { full_name, role },
+      await adminClient.auth.admin.inviteUserByEmail(email, {
+        data: { full_name, role },
       });
 
     if (createError || !newUser?.user) {
@@ -136,7 +134,7 @@ serve(async (req) => {
       _role: role,
     });
     if (roleError) {
-      console.error("admin-create-user: role upsert failed", roleError.message);
+      console.error("admin-create-user: role assignment failed", roleError.message);
       await adminClient.auth.admin.deleteUser(newUserId).catch((cleanupError) => {
         console.error("admin-create-user: cleanup failed", cleanupError.message);
       });
@@ -163,19 +161,6 @@ serve(async (req) => {
         { error: `User creation was rolled back because profile setup failed: ${profileError.message}` },
         500,
       );
-    }
-
-    // Send a password-set / recovery email. Non-fatal: account already exists.
-    try {
-      const { error: linkError } = await adminClient.auth.admin.generateLink({
-        type: "recovery",
-        email,
-      });
-      if (linkError) {
-        console.warn("admin-create-user: generateLink warn", linkError.message);
-      }
-    } catch (e) {
-      console.warn("admin-create-user: generateLink threw", (e as Error).message);
     }
 
     return json({ success: true, user_id: newUserId });
