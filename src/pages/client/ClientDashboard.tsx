@@ -5,7 +5,6 @@ import {
   CalendarPlus,
   CheckCircle2,
   FileText,
-  MessageSquare,
   Receipt,
 } from "lucide-react";
 import { Link } from "react-router-dom";
