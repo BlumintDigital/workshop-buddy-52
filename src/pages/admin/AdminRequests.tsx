@@ -12,9 +12,11 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { FileText, Wrench, Inbox, CheckCircle2, XCircle, ExternalLink } from "lucide-react";
+import { FileText, Wrench, Inbox, CheckCircle2, XCircle, ExternalLink, FilePlus2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import QuoteBuilderDialog from "@/components/requests/QuoteBuilderDialog";
+import { useCurrency } from "@/hooks/useCurrency";
 
 type Req = {
   id: string;
