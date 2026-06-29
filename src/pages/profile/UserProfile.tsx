@@ -139,9 +139,19 @@ export default function UserProfile() {
       setAvatarUrl(profile.avatar_url ?? null);
     }
     if (user) {
-      supabase.from("profiles").select("phone").eq("id", user.id).maybeSingle().then(({ data }) => {
-        if (data) setPhone((data as any).phone || "");
-      });
+      supabase
+        .from("profiles")
+        .select("phone, company_name, contact_person, address")
+        .eq("id", user.id)
+        .maybeSingle()
+        .then(({ data }) => {
+          if (data) {
+            setPhone((data as any).phone || "");
+            setCompanyName((data as any).company_name || "");
+            setContactPerson((data as any).contact_person || "");
+            setAddress((data as any).address || "");
+          }
+        });
     }
   }, [profile, user]);
 
