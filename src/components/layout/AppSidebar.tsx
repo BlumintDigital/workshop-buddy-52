@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  LayoutDashboard, Briefcase, Calendar, Package, FileText, Users, Settings, LogOut, ChevronDown, BarChart3, Columns3, UserCheck, CalendarDays, User, Activity, Target, AlertCircle, MessageSquare, KeyRound, ShieldCheck, BookOpen,
+  LayoutDashboard, Briefcase, Calendar, Package, FileText, Users, Settings, LogOut, ChevronDown, BarChart3, Columns3, UserCheck, CalendarDays, User, Activity, Target, AlertCircle, MessageSquare, KeyRound, ShieldCheck, BookOpen, Inbox,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation, useNavigate } from "react-router-dom";

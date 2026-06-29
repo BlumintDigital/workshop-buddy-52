@@ -67,6 +67,8 @@ const ClientDashboard = lazy(() => import("@/pages/client/ClientDashboard"));
 const ClientJobs = lazy(() => import("@/pages/client/ClientJobs"));
 const ClientAppointments = lazy(() => import("@/pages/client/ClientAppointments"));
 const ClientInvoices = lazy(() => import("@/pages/client/ClientInvoices"));
+const ClientRequests = lazy(() => import("@/pages/client/ClientRequests"));
+const AdminRequests = lazy(() => import("@/pages/admin/AdminRequests"));
 
 // Shared pages
 const JobDetail = lazy(() => import("@/pages/jobs/JobDetail"));
@@ -174,6 +176,10 @@ function AppRoutes() {
       <Route path="/client/jobs" element={<ProtectedRoute allowedRoles={["client"]}><FeatureRoute feature="client_portal"><ClientJobs /></FeatureRoute></ProtectedRoute>} />
       <Route path="/client/appointments" element={<ProtectedRoute allowedRoles={["client"]}><FeatureRoute feature="client_portal"><FeatureRoute feature="appointments"><ClientAppointments /></FeatureRoute></FeatureRoute></ProtectedRoute>} />
       <Route path="/client/invoices" element={<ProtectedRoute allowedRoles={["client"]}><FeatureRoute feature="client_portal"><ClientInvoices /></FeatureRoute></ProtectedRoute>} />
+      <Route path="/client/requests" element={<ProtectedRoute allowedRoles={["client"]}><FeatureRoute feature="client_portal"><ClientRequests /></FeatureRoute></ProtectedRoute>} />
+      <Route path="/admin/requests" element={<ProtectedRoute allowedRoles={["admin"]}><AdminRequests /></ProtectedRoute>} />
+      <Route path="/manager/requests" element={<ProtectedRoute allowedRoles={["manager"]}><AdminRequests /></ProtectedRoute>} />
+
 
       {/* Shared routes */}
       <Route path="/jobs/:id" element={<ProtectedRoute allowedRoles={["admin", "manager", "staff", "client"]}><ClientPortalRoute><JobDetail /></ClientPortalRoute></ProtectedRoute>} />
