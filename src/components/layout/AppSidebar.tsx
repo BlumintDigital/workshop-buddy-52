@@ -35,6 +35,7 @@ const navGroups: Record<AppRole, NavGroup[]> = {
     ]},
     { label: "Operations", items: [
       { title: "Jobs", url: "/admin/jobs", icon: Briefcase },
+      { title: "Requests", url: "/admin/requests", icon: Inbox },
       { title: "Appointments", url: "/admin/appointments", icon: Calendar, features: ["appointments"] },
       { title: "Calendar", url: "/admin/calendar", icon: CalendarDays, features: ["appointments"] },
     ]},
@@ -66,6 +67,7 @@ const navGroups: Record<AppRole, NavGroup[]> = {
     ]},
     { label: "Operations", items: [
       { title: "Jobs", url: "/manager/jobs", icon: Briefcase },
+      { title: "Requests", url: "/manager/requests", icon: Inbox },
       { title: "Appointments", url: "/manager/appointments", icon: Calendar, features: ["appointments"] },
       { title: "Calendar", url: "/manager/calendar", icon: CalendarDays, features: ["appointments"] },
     ]},
@@ -108,6 +110,7 @@ const navGroups: Record<AppRole, NavGroup[]> = {
       { title: "Dashboard", url: "/client/dashboard", icon: LayoutDashboard, features: ["client_portal"] },
     ]},
     { label: "My Account", items: [
+      { title: "My Requests", url: "/client/requests", icon: Inbox, features: ["client_portal"] },
       { title: "My Jobs", url: "/client/jobs", icon: Briefcase, features: ["client_portal"] },
       { title: "Appointments", url: "/client/appointments", icon: Calendar, features: ["client_portal", "appointments"] },
       { title: "Invoices", url: "/client/invoices", icon: FileText, features: ["client_portal"] },
