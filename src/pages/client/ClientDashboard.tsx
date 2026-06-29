@@ -18,6 +18,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import NotificationsPanel from "@/components/client/NotificationsPanel";
 
 type Job = { id: string; title: string; status: string; date: string };
 type Invoice = { id: string; total: number; base_total?: number | null; currency?: string | null; status: string; created_at: string };
@@ -316,6 +317,9 @@ export default function ClientDashboard() {
                 <p className="mt-1 text-xs text-muted-foreground">Total booked</p>
               </CardContent>
             </Card>
+
+            {/* Notifications panel */}
+            <NotificationsPanel />
 
             {/* Recent jobs full width */}
             <Card tone="default" className="col-span-2 lg:col-span-12">
