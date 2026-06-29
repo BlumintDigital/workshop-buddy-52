@@ -118,6 +118,16 @@ function AppRoutes() {
   const { loading } = useFeatureFlags();
   const { user } = useAuth();
 
+  // If Supabase redirected us back with an invite/recovery hash, forward to /reset-password
+  if (typeof window !== "undefined" && window.location.hash.includes("type=")) {
+    const hashParams = new URLSearchParams(window.location.hash.substring(1));
+    const t = hashParams.get("type");
+    if ((t === "invite" || t === "recovery" || t === "signup") && window.location.pathname !== "/reset-password") {
+      window.location.replace(`/reset-password${window.location.hash}`);
+      return <LoadingScreen />;
+    }
+  }
+
   if (user && loading) return <LoadingScreen />;
 
   return (
