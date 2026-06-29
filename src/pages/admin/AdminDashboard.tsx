@@ -198,14 +198,11 @@ export default function AdminDashboard() {
     };
 
     const fetchRecent = async () => {
-      let q = supabase
+      const { data } = await supabase
         .from("jobs")
         .select("id, title, status, created_at")
         .order("created_at", { ascending: false })
         .limit(5);
-      if (jobsFilter === "active") q = q.not("status", "in", "(completed,cancelled)");
-      if (jobsFilter === "completed") q = q.eq("status", "completed");
-      const { data } = await q;
       setRecentJobs(
         (data || []).map((j: any) => ({
           id: j.id,
@@ -217,7 +214,7 @@ export default function AdminDashboard() {
     };
 
     Promise.all([run(), fetchRecent()]).finally(() => setIsLoading(false));
-  }, [appointmentsEnabled, jobsFilter]);
+  }, [appointmentsEnabled]);
 
   const maxLoad = Math.max(1, ...staffLoad.map((s) => s.jobs));
   const deltaPositive = stats.revenueDelta >= 0;
