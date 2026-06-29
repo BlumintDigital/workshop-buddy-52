@@ -72,7 +72,14 @@ export default function ReportIssue() {
       body: {
         mode: "bug_report",
         subject: `[${severity.toUpperCase()}] Issue Report: ${title.trim()}`,
-        html: bugReportEmailHtml(submitterName, severity, title.trim(), description.trim(), pageUrl.trim(), feedbackLink),
+        report: {
+          title: title.trim(),
+          description: description.trim(),
+          severity,
+          pageUrl: pageUrl.trim(),
+          submitterName,
+          feedbackLink,
+        },
       },
     });
 
