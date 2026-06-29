@@ -397,9 +397,9 @@ export default function InvoiceDetail() {
                     <TableCell className="text-right">
                       {canEdit ? (
                         <Input type="number" min={0} step={0.01} value={item.unit_price} onChange={(e) => updateItem(idx, "unit_price", Number(e.target.value))} className="w-24 text-right ml-auto" />
-                      ) : fmt(Number(item.unit_price))}
+                      ) : fmt(Number(item.unit_price), invoice.currency)}
                     </TableCell>
-                    <TableCell className="text-right font-medium">{fmt(item.quantity * item.unit_price)}</TableCell>
+                    <TableCell className="text-right font-medium">{fmt(item.quantity * item.unit_price, invoice.currency)}</TableCell>
                     {canEdit && (
                       <TableCell>
                         {items.length > 1 && (
