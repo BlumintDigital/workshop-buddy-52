@@ -80,6 +80,13 @@ export default function InvoiceDetail() {
           unit_price: Number(i.unit_price),
         }))
       );
+
+      // Trace back to originating client request via the linked job (admin/manager only).
+      if (inv.job_id && (role === "admin" || role === "manager")) {
+        const { data: job } = await supabase.from("jobs").select("source_request_id").eq("id", inv.job_id).maybeSingle();
+        setSourceRequestId((job as any)?.source_request_id ?? null);
+      }
+
     };
     load();
   }, [id]);
