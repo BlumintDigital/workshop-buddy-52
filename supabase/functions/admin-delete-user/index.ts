@@ -4,6 +4,12 @@ import { buildCorsHeaders } from "../_shared/mfa-cors.ts";
 
 serve(async (req) => {
   const cors = buildCorsHeaders(req);
+  const json = (body: unknown, status = 200) =>
+    new Response(JSON.stringify(body), {
+      status,
+      headers: { ...cors, "Content-Type": "application/json" },
+    });
+
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
 
   try {
@@ -57,7 +63,6 @@ serve(async (req) => {
       return json({ error: "Cannot delete a super admin account" }, 400);
     }
 
-    // Block deletion of other admin-role users
     const { data: targetRole } = await admin
       .from("user_roles")
       .select("role")
@@ -65,7 +70,29 @@ serve(async (req) => {
       .maybeSingle();
 
     if (targetRole?.role === "admin") {
-      return json({ error: "Cannot delete another admin account" }, 400);
+      const { data: adminRoles, error: rolesErr } = await admin
+        .from("user_roles")
+        .select("user_id")
+        .eq("role", "admin");
+
+      if (rolesErr) {
+        return json({ error: "Could not verify remaining admin accounts" }, 500);
+      }
+
+      const adminIds = (adminRoles ?? []).map((row) => row.user_id).filter(Boolean);
+      const { data: adminProfiles, error: profilesErr } = await admin
+        .from("profiles")
+        .select("id, is_super_admin")
+        .in("id", adminIds);
+
+      if (profilesErr) {
+        return json({ error: "Could not verify remaining admin accounts" }, 500);
+      }
+
+      const standardAdminCount = (adminProfiles ?? []).filter((profile) => !profile.is_super_admin).length;
+      if (standardAdminCount <= 1) {
+        return json({ error: "Cannot delete the final admin account" }, 400);
+      }
     }
 
     // Hard-delete via Auth admin API (cascades to profiles and user_roles)
@@ -95,10 +122,3 @@ serve(async (req) => {
     return json({ error: "Internal server error" }, 500);
   }
 });
-
-function json(body: unknown, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...cors, "Content-Type": "application/json" },
-  });
-}

@@ -6,6 +6,14 @@ import { captureEdgeError } from "../_shared/sentry.ts";
 const VALID_ROLES = ["admin", "manager", "staff", "client"] as const;
 type Role = (typeof VALID_ROLES)[number];
 
+const friendlyCreateError = (message?: string) => {
+  const lower = (message ?? "").toLowerCase();
+  if (lower.includes("already") || lower.includes("email_exists")) {
+    return "A user with this email already exists. Open their profile, resend the invite, or use a different email address.";
+  }
+  return message ?? "Failed to create user";
+};
+
 serve(async (req) => {
   const cors = buildCorsHeaders(req);
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
@@ -55,8 +63,8 @@ serve(async (req) => {
       console.error("admin-create-user: role lookup failed", roleLookupError.message);
       return json({ error: "Role lookup failed" }, 500);
     }
-    if (!callerRole || !["admin", "manager"].includes(callerRole.role)) {
-      return json({ error: "Forbidden: admin or manager role required" }, 403);
+    if (!callerRole || callerRole.role !== "admin") {
+      return json({ error: "Forbidden: admin role required" }, 403);
     }
 
     const body = await req.json().catch(() => ({}));
@@ -76,43 +84,54 @@ serve(async (req) => {
       return json({ error: "Invalid role" }, 400);
     }
 
-    // Privilege guardrail: only admin can create admin or manager
-    if (
-      (role === "admin" || role === "manager") &&
-      callerRole.role !== "admin"
-    ) {
-      return json({ error: `Only admins can create ${role} accounts` }, 403);
-    }
-
-    // Create the user (auto-confirmed; they'll set password via recovery link)
+    // Create the user and send Supabase's invite email so they can set a password.
     const { data: newUser, error: createError } =
-      await adminClient.auth.admin.createUser({
-        email,
-        email_confirm: true,
-        user_metadata: { full_name, role },
+      await adminClient.auth.admin.inviteUserByEmail(email, {
+        data: { full_name, role },
       });
 
     if (createError || !newUser?.user) {
       console.error("admin-create-user: createUser failed", createError?.message);
       return json(
-        { error: createError?.message ?? "Failed to create user" },
+        { error: friendlyCreateError(createError?.message) },
         400,
       );
     }
 
     const newUserId = newUser.user.id;
 
-    // Upsert role (trigger may have inserted 'client' by default)
-    const { error: roleError } = await adminClient
-      .from("user_roles")
-      .upsert(
-        { user_id: newUserId, role },
-        { onConflict: "user_id" },
-      );
-    if (roleError) {
-      console.error("admin-create-user: role upsert failed", roleError.message);
+    const { error: initialProfileError } = await adminClient
+      .from("profiles")
+      .upsert({
+        id: newUserId,
+        full_name,
+        is_active: true,
+        updated_at: new Date().toISOString(),
+      });
+    if (initialProfileError) {
+      console.error("admin-create-user: profile setup failed", initialProfileError.message);
+      await adminClient.auth.admin.deleteUser(newUserId).catch((cleanupError) => {
+        console.error("admin-create-user: cleanup failed", cleanupError.message);
+      });
       return json(
-        { error: `Created user but role failed: ${roleError.message}` },
+        { error: `User creation was rolled back because profile setup failed: ${initialProfileError.message}` },
+        500,
+      );
+    }
+
+    // Assign exactly one role without relying on a non-existent UNIQUE(user_id) constraint.
+    const { error: roleError } = await adminClient.rpc("admin_set_user_role", {
+      _caller_user_id: callerId,
+      _target_user_id: newUserId,
+      _role: role,
+    });
+    if (roleError) {
+      console.error("admin-create-user: role assignment failed", roleError.message);
+      await adminClient.auth.admin.deleteUser(newUserId).catch((cleanupError) => {
+        console.error("admin-create-user: cleanup failed", cleanupError.message);
+      });
+      return json(
+        { error: `User creation was rolled back because role assignment failed: ${roleError.message}` },
         500,
       );
     }
@@ -126,20 +145,14 @@ serve(async (req) => {
       .update(profileUpdate)
       .eq("id", newUserId);
     if (profileError) {
-      console.warn("admin-create-user: profile update warn", profileError.message);
-    }
-
-    // Send a password-set / recovery email. Non-fatal: account already exists.
-    try {
-      const { error: linkError } = await adminClient.auth.admin.generateLink({
-        type: "recovery",
-        email,
+      console.error("admin-create-user: profile update failed", profileError.message);
+      await adminClient.auth.admin.deleteUser(newUserId).catch((cleanupError) => {
+        console.error("admin-create-user: cleanup failed", cleanupError.message);
       });
-      if (linkError) {
-        console.warn("admin-create-user: generateLink warn", linkError.message);
-      }
-    } catch (e) {
-      console.warn("admin-create-user: generateLink threw", (e as Error).message);
+      return json(
+        { error: `User creation was rolled back because profile setup failed: ${profileError.message}` },
+        500,
+      );
     }
 
     return json({ success: true, user_id: newUserId });
