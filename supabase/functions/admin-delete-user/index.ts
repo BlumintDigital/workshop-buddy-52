@@ -70,15 +70,27 @@ serve(async (req) => {
       .maybeSingle();
 
     if (targetRole?.role === "admin") {
-      const { count, error: countErr } = await admin
+      const { data: adminRoles, error: rolesErr } = await admin
         .from("user_roles")
-        .select("user_id", { count: "exact", head: true })
+        .select("user_id")
         .eq("role", "admin");
 
-      if (countErr) {
+      if (rolesErr) {
         return json({ error: "Could not verify remaining admin accounts" }, 500);
       }
-      if ((count ?? 0) <= 1) {
+
+      const adminIds = (adminRoles ?? []).map((row) => row.user_id).filter(Boolean);
+      const { data: adminProfiles, error: profilesErr } = await admin
+        .from("profiles")
+        .select("id, is_super_admin")
+        .in("id", adminIds);
+
+      if (profilesErr) {
+        return json({ error: "Could not verify remaining admin accounts" }, 500);
+      }
+
+      const standardAdminCount = (adminProfiles ?? []).filter((profile) => !profile.is_super_admin).length;
+      if (standardAdminCount <= 1) {
         return json({ error: "Cannot delete the final admin account" }, 400);
       }
     }
