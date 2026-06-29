@@ -157,21 +157,41 @@ export default function UserProfile() {
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !user) return;
+
+    const { validateAvatarFile, processAvatarFile, AVATAR_OUTPUT_TYPE, AVATAR_OUTPUT_EXT } =
+      await import("@/lib/avatar");
+
+    const validation = validateAvatarFile(file);
+    if (validation) {
+      toast.error(validation.message);
+      e.target.value = "";
+      return;
+    }
+
     setUploadingAvatar(true);
-    const ext = file.name.split(".").pop();
-    const path = `${user.id}/avatar.${ext}`;
-    const { error: uploadErr } = await supabase.storage
-      .from("avatars")
-      .upload(path, file, { upsert: true });
-    if (uploadErr) { toast.error(uploadErr.message); setUploadingAvatar(false); return; }
-    const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(path);
-    const newUrl = urlData.publicUrl;
-    await supabase.from("profiles").update({ avatar_url: newUrl } as any).eq("id", user.id);
-    setAvatarUrl(newUrl);
-    await refreshProfile();
-    toast.success("Avatar updated");
-    setUploadingAvatar(false);
-    e.target.value = "";
+    try {
+      const blob = await processAvatarFile(file);
+      const path = `${user.id}/avatar.${AVATAR_OUTPUT_EXT}`;
+      const { error: uploadErr } = await supabase.storage
+        .from("avatars")
+        .upload(path, blob, { upsert: true, contentType: AVATAR_OUTPUT_TYPE, cacheControl: "3600" });
+      if (uploadErr) {
+        toast.error(uploadErr.message);
+        return;
+      }
+      const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(path);
+      // Cache-bust so the new image renders immediately.
+      const newUrl = `${urlData.publicUrl}?v=${Date.now()}`;
+      await supabase.from("profiles").update({ avatar_url: newUrl } as any).eq("id", user.id);
+      setAvatarUrl(newUrl);
+      await refreshProfile();
+      toast.success("Avatar updated");
+    } catch (err: any) {
+      toast.error(err?.message || "Could not process image");
+    } finally {
+      setUploadingAvatar(false);
+      e.target.value = "";
+    }
   };
 
   const handleSave = async () => {
