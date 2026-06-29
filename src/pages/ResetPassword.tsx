@@ -33,16 +33,20 @@ export default function ResetPassword() {
       });
   }, []);
 
+  const [isInvite, setIsInvite] = useState(false);
+
   useEffect(() => {
-    // Check for recovery token in URL hash
+    // Check for recovery/invite token in URL hash
     const hashParams = new URLSearchParams(window.location.hash.substring(1));
-    if (hashParams.get("type") === "recovery") {
+    const type = hashParams.get("type");
+    if (type === "recovery" || type === "invite" || type === "signup") {
+      if (type === "invite" || type === "signup") setIsInvite(true);
       setReady(true);
       return;
     }
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "PASSWORD_RECOVERY") {
+      if (event === "PASSWORD_RECOVERY" || event === "SIGNED_IN") {
         setReady(true);
       }
     });
