@@ -230,8 +230,14 @@ export default function AdminDashboard() {
             <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground sm:text-sm sm:tracking-wider sm:normal-case sm:font-normal">
               {new Date().toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" })}
             </p>
-            <h1 className="mt-1 text-display text-[2rem] leading-[1.05] tracking-tight sm:text-5xl lg:text-[3.25rem]">
-              Hello, <span className="text-primary">{firstName}</span>
+            <h1 className="mt-1 flex items-center gap-3 text-display text-[2rem] leading-[1.05] tracking-tight sm:text-5xl lg:text-[3.25rem]">
+              <Avatar className="h-10 w-10 sm:h-14 sm:w-14 ring-2 ring-primary/20 shrink-0">
+                {profile?.avatar_url && <AvatarImage src={profile.avatar_url} alt={firstName} />}
+                <AvatarFallback className="bg-primary/10 text-primary text-base sm:text-xl font-semibold">
+                  {firstName.slice(0, 2).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <span>Hello, <span className="text-primary">{firstName}</span></span>
             </h1>
             <p className="mt-1.5 text-sm text-muted-foreground">A calmer view of everything happening today.</p>
           </div>
