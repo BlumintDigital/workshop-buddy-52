@@ -73,8 +73,6 @@ export default function AdminDashboard() {
 
     const startToday = new Date();
     startToday.setHours(0, 0, 0, 0);
-    const endToday = new Date();
-    endToday.setHours(23, 59, 59, 999);
 
     const run = async () => {
       const [
