@@ -11,7 +11,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Plus, Trash2, FileDown, ExternalLink, Link2, Bell } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, FileDown, ExternalLink, Link2, Bell, Send } from "lucide-react";
+import { Link } from "react-router-dom";
+import { clientFriendlyInvoiceStatus, clientStatusTone } from "@/lib/invoiceStatus";
+
 import { Skeleton } from "@/components/ui/skeleton";
 import { DatePickerInput } from "@/components/ui/date-picker-input";
 import { toast } from "sonner";
