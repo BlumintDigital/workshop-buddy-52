@@ -154,12 +154,12 @@ export default function ClientDashboard() {
             </p>
             <h1 className="mt-1 flex items-center gap-3 text-display text-4xl leading-tight sm:text-5xl">
               <Avatar className="h-10 w-10 sm:h-14 sm:w-14 ring-2 ring-primary/20 shrink-0">
-                {profile?.avatar_url && <AvatarImage src={profile.avatar_url} alt={firstName} />}
+                {profile?.avatar_url && <AvatarImage src={profile.avatar_url} alt={greetingName} />}
                 <AvatarFallback className="bg-primary/10 text-primary text-base sm:text-xl font-semibold">
-                  {firstName.slice(0, 2).toUpperCase()}
+                  {greetingName.slice(0, 2).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
-              <span>Welcome, <span className="text-primary">{firstName}</span></span>
+              <span className="truncate">Welcome, <span className="text-primary">{greetingName}</span></span>
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">Your jobs, appointments, and invoices in one place.</p>
           </div>
@@ -171,6 +171,23 @@ export default function ClientDashboard() {
             <Button asChild variant="soft" size="sm"><Link to="/client/invoices"><Receipt className="h-4 w-4" />Invoices</Link></Button>
           </div>
         </div>
+
+        {missingContactDetails.length > 0 && (
+          <Card className="border-tile-butter/60 bg-tile-butter/40">
+            <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-foreground">Finish setting up your profile</p>
+                <p className="text-sm text-muted-foreground">
+                  Please add your {missingContactDetails.join(", ")} so we can serve you better.
+                </p>
+              </div>
+              <Button asChild size="sm" variant="soft" className="shrink-0">
+                <Link to="/profile">Update profile</Link>
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
 
         {isLoading ? (
           <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-12">
