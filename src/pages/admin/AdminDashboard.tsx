@@ -384,28 +384,28 @@ export default function AdminDashboard() {
 
 
             {/* Staff load — 8 cols */}
-            <Card tone="default" className="lg:col-span-8">
-              <CardContent className="p-6">
+            <Card tone="default" className="col-span-2 lg:col-span-8">
+              <CardContent className="p-5 sm:p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Team</p>
-                    <h3 className="text-display text-2xl">Staff load</h3>
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground sm:text-xs">Team</p>
+                    <h3 className="mt-1 text-display text-2xl tracking-tight">Staff load</h3>
                   </div>
-                  <Link to="/admin/users" className="text-xs text-primary hover:underline">View team</Link>
+                  <Link to="/admin/users" className="text-xs font-medium text-primary hover:underline">View team</Link>
                 </div>
-                <div className="mt-5 space-y-3">
+                <div className="mt-5 space-y-3.5">
                   {staffLoad.length === 0 ? (
                     <p className="py-3 text-sm text-muted-foreground">No active assignments.</p>
                   ) : (
                     staffLoad.map((s) => (
                       <div key={s.name}>
-                        <div className="mb-1 flex items-center justify-between gap-3 text-sm">
-                          <span className="truncate">{s.name}</span>
+                        <div className="mb-1.5 flex items-center justify-between gap-3 text-sm">
+                          <span className="truncate font-medium">{s.name}</span>
                           <span className="tabular-nums text-muted-foreground">{s.jobs} jobs</span>
                         </div>
-                        <div className="h-2 overflow-hidden rounded-full bg-muted">
+                        <div className="h-2 overflow-hidden rounded-full bg-muted/70">
                           <div
-                            className="h-full rounded-full bg-gradient-sage"
+                            className="h-full rounded-full bg-gradient-sage transition-[width] duration-500"
                             style={{ width: `${(s.jobs / maxLoad) * 100}%` }}
                           />
                         </div>
@@ -417,16 +417,16 @@ export default function AdminDashboard() {
             </Card>
 
             {/* Recent jobs — 4 cols */}
-            <Card tone="default" className="lg:col-span-4">
-              <CardContent className="p-6">
+            <Card tone="default" className="col-span-2 lg:col-span-4">
+              <CardContent className="p-5 sm:p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Recent</p>
-                    <h3 className="text-display text-2xl">Jobs</h3>
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground sm:text-xs">Recent</p>
+                    <h3 className="mt-1 text-display text-2xl tracking-tight">Jobs</h3>
                   </div>
-                  <Link to="/admin/jobs" className="text-xs text-primary hover:underline">All</Link>
+                  <Link to="/admin/jobs" className="text-xs font-medium text-primary hover:underline">All</Link>
                 </div>
-                <div className="mt-4 space-y-2">
+                <div className="mt-4 space-y-1.5">
                   {recentJobs.length === 0 ? (
                     <p className="py-3 text-sm text-muted-foreground">No jobs yet.</p>
                   ) : (
@@ -434,13 +434,13 @@ export default function AdminDashboard() {
                       <Link
                         key={j.id}
                         to={`/admin/jobs/${j.id}`}
-                        className="flex items-center justify-between gap-2 rounded-xl px-3 py-2 hover:bg-secondary"
+                        className="flex items-center justify-between gap-2 rounded-xl px-3 py-2 transition hover:bg-secondary"
                       >
                         <div className="min-w-0">
                           <p className="truncate text-sm font-medium">{j.title}</p>
                           <p className="text-xs text-muted-foreground">{j.date}</p>
                         </div>
-                        <span className={cn("rounded-full px-2 py-0.5 text-[11px] capitalize", statusTone[j.status] || "bg-muted")}>
+                        <span className={cn("rounded-full px-2 py-0.5 text-[11px] font-medium capitalize", statusTone[j.status] || "bg-muted")}>
                           {j.status.replace("_", " ")}
                         </span>
                       </Link>
@@ -453,31 +453,32 @@ export default function AdminDashboard() {
             {/* Bottom: extra context */}
             <Card tone="cream" className="lg:col-span-4">
               <CardContent className="p-5">
-                <div className="flex items-center justify-between text-xs font-medium uppercase tracking-wider text-foreground/70">
+                <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.18em] text-foreground/70 sm:text-xs">
                   Inventory <Package className="h-4 w-4" />
                 </div>
-                <p className="mt-3 text-display text-4xl tabular-nums">{stats.inventory}</p>
-                <p className="mt-1 text-xs text-muted-foreground">Items tracked</p>
+                <p className="mt-3 text-display text-[2.25rem] leading-none tabular-nums sm:text-4xl">{stats.inventory}</p>
+                <p className="mt-1.5 text-xs text-muted-foreground">Items tracked</p>
               </CardContent>
             </Card>
             <Card tone="mist" className="lg:col-span-4">
               <CardContent className="p-5">
-                <div className="flex items-center justify-between text-xs font-medium uppercase tracking-wider text-foreground/70">
+                <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.18em] text-foreground/70 sm:text-xs">
                   Overdue invoices <Receipt className="h-4 w-4" />
                 </div>
-                <p className="mt-3 text-display text-4xl tabular-nums">{stats.overdueInvoices}</p>
-                <Link to="/admin/invoices" className="mt-1 inline-block text-xs text-primary hover:underline">Review →</Link>
+                <p className="mt-3 text-display text-[2.25rem] leading-none tabular-nums sm:text-4xl">{stats.overdueInvoices}</p>
+                <Link to="/admin/invoices" className="mt-1.5 inline-block text-xs font-medium text-primary hover:underline">Review →</Link>
               </CardContent>
             </Card>
-            <Card tone="sage" className="lg:col-span-4">
+            <Card tone="sage" className="col-span-2 lg:col-span-4">
               <CardContent className="p-5">
-                <div className="flex items-center justify-between text-xs font-medium uppercase tracking-wider text-foreground/70">
+                <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.18em] text-foreground/70 sm:text-xs">
                   Appointments <Calendar className="h-4 w-4" />
                 </div>
-                <p className="mt-3 text-display text-4xl tabular-nums">{stats.appointments}</p>
-                <p className="mt-1 text-xs text-muted-foreground">Total scheduled</p>
+                <p className="mt-3 text-display text-[2.25rem] leading-none tabular-nums sm:text-4xl">{stats.appointments}</p>
+                <p className="mt-1.5 text-xs text-muted-foreground">Total scheduled</p>
               </CardContent>
             </Card>
+
           </div>
         )}
 
