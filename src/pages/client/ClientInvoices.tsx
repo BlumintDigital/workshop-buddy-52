@@ -10,10 +10,8 @@ import { ExternalLink } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useCurrency } from "@/hooks/useCurrency";
 import { Skeleton } from "@/components/ui/skeleton";
+import { clientFriendlyInvoiceStatus, clientStatusTone } from "@/lib/invoiceStatus";
 
-const statusColors: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
-  draft: "outline", sent: "secondary", paid: "default", overdue: "destructive", cancelled: "destructive",
-};
 
 export default function ClientInvoices() {
   const { user } = useAuth();
