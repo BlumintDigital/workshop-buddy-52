@@ -151,9 +151,12 @@ export default function AdminDashboard() {
         order.push(`${key}|${label}`);
       }
       (revInvoices.data || []).forEach((row: any) => {
-        const d = new Date(row.created_at);
+        const d = new Date(row.paid_at || row.created_at);
         const key = `${d.getFullYear()}-${d.getMonth()}`;
-        if (key in buckets) buckets[key] += Number(row.total) || 0;
+        if (key in buckets) {
+          // Prefer base_total (workshop currency), fall back to total for legacy rows
+          buckets[key] += Number(row.base_total ?? row.total) || 0;
+        }
       });
       const series = order.map((k) => {
         const [key, label] = k.split("|");
@@ -165,7 +168,7 @@ export default function AdminDashboard() {
 
       const loadMap: Record<string, number> = {};
       (staffJobsRes.data || []).forEach((j: any) => {
-        if (j.assigned_to) loadMap[j.assigned_to] = (loadMap[j.assigned_to] || 0) + 1;
+        if (j.assigned_staff_id) loadMap[j.assigned_staff_id] = (loadMap[j.assigned_staff_id] || 0) + 1;
       });
       const nameMap = new Map<string, string>(
         (staffRolesRes.data || []).map((p: any) => [p.id, p.full_name || "Unnamed"]),
