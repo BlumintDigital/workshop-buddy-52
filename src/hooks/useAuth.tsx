@@ -140,7 +140,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // would otherwise hide the row.
     const { data } = await supabase.rpc("get_my_basic_profile");
     const row = Array.isArray(data) ? data[0] : data;
-    setProfile(row ? { full_name: row.full_name ?? null, avatar_url: row.avatar_url ?? null } : null);
+    setProfile(row ? { full_name: row.full_name ?? null, avatar_url: row.avatar_url ?? null, company_name: row.company_name ?? null, phone: row.phone ?? null, address: row.address ?? null } : null);
   }, [user]);
 
   const fetchUserData = async (userId: string): Promise<AppRole | null> => {
