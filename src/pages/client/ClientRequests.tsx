@@ -235,13 +235,14 @@ export default function ClientRequests() {
 
                         {isQuoted && (
                           <div className="mt-3 flex flex-wrap gap-2">
-                            <Button size="sm" disabled={processing === r.id} onClick={() => decide(r, true)}>
-                              <CheckCircle2 className="h-4 w-4" /> Approve quote
+                            <Button size="sm" disabled={!!processing} onClick={() => decide(r, true)}>
+                              <CheckCircle2 className="h-4 w-4" /> {processing === r.id ? "Approving..." : "Approve quote"}
                             </Button>
-                            <Button size="sm" variant="outline" disabled={processing === r.id}
+                            <Button size="sm" variant="outline" disabled={!!processing}
                               onClick={() => { setDeclineFor(r); setDeclineReason(""); }}>
                               <XCircle className="h-4 w-4" /> Decline quote
                             </Button>
+
                           </div>
                         )}
                       </div>
