@@ -117,6 +117,11 @@ export default function ResetPassword() {
       setResolvedRole(role);
       setSuccess(true);
       toast.success("Password updated successfully");
+      // Auto-redirect to role-specific dashboard
+      const target = getRoleDashboardPath(role);
+      if (target && target !== "/auth") {
+        window.setTimeout(() => navigate(target, { replace: true }), 1500);
+      }
     } catch (err: any) {
       toast.error(err.message || "Failed to update password");
     } finally {
@@ -143,7 +148,9 @@ export default function ResetPassword() {
                 </div>
                 <CardTitle>You're all set!</CardTitle>
                 <CardDescription>
-                  {isInvite ? "Your account is now active." : "Your password has been updated."}
+                  {resolvedRole
+                    ? "Redirecting you to your dashboard..."
+                    : isInvite ? "Your account is now active." : "Your password has been updated."}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
