@@ -341,8 +341,18 @@ export default function InvoiceDetail() {
                 </AlertDialogContent>
               </AlertDialog>
             )}
-          </div>
         </div>
+
+        {canManage && sourceRequestId && (
+          <div className="rounded-xl border border-primary/30 bg-tile-sage/40 px-4 py-3 text-sm">
+            Originated from a client request.{" "}
+            <Link to={`/admin/requests?focus=${sourceRequestId}`} className="font-medium text-primary hover:underline">
+              View request →
+            </Link>
+          </div>
+        )}
+
+
 
         {/* Invoice meta */}
         <Card>
