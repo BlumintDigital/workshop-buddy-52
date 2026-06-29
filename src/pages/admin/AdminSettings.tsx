@@ -184,6 +184,8 @@ export default function AdminSettings() {
       from_email: settings.from_email || null,
       login_image_url: settings.login_image_url || null,
       logo_url: getCustomLogoUrl(settings.logo_url),
+      brand_primary_hsl: settings.brand_primary_hsl || null,
+      brand_accent_hsl: settings.brand_accent_hsl || null,
     });
     if (error) { setSaving(false); toast.error(error.message); return; }
 
