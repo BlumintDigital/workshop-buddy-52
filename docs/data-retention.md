@@ -1,6 +1,6 @@
 # Data Retention Policy
 
-**Owner:** Blumint Digital Limited
+**Owner:** Your Organization
 **Effective date:** June 2026
 **Review cadence:** Annually
 
@@ -47,7 +47,7 @@ A quarterly cron job or manual query should delete:
 - `appointments` older than 3 years with no linked jobs or invoices
 
 ### Right to erasure (UK GDPR Article 17)
-When a user submits an erasure request (to privacy@shoplane.uk):
+When a user submits an erasure request (to privacy@example.com):
 1. Verify identity
 2. Check whether financial record retention obligation overrides the request (HMRC 7-year rule)
 3. Delete account per the "account closure" procedure above

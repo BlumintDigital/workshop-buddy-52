@@ -1,6 +1,6 @@
 # Vendor Risk Assessment
 
-**Owner:** Blumint Digital Limited
+**Owner:** Your Organization
 **Last reviewed:** June 2026
 **Review cadence:** Annually, or when a vendor makes material changes to their terms or infrastructure
 
@@ -73,7 +73,7 @@ This document assesses the security and compliance posture of third-party vendor
 
 **Controls in place:**
 - Resend API key stored as a Supabase Edge Function secret (never in frontend or version control)
-- Only sends from verified domain (`shoplane.uk`) — prevents sender spoofing
+- Only sends from verified domain (`your-verified-domain.com`) — prevents sender spoofing
 - Email content is sanitised (HTML stripped) before sending bug reports
 
 ---

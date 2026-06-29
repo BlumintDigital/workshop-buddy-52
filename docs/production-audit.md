@@ -172,7 +172,7 @@ Current daily volume (from `pg_stat_statements` totals over the observation wind
 
 ### 4.6 Email
 
-- Resend with verified `shoplane.uk` sender domain.
+- Resend with verified `your-verified-domain.com` sender domain.
 - HTML stripped on bug reports.
 - 60s cooldown on `admin-resend-invite`.
 
@@ -258,7 +258,7 @@ Spot-check items not verified in this audit: keyboard navigation on the kanban b
 7. Add Playwright smoke tests for the 4 role sign-in flows; run in CI on PR.
 8. Add at least one pgTAP-style RLS regression test per sensitive table.
 9. Add per-user rate limits to `send-push` and `send-email`.
-10. Add an uptime monitor (BetterUptime/UptimeRobot) on `https://ieq.shoplane.uk`.
+10. Add an uptime monitor (BetterUptime/UptimeRobot) on `https://your-domain.example.com`.
 
 ### P2 — backlog
 11. Add report-only CSP, evolve to enforced.
