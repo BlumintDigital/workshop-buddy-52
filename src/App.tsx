@@ -7,6 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/hooks/useAuth";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { PwaStatus } from "@/components/PwaStatus";
+import { BrandColorProvider } from "@/components/BrandColorProvider";
 import {
   FeatureFlagProvider,
   useFeature,
