@@ -6,6 +6,14 @@ import { captureEdgeError } from "../_shared/sentry.ts";
 const VALID_ROLES = ["admin", "manager", "staff", "client"] as const;
 type Role = (typeof VALID_ROLES)[number];
 
+const friendlyCreateError = (message?: string) => {
+  const lower = (message ?? "").toLowerCase();
+  if (lower.includes("already") || lower.includes("email_exists")) {
+    return "A user with this email already exists. Open their profile, resend the invite, or use a different email address.";
+  }
+  return message ?? "Failed to create user";
+};
+
 serve(async (req) => {
   const cors = buildCorsHeaders(req);
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
@@ -102,17 +110,19 @@ serve(async (req) => {
 
     const newUserId = newUser.user.id;
 
-    // Upsert role (trigger may have inserted 'client' by default)
-    const { error: roleError } = await adminClient
-      .from("user_roles")
-      .upsert(
-        { user_id: newUserId, role },
-        { onConflict: "user_id" },
-      );
+    // Assign exactly one role without relying on a non-existent UNIQUE(user_id) constraint.
+    const { error: roleError } = await adminClient.rpc("admin_set_user_role", {
+      _caller_user_id: callerId,
+      _target_user_id: newUserId,
+      _role: role,
+    });
     if (roleError) {
       console.error("admin-create-user: role upsert failed", roleError.message);
+      await adminClient.auth.admin.deleteUser(newUserId).catch((cleanupError) => {
+        console.error("admin-create-user: cleanup failed", cleanupError.message);
+      });
       return json(
-        { error: `Created user but role failed: ${roleError.message}` },
+        { error: `User creation was rolled back because role assignment failed: ${roleError.message}` },
         500,
       );
     }
@@ -126,7 +136,14 @@ serve(async (req) => {
       .update(profileUpdate)
       .eq("id", newUserId);
     if (profileError) {
-      console.warn("admin-create-user: profile update warn", profileError.message);
+      console.error("admin-create-user: profile update failed", profileError.message);
+      await adminClient.auth.admin.deleteUser(newUserId).catch((cleanupError) => {
+        console.error("admin-create-user: cleanup failed", cleanupError.message);
+      });
+      return json(
+        { error: `User creation was rolled back because profile setup failed: ${profileError.message}` },
+        500,
+      );
     }
 
     // Send a password-set / recovery email. Non-fatal: account already exists.
