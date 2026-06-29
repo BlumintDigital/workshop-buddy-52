@@ -31,7 +31,7 @@ import { AdminOnboardingChecklist } from "@/components/onboarding/AdminOnboardin
 import { useCurrency } from "@/hooks/useCurrency";
 
 type RecentJob = { id: string; title: string; status: string; date: string };
-type Appointment = { id: string; title: string | null; scheduled_at: string };
+type Appointment = { id: string; title: string | null; appointment_date: string; appointment_time: string };
 
 export default function AdminDashboard() {
   const appointmentsEnabled = useFeature("appointments");
@@ -109,10 +109,9 @@ export default function AdminDashboard() {
         appointmentsEnabled
           ? supabase
               .from("appointments")
-              .select("id, title, scheduled_at")
-              .gte("scheduled_at", startToday.toISOString())
-              .lte("scheduled_at", endToday.toISOString())
-              .order("scheduled_at", { ascending: true })
+              .select("id, title, appointment_date, appointment_time")
+              .eq("appointment_date", startToday.toISOString().slice(0, 10))
+              .order("appointment_time", { ascending: true })
               .limit(6)
           : Promise.resolve({ data: [] } as any),
         supabase.from("jobs").select("*", { count: "exact", head: true }).eq("status", "in_progress"),
@@ -120,7 +119,7 @@ export default function AdminDashboard() {
         supabase
           .from("invoices")
           .select("*", { count: "exact", head: true })
-          .in("status", ["overdue", "unpaid"]),
+          .eq("status", "overdue"),
         supabase.from("profiles").select("id, full_name").limit(50),
         supabase.from("jobs").select("assigned_to").not("status", "in", "(completed,cancelled)"),
       ]);
@@ -334,7 +333,7 @@ export default function AdminDashboard() {
                         <div className="min-w-0">
                           <p className="truncate text-sm font-medium">{a.title || "Appointment"}</p>
                           <p className="text-xs text-muted-foreground">
-                            {new Date(a.scheduled_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                            {(a.appointment_time || "").slice(0, 5)}
                           </p>
                         </div>
                         <span className="rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[11px] text-primary">Today</span>
