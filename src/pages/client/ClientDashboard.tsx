@@ -204,7 +204,7 @@ export default function ClientDashboard() {
             </Card>
 
             {/* Upcoming appointments */}
-            <Card tone="mist" className="lg:col-span-4 lg:row-span-2">
+            <Card tone="mist" className="col-span-2 lg:col-span-4 lg:row-span-2">
               <CardContent className="flex h-full flex-col p-6">
                 <div className="flex items-center justify-between">
                   <div>
