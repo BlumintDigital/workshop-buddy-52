@@ -1224,6 +1224,14 @@ export type Database = {
       }
     }
     Functions: {
+      admin_set_user_role: {
+        Args: {
+          _caller_user_id: string
+          _role: Database["public"]["Enums"]["app_role"]
+          _target_user_id: string
+        }
+        Returns: Database["public"]["Enums"]["app_role"]
+      }
       get_job_completion_stats: {
         Args: never
         Returns: {
@@ -1278,13 +1286,6 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
-      }
-      set_user_role: {
-        Args: {
-          _role: Database["public"]["Enums"]["app_role"]
-          _target_user_id: string
-        }
-        Returns: Database["public"]["Enums"]["app_role"]
       }
     }
     Enums: {
