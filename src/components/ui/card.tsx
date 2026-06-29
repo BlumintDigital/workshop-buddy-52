@@ -2,11 +2,28 @@ import * as React from "react";
 
 import { cn } from "@/lib/utils";
 
-const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(({ className, ...props }, ref) => (
+type CardTone = "default" | "cream" | "mist" | "sage" | "blush" | "sky" | "butter";
+
+interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
+  tone?: CardTone;
+}
+
+const toneClass: Record<CardTone, string> = {
+  default: "bg-card",
+  cream: "bg-tile-cream",
+  mist: "bg-tile-mist",
+  sage: "bg-tile-sage",
+  blush: "bg-tile-blush",
+  sky: "bg-tile-sky",
+  butter: "bg-tile-butter",
+};
+
+const Card = React.forwardRef<HTMLDivElement, CardProps>(({ className, tone = "default", ...props }, ref) => (
   <div
     ref={ref}
     className={cn(
-      "rounded-2xl border border-border/60 bg-card/70 backdrop-blur-xl text-card-foreground card-elevated surface-violet",
+      "rounded-2xl border border-border/70 text-card-foreground card-soft",
+      toneClass[tone],
       className,
     )}
     {...props}
