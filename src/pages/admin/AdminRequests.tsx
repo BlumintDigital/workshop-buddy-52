@@ -135,10 +135,16 @@ export default function AdminRequests() {
   const filtered = requests.filter((r) => {
     if (tab === "pending") return r.status === "pending";
     if (tab === "quoted") return r.status === "quoted";
+    if (tab === "approved") return r.status === "approved";
     return true;
   });
 
   const pendingCount = requests.filter((r) => r.status === "pending").length;
+  const approvedCount = requests.filter((r) => r.status === "approved").length;
+
+  const canConvert = (r: Req) =>
+    (r.request_type === "job" && r.status === "pending") ||
+    (r.request_type === "quote" && r.status === "approved");
 
   return (
     <DashboardLayout>
@@ -146,7 +152,7 @@ export default function AdminRequests() {
         <div>
           <h1 className="text-display text-3xl">Client Requests</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Review quote and job requests submitted by clients. Accept to create a job, or decline with a reason.
+            Review quote and job requests. Send a quote for client approval, or accept a job request directly.
           </p>
         </div>
 
@@ -156,6 +162,9 @@ export default function AdminRequests() {
               Pending {pendingCount > 0 && <Badge className="ml-2" variant="secondary">{pendingCount}</Badge>}
             </TabsTrigger>
             <TabsTrigger value="quoted">Quoted</TabsTrigger>
+            <TabsTrigger value="approved">
+              Approved {approvedCount > 0 && <Badge className="ml-2" variant="secondary">{approvedCount}</Badge>}
+            </TabsTrigger>
             <TabsTrigger value="all">All</TabsTrigger>
           </TabsList>
         </Tabs>
@@ -177,21 +186,18 @@ export default function AdminRequests() {
             {filtered.map((r) => {
               const c = clients[r.client_id];
               const clientName = c?.company_name || c?.full_name || "Unknown client";
+              const isQuote = r.request_type === "quote";
               return (
                 <Card key={r.id} tone="default">
                   <CardContent className="flex flex-col gap-4 p-5 lg:flex-row lg:items-start lg:justify-between">
                     <div className="min-w-0 flex-1 space-y-2">
                       <div className="flex flex-wrap items-center gap-2">
-                        {r.request_type === "quote" ? (
-                          <FileText className="h-4 w-4 text-primary" />
-                        ) : (
-                          <Wrench className="h-4 w-4 text-primary" />
-                        )}
+                        {isQuote ? <FileText className="h-4 w-4 text-primary" /> : <Wrench className="h-4 w-4 text-primary" />}
                         <span className="text-xs uppercase tracking-wider text-muted-foreground">
-                          {r.request_type === "quote" ? "Quote request" : "Job request"}
+                          {isQuote ? "Quote request" : "Job request"}
                         </span>
-                        <span className={cn("rounded-full px-2 py-0.5 text-[11px] capitalize", statusTone[r.status])}>
-                          {r.status}
+                        <span className={cn("rounded-full px-2 py-0.5 text-[11px]", statusTone[r.status])}>
+                          {statusLabel[r.status] || r.status}
                         </span>
                         <Badge variant="outline" className="capitalize">{r.priority}</Badge>
                       </div>
@@ -202,9 +208,16 @@ export default function AdminRequests() {
                         {r.preferred_date && <span>Preferred: {new Date(r.preferred_date).toLocaleDateString()}</span>}
                         <span>Submitted {new Date(r.created_at).toLocaleString()}</span>
                       </div>
+                      {isQuote && r.quoted_total != null && (r.status === "quoted" || r.status === "approved" || r.status === "declined_by_client") && (
+                        <div className="rounded-md border bg-tile-cream/40 px-3 py-2 text-xs">
+                          Quote total: <span className="font-semibold">{fmt(Number(r.quoted_total), r.quoted_currency || undefined)}</span>
+                          {r.quote_expires_at && <> · expires {new Date(r.quote_expires_at).toLocaleDateString()}</>}
+                          {r.client_decision_at && r.status === "approved" && <> · approved {new Date(r.client_decision_at).toLocaleString()}</>}
+                        </div>
+                      )}
                       {r.decline_reason && (
                         <p className="rounded-md bg-destructive/10 px-3 py-2 text-xs text-destructive">
-                          Decline reason: {r.decline_reason}
+                          {r.status === "declined_by_client" ? "Client declined" : "Decline reason"}: {r.decline_reason}
                         </p>
                       )}
                     </div>
@@ -216,31 +229,32 @@ export default function AdminRequests() {
                           </Link>
                         </Button>
                       )}
+
+                      {/* Quote-type: build & send / re-send quote */}
+                      {isQuote && (r.status === "pending" || r.status === "quoted") && (
+                        <Button size="sm" variant="outline" onClick={() => setQuoteFor(r)}>
+                          <FilePlus2 className="h-4 w-4" />
+                          {r.status === "quoted" ? "Revise quote" : "Build & send quote"}
+                        </Button>
+                      )}
+
+                      {/* Convert to job: job-type pending OR quote-type approved */}
+                      {canConvert(r) && (
+                        <Button size="sm" disabled={processing === r.id} onClick={() => accept(r)}>
+                          <CheckCircle2 className="h-4 w-4" />
+                          {isQuote ? "Convert to job" : "Accept & create job"}
+                        </Button>
+                      )}
+
+                      {/* Decline by workshop — only before client decision */}
                       {(r.status === "pending" || r.status === "quoted") && (
-                        <>
-                          <Button
-                            size="sm"
-                            disabled={processing === r.id}
-                            onClick={() => accept(r)}
-                          >
-                            <CheckCircle2 className="h-4 w-4" /> Accept &amp; create job
-                          </Button>
-                          {r.request_type === "quote" && r.status === "pending" && (
-                            <Button asChild size="sm" variant="outline">
-                              <Link to={`/invoices/new?client=${r.client_id}&title=${encodeURIComponent(r.title)}`}>
-                                Send quote
-                              </Link>
-                            </Button>
-                          )}
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            disabled={processing === r.id}
-                            onClick={() => { setDeclineFor(r); setDeclineReason(""); }}
-                          >
-                            <XCircle className="h-4 w-4" /> Decline
-                          </Button>
-                        </>
+                        <Button
+                          size="sm" variant="ghost"
+                          disabled={processing === r.id}
+                          onClick={() => { setDeclineFor(r); setDeclineReason(""); }}
+                        >
+                          <XCircle className="h-4 w-4" /> Decline
+                        </Button>
                       )}
                     </div>
                   </CardContent>
@@ -271,6 +285,15 @@ export default function AdminRequests() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <QuoteBuilderDialog
+        open={!!quoteFor}
+        onOpenChange={(v) => !v && setQuoteFor(null)}
+        requestId={quoteFor?.id || null}
+        requestTitle={quoteFor?.title}
+        onSubmitted={fetchRequests}
+      />
     </DashboardLayout>
   );
 }
+
