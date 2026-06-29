@@ -20,6 +20,7 @@ import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ActivityFeed } from "@/components/dashboard/ActivityFeed";
 import { PendingActions } from "@/components/dashboard/PendingActions";
 import { AdminOnboardingChecklist } from "@/components/onboarding/AdminOnboardingChecklist";
