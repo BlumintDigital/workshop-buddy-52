@@ -55,3 +55,30 @@ export function withSentry(handler: EdgeHandler, functionName?: string): EdgeHan
     }
   };
 }
+
+/**
+ * Report a caught error to Sentry without rethrowing.
+ * Use inside existing try/catch blocks that already build their own
+ * 500 response — keeps user-facing behaviour intact while still
+ * surfacing the exception in monitoring.
+ */
+export async function captureEdgeError(
+  err: unknown,
+  functionName: string,
+  extra?: Record<string, unknown>,
+): Promise<void> {
+  const sentry = await getSentry();
+  if (!sentry) {
+    console.error(`[${functionName}] Error`, err, extra ?? {});
+    return;
+  }
+  try {
+    sentry.captureException(err, {
+      tags: { function: functionName },
+      extra,
+    });
+    await sentry.flush?.(1500);
+  } catch {
+    // swallow
+  }
+}
