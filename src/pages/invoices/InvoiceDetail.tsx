@@ -16,6 +16,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { DatePickerInput } from "@/components/ui/date-picker-input";
 import { toast } from "sonner";
 import { generateInvoicePDF } from "@/lib/invoicePdf";
+import { friendlyErrorMessage, friendlyErrorMessageSync } from "@/lib/friendlyError";
 import { sendEmail, invoiceSentEmailHtml } from "@/lib/email";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useCurrency } from "@/hooks/useCurrency";
@@ -99,7 +100,11 @@ export default function InvoiceDetail() {
       stripe_payment_url: invoice.stripe_payment_url || null,
     }).eq("id", invoice.id);
 
-    if (invError) { toast.error(invError.message); setSaving(false); return; }
+    if (invError) {
+      toast.error(friendlyErrorMessageSync(invError, "Couldn't save invoice changes."));
+      setSaving(false);
+      return;
+    }
 
     // Delete existing items and reinsert
     await supabase.from("invoice_items").delete().eq("invoice_id", invoice.id);
@@ -124,7 +129,11 @@ export default function InvoiceDetail() {
     setDeleting(true);
     await supabase.from("invoice_items").delete().eq("invoice_id", invoice.id);
     const { error } = await supabase.from("invoices").delete().eq("id", invoice.id);
-    if (error) { toast.error(error.message); setDeleting(false); return; }
+    if (error) {
+      toast.error(friendlyErrorMessageSync(error, "Couldn't delete this invoice."));
+      setDeleting(false);
+      return;
+    }
     toast.success("Invoice deleted");
     const path = role === "client" ? "/client/invoices" : role === "manager" ? "/manager/invoices" : "/admin/invoices";
     navigate(path);
@@ -135,8 +144,9 @@ export default function InvoiceDetail() {
     setDownloading(true);
     try {
       await generateInvoicePDF({ invoice, clientName, items });
-    } catch {
-      toast.error("Failed to generate PDF");
+      toast.success("PDF downloaded");
+    } catch (e) {
+      toast.error(friendlyErrorMessageSync(e, "Couldn't generate the PDF. Please retry or check your browser's download settings."));
     } finally {
       setDownloading(false);
     }
