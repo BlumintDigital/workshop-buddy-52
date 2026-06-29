@@ -14,6 +14,8 @@ import { Plus, Trash2 } from "lucide-react";
 import { DatePickerInput } from "@/components/ui/date-picker-input";
 import { toast } from "sonner";
 import { useCurrency } from "@/hooks/useCurrency";
+import InvoicePdfPreview from "@/components/invoices/InvoicePdfPreview";
+import type { WorkshopDetails } from "@/lib/invoicePdf";
 
 interface LineItem {
   description: string;
