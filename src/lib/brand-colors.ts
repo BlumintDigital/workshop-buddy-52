@@ -5,10 +5,10 @@ export type BrandColors = {
   accent?: string | null;
 };
 
-export const DEFAULT_BRAND: Required<BrandColors> = {
+export const DEFAULT_BRAND = {
   primary: "110 14% 54%",
   accent: "82 35% 70%",
-};
+} as const;
 
 export const PRESETS: { name: string; hex: string }[] = [
   { name: "Sage", hex: "#7d9b76" },
