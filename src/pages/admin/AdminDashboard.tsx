@@ -217,17 +217,17 @@ export default function AdminDashboard() {
 
   return (
     <DashboardLayout>
-      <div className="min-w-0 max-w-full space-y-6">
+      <div className="min-w-0 max-w-full space-y-5 sm:space-y-6 lg:space-y-8">
         {/* Header */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div className="min-w-0">
-            <p className="text-sm text-muted-foreground">
+            <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground sm:text-sm sm:tracking-wider sm:normal-case sm:font-normal">
               {new Date().toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" })}
             </p>
-            <h1 className="text-display text-4xl leading-tight sm:text-5xl">
+            <h1 className="mt-1 text-display text-[2rem] leading-[1.05] tracking-tight sm:text-5xl lg:text-[3.25rem]">
               Hello, <span className="text-primary">{firstName}</span>
             </h1>
-            <p className="mt-1 text-sm text-muted-foreground">A calmer view of everything happening today.</p>
+            <p className="mt-1.5 text-sm text-muted-foreground">A calmer view of everything happening today.</p>
           </div>
           <div className="flex flex-wrap gap-2">
             <Button asChild variant="glow" size="sm"><Link to="/admin/jobs"><Plus className="h-4 w-4" />New job</Link></Button>
@@ -243,18 +243,19 @@ export default function AdminDashboard() {
 
         {/* Bento grid */}
         {isLoading ? (
-          <div className="grid gap-4 lg:grid-cols-12 lg:grid-rows-[auto_auto_auto]">
-            <Skeleton className="h-64 rounded-2xl lg:col-span-8 lg:row-span-2" />
-            <Skeleton className="h-64 rounded-2xl lg:col-span-4 lg:row-span-2" />
-            <Skeleton className="h-32 rounded-2xl lg:col-span-3" />
-            <Skeleton className="h-32 rounded-2xl lg:col-span-3" />
-            <Skeleton className="h-32 rounded-2xl lg:col-span-2" />
-            <Skeleton className="h-32 rounded-2xl lg:col-span-4" />
-            <Skeleton className="h-48 rounded-2xl lg:col-span-8" />
-            <Skeleton className="h-48 rounded-2xl lg:col-span-4" />
+          <div className="grid gap-3 sm:gap-4 lg:gap-5 lg:grid-cols-12 lg:auto-rows-[minmax(0,auto)]">
+            <Skeleton className="h-64 rounded-3xl lg:col-span-8 lg:row-span-2" />
+            <Skeleton className="h-64 rounded-3xl lg:col-span-4 lg:row-span-2" />
+            <Skeleton className="h-28 rounded-3xl sm:h-32 lg:col-span-3" />
+            <Skeleton className="h-28 rounded-3xl sm:h-32 lg:col-span-3" />
+            <Skeleton className="h-28 rounded-3xl sm:h-32 lg:col-span-2" />
+            <Skeleton className="h-28 rounded-3xl sm:h-32 lg:col-span-4" />
+            <Skeleton className="h-48 rounded-3xl lg:col-span-8" />
+            <Skeleton className="h-48 rounded-3xl lg:col-span-4" />
           </div>
         ) : (
-          <div className="grid gap-4 lg:grid-cols-12 lg:auto-rows-[minmax(0,auto)]">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:gap-5 lg:grid-cols-12 lg:auto-rows-[minmax(0,auto)]">
+
             {/* Revenue hero — 8 cols, spans 2 rows */}
             <Card tone="cream" className="lg:col-span-8 lg:row-span-2 overflow-hidden">
               <CardContent className="flex h-full flex-col gap-6 p-6">
