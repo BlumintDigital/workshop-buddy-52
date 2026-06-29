@@ -221,7 +221,7 @@ export default function InvoiceDetail() {
                 onClick={() =>
                   void notifyClient(
                     `Invoice ${invoice.invoice_number}`,
-                    `Status: ${invoice.status} • Total: ${fmt(total)}`,
+                    `Status: ${invoice.status} • Total: ${fmt(total, invoice.currency)}`,
                   )
                 }
               >
@@ -397,9 +397,9 @@ export default function InvoiceDetail() {
                     <TableCell className="text-right">
                       {canEdit ? (
                         <Input type="number" min={0} step={0.01} value={item.unit_price} onChange={(e) => updateItem(idx, "unit_price", Number(e.target.value))} className="w-24 text-right ml-auto" />
-                      ) : fmt(Number(item.unit_price))}
+                      ) : fmt(Number(item.unit_price), invoice.currency)}
                     </TableCell>
-                    <TableCell className="text-right font-medium">{fmt(item.quantity * item.unit_price)}</TableCell>
+                    <TableCell className="text-right font-medium">{fmt(item.quantity * item.unit_price, invoice.currency)}</TableCell>
                     {canEdit && (
                       <TableCell>
                         {items.length > 1 && (
@@ -419,9 +419,15 @@ export default function InvoiceDetail() {
         {/* Totals */}
         <Card>
           <CardContent className="pt-6 space-y-2">
-            <div className="flex justify-between text-sm"><span>Subtotal</span><span>{fmt(subtotal)}</span></div>
-            <div className="flex justify-between text-sm"><span>Tax ({invoice.tax_rate ?? 0}%)</span><span>{fmt(taxAmount)}</span></div>
-            <div className="flex justify-between font-bold text-lg border-t pt-2"><span>Total</span><span>{fmt(total)}</span></div>
+            <div className="flex justify-between text-sm"><span>Subtotal</span><span>{fmt(subtotal, invoice.currency)}</span></div>
+            <div className="flex justify-between text-sm"><span>Tax ({invoice.tax_rate ?? 0}%)</span><span>{fmt(taxAmount, invoice.currency)}</span></div>
+            <div className="flex justify-between font-bold text-lg border-t pt-2"><span>Total</span><span>{fmt(total, invoice.currency)}</span></div>
+            {invoice.currency && invoice.fx_rate && Number(invoice.fx_rate) !== 1 && (
+              <div className="flex justify-between text-xs text-muted-foreground pt-1">
+                <span>Equivalent (rate {Number(invoice.fx_rate)})</span>
+                <span>{fmt(total * Number(invoice.fx_rate))}</span>
+              </div>
+            )}
           </CardContent>
         </Card>
 

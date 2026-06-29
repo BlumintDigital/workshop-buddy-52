@@ -1,32 +1,45 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { formatMoney } from "@/lib/currencies";
 
-let cached: string | null = null;
-const listeners = new Set<(c: string) => void>();
-let inflight: Promise<string> | null = null;
+interface CurrencyState {
+  currency: string;
+  enabled: string[];
+}
 
-async function loadCurrency(): Promise<string> {
+let cached: CurrencyState | null = null;
+const listeners = new Set<(s: CurrencyState) => void>();
+let inflight: Promise<CurrencyState> | null = null;
+
+async function loadCurrency(): Promise<CurrencyState> {
   if (cached) return cached;
   if (inflight) return inflight;
   inflight = (async () => {
     const { data } = await supabase
       .from("workshop_settings")
-      .select("currency")
+      .select("currency, enabled_currencies")
       .eq("id", 1)
       .maybeSingle();
-    const c = ((data as any)?.currency as string | undefined) || "USD";
-    cached = c;
-    listeners.forEach((fn) => fn(c));
-    return c;
+    const currency = ((data as any)?.currency as string | undefined) || "USD";
+    const enabledRaw = ((data as any)?.enabled_currencies as string[] | undefined) || [];
+    const enabled = enabledRaw.length ? Array.from(new Set([currency, ...enabledRaw])) : [currency];
+    const state: CurrencyState = { currency, enabled };
+    cached = state;
+    listeners.forEach((fn) => fn(state));
+    return state;
   })();
   return inflight;
 }
 
-export function useCurrency(): { currency: string; format: (n: number) => string } {
-  const [currency, setCurrency] = useState<string>(cached ?? "USD");
+export function useCurrency(): {
+  currency: string;
+  enabled: string[];
+  format: (n: number, code?: string) => string;
+} {
+  const [state, setState] = useState<CurrencyState>(cached ?? { currency: "USD", enabled: ["USD"] });
 
   useEffect(() => {
-    const fn = (c: string) => setCurrency(c);
+    const fn = (s: CurrencyState) => setState(s);
     listeners.add(fn);
     loadCurrency().then(fn);
 
@@ -36,10 +49,14 @@ export function useCurrency(): { currency: string; format: (n: number) => string
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "workshop_settings", filter: "id=eq.1" },
         (payload) => {
-          const c = (payload.new as any)?.currency as string | undefined;
-          if (c && c !== cached) {
-            cached = c;
-            listeners.forEach((l) => l(c));
+          const row = payload.new as any;
+          const currency = (row?.currency as string | undefined) || "USD";
+          const enabledRaw = (row?.enabled_currencies as string[] | undefined) || [];
+          const enabled = enabledRaw.length ? Array.from(new Set([currency, ...enabledRaw])) : [currency];
+          const next: CurrencyState = { currency, enabled };
+          if (!cached || cached.currency !== next.currency || cached.enabled.join("|") !== next.enabled.join("|")) {
+            cached = next;
+            listeners.forEach((l) => l(next));
           }
         },
       )
@@ -51,17 +68,7 @@ export function useCurrency(): { currency: string; format: (n: number) => string
     };
   }, []);
 
-  const format = (n: number) => {
-    try {
-      return new Intl.NumberFormat(undefined, {
-        style: "currency",
-        currency,
-        minimumFractionDigits: 2,
-      }).format(Number.isFinite(n) ? n : 0);
-    } catch {
-      return `${currency} ${(Number.isFinite(n) ? n : 0).toFixed(2)}`;
-    }
-  };
+  const format = (n: number, code?: string) => formatMoney(n, code || state.currency);
 
-  return { currency, format };
+  return { currency: state.currency, enabled: state.enabled, format };
 }

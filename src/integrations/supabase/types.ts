@@ -391,9 +391,12 @@ export type Database = {
       }
       invoices: {
         Row: {
+          base_total: number | null
           client_id: string
           created_at: string
+          currency: string
           due_date: string | null
+          fx_rate: number
           id: string
           invoice_number: string
           job_id: string | null
@@ -408,9 +411,12 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          base_total?: number | null
           client_id: string
           created_at?: string
+          currency?: string
           due_date?: string | null
+          fx_rate?: number
           id?: string
           invoice_number: string
           job_id?: string | null
@@ -425,9 +431,12 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          base_total?: number | null
           client_id?: string
           created_at?: string
+          currency?: string
           due_date?: string | null
+          fx_rate?: number
           id?: string
           invoice_number?: string
           job_id?: string | null
@@ -1078,6 +1087,7 @@ export type Database = {
           currency: string | null
           default_tax_rate: number | null
           email_notifications_enabled: boolean | null
+          enabled_currencies: string[]
           feature_flags: Json | null
           from_email: string | null
           id: number
@@ -1098,6 +1108,7 @@ export type Database = {
           currency?: string | null
           default_tax_rate?: number | null
           email_notifications_enabled?: boolean | null
+          enabled_currencies?: string[]
           feature_flags?: Json | null
           from_email?: string | null
           id?: number
@@ -1118,6 +1129,7 @@ export type Database = {
           currency?: string | null
           default_tax_rate?: number | null
           email_notifications_enabled?: boolean | null
+          enabled_currencies?: string[]
           feature_flags?: Json | null
           from_email?: string | null
           id?: number

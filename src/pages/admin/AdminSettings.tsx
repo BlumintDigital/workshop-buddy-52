@@ -24,23 +24,8 @@ import { getCustomLogoUrl, resolveLogoUrl, useDefaultLogoOnError } from "@/lib/b
 import { useAdminOnboarding } from "@/hooks/useAdminOnboarding";
 
 
-const currencies = [
-  { value: "USD", label: "USD — US Dollar" },
-  { value: "EUR", label: "EUR — Euro" },
-  { value: "GBP", label: "GBP — British Pound" },
-  { value: "CAD", label: "CAD — Canadian Dollar" },
-  { value: "AUD", label: "AUD — Australian Dollar" },
-  { value: "NGN", label: "NGN — Nigerian Naira" },
-  { value: "ZAR", label: "ZAR — South African Rand" },
-  { value: "KES", label: "KES — Kenyan Shilling" },
-  { value: "GHS", label: "GHS — Ghanaian Cedi" },
-  { value: "INR", label: "INR — Indian Rupee" },
-  { value: "JPY", label: "JPY — Japanese Yen" },
-  { value: "CNY", label: "CNY — Chinese Yuan" },
-  { value: "BRL", label: "BRL — Brazilian Real" },
-  { value: "MXN", label: "MXN — Mexican Peso" },
-  { value: "AED", label: "AED — UAE Dirham" },
-];
+import { CURRENCIES } from "@/lib/currencies";
+const currencies = CURRENCIES;
 
 const defaultSettings = {
   workshop_name: "",
@@ -50,6 +35,7 @@ const defaultSettings = {
   default_tax_rate: "0",
   monthly_goal: "",
   currency: "USD",
+  enabled_currencies: ["USD"] as string[],
   notify_job_status: true,
   notify_new_appointment: true,
   notify_low_inventory: true,
@@ -113,6 +99,9 @@ export default function AdminSettings() {
           default_tax_rate: data.default_tax_rate?.toString() ?? "0",
           monthly_goal: (data as any).monthly_goal?.toString() ?? "",
           currency: data.currency ?? "USD",
+          enabled_currencies: Array.isArray((data as any).enabled_currencies) && (data as any).enabled_currencies.length > 0
+            ? (data as any).enabled_currencies
+            : [data.currency ?? "USD"],
           notify_job_status: data.notify_job_status ?? true,
           notify_new_appointment: data.notify_new_appointment ?? true,
           notify_low_inventory: data.notify_low_inventory ?? true,
@@ -181,6 +170,9 @@ export default function AdminSettings() {
       default_tax_rate: parseFloat(settings.default_tax_rate) || 0,
       monthly_goal: parseFloat(settings.monthly_goal) || null,
       currency: settings.currency || "USD",
+      enabled_currencies: settings.enabled_currencies?.includes(settings.currency)
+        ? settings.enabled_currencies
+        : [...(settings.enabled_currencies ?? []), settings.currency || "USD"],
       notify_job_status: settings.notify_job_status,
       notify_new_appointment: settings.notify_new_appointment,
       notify_low_inventory: settings.notify_low_inventory,
@@ -518,7 +510,7 @@ export default function AdminSettings() {
     toast.success("Onboarding checklist reset");
   };
 
-  const set = (key: keyof Settings, value: string | boolean) =>
+  const set = (key: keyof Settings, value: string | boolean | string[]) =>
     setSettings(prev => ({ ...prev, [key]: value }));
 
   if (loading) return <DashboardLayout><p className="p-8 text-muted-foreground">Loading...</p></DashboardLayout>;
@@ -621,6 +613,38 @@ export default function AdminSettings() {
                       ))}
                     </SelectContent>
                   </Select>
+                </div>
+                <div>
+                  <Label>Enabled invoice currencies</Label>
+                  <p className="text-xs text-muted-foreground mt-0.5 mb-2">
+                    Currencies staff can pick when creating invoices. The base currency is always enabled.
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {currencies.map((c) => {
+                      const isBase = c.value === settings.currency;
+                      const isOn = isBase || settings.enabled_currencies?.includes(c.value);
+                      return (
+                        <button
+                          key={c.value}
+                          type="button"
+                          onClick={() => {
+                            if (isBase) return;
+                            const next = new Set(settings.enabled_currencies ?? []);
+                            if (next.has(c.value)) next.delete(c.value);
+                            else next.add(c.value);
+                            set("enabled_currencies", Array.from(next));
+                          }}
+                          className={`px-3 py-1.5 rounded-full text-xs border transition ${
+                            isOn
+                              ? "bg-primary text-primary-foreground border-primary"
+                              : "bg-background text-muted-foreground border-border hover:bg-muted"
+                          } ${isBase ? "opacity-80 cursor-not-allowed" : ""}`}
+                        >
+                          {c.value}{isBase ? " • base" : ""}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
                 <div className="space-y-3">
                   <div>

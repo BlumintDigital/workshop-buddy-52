@@ -141,7 +141,7 @@ export async function generateInvoicePDF(props: Omit<InvoicePDFProps, "workshopN
     .maybeSingle();
 
   const workshopName = settings?.workshop_name || "Workshop";
-  const currency = (settings as any)?.currency || props.invoice?.currency || "USD";
+  const currency = props.invoice?.currency || (settings as any)?.currency || "USD";
 
   const blob = await pdf(<InvoiceDocument {...props} workshopName={workshopName} currency={currency} />).toBlob();
   const url = URL.createObjectURL(blob);

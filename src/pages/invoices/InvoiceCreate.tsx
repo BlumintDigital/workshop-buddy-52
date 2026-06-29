@@ -25,7 +25,7 @@ export default function InvoiceCreate() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const jobId = searchParams.get("jobId");
-  const { format: fmt } = useCurrency();
+  const { currency: baseCurrency, enabled: enabledCurrencies, format: fmt } = useCurrency();
 
   const [clientId, setClientId] = useState("");
   const [clientName, setClientName] = useState("");
@@ -35,6 +35,18 @@ export default function InvoiceCreate() {
   const [dueDate, setDueDate] = useState("");
   const [items, setItems] = useState<LineItem[]>([{ description: "", quantity: 1, unit_price: 0 }]);
   const [saving, setSaving] = useState(false);
+  const [currency, setCurrency] = useState<string>(baseCurrency);
+  const [fxRate, setFxRate] = useState<number>(1);
+
+  // Keep currency in sync with base when base loads
+  useEffect(() => {
+    setCurrency((c) => (c && c !== "USD" ? c : baseCurrency));
+  }, [baseCurrency]);
+
+  // Reset fx rate when picking base currency
+  useEffect(() => {
+    if (currency === baseCurrency) setFxRate(1);
+  }, [currency, baseCurrency]);
 
   useEffect(() => {
     const load = async () => {
@@ -98,7 +110,9 @@ export default function InvoiceCreate() {
         total,
         due_date: dueDate || null,
         notes: notes || null,
-      })
+        currency,
+        fx_rate: currency === baseCurrency ? 1 : (fxRate > 0 ? fxRate : 1),
+      } as any)
       .select("id")
       .single();
 
@@ -151,11 +165,38 @@ export default function InvoiceCreate() {
                 <DatePickerInput value={dueDate} onChange={setDueDate} />
               </div>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <Label>Tax Rate (%)</Label>
                 <Input type="number" min={0} step={0.5} value={taxRate} onChange={(e) => setTaxRate(Number(e.target.value))} />
               </div>
+              <div>
+                <Label>Currency</Label>
+                <Select value={currency} onValueChange={setCurrency}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {enabledCurrencies.map((c) => (
+                      <SelectItem key={c} value={c}>{c}{c === baseCurrency ? " (base)" : ""}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {currency !== baseCurrency && (
+                <div>
+                  <Label>Exchange rate to {baseCurrency}</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    step="0.0001"
+                    value={fxRate}
+                    onChange={(e) => setFxRate(Number(e.target.value))}
+                    placeholder="e.g. 1450"
+                  />
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    1 {currency} = {fxRate || 0} {baseCurrency}
+                  </p>
+                </div>
+              )}
             </div>
             <div>
               <Label>Notes</Label>
@@ -192,7 +233,7 @@ export default function InvoiceCreate() {
                     <TableCell>
                       <Input type="number" min={0} step={0.01} value={item.unit_price} onChange={(e) => updateItem(idx, "unit_price", Number(e.target.value))} />
                     </TableCell>
-                    <TableCell className="text-right font-medium">{fmt(item.quantity * item.unit_price)}</TableCell>
+                    <TableCell className="text-right font-medium">{fmt(item.quantity * item.unit_price, currency)}</TableCell>
                     <TableCell>
                       {items.length > 1 && (
                         <Button variant="ghost" size="icon" onClick={() => removeItem(idx)}>
@@ -209,9 +250,15 @@ export default function InvoiceCreate() {
 
         <Card>
           <CardContent className="pt-6 space-y-2">
-            <div className="flex justify-between text-sm"><span>Subtotal</span><span>{fmt(subtotal)}</span></div>
-            <div className="flex justify-between text-sm"><span>Tax ({taxRate}%)</span><span>{fmt(taxAmount)}</span></div>
-            <div className="flex justify-between font-bold text-lg border-t pt-2"><span>Total</span><span>{fmt(total)}</span></div>
+            <div className="flex justify-between text-sm"><span>Subtotal</span><span>{fmt(subtotal, currency)}</span></div>
+            <div className="flex justify-between text-sm"><span>Tax ({taxRate}%)</span><span>{fmt(taxAmount, currency)}</span></div>
+            <div className="flex justify-between font-bold text-lg border-t pt-2"><span>Total</span><span>{fmt(total, currency)}</span></div>
+            {currency !== baseCurrency && (
+              <div className="flex justify-between text-xs text-muted-foreground pt-1">
+                <span>Equivalent in {baseCurrency}</span>
+                <span>{fmt(total * (fxRate > 0 ? fxRate : 1), baseCurrency)}</span>
+              </div>
+            )}
           </CardContent>
         </Card>
 
