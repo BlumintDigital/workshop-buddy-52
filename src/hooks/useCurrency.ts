@@ -31,7 +31,7 @@ export function useCurrency(): { currency: string; format: (n: number) => string
     loadCurrency().then(fn);
 
     const channel = supabase
-      .channel("workshop_settings_currency")
+      .channel(`workshop_settings_currency_${Math.random().toString(36).slice(2)}`)
       .on(
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "workshop_settings", filter: "id=eq.1" },
