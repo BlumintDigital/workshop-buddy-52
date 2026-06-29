@@ -520,6 +520,33 @@ export default function InvoiceDetail() {
               </div>
             )}
 
+            {/* Payment instructions — used when no payment link is available (e.g. bank transfer) */}
+            {canManage && (
+              <div>
+                <Label className="text-xs text-muted-foreground">Payment Instructions</Label>
+                <Textarea
+                  value={invoice.payment_instructions || ""}
+                  onChange={(e) => setInvoice({ ...invoice, payment_instructions: e.target.value })}
+                  placeholder="e.g. Bank transfer to Acme Ltd, Sort code 12-34-56, Account 12345678. Reference: invoice number."
+                  className="mt-1 min-h-[80px]"
+                />
+                <p className="text-xs text-muted-foreground mt-1">Shown to the client when no payment link is set. Save the invoice to apply changes.</p>
+              </div>
+            )}
+
+            {isClient && !invoice.stripe_payment_url && invoice.payment_instructions && invoice.status !== "paid" && (
+              <div className="rounded-xl border border-primary/30 bg-tile-sage/40 px-4 py-3">
+                <p className="text-xs font-medium text-foreground mb-1">Payment instructions</p>
+                <p className="text-sm whitespace-pre-wrap text-foreground/80">{invoice.payment_instructions}</p>
+              </div>
+            )}
+
+            {isClient && invoice.client_marked_paid_at && invoice.status !== "paid" && (
+              <div className="rounded-xl border border-primary/30 bg-tile-butter/40 px-4 py-3 text-sm">
+                You've let us know you paid on {new Date(invoice.client_marked_paid_at).toLocaleString()}. We'll confirm shortly.
+              </div>
+            )}
+
             {/* Pay Now button for clients */}
             {role === "client" && invoice.stripe_payment_url && invoice.status !== "paid" && (
               <Button asChild className="w-full sm:w-auto">
@@ -528,6 +555,7 @@ export default function InvoiceDetail() {
                 </a>
               </Button>
             )}
+
           </CardContent>
         </Card>
 
