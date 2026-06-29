@@ -158,7 +158,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const nextRole = (roleRes.data as AppRole | null | undefined) ?? null;
     setRole(nextRole);
     const profileRow = Array.isArray(profileRes.data) ? profileRes.data[0] : profileRes.data;
-    setProfile(profileRow ? { full_name: profileRow.full_name ?? null, avatar_url: profileRow.avatar_url ?? null } : null);
+    setProfile(profileRow ? { full_name: profileRow.full_name ?? null, avatar_url: profileRow.avatar_url ?? null, company_name: profileRow.company_name ?? null, phone: profileRow.phone ?? null, address: profileRow.address ?? null } : null);
     setMfaEnabled(!!(mfaRes.data?.totp?.find((f) => f.status === "verified")));
 
     // Mark invite as accepted on first sign-in (one-time)
