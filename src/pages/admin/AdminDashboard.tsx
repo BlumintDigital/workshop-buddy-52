@@ -3,35 +3,58 @@ import {
   Briefcase,
   Calendar,
   Package,
-  FileText,
+  Receipt,
   Users,
   AlertTriangle,
   Plus,
   CalendarPlus,
   UserPlus,
-  Receipt,
   Clock,
   CheckCircle2,
+  TrendingUp,
+  TrendingDown,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import DashboardLayout from "@/components/layout/DashboardLayout";
-import { MetricCard } from "@/components/dashboard/MetricCard";
-import { SectionCard } from "@/components/dashboard/SectionCard";
-import { LiveTickerStrip } from "@/components/dashboard/LiveTickerStrip";
-import { QuickActions } from "@/components/dashboard/QuickActions";
-import { RevenueHero } from "@/components/dashboard/RevenueHero";
-import { RecentActivity } from "@/components/dashboard/RecentActivity";
-import { JobStatusChart } from "@/components/dashboard/JobStatusChart";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { ActivityFeed } from "@/components/dashboard/ActivityFeed";
+import { AdminOnboardingChecklist } from "@/components/onboarding/AdminOnboardingChecklist";
 import { useFeature } from "@/hooks/useFeatureFlags";
 import { useAuth } from "@/hooks/useAuth";
-import { Skeleton } from "@/components/ui/skeleton";
-import { AdminOnboardingChecklist } from "@/components/onboarding/AdminOnboardingChecklist";
 import { useCurrency } from "@/hooks/useCurrency";
+import { cn } from "@/lib/utils";
 
 type RecentJob = { id: string; title: string; status: string; date: string };
 type Appointment = { id: string; title: string | null; appointment_date: string; appointment_time: string };
+
+const statusTone: Record<string, string> = {
+  pending: "bg-tile-butter text-foreground/80",
+  in_progress: "bg-tile-sky text-foreground/80",
+  review: "bg-tile-blush text-foreground/80",
+  completed: "bg-tile-sage text-foreground/80",
+  cancelled: "bg-muted text-muted-foreground",
+};
+
+function Sparkline({ values }: { values: number[] }) {
+  if (!values.length) return null;
+  const max = Math.max(...values, 1);
+  const min = Math.min(...values, 0);
+  const range = max - min || 1;
+  const w = 100;
+  const h = 32;
+  const step = w / Math.max(values.length - 1, 1);
+  const pts = values.map((v, i) => `${i * step},${h - ((v - min) / range) * h}`).join(" ");
+  const area = `0,${h} ${pts} ${w},${h}`;
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} className="h-10 w-full" preserveAspectRatio="none">
+      <polygon points={area} fill="hsl(var(--primary) / 0.18)" />
+      <polyline points={pts} fill="none" stroke="hsl(var(--primary))" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" />
+    </svg>
+  );
+}
 
 export default function AdminDashboard() {
   const appointmentsEnabled = useFeature("appointments");
@@ -49,10 +72,9 @@ export default function AdminDashboard() {
     pendingApprovals: 0,
     overdueInvoices: 0,
     revenueMonth: 0,
-    revenueDelta: "",
+    revenueDelta: 0,
   });
   const [recentJobs, setRecentJobs] = useState<RecentJob[]>([]);
-  const [statusData, setStatusData] = useState<{ name: string; value: number }[]>([]);
   const [revenueSeries, setRevenueSeries] = useState<{ label: string; value: number }[]>([]);
   const [todayAppts, setTodayAppts] = useState<Appointment[]>([]);
   const [staffLoad, setStaffLoad] = useState<{ name: string; jobs: number }[]>([]);
@@ -82,7 +104,6 @@ export default function AdminDashboard() {
         invs,
         roles,
         lowStock,
-        statusRows,
         revInvoices,
         todayApptsRes,
         activeJobsRes,
@@ -99,10 +120,9 @@ export default function AdminDashboard() {
         supabase.from("invoices").select("*", { count: "exact", head: true }),
         supabase.from("user_roles").select("*", { count: "exact", head: true }),
         supabase.from("inventory_items").select("quantity, min_stock"),
-        supabase.from("jobs").select("status, assigned_to"),
         supabase
           .from("invoices")
-          .select("total, created_at, status")
+          .select("total, created_at")
           .gte("created_at", since6mo.toISOString()),
         appointmentsEnabled
           ? supabase
@@ -114,15 +134,11 @@ export default function AdminDashboard() {
           : Promise.resolve({ data: [] } as any),
         supabase.from("jobs").select("*", { count: "exact", head: true }).eq("status", "in_progress"),
         supabase.from("jobs").select("*", { count: "exact", head: true }).eq("status", "review"),
-        supabase
-          .from("invoices")
-          .select("*", { count: "exact", head: true })
-          .eq("status", "overdue"),
+        supabase.from("invoices").select("*", { count: "exact", head: true }).eq("status", "overdue"),
         supabase.from("profiles").select("id, full_name").limit(50),
         supabase.from("jobs").select("assigned_to").not("status", "in", "(completed,cancelled)"),
       ]);
 
-      // Revenue series — last 6 months
       const buckets: Record<string, number> = {};
       const order: string[] = [];
       for (let i = 5; i >= 0; i--) {
@@ -147,19 +163,6 @@ export default function AdminDashboard() {
       const previous = series[series.length - 2]?.value || 0;
       const deltaPct = previous > 0 ? Math.round(((current - previous) / previous) * 100) : 0;
 
-      // Status pie + counts
-      const counts: Record<string, number> = {};
-      (statusRows.data || []).forEach((j: any) => {
-        counts[j.status] = (counts[j.status] || 0) + 1;
-      });
-      const orderS = ["pending", "in_progress", "review", "completed", "cancelled"];
-      setStatusData(
-        orderS
-          .map((s) => ({ name: s.replace("_", " "), value: counts[s] || 0 }))
-          .filter((d) => d.value > 0),
-      );
-
-      // Staff load — top 5 by active jobs
       const loadMap: Record<string, number> = {};
       (staffJobsRes.data || []).forEach((j: any) => {
         if (j.assigned_to) loadMap[j.assigned_to] = (loadMap[j.assigned_to] || 0) + 1;
@@ -184,7 +187,7 @@ export default function AdminDashboard() {
         pendingApprovals: approvalsRes.count || 0,
         overdueInvoices: overdueRes.count || 0,
         revenueMonth: current,
-        revenueDelta: deltaPct === 0 ? "" : `${deltaPct > 0 ? "" : "-"}${Math.abs(deltaPct)}%`,
+        revenueDelta: deltaPct,
       });
       setRevenueSeries(series);
       setTodayAppts((todayApptsRes.data || []) as Appointment[]);
@@ -195,7 +198,7 @@ export default function AdminDashboard() {
         .from("jobs")
         .select("id, title, status, created_at")
         .order("created_at", { ascending: false })
-        .limit(6);
+        .limit(5);
       setRecentJobs(
         (data || []).map((j: any) => ({
           id: j.id,
@@ -210,141 +213,270 @@ export default function AdminDashboard() {
   }, [appointmentsEnabled]);
 
   const maxLoad = Math.max(1, ...staffLoad.map((s) => s.jobs));
+  const deltaPositive = stats.revenueDelta >= 0;
 
   return (
     <DashboardLayout>
       <div className="min-w-0 max-w-full space-y-6">
-        {/* Hero header */}
+        {/* Header */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div className="min-w-0">
-            <p className="text-sm text-muted-foreground">{new Date().toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" })}</p>
+            <p className="text-sm text-muted-foreground">
+              {new Date().toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" })}
+            </p>
             <h1 className="text-display text-4xl leading-tight sm:text-5xl">
               Hello, <span className="text-primary">{firstName}</span>
             </h1>
-            <p className="mt-1 text-sm text-muted-foreground">Your command center — every signal in one place.</p>
+            <p className="mt-1 text-sm text-muted-foreground">A calmer view of everything happening today.</p>
           </div>
-          <QuickActions
-            actions={[
-              { label: "New job", to: "/admin/jobs", icon: Plus, primary: true },
-              ...(appointmentsEnabled ? [{ label: "New appointment", to: "/admin/appointments", icon: CalendarPlus }] : []),
-              { label: "New invoice", to: "/admin/invoices", icon: Receipt },
-              { label: "New client", to: "/admin/clients", icon: UserPlus },
-            ]}
-          />
+          <div className="flex flex-wrap gap-2">
+            <Button asChild variant="glow" size="sm"><Link to="/admin/jobs"><Plus className="h-4 w-4" />New job</Link></Button>
+            {appointmentsEnabled && (
+              <Button asChild variant="soft" size="sm"><Link to="/admin/appointments"><CalendarPlus className="h-4 w-4" />Appointment</Link></Button>
+            )}
+            <Button asChild variant="soft" size="sm"><Link to="/admin/invoices"><Receipt className="h-4 w-4" />Invoice</Link></Button>
+            <Button asChild variant="soft" size="sm"><Link to="/admin/clients"><UserPlus className="h-4 w-4" />Client</Link></Button>
+          </div>
         </div>
 
         <AdminOnboardingChecklist />
 
-        {/* Live ticker */}
-        <LiveTickerStrip
-          items={[
-            { label: "Active jobs", value: stats.activeJobs, icon: Briefcase, to: "/admin/jobs", tone: "default" },
-            { label: "Pending approvals", value: stats.pendingApprovals, icon: Clock, to: "/admin/jobs", tone: stats.pendingApprovals > 0 ? "warn" : "default" },
-            { label: "Overdue invoices", value: stats.overdueInvoices, icon: Receipt, to: "/admin/invoices", tone: stats.overdueInvoices > 0 ? "danger" : "good" },
-            { label: "Low stock", value: stats.lowStock, icon: AlertTriangle, to: "/admin/inventory", tone: stats.lowStock > 0 ? "warn" : "good" },
-          ]}
-        />
-
-        {/* Revenue hero */}
+        {/* Bento grid */}
         {isLoading ? (
-          <Skeleton className="h-64 rounded-2xl" />
-        ) : (
-          <RevenueHero
-            greeting={`Last 6 months · ${new Date().getFullYear()}`}
-            totalRevenue={stats.revenueMonth}
-            delta={stats.revenueDelta}
-            series={revenueSeries}
-          />
-        )}
-
-        {/* Metric tiles */}
-        {isLoading ? (
-          <div className="grid min-w-0 gap-4 md:grid-cols-2 lg:grid-cols-4">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <Skeleton key={i} className="h-32 rounded-2xl" />
-            ))}
+          <div className="grid gap-4 lg:grid-cols-12 lg:grid-rows-[auto_auto_auto]">
+            <Skeleton className="h-64 rounded-2xl lg:col-span-8 lg:row-span-2" />
+            <Skeleton className="h-64 rounded-2xl lg:col-span-4 lg:row-span-2" />
+            <Skeleton className="h-32 rounded-2xl lg:col-span-3" />
+            <Skeleton className="h-32 rounded-2xl lg:col-span-3" />
+            <Skeleton className="h-32 rounded-2xl lg:col-span-2" />
+            <Skeleton className="h-32 rounded-2xl lg:col-span-4" />
+            <Skeleton className="h-48 rounded-2xl lg:col-span-8" />
+            <Skeleton className="h-48 rounded-2xl lg:col-span-4" />
           </div>
         ) : (
-          <div className="grid min-w-0 gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <MetricCard title="Total jobs" value={stats.jobs} icon={Briefcase} hint="All workshop jobs" accent="violet" />
-            {appointmentsEnabled && (
-              <MetricCard title="Appointments" value={stats.appointments} icon={Calendar} hint="Scheduled bookings" accent="lime" />
-            )}
-            <MetricCard title="Inventory" value={stats.inventory} icon={Package} hint="Items tracked" accent="violet" />
-            <MetricCard title="Invoices" value={stats.invoices} icon={FileText} hint={`${format(stats.revenueMonth)} this month`} accent="lime" />
-            <MetricCard title="Users" value={stats.users} icon={Users} hint="Registered accounts" accent="neutral" />
-          </div>
-        )}
-
-        {/* Operational grid */}
-        <div className="grid min-w-0 gap-4 lg:grid-cols-12">
-          <div className="min-w-0 lg:col-span-7 space-y-4">
-            <JobStatusChart data={statusData} />
-            <SectionCard
-              title="Staff load"
-              description="Active jobs assigned per team member"
-              action={
-                <Link to="/admin/users" className="text-xs text-primary hover:underline">View team</Link>
-              }
-            >
-              {staffLoad.length === 0 ? (
-                <p className="py-4 text-sm text-muted-foreground">No active assignments.</p>
-              ) : (
-                <div className="space-y-3">
-                  {staffLoad.map((s) => (
-                    <div key={s.name} className="min-w-0">
-                      <div className="mb-1 flex items-center justify-between gap-3 text-sm">
-                        <span className="truncate">{s.name}</span>
-                        <span className="tabular-nums text-muted-foreground">{s.jobs} jobs</span>
-                      </div>
-                      <div className="h-2 overflow-hidden rounded-full bg-muted">
-                        <div
-                          className="h-full rounded-full bg-gradient-sage"
-                          style={{ width: `${(s.jobs / maxLoad) * 100}%` }}
-                        />
-                      </div>
+          <div className="grid gap-4 lg:grid-cols-12 lg:auto-rows-[minmax(0,auto)]">
+            {/* Revenue hero — 8 cols, spans 2 rows */}
+            <Card tone="cream" className="lg:col-span-8 lg:row-span-2 overflow-hidden">
+              <CardContent className="flex h-full flex-col gap-6 p-6">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                      Revenue · last 6 months
+                    </p>
+                    <p className="mt-2 text-display text-5xl leading-none tabular-nums sm:text-6xl">
+                      {format(stats.revenueMonth)}
+                    </p>
+                    <div className="mt-2 flex items-center gap-2 text-sm">
+                      {stats.revenueDelta !== 0 && (
+                        <span className={cn(
+                          "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium",
+                          deltaPositive ? "bg-tile-sage text-foreground/80" : "bg-tile-blush text-foreground/80",
+                        )}>
+                          {deltaPositive ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                          {Math.abs(stats.revenueDelta)}%
+                        </span>
+                      )}
+                      <span className="text-muted-foreground">vs. previous month</span>
                     </div>
-                  ))}
-                </div>
-              )}
-            </SectionCard>
-          </div>
-
-          <div className="min-w-0 lg:col-span-5 space-y-4">
-            {appointmentsEnabled && (
-              <SectionCard
-                title="Today's schedule"
-                description={`${todayAppts.length} appointment${todayAppts.length === 1 ? "" : "s"}`}
-                action={
-                  <Link to="/admin/appointments" className="text-xs text-primary hover:underline">Open calendar</Link>
-                }
-              >
-                {todayAppts.length === 0 ? (
-                  <div className="flex flex-col items-center gap-2 py-6 text-sm text-muted-foreground">
-                    <CheckCircle2 className="h-5 w-5 text-accent" />
-                    Nothing scheduled today.
                   </div>
-                ) : (
-                  <div className="space-y-2">
-                    {todayAppts.map((a) => (
-                      <div key={a.id} className="flex items-center justify-between gap-3 rounded-xl border border-border/60 bg-card/40 px-3 py-2">
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-medium">{a.title || "Appointment"}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {(a.appointment_time || "").slice(0, 5)}
-                          </p>
-                        </div>
-                        <span className="rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[11px] text-primary">Today</span>
-                      </div>
+                  <div className="rounded-2xl bg-tile-sage p-3">
+                    <Receipt className="h-5 w-5 text-foreground/70" />
+                  </div>
+                </div>
+                <div className="mt-auto">
+                  <Sparkline values={revenueSeries.map((s) => s.value)} />
+                  <div className="mt-2 grid grid-cols-6 text-[11px] text-muted-foreground">
+                    {revenueSeries.map((s) => (
+                      <span key={s.label} className="text-center">{s.label}</span>
                     ))}
                   </div>
-                )}
-              </SectionCard>
-            )}
+                </div>
+              </CardContent>
+            </Card>
 
-            <RecentActivity activities={recentJobs} title="Recent jobs" />
+            {/* Today's schedule — 4 cols, spans 2 rows */}
+            <Card tone="mist" className="lg:col-span-4 lg:row-span-2">
+              <CardContent className="flex h-full flex-col p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Today</p>
+                    <h3 className="text-display text-2xl">Schedule</h3>
+                  </div>
+                  <Link to="/admin/appointments" className="text-xs text-primary hover:underline">Open</Link>
+                </div>
+                <div className="mt-5 flex-1 space-y-2 overflow-auto">
+                  {!appointmentsEnabled ? (
+                    <p className="py-4 text-sm text-muted-foreground">Appointments are disabled.</p>
+                  ) : todayAppts.length === 0 ? (
+                    <div className="flex flex-col items-center gap-2 py-10 text-sm text-muted-foreground">
+                      <CheckCircle2 className="h-6 w-6 text-primary" />
+                      Nothing scheduled today.
+                    </div>
+                  ) : (
+                    todayAppts.map((a) => (
+                      <div key={a.id} className="flex items-center justify-between gap-3 rounded-xl bg-card/70 px-3 py-2.5">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium">{a.title || "Appointment"}</p>
+                          <p className="text-xs text-muted-foreground">{(a.appointment_time || "").slice(0, 5)}</p>
+                        </div>
+                        <span className="rounded-full bg-tile-sage px-2 py-0.5 text-[11px] text-foreground/80">Today</span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Metric tiles row */}
+            <Card tone="sage" className="lg:col-span-3">
+              <CardContent className="p-5">
+                <div className="flex items-center justify-between text-xs font-medium uppercase tracking-wider text-foreground/70">
+                  Active jobs <Briefcase className="h-4 w-4" />
+                </div>
+                <p className="mt-3 text-display text-4xl tabular-nums">{stats.activeJobs}</p>
+                <Link to="/admin/jobs" className="mt-2 inline-block text-xs text-primary hover:underline">View jobs →</Link>
+              </CardContent>
+            </Card>
+
+            <Card tone="butter" className="lg:col-span-3">
+              <CardContent className="p-5">
+                <div className="flex items-center justify-between text-xs font-medium uppercase tracking-wider text-foreground/70">
+                  Pending review <Clock className="h-4 w-4" />
+                </div>
+                <p className="mt-3 text-display text-4xl tabular-nums">{stats.pendingApprovals}</p>
+                <Link to="/admin/jobs" className="mt-2 inline-block text-xs text-primary hover:underline">Approve →</Link>
+              </CardContent>
+            </Card>
+
+            <Card tone="blush" className="lg:col-span-2">
+              <CardContent className="p-5">
+                <div className="flex items-center justify-between text-xs font-medium uppercase tracking-wider text-foreground/70">
+                  Low stock <AlertTriangle className="h-4 w-4" />
+                </div>
+                <p className="mt-3 text-display text-4xl tabular-nums">{stats.lowStock}</p>
+                <Link to="/admin/inventory" className="mt-2 inline-block text-xs text-primary hover:underline">Inventory →</Link>
+              </CardContent>
+            </Card>
+
+            <Card tone="sky" className="lg:col-span-4">
+              <CardContent className="p-5">
+                <div className="grid grid-cols-3 gap-3">
+                  <Link to="/admin/jobs" className="flex flex-col items-center gap-1 rounded-xl bg-card/70 p-3 text-center hover:bg-card">
+                    <Briefcase className="h-4 w-4 text-primary" />
+                    <span className="text-xs">Jobs</span>
+                    <span className="text-sm font-semibold tabular-nums">{stats.jobs}</span>
+                  </Link>
+                  <Link to="/admin/invoices" className="flex flex-col items-center gap-1 rounded-xl bg-card/70 p-3 text-center hover:bg-card">
+                    <Receipt className="h-4 w-4 text-primary" />
+                    <span className="text-xs">Invoices</span>
+                    <span className="text-sm font-semibold tabular-nums">{stats.invoices}</span>
+                  </Link>
+                  <Link to="/admin/users" className="flex flex-col items-center gap-1 rounded-xl bg-card/70 p-3 text-center hover:bg-card">
+                    <Users className="h-4 w-4 text-primary" />
+                    <span className="text-xs">Users</span>
+                    <span className="text-sm font-semibold tabular-nums">{stats.users}</span>
+                  </Link>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Staff load — 8 cols */}
+            <Card tone="default" className="lg:col-span-8">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Team</p>
+                    <h3 className="text-display text-2xl">Staff load</h3>
+                  </div>
+                  <Link to="/admin/users" className="text-xs text-primary hover:underline">View team</Link>
+                </div>
+                <div className="mt-5 space-y-3">
+                  {staffLoad.length === 0 ? (
+                    <p className="py-3 text-sm text-muted-foreground">No active assignments.</p>
+                  ) : (
+                    staffLoad.map((s) => (
+                      <div key={s.name}>
+                        <div className="mb-1 flex items-center justify-between gap-3 text-sm">
+                          <span className="truncate">{s.name}</span>
+                          <span className="tabular-nums text-muted-foreground">{s.jobs} jobs</span>
+                        </div>
+                        <div className="h-2 overflow-hidden rounded-full bg-muted">
+                          <div
+                            className="h-full rounded-full bg-gradient-sage"
+                            style={{ width: `${(s.jobs / maxLoad) * 100}%` }}
+                          />
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Recent jobs — 4 cols */}
+            <Card tone="default" className="lg:col-span-4">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Recent</p>
+                    <h3 className="text-display text-2xl">Jobs</h3>
+                  </div>
+                  <Link to="/admin/jobs" className="text-xs text-primary hover:underline">All</Link>
+                </div>
+                <div className="mt-4 space-y-2">
+                  {recentJobs.length === 0 ? (
+                    <p className="py-3 text-sm text-muted-foreground">No jobs yet.</p>
+                  ) : (
+                    recentJobs.map((j) => (
+                      <Link
+                        key={j.id}
+                        to={`/admin/jobs/${j.id}`}
+                        className="flex items-center justify-between gap-2 rounded-xl px-3 py-2 hover:bg-secondary"
+                      >
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium">{j.title}</p>
+                          <p className="text-xs text-muted-foreground">{j.date}</p>
+                        </div>
+                        <span className={cn("rounded-full px-2 py-0.5 text-[11px] capitalize", statusTone[j.status] || "bg-muted")}>
+                          {j.status.replace("_", " ")}
+                        </span>
+                      </Link>
+                    ))
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Bottom: extra context */}
+            <Card tone="cream" className="lg:col-span-4">
+              <CardContent className="p-5">
+                <div className="flex items-center justify-between text-xs font-medium uppercase tracking-wider text-foreground/70">
+                  Inventory <Package className="h-4 w-4" />
+                </div>
+                <p className="mt-3 text-display text-4xl tabular-nums">{stats.inventory}</p>
+                <p className="mt-1 text-xs text-muted-foreground">Items tracked</p>
+              </CardContent>
+            </Card>
+            <Card tone="mist" className="lg:col-span-4">
+              <CardContent className="p-5">
+                <div className="flex items-center justify-between text-xs font-medium uppercase tracking-wider text-foreground/70">
+                  Overdue invoices <Receipt className="h-4 w-4" />
+                </div>
+                <p className="mt-3 text-display text-4xl tabular-nums">{stats.overdueInvoices}</p>
+                <Link to="/admin/invoices" className="mt-1 inline-block text-xs text-primary hover:underline">Review →</Link>
+              </CardContent>
+            </Card>
+            <Card tone="sage" className="lg:col-span-4">
+              <CardContent className="p-5">
+                <div className="flex items-center justify-between text-xs font-medium uppercase tracking-wider text-foreground/70">
+                  Appointments <Calendar className="h-4 w-4" />
+                </div>
+                <p className="mt-3 text-display text-4xl tabular-nums">{stats.appointments}</p>
+                <p className="mt-1 text-xs text-muted-foreground">Total scheduled</p>
+              </CardContent>
+            </Card>
           </div>
-        </div>
+        )}
 
         <ActivityFeed />
       </div>
