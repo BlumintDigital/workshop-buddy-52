@@ -15,7 +15,7 @@ import { DatePickerInput } from "@/components/ui/date-picker-input";
 import { toast } from "sonner";
 import { useCurrency } from "@/hooks/useCurrency";
 import InvoicePdfPreview from "@/components/invoices/InvoicePdfPreview";
-import type { WorkshopDetails } from "@/lib/invoicePdf";
+import { useWorkshopDetails } from "@/hooks/useWorkshopDetails";
 
 interface LineItem {
   description: string;
@@ -78,17 +78,10 @@ export default function InvoiceCreate() {
     return () => { cancelled = true; };
   }, [currency, baseCurrency]);
 
-  const [workshop, setWorkshop] = useState<WorkshopDetails | undefined>(undefined);
+  const { workshop } = useWorkshopDetails();
 
   useEffect(() => {
     const load = async () => {
-      // Workshop company details for the live preview
-      const { data: ws } = await supabase
-        .from("workshop_settings")
-        .select("workshop_name, address, phone, contact_email, logo_url")
-        .eq("id", 1)
-        .maybeSingle();
-      if (ws) setWorkshop(ws as WorkshopDetails);
 
       // Load clients list
       const { data: roles } = await supabase.from("user_roles").select("user_id").eq("role", "client");
