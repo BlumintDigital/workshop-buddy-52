@@ -163,6 +163,7 @@ Deno.serve(async (req) => {
 
     return json({ sent, total: subs.length, expired: expiredIds.length });
   } catch (e) {
+    await captureEdgeError(e, "send-push");
     return err((e as Error).message, 500);
   }
 });
