@@ -239,7 +239,7 @@ export default function ClientDashboard() {
               </CardContent>
             </Card>
 
-            <Card tone="sage" className="lg:col-span-3">
+            <Card tone="sage" className="col-span-1 lg:col-span-3">
               <CardContent className="p-5">
                 <div className="flex items-center justify-between text-xs font-medium uppercase tracking-wider text-foreground/70">
                   Open jobs <Briefcase className="h-4 w-4" />
@@ -248,7 +248,7 @@ export default function ClientDashboard() {
                 <Link to="/client/jobs" className="mt-2 inline-block text-xs text-primary hover:underline">View →</Link>
               </CardContent>
             </Card>
-            <Card tone="sky" className="lg:col-span-3">
+            <Card tone="sky" className="col-span-1 lg:col-span-3">
               <CardContent className="p-5">
                 <div className="flex items-center justify-between text-xs font-medium uppercase tracking-wider text-foreground/70">
                   Total jobs <FileText className="h-4 w-4" />
@@ -257,7 +257,7 @@ export default function ClientDashboard() {
                 <p className="mt-1 text-xs text-muted-foreground">All time</p>
               </CardContent>
             </Card>
-            <Card tone="butter" className="lg:col-span-3">
+            <Card tone="butter" className="col-span-1 lg:col-span-3">
               <CardContent className="p-5">
                 <div className="flex items-center justify-between text-xs font-medium uppercase tracking-wider text-foreground/70">
                   Invoices <Receipt className="h-4 w-4" />
@@ -266,7 +266,7 @@ export default function ClientDashboard() {
                 <Link to="/client/invoices" className="mt-2 inline-block text-xs text-primary hover:underline">View →</Link>
               </CardContent>
             </Card>
-            <Card tone="blush" className="lg:col-span-3">
+            <Card tone="blush" className="col-span-1 lg:col-span-3">
               <CardContent className="p-5">
                 <div className="flex items-center justify-between text-xs font-medium uppercase tracking-wider text-foreground/70">
                   Appointments <Calendar className="h-4 w-4" />
