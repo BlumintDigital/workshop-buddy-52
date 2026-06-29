@@ -85,18 +85,17 @@ serve(async (req) => {
     }
     const email = targetUser.user.email;
 
-    let sent = false;
-    try {
-      const { error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(email);
-      sent = !inviteError;
-    } catch (_) { /* fall through */ }
-    if (!sent) {
-      try {
-        await adminClient.auth.admin.generateLink({ type: "recovery", email });
-        sent = true;
-      } catch (_) { /* ignore */ }
+    const { error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(email);
+    if (inviteError) {
+      console.error("admin-resend-invite: inviteUserByEmail failed", inviteError.message);
+      return json(
+        {
+          error: `Invite email was not sent: ${inviteError.message}`,
+          hint: "Check Supabase Auth email settings, SMTP/provider delivery logs, and whether this user has already accepted an invite.",
+        },
+        502,
+      );
     }
-    if (!sent) return json({ error: "Failed to send invite email" }, 500);
 
     await adminClient
       .from("profiles")
