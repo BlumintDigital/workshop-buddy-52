@@ -51,9 +51,13 @@ export default function InvoiceDetail() {
   const [downloading, setDownloading] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [notifying, setNotifying] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [sourceRequestId, setSourceRequestId] = useState<string | null>(null);
 
   const canEdit = (role === "admin" || role === "manager") && invoice?.status === "draft";
   const canManage = role === "admin" || role === "manager";
+  const isClient = role === "client";
+
 
   useEffect(() => {
     if (!id) return;
