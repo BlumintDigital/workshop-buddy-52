@@ -543,8 +543,97 @@ export default function UserProfile() {
           </CardContent>
         </Card>
 
-        <PushNotificationsCard />
+            <PushNotificationsCard />
+          </div>
+
+          {/* Sidebar */}
+          <aside className="space-y-6 lg:sticky lg:top-6">
+            <Card tone="mist">
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <BadgeCheck className="h-5 w-5 text-primary" />
+                  <CardTitle className="text-lg">Account</CardTitle>
+                </div>
+                <CardDescription>At a glance</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3 text-sm">
+                <div className="flex items-start gap-2">
+                  <User className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-xs text-muted-foreground">Role</p>
+                    <p className="capitalize font-medium">{role || "—"}</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-2">
+                  <Mail className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-xs text-muted-foreground">Email</p>
+                    <p className="font-medium break-all">{user?.email}</p>
+                  </div>
+                </div>
+                {joinedDate && (
+                  <div className="flex items-start gap-2">
+                    <CalendarDays className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
+                    <div>
+                      <p className="text-xs text-muted-foreground">Member since</p>
+                      <p className="font-medium">{joinedDate}</p>
+                    </div>
+                  </div>
+                )}
+                {lastSignIn && (
+                  <div className="flex items-start gap-2">
+                    <ShieldCheck className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
+                    <div>
+                      <p className="text-xs text-muted-foreground">Last sign-in</p>
+                      <p className="font-medium">{lastSignIn}</p>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card tone="sky">
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="h-5 w-5 text-primary" />
+                  <CardTitle className="text-lg">Security status</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3 text-sm">
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Two-factor auth</span>
+                  <span className={`font-medium ${mfaEnabled ? "text-primary" : "text-destructive"}`}>
+                    {mfaLoading ? "—" : mfaEnabled ? "Enabled" : "Disabled"}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Backup codes</span>
+                  <span className="font-medium">{backupTotal > 0 ? `${backupCodesRemaining ?? 0} / ${backupTotal}` : "None"}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground flex items-center gap-1"><Smartphone className="h-3.5 w-3.5" /> Trusted devices</span>
+                  <span className="font-medium">{trustedDeviceCount}</span>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card tone="butter">
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <Lightbulb className="h-5 w-5 text-primary" />
+                  <CardTitle className="text-lg">Tips</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm text-muted-foreground">
+                <p>• Use a square JPG or PNG under 5 MB for the cleanest avatar.</p>
+                <p>• Save your backup codes in a password manager.</p>
+                <p>• Revoke trusted devices when you lose access to one.</p>
+              </CardContent>
+            </Card>
+          </aside>
+        </div>
       </div>
+
 
 
       <BackupCodesDialog
