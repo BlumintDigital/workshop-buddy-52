@@ -221,11 +221,62 @@ export default function UserProfile() {
     const { error } = await supabase.from("profiles").update({
       full_name: fullName || null,
       phone: phone || null,
+      company_name: companyName || null,
+      contact_person: contactPerson || null,
+      address: address || null,
       avatar_url: avatarUrl,
     } as any).eq("id", user.id);
     setSaving(false);
     if (error) { toast.error(error.message); return; }
+    await refreshProfile();
     toast.success("Profile updated");
+  };
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPwdError(null);
+    if (!user?.email) return;
+    if (newPwd.length < 8) {
+      setPwdError("New password must be at least 8 characters.");
+      return;
+    }
+    if (!/[A-Z]/.test(newPwd) || !/[a-z]/.test(newPwd) || !/[0-9]/.test(newPwd)) {
+      setPwdError("Use a mix of uppercase, lowercase, and numbers.");
+      return;
+    }
+    if (newPwd !== confirmPwd) {
+      setPwdError("New password and confirmation do not match.");
+      return;
+    }
+    if (newPwd === currentPwd) {
+      setPwdError("New password must be different from the current one.");
+      return;
+    }
+    setPwdSaving(true);
+    try {
+      // Verify current password by re-authenticating.
+      const { error: signInErr } = await supabase.auth.signInWithPassword({
+        email: user.email,
+        password: currentPwd,
+      });
+      if (signInErr) {
+        setPwdError("Current password is incorrect.");
+        return;
+      }
+      const { error: updErr } = await supabase.auth.updateUser({ password: newPwd });
+      if (updErr) {
+        setPwdError(updErr.message);
+        return;
+      }
+      setCurrentPwd("");
+      setNewPwd("");
+      setConfirmPwd("");
+      toast.success("Password updated");
+    } catch (err: any) {
+      setPwdError(err?.message || "Could not change password");
+    } finally {
+      setPwdSaving(false);
+    }
   };
 
   const handleEnroll2FA = async () => {
