@@ -44,14 +44,21 @@ export default function ClientDashboard() {
   const { user, profile, refreshProfile } = useAuth();
   const { format } = useCurrency();
 
-  // Ensure the "Finish setting up your profile" banner reflects the latest
-  // saved contact details — refresh on mount and whenever the tab regains
-  // focus (e.g. user returns from /profile after saving).
+  // Gate the "Finish setting up your profile" banner on a fresh profile read.
+  // We refresh on mount (and on tab focus) and only evaluate the banner once
+  // the latest data has loaded — so returning from /profile after saving never
+  // flashes a stale reminder.
+  const [profileChecked, setProfileChecked] = useState(false);
   useEffect(() => {
-    refreshProfile();
-    const onFocus = () => refreshProfile();
+    let cancelled = false;
+    const refresh = async () => {
+      await refreshProfile();
+      if (!cancelled) setProfileChecked(true);
+    };
+    void refresh();
+    const onFocus = () => { void refresh(); };
     window.addEventListener("focus", onFocus);
-    return () => window.removeEventListener("focus", onFocus);
+    return () => { cancelled = true; window.removeEventListener("focus", onFocus); };
   }, [refreshProfile]);
 
 
@@ -76,13 +83,14 @@ export default function ClientDashboard() {
   }, [profile, firstName]);
 
   const missingContactDetails = useMemo(() => {
-    if (!profile) return [] as string[];
+    if (!profileChecked || !profile) return [] as string[];
     const missing: string[] = [];
     if (!profile.company_name?.trim()) missing.push("company name");
     if (!profile.phone?.trim()) missing.push("phone number");
     if (!profile.address?.trim()) missing.push("address");
     return missing;
-  }, [profile]);
+  }, [profile, profileChecked]);
+
 
 
   useEffect(() => {
