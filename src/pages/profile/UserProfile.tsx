@@ -407,22 +407,109 @@ export default function UserProfile() {
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div>
-              <Label htmlFor="profile-name">Full Name</Label>
-              <Input id="profile-name" value={fullName} onChange={(e) => setFullName(e.target.value)} className="mt-1" />
-            </div>
-            <div>
-              <Label htmlFor="profile-email">Email</Label>
-              <Input id="profile-email" value={user?.email || ""} disabled className="mt-1" />
-              <p className="text-xs text-muted-foreground mt-1">Email cannot be changed here</p>
-            </div>
-            <div>
-              <Label htmlFor="profile-phone">Phone</Label>
-              <Input id="profile-phone" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+1 555 0123" className="mt-1" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="profile-name">Full Name</Label>
+                <Input id="profile-name" value={fullName} onChange={(e) => setFullName(e.target.value)} className="mt-1" />
+              </div>
+              <div>
+                <Label htmlFor="profile-email">Email</Label>
+                <Input id="profile-email" value={user?.email || ""} disabled className="mt-1" />
+                <p className="text-xs text-muted-foreground mt-1">Email cannot be changed here</p>
+              </div>
+              <div>
+                <Label htmlFor="profile-phone">Phone</Label>
+                <Input id="profile-phone" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+1 555 0123" className="mt-1" />
+              </div>
+              <div>
+                <Label htmlFor="profile-contact">Contact Person</Label>
+                <Input id="profile-contact" value={contactPerson} onChange={(e) => setContactPerson(e.target.value)} placeholder="Primary contact name" className="mt-1" />
+              </div>
+              <div className="sm:col-span-2">
+                <Label htmlFor="profile-company">Company / Organization</Label>
+                <Input id="profile-company" value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="Optional" className="mt-1" />
+              </div>
+              <div className="sm:col-span-2">
+                <Label htmlFor="profile-address">Address</Label>
+                <Input id="profile-address" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Street, City, Country" className="mt-1" />
+              </div>
             </div>
             <Button onClick={handleSave} disabled={saving}>
               {saving ? "Saving..." : "Save Changes"}
             </Button>
+          </CardContent>
+        </Card>
+
+        {/* Security — Change Password */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Lock className="h-5 w-5 text-primary" />
+              <CardTitle className="text-lg">Security</CardTitle>
+            </div>
+            <CardDescription>Change your password. Use at least 8 characters with upper, lower, and a number.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleChangePassword} className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="sm:col-span-2">
+                  <Label htmlFor="pwd-current">Current Password</Label>
+                  <div className="relative mt-1">
+                    <Input
+                      id="pwd-current"
+                      type={showPwd ? "text" : "password"}
+                      value={currentPwd}
+                      onChange={(e) => setCurrentPwd(e.target.value)}
+                      autoComplete="current-password"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPwd((s) => !s)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      aria-label={showPwd ? "Hide passwords" : "Show passwords"}
+                    >
+                      {showPwd ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                </div>
+                <div>
+                  <Label htmlFor="pwd-new">New Password</Label>
+                  <Input
+                    id="pwd-new"
+                    type={showPwd ? "text" : "password"}
+                    value={newPwd}
+                    onChange={(e) => setNewPwd(e.target.value)}
+                    autoComplete="new-password"
+                    className="mt-1"
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="pwd-confirm">Confirm New Password</Label>
+                  <Input
+                    id="pwd-confirm"
+                    type={showPwd ? "text" : "password"}
+                    value={confirmPwd}
+                    onChange={(e) => setConfirmPwd(e.target.value)}
+                    autoComplete="new-password"
+                    className={`mt-1 ${confirmPwd && confirmPwd !== newPwd ? "border-destructive" : ""}`}
+                    required
+                  />
+                </div>
+              </div>
+              {pwdError && (
+                <p className="text-sm text-destructive flex items-center gap-1">
+                  <ShieldOff className="h-3.5 w-3.5" /> {pwdError}
+                </p>
+              )}
+              <Button type="submit" disabled={pwdSaving || !currentPwd || !newPwd || !confirmPwd}>
+                {pwdSaving ? "Updating..." : "Update Password"}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+
           </CardContent>
         </Card>
 
