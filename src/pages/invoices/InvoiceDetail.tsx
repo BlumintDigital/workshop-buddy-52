@@ -419,9 +419,15 @@ export default function InvoiceDetail() {
         {/* Totals */}
         <Card>
           <CardContent className="pt-6 space-y-2">
-            <div className="flex justify-between text-sm"><span>Subtotal</span><span>{fmt(subtotal)}</span></div>
-            <div className="flex justify-between text-sm"><span>Tax ({invoice.tax_rate ?? 0}%)</span><span>{fmt(taxAmount)}</span></div>
-            <div className="flex justify-between font-bold text-lg border-t pt-2"><span>Total</span><span>{fmt(total)}</span></div>
+            <div className="flex justify-between text-sm"><span>Subtotal</span><span>{fmt(subtotal, invoice.currency)}</span></div>
+            <div className="flex justify-between text-sm"><span>Tax ({invoice.tax_rate ?? 0}%)</span><span>{fmt(taxAmount, invoice.currency)}</span></div>
+            <div className="flex justify-between font-bold text-lg border-t pt-2"><span>Total</span><span>{fmt(total, invoice.currency)}</span></div>
+            {invoice.currency && invoice.fx_rate && Number(invoice.fx_rate) !== 1 && (
+              <div className="flex justify-between text-xs text-muted-foreground pt-1">
+                <span>Equivalent (rate {Number(invoice.fx_rate)})</span>
+                <span>{fmt(total * Number(invoice.fx_rate))}</span>
+              </div>
+            )}
           </CardContent>
         </Card>
 
