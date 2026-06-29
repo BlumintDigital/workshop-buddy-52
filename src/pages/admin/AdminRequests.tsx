@@ -211,8 +211,17 @@ export default function AdminRequests() {
               const clientName = c?.company_name || c?.full_name || "Unknown client";
               const isQuote = r.request_type === "quote";
               return (
-                <Card key={r.id} tone="default">
+                <Card
+                  key={r.id}
+                  tone="default"
+                  ref={(el: HTMLDivElement | null) => { cardRefs.current[r.id] = el; }}
+                  className={cn(
+                    "transition-all",
+                    highlightId === r.id && "ring-2 ring-primary ring-offset-2 ring-offset-background",
+                  )}
+                >
                   <CardContent className="flex flex-col gap-4 p-5 lg:flex-row lg:items-start lg:justify-between">
+
                     <div className="min-w-0 flex-1 space-y-2">
                       <div className="flex flex-wrap items-center gap-2">
                         {isQuote ? <FileText className="h-4 w-4 text-primary" /> : <Wrench className="h-4 w-4 text-primary" />}
