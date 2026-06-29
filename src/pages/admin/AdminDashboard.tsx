@@ -257,20 +257,20 @@ export default function AdminDashboard() {
           <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:gap-5 lg:grid-cols-12 lg:auto-rows-[minmax(0,auto)]">
 
             {/* Revenue hero — 8 cols, spans 2 rows */}
-            <Card tone="cream" className="lg:col-span-8 lg:row-span-2 overflow-hidden">
-              <CardContent className="flex h-full flex-col gap-6 p-6">
+            <Card tone="cream" className="col-span-2 overflow-hidden lg:col-span-8 lg:row-span-2">
+              <CardContent className="flex h-full flex-col gap-6 p-5 sm:p-7 lg:p-8">
                 <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground sm:text-xs">
                       Revenue · last 6 months
                     </p>
-                    <p className="mt-2 text-display text-5xl leading-none tabular-nums sm:text-6xl">
+                    <p className="mt-3 break-words text-display text-[2.5rem] leading-[0.95] tracking-tight tabular-nums sm:text-6xl lg:text-[4rem]">
                       {format(stats.revenueMonth)}
                     </p>
-                    <div className="mt-2 flex items-center gap-2 text-sm">
+                    <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
                       {stats.revenueDelta !== 0 && (
                         <span className={cn(
-                          "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium",
+                          "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium",
                           deltaPositive ? "bg-tile-sage text-foreground/80" : "bg-tile-blush text-foreground/80",
                         )}>
                           {deltaPositive ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
@@ -280,13 +280,13 @@ export default function AdminDashboard() {
                       <span className="text-muted-foreground">vs. previous month</span>
                     </div>
                   </div>
-                  <div className="rounded-2xl bg-tile-sage p-3">
+                  <div className="shrink-0 rounded-2xl bg-tile-sage p-3 ring-1 ring-foreground/5">
                     <Receipt className="h-5 w-5 text-foreground/70" />
                   </div>
                 </div>
                 <div className="mt-auto">
                   <Sparkline values={revenueSeries.map((s) => s.value)} />
-                  <div className="mt-2 grid grid-cols-6 text-[11px] text-muted-foreground">
+                  <div className="mt-2 grid grid-cols-6 text-[10px] uppercase tracking-wider text-muted-foreground sm:text-[11px]">
                     {revenueSeries.map((s) => (
                       <span key={s.label} className="text-center">{s.label}</span>
                     ))}
@@ -294,6 +294,7 @@ export default function AdminDashboard() {
                 </div>
               </CardContent>
             </Card>
+
 
             {/* Today's schedule — 4 cols, spans 2 rows */}
             <Card tone="mist" className="lg:col-span-4 lg:row-span-2">
