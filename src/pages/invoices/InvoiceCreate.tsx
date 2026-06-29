@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { useCurrency } from "@/hooks/useCurrency";
 import InvoicePdfPreview from "@/components/invoices/InvoicePdfPreview";
 import { useWorkshopDetails } from "@/hooks/useWorkshopDetails";
+import { friendlyErrorMessageSync } from "@/lib/friendlyError";
 
 interface LineItem {
   description: string;
