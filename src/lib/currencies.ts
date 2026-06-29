@@ -16,15 +16,22 @@ export const CURRENCIES: { value: string; label: string }[] = [
   { value: "AED", label: "AED — UAE Dirham" },
 ];
 
+const ZERO_DECIMAL = new Set(["JPY", "KRW", "VND", "CLP", "ISK"]);
+
 export function formatMoney(amount: number, code: string): string {
   const n = Number.isFinite(amount) ? amount : 0;
+  const ccy = (code || "USD").toUpperCase();
+  const digits = ZERO_DECIMAL.has(ccy) ? 0 : 2;
   try {
     return new Intl.NumberFormat(undefined, {
       style: "currency",
-      currency: code,
-      minimumFractionDigits: 2,
+      currency: ccy,
+      currencyDisplay: "code",
+      minimumFractionDigits: digits,
+      maximumFractionDigits: digits,
     }).format(n);
   } catch {
-    return `${code} ${n.toFixed(2)}`;
+    return `${ccy} ${n.toFixed(digits)}`;
   }
 }
+

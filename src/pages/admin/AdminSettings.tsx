@@ -25,6 +25,7 @@ import { useAdminOnboarding } from "@/hooks/useAdminOnboarding";
 
 
 import { CURRENCIES } from "@/lib/currencies";
+import { PRESETS, hexToHslString, hslStringToHex, applyBrandColors, DEFAULT_BRAND } from "@/lib/brand-colors";
 const currencies = CURRENCIES;
 
 const defaultSettings = {
@@ -44,6 +45,8 @@ const defaultSettings = {
   super_admin_email: "",
   login_image_url: "",
   logo_url: "",
+  brand_primary_hsl: "" as string,
+  brand_accent_hsl: "" as string,
 };
 
 type Settings = typeof defaultSettings;
@@ -110,6 +113,8 @@ export default function AdminSettings() {
           super_admin_email: (adminData as any)?.super_admin_email ?? "",
           login_image_url: (data as any).login_image_url ?? "",
           logo_url: (data as any).logo_url ?? "",
+          brand_primary_hsl: (data as any).brand_primary_hsl ?? "",
+          brand_accent_hsl: (data as any).brand_accent_hsl ?? "",
         });
       }
       setLoading(false);
@@ -180,6 +185,8 @@ export default function AdminSettings() {
       from_email: settings.from_email || null,
       login_image_url: settings.login_image_url || null,
       logo_url: getCustomLogoUrl(settings.logo_url),
+      brand_primary_hsl: settings.brand_primary_hsl || null,
+      brand_accent_hsl: settings.brand_accent_hsl || null,
     });
     if (error) { setSaving(false); toast.error(error.message); return; }
 
@@ -789,6 +796,86 @@ export default function AdminSettings() {
                 <Button variant="outline" disabled={uploadingImage} onClick={() => imageInputRef.current?.click()}>
                   <Upload className="mr-2 h-4 w-4" />{uploadingImage ? "Uploading..." : "Upload Image"}
                 </Button>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle>Brand Colors</CardTitle>
+                <CardDescription>Customize the app's primary and accent colors to match your brand. Changes preview live and apply to everyone once saved.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {(["primary", "accent"] as const).map((kind) => {
+                  const field = kind === "primary" ? "brand_primary_hsl" : "brand_accent_hsl";
+                  const current = (settings as any)[field] as string;
+                  const hex = current ? hslStringToHex(current) ?? "" : (kind === "primary" ? hslStringToHex(DEFAULT_BRAND.primary)! : hslStringToHex(DEFAULT_BRAND.accent)!);
+                  return (
+                    <div key={kind} className="space-y-2">
+                      <Label className="capitalize">{kind} color</Label>
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="color"
+                          value={hex}
+                          onChange={(e) => {
+                            const hsl = hexToHslString(e.target.value);
+                            if (!hsl) return;
+                            set(field as any, hsl);
+                            applyBrandColors({
+                              primary: kind === "primary" ? hsl : settings.brand_primary_hsl || null,
+                              accent: kind === "accent" ? hsl : settings.brand_accent_hsl || null,
+                            });
+                          }}
+                          className="h-10 w-14 cursor-pointer rounded border bg-transparent"
+                        />
+                        <Input
+                          value={hex}
+                          onChange={(e) => {
+                            const hsl = hexToHslString(e.target.value);
+                            if (!hsl) return;
+                            set(field as any, hsl);
+                            applyBrandColors({
+                              primary: kind === "primary" ? hsl : settings.brand_primary_hsl || null,
+                              accent: kind === "accent" ? hsl : settings.brand_accent_hsl || null,
+                            });
+                          }}
+                          className="max-w-[140px] font-mono text-xs"
+                          placeholder="#7d9b76"
+                        />
+                        <div className="flex flex-wrap gap-2">
+                          {PRESETS.map((p) => (
+                            <button
+                              key={p.name}
+                              type="button"
+                              title={p.name}
+                              onClick={() => {
+                                const hsl = hexToHslString(p.hex)!;
+                                set(field as any, hsl);
+                                applyBrandColors({
+                                  primary: kind === "primary" ? hsl : settings.brand_primary_hsl || null,
+                                  accent: kind === "accent" ? hsl : settings.brand_accent_hsl || null,
+                                });
+                              }}
+                              className="h-7 w-7 rounded-full border-2 border-border hover:scale-110 transition-transform"
+                              style={{ background: p.hex }}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+                <div className="flex gap-2 pt-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      set("brand_primary_hsl" as any, "");
+                      set("brand_accent_hsl" as any, "");
+                      applyBrandColors({ primary: null, accent: null });
+                      toast.info("Reset to default — remember to save");
+                    }}
+                  >
+                    Reset to default
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>

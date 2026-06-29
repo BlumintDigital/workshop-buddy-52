@@ -7,6 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/hooks/useAuth";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { PwaStatus } from "@/components/PwaStatus";
+import { BrandColorProvider } from "@/components/BrandColorProvider";
 import {
   FeatureFlagProvider,
   useFeature,
@@ -194,9 +195,11 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <FeatureFlagProvider>
-            <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="h-8 w-8 rounded-full border-4 border-primary border-t-transparent animate-spin" /></div>}>
-              <AppRoutes />
-            </Suspense>
+            <BrandColorProvider>
+              <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="h-8 w-8 rounded-full border-4 border-primary border-t-transparent animate-spin" /></div>}>
+                <AppRoutes />
+              </Suspense>
+            </BrandColorProvider>
           </FeatureFlagProvider>
         </AuthProvider>
       </BrowserRouter>
