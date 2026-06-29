@@ -189,7 +189,7 @@ export default function AdminUsers() {
                     <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="+1 555 0123" maxLength={32} />
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    The user will receive an email to set their password via "Forgot Password".
+                    The user will receive an invite email to set their password.
                   </p>
                 </div>
                 <DialogFooter>
@@ -255,7 +255,7 @@ export default function AdminUsers() {
                       {!u.is_active && <Badge variant="destructive" className="ml-2 text-xs">Inactive</Badge>}
                     </TableCell>
                     <TableCell onClick={(e) => e.stopPropagation()}>
-                      <Select value={u.role ?? ""} onValueChange={(v) => changeRole(u.user_id, v)}>
+                      <Select value={u.role ?? ""} onValueChange={(v) => changeRole(u.user_id, v)} disabled={u.user_id === currentUser?.id}>
                         <SelectTrigger className="w-[110px] h-8"><SelectValue placeholder="Assign role" /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value="admin">Admin</SelectItem>
@@ -369,7 +369,7 @@ export default function AdminUsers() {
                       <Mail className="h-4 w-4" />
                     </Button>
                   )}
-                  <Select value={u.role ?? ""} onValueChange={(v) => changeRole(u.user_id, v)}>
+                  <Select value={u.role ?? ""} onValueChange={(v) => changeRole(u.user_id, v)} disabled={u.user_id === currentUser?.id}>
                     <SelectTrigger className="w-[100px] h-8"><SelectValue placeholder="Assign" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="admin">Admin</SelectItem>
