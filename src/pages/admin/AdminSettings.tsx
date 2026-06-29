@@ -112,6 +112,8 @@ export default function AdminSettings() {
           super_admin_email: (adminData as any)?.super_admin_email ?? "",
           login_image_url: (data as any).login_image_url ?? "",
           logo_url: (data as any).logo_url ?? "",
+          brand_primary_hsl: (data as any).brand_primary_hsl ?? "",
+          brand_accent_hsl: (data as any).brand_accent_hsl ?? "",
         });
       }
       setLoading(false);
