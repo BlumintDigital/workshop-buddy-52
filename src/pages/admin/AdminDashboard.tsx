@@ -433,7 +433,21 @@ export default function AdminDashboard() {
                   </div>
                   <Link to="/admin/jobs" className="text-xs font-medium text-primary hover:underline">All</Link>
                 </div>
-                <div className="mt-4 space-y-1.5">
+                <div className="mt-3 inline-flex rounded-full border border-border/70 bg-card/60 p-1 text-[11px]">
+                  {(["active", "completed", "all"] as const).map((f) => (
+                    <button
+                      key={f}
+                      onClick={() => setJobsFilter(f)}
+                      className={cn(
+                        "rounded-full px-2.5 py-1 capitalize transition-colors min-h-[28px]",
+                        jobsFilter === f ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground",
+                      )}
+                    >
+                      {f}
+                    </button>
+                  ))}
+                </div>
+                <div className="mt-3 space-y-1.5">
                   {recentJobs.length === 0 ? (
                     <p className="py-3 text-sm text-muted-foreground">No jobs yet.</p>
                   ) : (
