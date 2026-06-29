@@ -11,7 +11,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Plus, Trash2, FileDown, ExternalLink, Link2, Bell } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, FileDown, ExternalLink, Link2, Bell, Send } from "lucide-react";
+import { Link } from "react-router-dom";
+import { clientFriendlyInvoiceStatus, clientStatusTone } from "@/lib/invoiceStatus";
+
 import { Skeleton } from "@/components/ui/skeleton";
 import { DatePickerInput } from "@/components/ui/date-picker-input";
 import { toast } from "sonner";
@@ -48,9 +51,13 @@ export default function InvoiceDetail() {
   const [downloading, setDownloading] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [notifying, setNotifying] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [sourceRequestId, setSourceRequestId] = useState<string | null>(null);
 
   const canEdit = (role === "admin" || role === "manager") && invoice?.status === "draft";
   const canManage = role === "admin" || role === "manager";
+  const isClient = role === "client";
+
 
   useEffect(() => {
     if (!id) return;
@@ -73,6 +80,13 @@ export default function InvoiceDetail() {
           unit_price: Number(i.unit_price),
         }))
       );
+
+      // Trace back to originating client request via the linked job (admin/manager only).
+      if (inv.job_id && (role === "admin" || role === "manager")) {
+        const { data: job } = await supabase.from("jobs").select("source_request_id").eq("id", inv.job_id).maybeSingle();
+        setSourceRequestId((job as any)?.source_request_id ?? null);
+      }
+
     };
     load();
   }, [id]);
@@ -206,6 +220,28 @@ export default function InvoiceDetail() {
     else toast.success(`Client notified via ${channels.join(", ")}.`);
   };
 
+  // Explicit Send/Resend to client: marks status `sent`, then notifies via in-app + email (+ push best-effort).
+  const sendInvoiceToClient = async () => {
+    if (!invoice?.client_id) { toast.error("This invoice has no client to send to."); return; }
+    if (sending) return;
+    setSending(true);
+    try {
+      if (invoice.status === "draft") {
+        const { error } = await supabase.from("invoices").update({ status: "sent" }).eq("id", invoice.id);
+        if (error) { toast.error(friendlyErrorMessageSync(error, "Couldn't update invoice status.")); return; }
+        setInvoice({ ...invoice, status: "sent" });
+      }
+      await notifyClient(
+        `Invoice ${invoice.invoice_number}`,
+        `Total: ${fmt(total, invoice.currency)} — view and pay online.`,
+      );
+    } finally {
+      setSending(false);
+    }
+  };
+
+
+
   if (!invoice) return (
     <DashboardLayout>
       <div className="space-y-6 max-w-3xl">
@@ -243,26 +279,45 @@ export default function InvoiceDetail() {
               Client: <span className="font-medium text-foreground">{clientName}</span>
             </p>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <Badge variant={statusColors[invoice.status]}>{invoice.status}</Badge>
+          <div className="flex items-center gap-2 shrink-0 flex-wrap">
+            {isClient ? (
+              <Badge variant={clientStatusTone[invoice.status] || "outline"}>
+                {clientFriendlyInvoiceStatus(invoice.status)}
+              </Badge>
+            ) : (
+              <Badge variant={statusColors[invoice.status]}>{invoice.status}</Badge>
+            )}
             <Button variant="outline" size="sm" onClick={handleDownloadPDF} disabled={downloading}>
               <FileDown className="mr-2 h-4 w-4" />{downloading ? "Generating..." : "PDF"}
             </Button>
-            {canManage && invoice.client_id && (
+            {canManage && invoice.client_id && invoice.status !== "paid" && invoice.status !== "cancelled" && (
+              <Button
+                size="sm"
+                disabled={sending || notifying}
+                onClick={() => void sendInvoiceToClient()}
+              >
+                <Send className="mr-2 h-4 w-4" />
+                {sending
+                  ? "Sending..."
+                  : invoice.status === "draft" ? "Send to client" : "Resend to client"}
+              </Button>
+            )}
+            {canManage && invoice.client_id && invoice.status !== "draft" && (
               <Button
                 variant="outline"
                 size="sm"
-                disabled={notifying}
+                disabled={notifying || sending}
                 onClick={() =>
                   void notifyClient(
-                    `Invoice ${invoice.invoice_number}`,
-                    `Status: ${invoice.status} • Total: ${fmt(total, invoice.currency)}`,
+                    `Invoice ${invoice.invoice_number} reminder`,
+                    `Total: ${fmt(total, invoice.currency)} — view and pay online.`,
                   )
                 }
               >
-                <Bell className="mr-2 h-4 w-4" />{notifying ? "Sending..." : "Notify client"}
+                <Bell className="mr-2 h-4 w-4" />{notifying ? "Sending..." : "Remind client"}
               </Button>
             )}
+
             {role === "admin" && (
               <AlertDialog>
                 <AlertDialogTrigger asChild>
@@ -288,6 +343,18 @@ export default function InvoiceDetail() {
             )}
           </div>
         </div>
+
+
+        {canManage && sourceRequestId && (
+          <div className="rounded-xl border border-primary/30 bg-tile-sage/40 px-4 py-3 text-sm">
+            Originated from a client request.{" "}
+            <Link to={`/admin/requests?focus=${sourceRequestId}`} className="font-medium text-primary hover:underline">
+              View request →
+            </Link>
+          </div>
+        )}
+
+
 
         {/* Invoice meta */}
         <Card>
@@ -348,9 +415,11 @@ export default function InvoiceDetail() {
                   >
                     <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      {["draft", "sent", "paid", "overdue", "cancelled"].map((s) => (
+                      {/* `draft` and `sent` are controlled by the explicit Send to client button to avoid confusion. */}
+                      {["paid", "overdue", "cancelled"].map((s) => (
                         <SelectItem key={s} value={s}>{s}</SelectItem>
                       ))}
+
                     </SelectContent>
                   </Select>
                 </div>

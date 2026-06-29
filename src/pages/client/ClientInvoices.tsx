@@ -10,10 +10,8 @@ import { ExternalLink } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useCurrency } from "@/hooks/useCurrency";
 import { Skeleton } from "@/components/ui/skeleton";
+import { clientFriendlyInvoiceStatus, clientStatusTone } from "@/lib/invoiceStatus";
 
-const statusColors: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
-  draft: "outline", sent: "secondary", paid: "default", overdue: "destructive", cancelled: "destructive",
-};
 
 export default function ClientInvoices() {
   const { user } = useAuth();
@@ -71,7 +69,7 @@ export default function ClientInvoices() {
                     <TableCell className="font-medium">
                       <Link to={`/invoices/${inv.id}`} className="text-primary hover:underline">{inv.invoice_number}</Link>
                     </TableCell>
-                    <TableCell><Badge variant={statusColors[inv.status] || "outline"}>{inv.status}</Badge></TableCell>
+                    <TableCell><Badge variant={clientStatusTone[inv.status] || "outline"}>{clientFriendlyInvoiceStatus(inv.status)}</Badge></TableCell>
                     <TableCell>{fmt(Number(inv.total), (inv as any).currency)}</TableCell>
                     <TableCell className="hidden sm:table-cell">{inv.due_date || "—"}</TableCell>
                     <TableCell>

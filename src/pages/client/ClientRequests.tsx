@@ -106,19 +106,37 @@ export default function ClientRequests() {
   };
 
   const decide = async (r: ClientRequest, approve: boolean, reason?: string) => {
+    // Guard against double-fires: ignore if already processing or the request is no longer in a decidable state.
+    if (processing) return;
+    if (r.status !== "quoted") {
+      toast.info("This quote has already been responded to.");
+      setDeclineFor(null);
+      setDeclineReason("");
+      return;
+    }
     setProcessing(r.id);
+    // Optimistically update local state so the buttons disappear immediately and can't be re-clicked.
+    setRequests((prev) =>
+      prev.map((x) => (x.id === r.id ? { ...x, status: approve ? "approved" : "declined_by_client", decline_reason: reason ?? null } : x)),
+    );
     const { error } = await supabase.rpc("client_decide_quote", {
       _request_id: r.id,
       _approve: approve,
       _reason: reason ?? (null as any),
     });
     setProcessing(null);
-    if (error) { toast.error(error.message); return; }
+    if (error) {
+      toast.error(error.message);
+      // Roll back optimistic update on failure.
+      fetchRequests();
+      return;
+    }
     toast.success(approve ? "Quote approved — the workshop has been notified." : "Quote declined.");
     setDeclineFor(null);
     setDeclineReason("");
     fetchRequests();
   };
+
 
   return (
     <DashboardLayout>
@@ -217,13 +235,14 @@ export default function ClientRequests() {
 
                         {isQuoted && (
                           <div className="mt-3 flex flex-wrap gap-2">
-                            <Button size="sm" disabled={processing === r.id} onClick={() => decide(r, true)}>
-                              <CheckCircle2 className="h-4 w-4" /> Approve quote
+                            <Button size="sm" disabled={!!processing} onClick={() => decide(r, true)}>
+                              <CheckCircle2 className="h-4 w-4" /> {processing === r.id ? "Approving..." : "Approve quote"}
                             </Button>
-                            <Button size="sm" variant="outline" disabled={processing === r.id}
+                            <Button size="sm" variant="outline" disabled={!!processing}
                               onClick={() => { setDeclineFor(r); setDeclineReason(""); }}>
                               <XCircle className="h-4 w-4" /> Decline quote
                             </Button>
+
                           </div>
                         )}
                       </div>

@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -60,15 +61,20 @@ const statusLabel: Record<string, string> = {
 
 export default function AdminRequests() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const focusId = searchParams.get("focus");
   const { format: fmt } = useCurrency();
   const [requests, setRequests] = useState<Req[]>([]);
   const [clients, setClients] = useState<Record<string, ClientInfo>>({});
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<"pending" | "quoted" | "approved" | "all">("pending");
+  const [tab, setTab] = useState<"pending" | "quoted" | "approved" | "all">(focusId ? "all" : "pending");
   const [declineFor, setDeclineFor] = useState<Req | null>(null);
   const [declineReason, setDeclineReason] = useState("");
   const [processing, setProcessing] = useState<string | null>(null);
   const [quoteFor, setQuoteFor] = useState<Req | null>(null);
+  const [highlightId, setHighlightId] = useState<string | null>(null);
+  const cardRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
 
   const fetchRequests = async () => {
     setLoading(true);
@@ -103,6 +109,23 @@ export default function AdminRequests() {
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, []);
+
+  // Focus a specific request when arriving via ?focus=<id> (e.g. from JobDetail).
+  useEffect(() => {
+    if (!focusId || loading || requests.length === 0) return;
+    const el = cardRefs.current[focusId];
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    setHighlightId(focusId);
+    const t = setTimeout(() => {
+      setHighlightId(null);
+      // Drop the query param so a refresh doesn't keep re-highlighting.
+      searchParams.delete("focus");
+      setSearchParams(searchParams, { replace: true });
+    }, 2200);
+    return () => clearTimeout(t);
+  }, [focusId, loading, requests.length]);
+
 
   const accept = async (r: Req) => {
     setProcessing(r.id);
@@ -188,8 +211,17 @@ export default function AdminRequests() {
               const clientName = c?.company_name || c?.full_name || "Unknown client";
               const isQuote = r.request_type === "quote";
               return (
-                <Card key={r.id} tone="default">
+                <Card
+                  key={r.id}
+                  tone="default"
+                  ref={(el: HTMLDivElement | null) => { cardRefs.current[r.id] = el; }}
+                  className={cn(
+                    "transition-all",
+                    highlightId === r.id && "ring-2 ring-primary ring-offset-2 ring-offset-background",
+                  )}
+                >
                   <CardContent className="flex flex-col gap-4 p-5 lg:flex-row lg:items-start lg:justify-between">
+
                     <div className="min-w-0 flex-1 space-y-2">
                       <div className="flex flex-wrap items-center gap-2">
                         {isQuote ? <FileText className="h-4 w-4 text-primary" /> : <Wrench className="h-4 w-4 text-primary" />}

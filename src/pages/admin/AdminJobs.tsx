@@ -259,6 +259,11 @@ export default function AdminJobs() {
                         <Link to={`/jobs/${job.id}`} className="block font-medium text-primary hover:underline">
                           {job.title}
                         </Link>
+                        {job.source_request_id && (
+                          <span className="mt-1 inline-block rounded-full bg-tile-sage/60 px-2 py-0.5 text-[10px] uppercase tracking-wider text-foreground/70">
+                            From request
+                          </span>
+                        )}
                       </TableCell>
                       <TableCell><Badge variant={statusColors[job.status]}>{job.status.replace("_", " ")}</Badge></TableCell>
                       <TableCell className="capitalize">{job.priority}</TableCell>
@@ -267,6 +272,7 @@ export default function AdminJobs() {
                       <TableCell>{new Date(job.created_at).toLocaleDateString()}</TableCell>
                     </TableRow>
                   ))}
+
                 </TableBody>
               </Table>
             </div>
@@ -291,6 +297,11 @@ export default function AdminJobs() {
                     <p className="font-medium text-primary break-words min-w-0 flex-1">{job.title}</p>
                     <Badge variant={statusColors[job.status]} className="shrink-0">{job.status.replace("_", " ")}</Badge>
                   </div>
+                  {job.source_request_id && (
+                    <span className="mt-1 inline-block rounded-full bg-tile-sage/60 px-2 py-0.5 text-[10px] uppercase tracking-wider text-foreground/70">
+                      From request
+                    </span>
+                  )}
                   <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
                     <span className="capitalize">Priority: {job.priority}</span>
                     <span>{new Date(job.created_at).toLocaleDateString()}</span>
@@ -301,6 +312,7 @@ export default function AdminJobs() {
                   </div>
                 </Link>
               ))}
+
             </div>
           </CardContent>
         </Card>
