@@ -1,13 +1,13 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { buildCorsHeaders, sha256Hex } from "../_shared/mfa-cors.ts";
+import { corsHeaders, sha256Hex } from "../_shared/mfa-cors.ts";
 import { checkRateLimit } from "../_shared/rate-limit.ts";
 
 const TRUST_DAYS = 30;
 const LIMIT = { limit: 5, windowSec: 60 * 60, lockoutSec: 60 * 60 };
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: buildCorsHeaders });
+  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
     const authHeader = req.headers.get("Authorization");
@@ -65,7 +65,7 @@ serve(async (req) => {
     const cookie = `mfa_device_token=${opaque}; HttpOnly; Secure; SameSite=None; Path=/; Max-Age=${cookieAge}`;
     return new Response(JSON.stringify({ ok: true, expires_at: expiresAt }), {
       status: 200,
-      headers: { ...buildCorsHeaders, "Content-Type": "application/json", "Set-Cookie": cookie },
+      headers: { ...corsHeaders, "Content-Type": "application/json", "Set-Cookie": cookie },
     });
   } catch (err) {
     return json({ error: (err as Error).message }, 500);
@@ -75,6 +75,6 @@ serve(async (req) => {
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { ...buildCorsHeaders, "Content-Type": "application/json" },
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 }

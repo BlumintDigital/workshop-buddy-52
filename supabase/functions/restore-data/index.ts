@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { buildCorsHeaders, sha256Hex } from "../_shared/mfa-cors.ts";
+import { corsHeaders, sha256Hex } from "../_shared/mfa-cors.ts";
 import { checkRateLimit } from "../_shared/rate-limit.ts";
 import { captureEdgeError } from "../_shared/sentry.ts";
 
@@ -56,7 +56,7 @@ const BATCH_SIZE = 500;
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: buildCorsHeaders });
+    return new Response(null, { headers: corsHeaders });
   }
 
   try {
@@ -64,7 +64,7 @@ serve(async (req) => {
     if (!authHeader?.startsWith("Bearer ")) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
-        headers: { ...buildCorsHeaders, "Content-Type": "application/json" },
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
@@ -79,7 +79,7 @@ serve(async (req) => {
     if (claimsError || !claimsData?.claims) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
-        headers: { ...buildCorsHeaders, "Content-Type": "application/json" },
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
@@ -99,7 +99,7 @@ serve(async (req) => {
     if (!roleData || roleData.role !== "admin") {
       return new Response(JSON.stringify({ error: "Forbidden: admin role required" }), {
         status: 403,
-        headers: { ...buildCorsHeaders, "Content-Type": "application/json" },
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
@@ -112,7 +112,7 @@ serve(async (req) => {
     if (!rl.allowed) {
       return new Response(
         JSON.stringify({ error: `Rate limit exceeded. Try again in ${rl.retryAfterSec}s.` }),
-        { status: 429, headers: { ...buildCorsHeaders, "Content-Type": "application/json" } }
+        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -123,28 +123,28 @@ serve(async (req) => {
     } catch {
       return new Response(JSON.stringify({ error: "Invalid JSON body" }), {
         status: 400,
-        headers: { ...buildCorsHeaders, "Content-Type": "application/json" },
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     if (!body?.manifest || !body?.data) {
       return new Response(JSON.stringify({ error: "Missing manifest or data in backup file" }), {
         status: 400,
-        headers: { ...buildCorsHeaders, "Content-Type": "application/json" },
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     if (body.manifest.app !== "workshop-buddy") {
       return new Response(JSON.stringify({ error: "Backup file is not from this application" }), {
         status: 400,
-        headers: { ...buildCorsHeaders, "Content-Type": "application/json" },
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     if (body.manifest.version !== 1) {
       return new Response(JSON.stringify({ error: `Unsupported backup version: ${body.manifest.version}` }), {
         status: 400,
-        headers: { ...buildCorsHeaders, "Content-Type": "application/json" },
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
@@ -153,7 +153,7 @@ serve(async (req) => {
     if (computedChecksum !== body.manifest.checksum) {
       return new Response(JSON.stringify({ error: "Backup file integrity check failed — file may be corrupted or tampered with" }), {
         status: 400,
-        headers: { ...buildCorsHeaders, "Content-Type": "application/json" },
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
@@ -166,7 +166,7 @@ serve(async (req) => {
       if (error) {
         return new Response(JSON.stringify({ error: `Failed to clear ${table}: ${error.message}` }), {
           status: 500,
-          headers: { ...buildCorsHeaders, "Content-Type": "application/json" },
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
     }
@@ -191,7 +191,7 @@ serve(async (req) => {
         if (error) {
           return new Response(
             JSON.stringify({ error: `Failed to restore ${table} (batch ${i / BATCH_SIZE + 1}): ${error.message}` }),
-            { status: 500, headers: { ...buildCorsHeaders, "Content-Type": "application/json" } }
+            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         }
         inserted += batch.length;
@@ -216,13 +216,13 @@ serve(async (req) => {
 
     return new Response(JSON.stringify({ success: true, restored }), {
       status: 200,
-      headers: { ...buildCorsHeaders, "Content-Type": "application/json" },
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
     await captureEdgeError(err, "restore-data");
     return new Response(JSON.stringify({ error: (err as Error).message }), {
       status: 500,
-      headers: { ...buildCorsHeaders, "Content-Type": "application/json" },
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });

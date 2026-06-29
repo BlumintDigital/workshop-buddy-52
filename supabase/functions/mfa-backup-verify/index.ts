@@ -1,12 +1,12 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { buildCorsHeaders, sha256Hex } from "../_shared/mfa-cors.ts";
+import { corsHeaders, sha256Hex } from "../_shared/mfa-cors.ts";
 import { checkRateLimit, recordFailure, resetRateLimit } from "../_shared/rate-limit.ts";
 
 const LIMIT = { limit: 5, windowSec: 15 * 60, lockoutSec: 15 * 60 };
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: buildCorsHeaders });
+  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
     const authHeader = req.headers.get("Authorization");
@@ -107,6 +107,6 @@ serve(async (req) => {
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { ...buildCorsHeaders, "Content-Type": "application/json" },
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 }
