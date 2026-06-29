@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { FileDown, FilePlus2, History } from "lucide-react";
 import { toast } from "sonner";
 import { InvoiceDocument, type WorkshopDetails } from "@/lib/invoicePdf";
+import { friendlyErrorMessageSync } from "@/lib/friendlyError";
 
 interface InvoicePdfVersion {
   id: string;
@@ -64,7 +65,7 @@ export default function InvoicePdfVersions({
       .select("*")
       .eq("invoice_id", invoice.id)
       .order("version", { ascending: false });
-    if (error) toast.error(error.message);
+    if (error) toast.error(friendlyErrorMessageSync(error, "Couldn't load PDF version history."));
     setVersions(data || []);
     setLoading(false);
   };
@@ -110,7 +111,7 @@ export default function InvoicePdfVersions({
       toast.success(`Saved version v${nextVersion}`);
       await load();
     } catch (e: any) {
-      toast.error(e?.message || "Failed to save PDF version");
+      toast.error(friendlyErrorMessageSync(e, "Couldn't generate or upload the PDF. Please retry."));
     } finally {
       setBusy(false);
     }
@@ -121,7 +122,7 @@ export default function InvoicePdfVersions({
       .from("invoice-pdfs")
       .createSignedUrl(v.file_path, 60);
     if (error || !data?.signedUrl) {
-      toast.error(error?.message || "Could not get download link");
+      toast.error(friendlyErrorMessageSync(error, "Couldn't get a download link. The file may have been removed."));
       return;
     }
     const a = document.createElement("a");

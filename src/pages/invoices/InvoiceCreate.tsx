@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { useCurrency } from "@/hooks/useCurrency";
 import InvoicePdfPreview from "@/components/invoices/InvoicePdfPreview";
 import { useWorkshopDetails } from "@/hooks/useWorkshopDetails";
+import { friendlyErrorMessageSync } from "@/lib/friendlyError";
 
 interface LineItem {
   description: string;
@@ -149,7 +150,11 @@ export default function InvoiceCreate() {
       .select("id")
       .single();
 
-    if (error || !inv) { toast.error(error?.message || "Failed"); setSaving(false); return; }
+    if (error || !inv) {
+      toast.error(friendlyErrorMessageSync(error, "Couldn't save invoice. Please review the fields and try again."));
+      setSaving(false);
+      return;
+    }
 
     const invoiceItems = items
       .filter((i) => i.description.trim())
@@ -162,7 +167,12 @@ export default function InvoiceCreate() {
       }));
 
     if (invoiceItems.length) {
-      await supabase.from("invoice_items").insert(invoiceItems);
+      const { error: itemsErr } = await supabase.from("invoice_items").insert(invoiceItems);
+      if (itemsErr) {
+        toast.error(friendlyErrorMessageSync(itemsErr, "Invoice saved, but line items failed to save."));
+        setSaving(false);
+        return;
+      }
     }
 
     toast.success("Invoice created as draft");
