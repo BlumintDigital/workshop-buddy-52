@@ -1,60 +1,67 @@
-@import '@fontsource-variable/geist';
-@import '@fontsource/instrument-serif/400.css';
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* 2026 Command Center — dark-first violet/lime system. All colors in HSL. */
+/* Workshop Buddy — Sage & Cream pastel light system. All colors in HSL. */
 
 @layer base {
   :root {
-    --background: 240 20% 6%;
-    --foreground: 0 0% 98%;
+    /* Cream surface, deep-sage ink */
+    --background: 36 33% 94%;          /* #f5f0e8 cream */
+    --foreground: 110 12% 18%;         /* deep sage ink */
 
-    --card: 240 18% 10%;
-    --card-foreground: 0 0% 98%;
+    --card: 40 40% 98%;                /* near-white cream tint */
+    --card-foreground: 110 12% 18%;
 
-    --popover: 240 18% 10%;
-    --popover-foreground: 0 0% 98%;
+    --popover: 40 40% 98%;
+    --popover-foreground: 110 12% 18%;
 
-    --primary: 258 90% 76%;
-    --primary-foreground: 240 20% 6%;
+    --primary: 110 14% 54%;            /* sage #a8c0a0 area but darker for AA */
+    --primary-foreground: 40 40% 98%;
 
-    --secondary: 240 14% 14%;
-    --secondary-foreground: 0 0% 98%;
+    --secondary: 96 22% 87%;           /* #dce5d4 mist */
+    --secondary-foreground: 110 18% 22%;
 
-    --muted: 240 12% 16%;
-    --muted-foreground: 240 8% 65%;
+    --muted: 36 25% 90%;
+    --muted-foreground: 110 8% 38%;
 
-    --accent: 74 80% 66%;
-    --accent-foreground: 240 20% 6%;
+    --accent: 108 18% 70%;             /* soft sage accent */
+    --accent-foreground: 110 18% 18%;
 
-    --destructive: 0 72% 60%;
-    --destructive-foreground: 0 0% 98%;
+    --destructive: 0 62% 56%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 240 10% 18%;
-    --input: 240 10% 18%;
-    --ring: 258 90% 76%;
+    --border: 96 18% 82%;
+    --input: 96 18% 82%;
+    --ring: 110 22% 46%;
 
     --radius: 1rem;
 
-    /* Sidebar — floating dark panel with violet active state */
-    --sidebar-background: 240 22% 5%;
-    --sidebar-foreground: 240 8% 65%;
-    --sidebar-primary: 258 90% 76%;
-    --sidebar-primary-foreground: 240 20% 6%;
-    --sidebar-accent: 240 16% 12%;
-    --sidebar-accent-foreground: 0 0% 98%;
-    --sidebar-border: 240 12% 14%;
-    --sidebar-ring: 258 90% 76%;
+    /* Pastel tile tints used by the dashboard bento + accents */
+    --tile-cream: 36 45% 96%;
+    --tile-mist: 96 30% 90%;
+    --tile-sage: 108 22% 80%;
+    --tile-blush: 18 60% 92%;
+    --tile-sky: 200 55% 92%;
+    --tile-butter: 44 70% 90%;
+
+    /* Sidebar — soft cream, sage active */
+    --sidebar-background: 36 38% 96%;
+    --sidebar-foreground: 110 10% 30%;
+    --sidebar-primary: 110 22% 42%;
+    --sidebar-primary-foreground: 40 40% 98%;
+    --sidebar-accent: 96 22% 90%;
+    --sidebar-accent-foreground: 110 18% 22%;
+    --sidebar-border: 96 18% 84%;
+    --sidebar-ring: 110 22% 46%;
 
     /* Effects */
-    --gradient-surface: radial-gradient(120% 80% at 0% 0%, hsl(258 90% 76% / 0.10), transparent 60%);
-    --gradient-hero: linear-gradient(135deg, hsl(258 90% 76% / 0.25), hsl(280 80% 60% / 0.05) 60%, transparent);
-    --gradient-violet: linear-gradient(135deg, hsl(258 90% 76%), hsl(280 80% 65%));
-    --shadow-glow: 0 0 0 1px hsl(258 90% 76% / 0.18), 0 20px 60px -20px hsl(258 90% 76% / 0.35);
-    --shadow-card: 0 1px 0 hsl(0 0% 100% / 0.04) inset, 0 20px 50px -30px hsl(240 30% 0% / 0.6);
+    --gradient-surface: radial-gradient(120% 80% at 0% 0%, hsl(108 30% 78% / 0.35), transparent 60%);
+    --gradient-hero: linear-gradient(135deg, hsl(108 30% 80% / 0.55), hsl(36 50% 92% / 0.5) 60%, transparent);
+    --gradient-soft: linear-gradient(140deg, hsl(36 50% 96%), hsl(96 30% 92%));
+    --gradient-sage: linear-gradient(135deg, hsl(110 22% 56%), hsl(96 28% 70%));
+    --shadow-soft: 0 1px 0 hsl(0 0% 100% / 0.6) inset, 0 8px 24px -16px hsl(110 30% 20% / 0.18);
+    --shadow-elevation: 0 1px 0 hsl(0 0% 100% / 0.6) inset, 0 20px 50px -30px hsl(110 30% 20% / 0.30);
   }
 
   /* Mobile sidebar tracks the page background */
@@ -69,34 +76,35 @@
     }
   }
 
+  /* Optional dusk-sage dark variant for explicit consumers */
   .dark {
-    --background: 240 20% 6%;
-    --foreground: 0 0% 98%;
-    --card: 240 18% 10%;
-    --card-foreground: 0 0% 98%;
-    --popover: 240 18% 10%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 258 90% 76%;
-    --primary-foreground: 240 20% 6%;
-    --secondary: 240 14% 14%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 240 12% 16%;
-    --muted-foreground: 240 8% 65%;
-    --accent: 74 80% 66%;
-    --accent-foreground: 240 20% 6%;
-    --destructive: 0 72% 60%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 240 10% 18%;
-    --input: 240 10% 18%;
-    --ring: 258 90% 76%;
-    --sidebar-background: 240 22% 5%;
-    --sidebar-foreground: 240 8% 65%;
-    --sidebar-primary: 258 90% 76%;
-    --sidebar-primary-foreground: 240 20% 6%;
-    --sidebar-accent: 240 16% 12%;
-    --sidebar-accent-foreground: 0 0% 98%;
-    --sidebar-border: 240 12% 14%;
-    --sidebar-ring: 258 90% 76%;
+    --background: 120 10% 10%;
+    --foreground: 36 30% 94%;
+    --card: 120 10% 14%;
+    --card-foreground: 36 30% 94%;
+    --popover: 120 10% 14%;
+    --popover-foreground: 36 30% 94%;
+    --primary: 108 24% 66%;
+    --primary-foreground: 120 14% 10%;
+    --secondary: 120 8% 18%;
+    --secondary-foreground: 36 30% 94%;
+    --muted: 120 8% 18%;
+    --muted-foreground: 36 12% 70%;
+    --accent: 108 24% 60%;
+    --accent-foreground: 120 14% 10%;
+    --destructive: 0 62% 50%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 120 8% 22%;
+    --input: 120 8% 22%;
+    --ring: 108 24% 66%;
+    --sidebar-background: 120 10% 8%;
+    --sidebar-foreground: 36 14% 70%;
+    --sidebar-primary: 108 24% 66%;
+    --sidebar-primary-foreground: 120 14% 10%;
+    --sidebar-accent: 120 8% 16%;
+    --sidebar-accent-foreground: 36 30% 94%;
+    --sidebar-border: 120 8% 18%;
+    --sidebar-ring: 108 24% 66%;
   }
 }
 
@@ -112,43 +120,37 @@
 
   body {
     @apply bg-background text-foreground;
-    font-family: 'Geist Variable', 'Geist', system-ui, sans-serif;
-    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    font-family: 'Figtree', system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     background-image:
-      radial-gradient(60% 40% at 15% 0%, hsl(258 90% 60% / 0.10), transparent 60%),
-      radial-gradient(50% 40% at 100% 10%, hsl(280 90% 60% / 0.08), transparent 60%);
+      radial-gradient(60% 40% at 15% 0%, hsl(108 30% 78% / 0.35), transparent 60%),
+      radial-gradient(50% 40% at 100% 10%, hsl(36 60% 88% / 0.45), transparent 60%);
     background-attachment: fixed;
   }
 
-  h1, h2, h3 {
-    letter-spacing: -0.025em;
+  h1, h2, h3, h4 {
+    font-family: 'Outfit', 'Figtree', system-ui, sans-serif;
+    letter-spacing: -0.015em;
   }
   h1 { font-weight: 700; }
   h2 { font-weight: 700; }
   h3 { font-weight: 600; }
-
-  .font-serif-display {
-    font-family: 'Instrument Serif', 'Times New Roman', serif;
-    font-weight: 400;
-    letter-spacing: -0.02em;
-  }
 }
 
 @layer components {
   .card-elevated {
-    box-shadow: var(--shadow-card);
+    box-shadow: var(--shadow-elevation);
   }
-  .card-glow {
-    box-shadow: var(--shadow-glow);
+  .card-soft {
+    box-shadow: var(--shadow-soft);
   }
-  .surface-violet {
+  .surface-sage {
     background-image: var(--gradient-surface);
   }
   .text-display {
-    font-family: 'Instrument Serif', 'Times New Roman', serif;
-    font-weight: 400;
+    font-family: 'Outfit', 'Figtree', system-ui, sans-serif;
+    font-weight: 600;
     letter-spacing: -0.025em;
   }
   .tabular-nums {
@@ -158,6 +160,13 @@
 }
 
 @layer utilities {
+  .bg-tile-cream  { background-color: hsl(var(--tile-cream)); }
+  .bg-tile-mist   { background-color: hsl(var(--tile-mist)); }
+  .bg-tile-sage   { background-color: hsl(var(--tile-sage)); }
+  .bg-tile-blush  { background-color: hsl(var(--tile-blush)); }
+  .bg-tile-sky    { background-color: hsl(var(--tile-sky)); }
+  .bg-tile-butter { background-color: hsl(var(--tile-butter)); }
+
   button:not(:disabled),
   [role="button"]:not(:disabled),
   a {
