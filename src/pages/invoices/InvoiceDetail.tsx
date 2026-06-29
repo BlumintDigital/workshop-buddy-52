@@ -242,6 +242,50 @@ export default function InvoiceDetail() {
     }
   };
 
+  // Client confirms they have paid out-of-band. Admin/manager still needs to verify.
+  const [markingPaid, setMarkingPaid] = useState(false);
+  const clientMarkPaid = async () => {
+    if (!invoice) return;
+    setMarkingPaid(true);
+    try {
+      const { data, error } = await supabase.rpc("client_mark_invoice_paid", { _invoice_id: invoice.id });
+      if (error) { toast.error(friendlyErrorMessageSync(error, "Couldn't submit your payment notice.")); return; }
+      setInvoice({ ...invoice, client_marked_paid_at: data });
+      toast.success("Thanks — we'll confirm shortly.");
+    } finally {
+      setMarkingPaid(false);
+    }
+  };
+
+  // Admin/manager confirms payment was received → status becomes paid.
+  const [confirmingPaid, setConfirmingPaid] = useState(false);
+  const markPaymentReceived = async () => {
+    if (!invoice) return;
+    setConfirmingPaid(true);
+    try {
+      const paidAt = new Date().toISOString();
+      const { error } = await supabase.from("invoices").update({ status: "paid", paid_at: paidAt }).eq("id", invoice.id);
+      if (error) { toast.error(friendlyErrorMessageSync(error, "Couldn't mark as paid.")); return; }
+      setInvoice({ ...invoice, status: "paid", paid_at: paidAt });
+      toast.success("Marked as paid.");
+      if (invoice.client_id) {
+        sendEmail({
+          to_user_id: invoice.client_id,
+          subject: `Payment received — ${invoice.invoice_number}`,
+          html: invoiceSentEmailHtml(
+            invoice.invoice_number,
+            total,
+            invoice.currency ?? "USD",
+            `${window.location.origin}/invoices/${invoice.id}`,
+          ),
+        }).catch(() => {});
+      }
+    } finally {
+      setConfirmingPaid(false);
+    }
+  };
+
+
 
 
   if (!invoice) return (
