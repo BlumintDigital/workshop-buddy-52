@@ -27,7 +27,7 @@ export function JobStatusChart({ data }: JobStatusChartProps) {
         ) : (
           <ResponsiveContainer width="100%" height={260}>
             <PieChart>
-              <Pie data={data} cx="50%" cy="50%" innerRadius={44} outerRadius={78} paddingAngle={3} dataKey="value" nameKey="name" labelLine={false} label={({ percent }) => `${(percent * 100).toFixed(0)}%`}>
+              <Pie data={data} cx="50%" cy="50%" innerRadius={44} outerRadius={78} paddingAngle={3} dataKey="value" nameKey="name" labelLine={false} label={({ percent }) => `${((percent ?? 0) * 100).toFixed(0)}%`}>
                 {data.map((entry) => (
                   <Cell key={entry.name} fill={STATUS_COLORS[entry.name] || "hsl(var(--muted))"} />
                 ))}
