@@ -855,6 +855,7 @@ export type Database = {
           estimated_hours: number | null
           id: string
           priority: string
+          source_request_id: string | null
           status: string
           title: string
           updated_at: string
@@ -869,6 +870,7 @@ export type Database = {
           estimated_hours?: number | null
           id?: string
           priority?: string
+          source_request_id?: string | null
           status?: string
           title: string
           updated_at?: string
@@ -883,11 +885,20 @@ export type Database = {
           estimated_hours?: number | null
           id?: string
           priority?: string
+          source_request_id?: string | null
           status?: string
           title?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "jobs_source_request_id_fkey"
+            columns: ["source_request_id"]
+            isOneToOne: false
+            referencedRelation: "client_requests"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       mfa_backup_codes: {
         Row: {
