@@ -141,6 +141,7 @@ serve(async (req) => {
 
     return json({ success: true, user_id: newUser.user.id });
   } catch (err) {
+    await captureEdgeError(err, "admin-create-user");
     return json({ error: (err as Error).message }, 500);
   }
 });
