@@ -75,7 +75,7 @@ export default function AdminDashboard() {
     revenueDelta: 0,
   });
   const [recentJobs, setRecentJobs] = useState<RecentJob[]>([]);
-  const [jobsFilter, setJobsFilter] = useState<"all" | "active" | "completed">("active");
+  
   const [revenueSeries, setRevenueSeries] = useState<{ label: string; value: number }[]>([]);
   const [todayAppts, setTodayAppts] = useState<Appointment[]>([]);
   const [staffLoad, setStaffLoad] = useState<{ name: string; jobs: number }[]>([]);
@@ -198,14 +198,11 @@ export default function AdminDashboard() {
     };
 
     const fetchRecent = async () => {
-      let q = supabase
+      const { data } = await supabase
         .from("jobs")
         .select("id, title, status, created_at")
         .order("created_at", { ascending: false })
         .limit(5);
-      if (jobsFilter === "active") q = q.not("status", "in", "(completed,cancelled)");
-      if (jobsFilter === "completed") q = q.eq("status", "completed");
-      const { data } = await q;
       setRecentJobs(
         (data || []).map((j: any) => ({
           id: j.id,
@@ -217,7 +214,7 @@ export default function AdminDashboard() {
     };
 
     Promise.all([run(), fetchRecent()]).finally(() => setIsLoading(false));
-  }, [appointmentsEnabled, jobsFilter]);
+  }, [appointmentsEnabled]);
 
   const maxLoad = Math.max(1, ...staffLoad.map((s) => s.jobs));
   const deltaPositive = stats.revenueDelta >= 0;
@@ -433,21 +430,7 @@ export default function AdminDashboard() {
                   </div>
                   <Link to="/admin/jobs" className="text-xs font-medium text-primary hover:underline">All</Link>
                 </div>
-                <div className="mt-3 inline-flex rounded-full border border-border/70 bg-card/60 p-1 text-[11px]">
-                  {(["active", "completed", "all"] as const).map((f) => (
-                    <button
-                      key={f}
-                      onClick={() => setJobsFilter(f)}
-                      className={cn(
-                        "rounded-full px-2.5 py-1 capitalize transition-colors min-h-[28px]",
-                        jobsFilter === f ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground",
-                      )}
-                    >
-                      {f}
-                    </button>
-                  ))}
-                </div>
-                <div className="mt-3 space-y-1.5">
+                <div className="mt-4 space-y-1.5">
                   {recentJobs.length === 0 ? (
                     <p className="py-3 text-sm text-muted-foreground">No jobs yet.</p>
                   ) : (
