@@ -1,27 +1,24 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { checkRateLimit } from "../_shared/rate-limit.ts";
+import { buildCorsHeaders } from "../_shared/mfa-cors.ts";
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-const ALLOWED_ORIGIN = Deno.env.get("ALLOWED_ORIGIN") ?? "https://ieq.shoplane.uk";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": ALLOWED_ORIGIN,
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
 
 serve(async (req) => {
+  const cors = buildCorsHeaders(req);
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    return new Response("ok", { headers: cors });
   }
 
   const authHeader = req.headers.get("Authorization");
   if (!authHeader?.startsWith("Bearer ")) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
       status: 401,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { ...cors, "Content-Type": "application/json" },
     });
   }
 
@@ -32,7 +29,7 @@ serve(async (req) => {
   if (userError || !user) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
       status: 401,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { ...cors, "Content-Type": "application/json" },
     });
   }
 
@@ -60,7 +57,7 @@ serve(async (req) => {
   if (mode === "test_email") {
     if (!roleRow || roleRow.role !== "admin") {
       return new Response(JSON.stringify({ error: "Forbidden" }), {
-        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 403, headers: { ...cors, "Content-Type": "application/json" },
       });
     }
     const [{ data: adminContact }, { data: ws }] = await Promise.all([
@@ -70,13 +67,13 @@ serve(async (req) => {
     const toAddr = (adminContact as any)?.super_admin_email ?? null;
     if (!toAddr) {
       return new Response(JSON.stringify({ ok: false, error: "No Platform Support Email configured in Settings → Email" }), {
-        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200, headers: { ...cors, "Content-Type": "application/json" },
       });
     }
     const fromAddr = (ws as any)?.from_email || "noreply@workshopmanager.com";
     if (!RESEND_API_KEY) {
       return new Response(JSON.stringify({ ok: false, error: "RESEND_API_KEY secret not configured" }), {
-        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200, headers: { ...cors, "Content-Type": "application/json" },
       });
     }
     const testRes = await fetch("https://api.resend.com/emails", {
@@ -93,11 +90,11 @@ serve(async (req) => {
       const text = await testRes.text();
       // Always return 200 so supabase-js puts the body in `data` (not `error`)
       return new Response(JSON.stringify({ ok: false, error: text }), {
-        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200, headers: { ...cors, "Content-Type": "application/json" },
       });
     }
     return new Response(JSON.stringify({ ok: true, sentTo: toAddr }), {
-      status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 200, headers: { ...cors, "Content-Type": "application/json" },
     });
   }
 
@@ -114,7 +111,7 @@ serve(async (req) => {
       .gte("created_at", new Date(Date.now() - 3_600_000).toISOString()) as unknown as { count: number | null };
     if ((recentCount ?? 0) >= 3) {
       return new Response(JSON.stringify({ ok: false, error: "Rate limit: max 3 bug reports per hour" }), {
-        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200, headers: { ...cors, "Content-Type": "application/json" },
       });
     }
 
@@ -125,7 +122,7 @@ serve(async (req) => {
     to = (adminContact as any)?.super_admin_email ?? null;
     if (!to) {
       return new Response(JSON.stringify({ error: "No Platform Support Email configured in Settings → Email" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400, headers: { ...cors, "Content-Type": "application/json" },
       });
     }
     from = (ws as any)?.from_email || Deno.env.get("FROM_EMAIL") || "noreply@workshopmanager.com";
@@ -147,7 +144,7 @@ serve(async (req) => {
     if (!roleRow || !["admin", "manager"].includes(roleRow.role)) {
       return new Response(JSON.stringify({ error: "Forbidden" }), {
         status: 403,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...cors, "Content-Type": "application/json" },
       });
     }
 
@@ -166,7 +163,7 @@ serve(async (req) => {
         {
           status: 429,
           headers: {
-            ...corsHeaders,
+            ...cors,
             "Content-Type": "application/json",
             "Retry-After": String(rl.retryAfterSec),
           },
@@ -183,7 +180,7 @@ serve(async (req) => {
     if (!(emailCfg as any)?.email_notifications_enabled) {
       return new Response(JSON.stringify({ ok: true, skipped: "email_notifications_disabled" }), {
         status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...cors, "Content-Type": "application/json" },
       });
     }
 
@@ -195,7 +192,7 @@ serve(async (req) => {
         await supabase.auth.admin.getUserById(to_user_id);
       if (lookupError || !targetUser?.email) {
         return new Response(JSON.stringify({ error: "Could not resolve recipient email" }), {
-          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 400, headers: { ...cors, "Content-Type": "application/json" },
         });
       }
       to = targetUser.email;
@@ -205,14 +202,14 @@ serve(async (req) => {
   if (!RESEND_API_KEY) {
     return new Response(
       JSON.stringify({ error: "RESEND_API_KEY secret not configured" }),
-      { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 503, headers: { ...cors, "Content-Type": "application/json" } }
     );
   }
 
   if (!to || !subject || !html) {
     return new Response(
       JSON.stringify({ error: "Missing required fields: to (or to_user_id), subject, html" }),
-      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 400, headers: { ...cors, "Content-Type": "application/json" } }
     );
   }
 
@@ -229,12 +226,12 @@ serve(async (req) => {
     const text = await res.text();
     return new Response(JSON.stringify({ error: text }), {
       status: res.status,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { ...cors, "Content-Type": "application/json" },
     });
   }
 
   return new Response(JSON.stringify({ ok: true }), {
     status: 200,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
+    headers: { ...cors, "Content-Type": "application/json" },
   });
 });
