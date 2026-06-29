@@ -25,7 +25,7 @@ export default function InvoiceCreate() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const jobId = searchParams.get("jobId");
-  const { format: fmt } = useCurrency();
+  const { currency: baseCurrency, enabled: enabledCurrencies, format: fmt } = useCurrency();
 
   const [clientId, setClientId] = useState("");
   const [clientName, setClientName] = useState("");
@@ -35,6 +35,18 @@ export default function InvoiceCreate() {
   const [dueDate, setDueDate] = useState("");
   const [items, setItems] = useState<LineItem[]>([{ description: "", quantity: 1, unit_price: 0 }]);
   const [saving, setSaving] = useState(false);
+  const [currency, setCurrency] = useState<string>(baseCurrency);
+  const [fxRate, setFxRate] = useState<number>(1);
+
+  // Keep currency in sync with base when base loads
+  useEffect(() => {
+    setCurrency((c) => (c && c !== "USD" ? c : baseCurrency));
+  }, [baseCurrency]);
+
+  // Reset fx rate when picking base currency
+  useEffect(() => {
+    if (currency === baseCurrency) setFxRate(1);
+  }, [currency, baseCurrency]);
 
   useEffect(() => {
     const load = async () => {
