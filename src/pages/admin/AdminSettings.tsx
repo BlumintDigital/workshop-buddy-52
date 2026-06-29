@@ -560,44 +560,84 @@ export default function AdminSettings() {
           </TabsList>
 
           <TabsContent value="general" className="mt-4">
-            <div className="space-y-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>General</CardTitle>
-                  <CardDescription>Basic workshop information</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <Label htmlFor="workshop_name">Workshop Name</Label>
-                    <Input id="workshop_name" value={settings.workshop_name} onChange={(e) => set("workshop_name", e.target.value)} placeholder="My Workshop" className="mt-1" />
-                  </div>
-                  <div>
-                    <Label htmlFor="contact_email">Contact Email</Label>
-                    <Input id="contact_email" type="email" value={settings.contact_email} onChange={(e) => set("contact_email", e.target.value)} placeholder="contact@workshop.com" className="mt-1" />
-                  </div>
-                  <div>
-                    <Label htmlFor="phone">Phone</Label>
-                    <Input id="phone" value={settings.phone} onChange={(e) => set("phone", e.target.value)} placeholder="+1 (555) 000-0000" className="mt-1" />
-                  </div>
-                  <div>
-                    <Label htmlFor="address">Address</Label>
-                    <Input id="address" value={settings.address} onChange={(e) => set("address", e.target.value)} placeholder="123 Workshop St, City, State" className="mt-1" />
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader>
-                  <CardTitle>Onboarding</CardTitle>
-                  <CardDescription>Bring back your admin setup checklist on the dashboard</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Button type="button" variant="outline" onClick={handleResetOnboarding} disabled={onboardingUpdating}>
-                    {onboardingUpdating ? "Resetting..." : "Reset onboarding checklist"}
-                  </Button>
-                </CardContent>
-              </Card>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
+              <div className="space-y-4 lg:col-span-2 min-w-0">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>General</CardTitle>
+                    <CardDescription>Basic workshop information</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div>
+                      <Label htmlFor="workshop_name">Workshop Name</Label>
+                      <Input id="workshop_name" value={settings.workshop_name} onChange={(e) => set("workshop_name", e.target.value)} placeholder="My Workshop" className="mt-1" />
+                    </div>
+                    <div>
+                      <Label htmlFor="contact_email">Contact Email</Label>
+                      <Input id="contact_email" type="email" value={settings.contact_email} onChange={(e) => set("contact_email", e.target.value)} placeholder="contact@workshop.com" className="mt-1" />
+                    </div>
+                    <div>
+                      <Label htmlFor="phone">Phone</Label>
+                      <Input id="phone" value={settings.phone} onChange={(e) => set("phone", e.target.value)} placeholder="+1 (555) 000-0000" className="mt-1" />
+                    </div>
+                    <div>
+                      <Label htmlFor="address">Address</Label>
+                      <Input id="address" value={settings.address} onChange={(e) => set("address", e.target.value)} placeholder="123 Workshop St, City, State" className="mt-1" />
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Onboarding</CardTitle>
+                    <CardDescription>Bring back your admin setup checklist on the dashboard</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Button type="button" variant="outline" onClick={handleResetOnboarding} disabled={onboardingUpdating}>
+                      {onboardingUpdating ? "Resetting..." : "Reset onboarding checklist"}
+                    </Button>
+                  </CardContent>
+                </Card>
+              </div>
+
+              <aside className="space-y-4 lg:sticky lg:top-6">
+                <Card tone="mist">
+                  <CardHeader>
+                    <CardTitle className="text-lg">Where this appears</CardTitle>
+                    <CardDescription>How general info is used across the app</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-2 text-sm text-muted-foreground">
+                    <p>• <span className="text-foreground font-medium">Workshop name</span> is shown in the header, emails and invoice PDFs.</p>
+                    <p>• <span className="text-foreground font-medium">Contact email & phone</span> appear on invoices and client communications.</p>
+                    <p>• <span className="text-foreground font-medium">Address</span> is used as the footer on printed documents.</p>
+                  </CardContent>
+                </Card>
+
+                <Card tone="butter">
+                  <CardHeader>
+                    <CardTitle className="text-lg">Tips</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2 text-sm text-muted-foreground">
+                    <p>• Use a contact email your team actually monitors.</p>
+                    <p>• Configure the sender domain in the Email tab so messages don't land in spam.</p>
+                    <p>• Brand colors and the logo live under the Branding tab.</p>
+                  </CardContent>
+                </Card>
+
+                <Card tone="sky">
+                  <CardHeader>
+                    <CardTitle className="text-lg">Quick links</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2 text-sm">
+                    <button type="button" onClick={() => setActiveTab("branding")} className="block text-left text-primary hover:underline">→ Customize branding & logo</button>
+                    <button type="button" onClick={() => setActiveTab("email")} className="block text-left text-primary hover:underline">→ Set up email delivery</button>
+                    <button type="button" onClick={() => setActiveTab("notifications")} className="block text-left text-primary hover:underline">→ Manage notifications</button>
+                    <button type="button" onClick={() => setActiveTab("data")} className="block text-left text-primary hover:underline">→ Data & backup tools</button>
+                  </CardContent>
+                </Card>
+              </aside>
             </div>
           </TabsContent>
+
 
           <TabsContent value="billing" className="mt-4">
             <Card>
