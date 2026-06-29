@@ -47,6 +47,10 @@ export function NotificationBell() {
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${user.id}` }, (payload) => {
         setNotifications((prev) => [payload.new as Notification, ...prev]);
       })
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "notifications", filter: `user_id=eq.${user.id}` }, (payload) => {
+        const updated = payload.new as Notification;
+        setNotifications((prev) => prev.map((n) => (n.id === updated.id ? { ...n, ...updated } : n)));
+      })
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
