@@ -3,7 +3,8 @@
 
 export type InvoiceStatus = "draft" | "sent" | "paid" | "overdue" | "cancelled";
 
-export function clientFriendlyInvoiceStatus(status: string): string {
+export function clientFriendlyInvoiceStatus(status: string, clientMarkedPaidAt?: string | null): string {
+  if (clientMarkedPaidAt && status !== "paid") return "Payment submitted — awaiting confirmation";
   switch (status) {
     case "sent":
       return "Awaiting payment";
@@ -25,3 +26,4 @@ export const clientStatusTone: Record<string, "default" | "secondary" | "outline
   overdue: "destructive",
   cancelled: "outline",
 };
+

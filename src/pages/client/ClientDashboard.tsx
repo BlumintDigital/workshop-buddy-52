@@ -236,7 +236,7 @@ export default function ClientDashboard() {
                     openInvoices.map((inv) => (
                       <Link
                         key={inv.id}
-                        to={`/client/invoices/${inv.id}`}
+                        to={`/invoices/${inv.id}`}
                         className="flex items-center justify-between gap-3 rounded-xl bg-card/70 px-3 py-3 min-h-[52px] hover:bg-card"
                       >
                         <div className="min-w-0">
