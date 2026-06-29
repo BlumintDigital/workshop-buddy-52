@@ -143,6 +143,7 @@ serve(async (req) => {
       },
     });
   } catch (err) {
+    await captureEdgeError(err, "backup-data");
     return new Response(JSON.stringify({ error: (err as Error).message }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
