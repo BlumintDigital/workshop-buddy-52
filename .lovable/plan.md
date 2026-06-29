@@ -1,60 +1,62 @@
-## Goal
+## 1. Source-request link, everywhere it matters
 
-Make client-initiated quotes follow the correct lifecycle, fix the "Notify client" stuck state, and stop the client portal showing a phantom invoice. Manually-created jobs, quotes, and invoices stay untouched.
+Right now only JobDetail shows a tiny "View request" link, and it points to the queue, not the specific request.
 
-## Correct workflow (quote requests)
+- **JobDetail**: keep the banner, but link to `/admin/requests?focus=<source_request_id>` so the queue scrolls to and highlights the right row. Show it for admin and manager only (clients still see the request inside My Requests).
+- **AdminRequests**: read `?focus=<id>` on mount, expand the request card, scroll it into view, and apply a temporary ring/highlight for ~2 seconds.
+- **AdminJobs / ManagerJobs list**: if a job has `source_request_id`, add a small "From request" pill next to the title so it's visible without opening the job.
+- **InvoiceDetail (admin/manager)**: when the invoice's job has `source_request_id`, show a one-line "Originated from a client request → View" link.
+- **ClientRequests**: when a converted request also has invoices, show "View invoice" beside "View job" so the client can trace the full chain from their side.
 
-1. Client submits a **Quote request** from My Requests.
-2. Admin/manager opens it and **builds & sends a quote** inline (line items, total, optional expiry & notes). No invoice is created at this point.
-3. Client sees the quote in My Requests with **Approve** or **Decline** buttons.
-4. Once the client approves, admin/manager sees **Convert to job**, which creates a job (status `pending`).
-5. Admin/manager raises the invoice from that job using the existing invoice flow.
+## 2. Send-to-client workflow for invoices
 
-Job-type requests keep today's behaviour (Accept → job directly).
+Today an admin/manager only marks an invoice as "sent" by changing a Select dropdown — easy to miss, no clear action, and the email/notification fire silently as a side effect.
 
-```text
-Client ──submit quote request──▶ Admin
-Admin  ──build & send quote───▶ Client (status: quoted)
-Client ──approve/decline──────▶ Admin (status: approved | declined_by_client)
-Admin  ──convert to job───────▶ Job created (status: pending)
-Admin  ──raise invoice────────▶ existing invoice flow
-```
+Replace that with an explicit primary action on InvoiceDetail (admin/manager only):
 
-## UI changes
+- **Button**: "Send to client" (primary) when status is `draft`, "Resend to client" when status is `sent`/`overdue`. Disabled while sending.
+- On click:
+  1. Set status to `sent` (and `sent_at = now()` if we add that column — optional, low value, can skip).
+  2. Insert in-app notification for the client (`notifications` table) linking to `/client/invoices/<id>`.
+  3. Send the existing styled email via `send-email`.
+  4. Best-effort push via `send-push` with a short timeout (mirrors the current `notifyClient` pattern).
+  5. Show one consolidated toast: "Invoice sent — email + in-app (+ push if delivered)".
+- Keep the status Select for edge cases (mark paid, overdue, cancelled) but drop `sent` and `draft` from that dropdown — those transitions happen through Send / payment / overdue triggers, not manual selection.
+- Status badge stays for admin/manager.
 
-- **AdminRequests.tsx**
-  - Quote request, status `pending`: replace the "Send quote" link with a **Build & send quote** action that opens a new `QuoteBuilderDialog`.
-  - Status `quoted`: show the quote summary and a "Waiting for client approval" pill.
-  - Status `approved`: show **Convert to job** button.
-  - Job request: unchanged (Accept & create job).
-- **ClientRequests.tsx**
-  - Status `quoted`: render quote items, total, expiry, notes, with **Approve quote** and **Decline quote** buttons (decline asks for an optional reason).
-  - Status `approved`: show "Waiting for the workshop to schedule the job."
-  - Status `converted`: keep existing "View job" button.
-- **New** `src/components/requests/QuoteBuilderDialog.tsx` (admin) and `src/components/requests/QuoteReviewCard.tsx` (client).
+## 3. Hide invoice jargon from clients
 
-## Bug fixes
+Clients shouldn't see `draft`, `sent`, or internal statuses — only what's actionable for them.
 
-- **Notify client stuck on "Sending…"** (`InvoiceDetail.tsx`):
-  - Add a 15s timeout around the `send-push` invoke so the button always resolves.
-  - Always also insert an in-app notification (`sendNotification`) and send a transactional email via `send-email`, so the client is reached even when push isn't enabled.
-  - Toast separately for push / email / in-app outcomes; success when at least one channel delivers.
-- **Client portal shows 1 invoice but blank** (`ClientDashboard.tsx`):
-  - The dashboard counts every invoice (including `draft`), but `ClientInvoices.tsx` hides drafts. Align the dashboard query to `status in ('sent','paid','overdue')` so the tile count matches the list. (Unrelated to 2FA.)
-- **Quote shown as a raised job**: resolved by the workflow change above — a quote-type request no longer creates a job until the client approves and admin converts.
+- ClientInvoices list already filters to `sent`, `paid`, `overdue`. Keep that.
+- In ClientInvoices and the client-facing InvoiceDetail view:
+  - Hide the raw status badge.
+  - Replace with friendly labels: `sent` → **"Awaiting payment"**, `overdue` → **"Overdue — please pay"**, `paid` → **"Paid"**, `cancelled` → **"Cancelled"**.
+  - Hide the status Select entirely (it was already admin/manager-gated, just confirm).
+- The "Notify client" button stays admin/manager-only and never renders for clients.
 
-## Data changes
+## 4. Stop the approve/decline loop on quotes
 
-- New table `public.request_quote_items` (`request_id`, `description`, `quantity`, `unit_price`) + standard timestamps. GRANTs + RLS (client can read items of their own request; admin/manager full; service_role all).
-- Add columns to `public.client_requests`: `quoted_total numeric`, `quoted_currency text`, `quoted_notes text`, `quote_expires_at timestamptz`, `client_decision_at timestamptz`.
-- Extend the allowed `status` set with `approved` and `declined_by_client` (validated via trigger, not CHECK).
-- New RPCs (SECURITY DEFINER):
-  - `submit_quote(_request_id uuid, _currency text, _notes text, _expires_at timestamptz, _items jsonb)` — admin/manager only; requires quote-type, status `pending` or `quoted`; replaces items and sets status `quoted`, recalculates `quoted_total`.
-  - `client_decide_quote(_request_id uuid, _approve boolean, _reason text)` — caller must equal `client_requests.client_id`; only when status `quoted`; sets `approved` or `declined_by_client` + `client_decision_at`.
-- Update `accept_client_request`: for quote-type, require status `approved`; for job-type, behaviour unchanged.
+`ClientRequests.decide()` can fire twice — Approve has no disabled-state guard during the network call's first paint, and the AlertDialog's `AlertDialogAction` for decline closes the dialog and the handler also clears state, so a quick double-click on Approve, or React re-running the click handler after state updates, can re-trigger.
+
+Fixes:
+- Track `processing` against the request id and **guard the entry of `decide()`**: if `processing === r.id`, return immediately.
+- On the Approve button, disable while `processing` is set for any id (not just this row) to prevent racing between two cards.
+- In the decline AlertDialog, close the dialog first (`setDeclineFor(null)`), then run the RPC; wrap the action in a single async handler and disable the action button while in-flight.
+- Wrap the RPC in `try/finally` so `processing` always resets even on error.
+- After a successful decision, optimistically update local state (`status` → `approved` | `declined_by_client`) before refetching, so the Approve/Decline buttons disappear immediately and a stuck UI can't be clicked again.
+
+## Technical details
+
+- No new migrations. Reuse `jobs.source_request_id` and existing `client_requests.converted_job_id`.
+- `AdminRequests.tsx`: read `useSearchParams`, scroll target with `scrollIntoView({ behavior: 'smooth', block: 'center' })`, ring via Tailwind `ring-2 ring-primary` toggled off after 2s.
+- `JobDetail.tsx`: change link target from `/admin/requests` to `/admin/requests?focus=${job.source_request_id}`.
+- `InvoiceDetail.tsx`: extract the existing notify/email logic into a `sendInvoiceToClient()` helper used by the new button; strip `draft` and `sent` from the status Select.
+- `ClientInvoices.tsx` + the client view branch of `InvoiceDetail.tsx`: add a `clientFriendlyInvoiceStatus(status)` helper in `src/lib/invoiceStatus.ts` and use it instead of the raw badge.
+- `ClientRequests.tsx`: harden `decide()` and the AlertDialog handler as described; no schema change.
 
 ## Out of scope
 
-- No change to manually-raised jobs / quotes / invoices.
-- No change to the job-request flow.
-- No standalone "quote PDF" — the quote is rendered in the request thread; PDF can come later if needed.
+- No changes to the quote-builder or admin requests review flow.
+- No changes to the email template (existing styled invoice email is reused).
+- No new statuses; just relabeling on the client side.
