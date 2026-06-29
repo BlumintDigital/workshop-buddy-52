@@ -158,30 +158,52 @@ export default function InvoiceDetail() {
       return;
     }
     setNotifying(true);
+    const link = `/client/invoices/${invoice.id}`;
+
+    // 1) In-app notification — primary, always attempt
+    let inAppOk = false;
     try {
-      const { data, error } = await supabase.functions.invoke("send-push", {
-        body: {
-          user_ids: [invoice.client_id],
-          title,
-          body,
-          url: `/invoices/${invoice.id}`,
-        },
+      const { error } = await supabase.from("notifications").insert({
+        user_id: invoice.client_id, title, message: body, link, read: false,
       });
-      if (error) throw error;
-      const sent = (data as any)?.sent ?? 0;
-      const total = (data as any)?.total ?? 0;
-      if (sent > 0) {
-        toast.success(`Push notification sent to ${sent} device${sent === 1 ? "" : "s"}.`);
-      } else if (total === 0) {
-        toast.message("Client hasn't enabled push notifications on any device.");
-      } else {
-        toast.error("Notification could not be delivered.");
-      }
-    } catch (e: any) {
-      toast.error(await friendlyErrorMessage(e, "Couldn't send the push notification. Please try again shortly."));
-    } finally {
-      setNotifying(false);
-    }
+      inAppOk = !error;
+    } catch { /* ignore */ }
+
+    // 2) Email — via send-email edge function (server resolves recipient)
+    let emailOk = false;
+    try {
+      await sendEmail({
+        to_user_id: invoice.client_id,
+        subject: title,
+        html: invoiceSentEmailHtml(
+          invoice.invoice_number,
+          Number(invoice.total) || 0,
+          invoice.currency || "USD",
+          `${window.location.origin}${link}`,
+        ),
+      });
+      emailOk = true;
+    } catch { /* swallow */ }
+
+    // 3) Push — best-effort with 12s timeout so the button never hangs
+    let pushSent = 0;
+    try {
+      const pushPromise = supabase.functions.invoke("send-push", {
+        body: { user_ids: [invoice.client_id], title, body, url: link },
+      });
+      const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error("timeout")), 12000));
+      const res: any = await Promise.race([pushPromise, timeout]);
+      if (!res?.error) pushSent = res?.data?.sent ?? 0;
+    } catch { /* timeout or function error */ }
+
+    setNotifying(false);
+
+    const channels: string[] = [];
+    if (inAppOk) channels.push("in-app");
+    if (emailOk) channels.push("email");
+    if (pushSent > 0) channels.push(`push (${pushSent})`);
+    if (channels.length === 0) toast.error("Couldn't notify the client. Please try again.");
+    else toast.success(`Client notified via ${channels.join(", ")}.`);
   };
 
   if (!invoice) return (

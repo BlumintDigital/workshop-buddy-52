@@ -67,7 +67,7 @@ export default function ClientDashboard() {
         appointmentsEnabled
           ? supabase.from("appointments").select("*", { count: "exact", head: true }).eq("client_id", user.id)
           : Promise.resolve({ count: 0 } as any),
-        supabase.from("invoices").select("*", { count: "exact", head: true }).eq("client_id", user.id),
+        supabase.from("invoices").select("*", { count: "exact", head: true }).eq("client_id", user.id).in("status", ["sent", "paid", "overdue"]),
         appointmentsEnabled
           ? supabase
               .from("appointments")
