@@ -38,7 +38,7 @@ export default function InvoiceDetail() {
   const { role } = useAuth();
   const navigate = useNavigate();
   const { format: fmt } = useCurrency();
-  const { details: workshop } = useWorkshopDetails();
+  const { workshop } = useWorkshopDetails();
 
   const [invoice, setInvoice] = useState<any>(null);
   const [clientName, setClientName] = useState("—");
