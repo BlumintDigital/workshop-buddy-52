@@ -614,6 +614,38 @@ export default function AdminSettings() {
                     </SelectContent>
                   </Select>
                 </div>
+                <div>
+                  <Label>Enabled invoice currencies</Label>
+                  <p className="text-xs text-muted-foreground mt-0.5 mb-2">
+                    Currencies staff can pick when creating invoices. The base currency is always enabled.
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {currencies.map((c) => {
+                      const isBase = c.value === settings.currency;
+                      const isOn = isBase || settings.enabled_currencies?.includes(c.value);
+                      return (
+                        <button
+                          key={c.value}
+                          type="button"
+                          onClick={() => {
+                            if (isBase) return;
+                            const next = new Set(settings.enabled_currencies ?? []);
+                            if (next.has(c.value)) next.delete(c.value);
+                            else next.add(c.value);
+                            set("enabled_currencies", Array.from(next));
+                          }}
+                          className={`px-3 py-1.5 rounded-full text-xs border transition ${
+                            isOn
+                              ? "bg-primary text-primary-foreground border-primary"
+                              : "bg-background text-muted-foreground border-border hover:bg-muted"
+                          } ${isBase ? "opacity-80 cursor-not-allowed" : ""}`}
+                        >
+                          {c.value}{isBase ? " • base" : ""}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
                 <div className="space-y-3">
                   <div>
                     <Label>Monthly Revenue Goal</Label>
