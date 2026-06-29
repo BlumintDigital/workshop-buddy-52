@@ -124,7 +124,7 @@ export default function Privacy() {
             <p className="text-muted-foreground">
               Data controller: Blumint Digital Limited<br />
               Email: <a href="mailto:privacy@blumintdigital.uk" className="underline">privacy@blumintdigital.uk</a><br />
-              Security issues: <a href="mailto:security@shoplane.uk" className="underline">security@shoplane.uk</a>
+              Security issues: <a href="mailto:platform@blumintdigital.uk" className="underline">platform@blumintdigital.uk</a>
             </p>
           </section>
         </div>
