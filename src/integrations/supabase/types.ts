@@ -193,6 +193,7 @@ export type Database = {
       }
       client_requests: {
         Row: {
+          client_decision_at: string | null
           client_id: string
           converted_job_id: string | null
           created_at: string
@@ -201,7 +202,11 @@ export type Database = {
           id: string
           preferred_date: string | null
           priority: string
+          quote_expires_at: string | null
+          quoted_currency: string | null
           quoted_invoice_id: string | null
+          quoted_notes: string | null
+          quoted_total: number | null
           request_type: Database["public"]["Enums"]["client_request_type"]
           reviewed_at: string | null
           reviewed_by: string | null
@@ -210,6 +215,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          client_decision_at?: string | null
           client_id: string
           converted_job_id?: string | null
           created_at?: string
@@ -218,7 +224,11 @@ export type Database = {
           id?: string
           preferred_date?: string | null
           priority?: string
+          quote_expires_at?: string | null
+          quoted_currency?: string | null
           quoted_invoice_id?: string | null
+          quoted_notes?: string | null
+          quoted_total?: number | null
           request_type: Database["public"]["Enums"]["client_request_type"]
           reviewed_at?: string | null
           reviewed_by?: string | null
@@ -227,6 +237,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          client_decision_at?: string | null
           client_id?: string
           converted_job_id?: string | null
           created_at?: string
@@ -235,7 +246,11 @@ export type Database = {
           id?: string
           preferred_date?: string | null
           priority?: string
+          quote_expires_at?: string | null
+          quoted_currency?: string | null
           quoted_invoice_id?: string | null
+          quoted_notes?: string | null
+          quoted_total?: number | null
           request_type?: Database["public"]["Enums"]["client_request_type"]
           reviewed_at?: string | null
           reviewed_by?: string | null
@@ -1093,6 +1108,44 @@ export type Database = {
         }
         Relationships: []
       }
+      request_quote_items: {
+        Row: {
+          created_at: string
+          description: string
+          id: string
+          quantity: number
+          request_id: string
+          unit_price: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          id?: string
+          quantity?: number
+          request_id: string
+          unit_price?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          id?: string
+          quantity?: number
+          request_id?: string
+          unit_price?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "request_quote_items_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "client_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       signup_codes: {
         Row: {
           active: boolean
@@ -1319,6 +1372,10 @@ export type Database = {
         }
         Returns: Database["public"]["Enums"]["app_role"]
       }
+      client_decide_quote: {
+        Args: { _approve: boolean; _reason?: string; _request_id: string }
+        Returns: string
+      }
       decline_client_request: {
         Args: { _reason: string; _request_id: string }
         Returns: undefined
@@ -1385,6 +1442,16 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      submit_quote: {
+        Args: {
+          _currency: string
+          _expires_at: string
+          _items: Json
+          _notes: string
+          _request_id: string
+        }
+        Returns: number
       }
     }
     Enums: {
