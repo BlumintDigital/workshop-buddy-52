@@ -61,15 +61,20 @@ const statusLabel: Record<string, string> = {
 
 export default function AdminRequests() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const focusId = searchParams.get("focus");
   const { format: fmt } = useCurrency();
   const [requests, setRequests] = useState<Req[]>([]);
   const [clients, setClients] = useState<Record<string, ClientInfo>>({});
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<"pending" | "quoted" | "approved" | "all">("pending");
+  const [tab, setTab] = useState<"pending" | "quoted" | "approved" | "all">(focusId ? "all" : "pending");
   const [declineFor, setDeclineFor] = useState<Req | null>(null);
   const [declineReason, setDeclineReason] = useState("");
   const [processing, setProcessing] = useState<string | null>(null);
   const [quoteFor, setQuoteFor] = useState<Req | null>(null);
+  const [highlightId, setHighlightId] = useState<string | null>(null);
+  const cardRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
 
   const fetchRequests = async () => {
     setLoading(true);
