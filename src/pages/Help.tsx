@@ -18,7 +18,12 @@ const SECTION_ACCESS: Record<string, AppRole[]> = {
   "5": ["admin", "manager"],
   "6": ["admin", "staff"],
   "7": ["admin", "client"],
-  "8": ["admin", "manager", "staff", "client"],
+  // Core Workflows expose end-to-end lifecycles across roles — only admins/managers need the full picture.
+  "8": ["admin", "manager"],
+  "9": ["admin", "manager", "staff", "client"],
+  "10": ["admin", "manager", "staff", "client"],
+  "11": ["admin", "manager", "staff", "client"],
+  "12": ["admin", "manager", "staff", "client"],
 };
 
 type Block =
