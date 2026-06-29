@@ -1160,6 +1160,7 @@ export type Database = {
           id: number | null
           login_image_url: string | null
           logo_url: string | null
+          vapid_public_key: string | null
           workshop_name: string | null
         }
         Insert: {
@@ -1167,6 +1168,7 @@ export type Database = {
           id?: number | null
           login_image_url?: string | null
           logo_url?: string | null
+          vapid_public_key?: never
           workshop_name?: string | null
         }
         Update: {
@@ -1174,6 +1176,7 @@ export type Database = {
           id?: number | null
           login_image_url?: string | null
           logo_url?: string | null
+          vapid_public_key?: never
           workshop_name?: string | null
         }
         Relationships: []
