@@ -110,7 +110,9 @@ export default function InvoiceCreate() {
         total,
         due_date: dueDate || null,
         notes: notes || null,
-      })
+        currency,
+        fx_rate: currency === baseCurrency ? 1 : (fxRate > 0 ? fxRate : 1),
+      } as any)
       .select("id")
       .single();
 
