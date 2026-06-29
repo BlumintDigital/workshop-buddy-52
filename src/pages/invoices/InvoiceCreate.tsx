@@ -37,15 +37,43 @@ export default function InvoiceCreate() {
   const [saving, setSaving] = useState(false);
   const [currency, setCurrency] = useState<string>(baseCurrency);
   const [fxRate, setFxRate] = useState<number>(1);
+  const [fxLoading, setFxLoading] = useState(false);
+  const [fxFetchedAt, setFxFetchedAt] = useState<string | null>(null);
 
-  // Keep currency in sync with base when base loads
+  // Keep currency aligned with the workshop's base until the user picks one
+  const [userPickedCurrency, setUserPickedCurrency] = useState(false);
   useEffect(() => {
-    setCurrency((c) => (c && c !== "USD" ? c : baseCurrency));
-  }, [baseCurrency]);
+    if (!userPickedCurrency) setCurrency(baseCurrency);
+  }, [baseCurrency, userPickedCurrency]);
 
-  // Reset fx rate when picking base currency
+  // Auto-fetch FX rate whenever an invoice currency differs from base
   useEffect(() => {
-    if (currency === baseCurrency) setFxRate(1);
+    if (!currency || !baseCurrency) return;
+    if (currency === baseCurrency) {
+      setFxRate(1);
+      setFxFetchedAt(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      setFxLoading(true);
+      try {
+        const res = await fetch(`https://open.er-api.com/v6/latest/${currency}`);
+        const json = await res.json();
+        const rate = json?.rates?.[baseCurrency];
+        if (!cancelled && typeof rate === "number" && rate > 0) {
+          setFxRate(Number(rate.toFixed(6)));
+          setFxFetchedAt(json?.time_last_update_utc || new Date().toISOString());
+        } else if (!cancelled) {
+          toast.error(`Couldn't fetch live rate for ${currency} → ${baseCurrency}. Enter manually.`);
+        }
+      } catch {
+        if (!cancelled) toast.error("Live FX lookup failed. Enter rate manually.");
+      } finally {
+        if (!cancelled) setFxLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
   }, [currency, baseCurrency]);
 
   useEffect(() => {
