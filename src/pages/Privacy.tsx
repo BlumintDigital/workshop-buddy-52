@@ -19,7 +19,7 @@ export default function Privacy() {
             <h2 className="text-xl font-semibold mb-3">1. Who we are</h2>
             <p className="text-muted-foreground">
               Workshop Manager is operated by Blumint Digital Limited ("we", "our", "us"), accessible at{" "}
-              <a href="https://ieq.shoplane.uk" className="underline">ieq.shoplane.uk</a>.
+              <a href="https://www.shoplane.uk" className="underline">www.shoplane.uk</a>.
               This policy explains what personal data we collect, why we collect it, and your rights.
             </p>
           </section>
@@ -104,7 +104,7 @@ export default function Privacy() {
             </ul>
             <p className="text-muted-foreground mt-3">
               To exercise any right, email{" "}
-              <a href="mailto:privacy@shoplane.uk" className="underline">privacy@shoplane.uk</a>.
+              <a href="mailto:privacy@blumintdigital.uk" className="underline">privacy@blumintdigital.uk</a>.
               We respond within 30 days. You also have the right to lodge a complaint with the{" "}
               <a href="https://ico.org.uk" className="underline" target="_blank" rel="noopener">ICO</a>.
             </p>
@@ -123,7 +123,7 @@ export default function Privacy() {
             <h2 className="text-xl font-semibold mb-3">8. Contact</h2>
             <p className="text-muted-foreground">
               Data controller: Blumint Digital Limited<br />
-              Email: <a href="mailto:privacy@shoplane.uk" className="underline">privacy@shoplane.uk</a><br />
+              Email: <a href="mailto:privacy@blumintdigital.uk" className="underline">privacy@blumintdigital.uk</a><br />
               Security issues: <a href="mailto:security@shoplane.uk" className="underline">security@shoplane.uk</a>
             </p>
           </section>
