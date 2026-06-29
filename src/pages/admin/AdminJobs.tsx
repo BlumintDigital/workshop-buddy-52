@@ -259,6 +259,11 @@ export default function AdminJobs() {
                         <Link to={`/jobs/${job.id}`} className="block font-medium text-primary hover:underline">
                           {job.title}
                         </Link>
+                        {job.source_request_id && (
+                          <span className="mt-1 inline-block rounded-full bg-tile-sage/60 px-2 py-0.5 text-[10px] uppercase tracking-wider text-foreground/70">
+                            From request
+                          </span>
+                        )}
                       </TableCell>
                       <TableCell><Badge variant={statusColors[job.status]}>{job.status.replace("_", " ")}</Badge></TableCell>
                       <TableCell className="capitalize">{job.priority}</TableCell>
@@ -267,6 +272,7 @@ export default function AdminJobs() {
                       <TableCell>{new Date(job.created_at).toLocaleDateString()}</TableCell>
                     </TableRow>
                   ))}
+
                 </TableBody>
               </Table>
             </div>
