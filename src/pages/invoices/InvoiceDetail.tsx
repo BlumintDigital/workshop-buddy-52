@@ -221,7 +221,7 @@ export default function InvoiceDetail() {
                 onClick={() =>
                   void notifyClient(
                     `Invoice ${invoice.invoice_number}`,
-                    `Status: ${invoice.status} • Total: ${fmt(total)}`,
+                    `Status: ${invoice.status} • Total: ${fmt(total, invoice.currency)}`,
                   )
                 }
               >
