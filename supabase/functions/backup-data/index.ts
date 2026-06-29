@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders, sha256Hex } from "../_shared/mfa-cors.ts";
 import { checkRateLimit } from "../_shared/rate-limit.ts";
+import { captureEdgeError } from "../_shared/sentry.ts";
 
 // Tables exported in FK-safe order (children after parents).
 // Skips activity_logs (large read-only history), push_subscriptions (transient),
