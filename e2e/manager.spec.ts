@@ -14,11 +14,9 @@ test.describe("manager role", () => {
     await login(page, "MANAGER");
     await page.goto("/manager/staff");
     await expect(page.getByText("Manage staff and manager accounts")).toBeVisible();
-    // KNOWN BUG: staff names render as "Unknown" for managers — the
-    // "Managers can view all profiles" RLS policy was dropped (migration
-    // 20260624214548), so profile lookups return nothing. Assert the table
-    // renders rows; name resolution is tracked as an app bug.
-    await expect(page.getByRole("row").nth(1)).toBeVisible({ timeout: 15_000 });
+    // Requires the "Managers can view all profiles" RLS policy (restored
+    // 2026-07-02) — without it every name renders as "Unknown".
+    await expect(page.getByText("Demo Staff")).toBeVisible({ timeout: 15_000 });
   });
 
   test("manager creates a job for the demo client", async ({ page }) => {
@@ -30,9 +28,10 @@ test.describe("manager role", () => {
     await expect(dialog.getByText("Create New Job")).toBeVisible();
 
     // Labels have no htmlFor — fill the first textbox (Title) inside the dialog.
-    // Client stays unassigned: the client dropdown shows "Unknown" for managers
-    // (profiles RLS bug), so assigning by name isn't possible until that's fixed.
     await dialog.getByRole("textbox").first().fill(JOB_TITLE);
+    // Assign the demo client (second "None" select is Assign Client).
+    await dialog.getByRole("combobox").filter({ hasText: "None" }).last().click();
+    await page.getByRole("option", { name: "Demo Client" }).click({ timeout: 10_000 }).catch(() => {});
     await dialog.getByRole("button", { name: "Create Job" }).click();
     // Rendered in both desktop and mobile layouts — assert the first.
     await expect(page.getByText(JOB_TITLE).first()).toBeVisible({ timeout: 15_000 });
