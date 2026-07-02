@@ -288,7 +288,8 @@ export default function InvoiceCreate() {
                 <Button variant="outline" size="sm" onClick={addItem}><Plus className="mr-2 h-4 w-4" />Add Item</Button>
               </CardHeader>
               <CardContent className="p-0">
-                <Table>
+                {/* min-w keeps columns readable on phones — the wrapper scrolls horizontally */}
+                <Table className="min-w-[560px]">
                   <TableHeader>
                     <TableRow>
                       <TableHead>Description</TableHead>

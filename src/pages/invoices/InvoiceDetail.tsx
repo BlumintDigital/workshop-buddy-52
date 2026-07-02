@@ -344,14 +344,14 @@ export default function InvoiceDetail() {
           <ArrowLeft className="mr-2 h-4 w-4" />Back to Invoices
         </Button>
 
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h2 className="text-3xl font-bold tracking-tight">{invoice.invoice_number}</h2>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight break-words">{invoice.invoice_number}</h2>
             <p className="text-muted-foreground">
               Client: <span className="font-medium text-foreground">{clientName}</span>
             </p>
           </div>
-          <div className="flex items-center gap-2 shrink-0 flex-wrap">
+          <div className="flex flex-wrap items-center gap-2 sm:shrink-0 sm:justify-end">
             {isClient ? (
               <Badge variant={clientStatusTone[invoice.status] || "outline"}>
                 {clientFriendlyInvoiceStatus(invoice.status, invoice.client_marked_paid_at)}
@@ -607,7 +607,8 @@ export default function InvoiceDetail() {
             )}
           </CardHeader>
           <CardContent className="p-0">
-            <Table>
+            {/* min-w keeps columns readable on phones — the wrapper scrolls horizontally */}
+            <Table className="min-w-[560px]">
               <TableHeader>
                 <TableRow>
                   <TableHead>Description</TableHead>

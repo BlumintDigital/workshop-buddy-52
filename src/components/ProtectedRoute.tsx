@@ -12,9 +12,11 @@ interface ProtectedRouteProps {
 }
 
 export default function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
-  const { user, role, loading, needsMfaVerification, signOut } = useAuth();
+  const { user, role, loading, mfaCheckPending, needsMfaVerification, signOut } = useAuth();
 
-  if (loading) {
+  // Hold while auth state is loading or the MFA requirement is still being
+  // evaluated — otherwise the dashboard can flash before the 2FA redirect.
+  if (loading || mfaCheckPending) {
     return <LoadingScreen />;
   }
 

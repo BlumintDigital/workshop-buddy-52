@@ -109,8 +109,8 @@ function ClientPortalRoute({ children }: { children: ReactNode }) {
 }
 
 function IndexRedirect() {
-  const { user, role, loading, needsMfaVerification } = useAuth();
-  if (loading) return <LoadingScreen />;
+  const { user, role, loading, mfaCheckPending, needsMfaVerification } = useAuth();
+  if (loading || mfaCheckPending) return <LoadingScreen />;
   if (needsMfaVerification) return <Navigate to="/auth" replace />;
   if (user && role) return <Navigate to={getRoleDashboardPath(role)} replace />;
   return <Navigate to="/auth" replace />;

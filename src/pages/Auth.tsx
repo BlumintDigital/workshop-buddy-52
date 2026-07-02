@@ -24,6 +24,7 @@ export default function Auth() {
     user,
     role,
     loading,
+    mfaCheckPending,
     needsMfaVerification,
     pendingMfaFactorId,
     pendingMfaRole,
@@ -110,10 +111,12 @@ export default function Auth() {
   };
 
   useEffect(() => {
-    if (!loading && user && role && !needsMfaVerification && !mfaStep) {
+    // Don't route to the dashboard while the MFA requirement is still being
+    // evaluated — role state lands before needsMfaVerification does.
+    if (!loading && !mfaCheckPending && user && role && !needsMfaVerification && !mfaStep) {
       navigate(getRoleDashboardPath(role), { replace: true });
     }
-  }, [user, role, loading, navigate, needsMfaVerification, mfaStep]);
+  }, [user, role, loading, mfaCheckPending, navigate, needsMfaVerification, mfaStep]);
 
   useEffect(() => {
     const loadBranding = async () => {
@@ -133,8 +136,9 @@ export default function Auth() {
   }, []);
 
   if (loading) return <LoadingScreen />;
-  // Avoid flashing the auth form while post-signin state is still propagating.
-  if (user && !mfaStep && !role) return <LoadingScreen />;
+  // Avoid flashing the auth form while post-signin state is still propagating
+  // (role loads before the MFA requirement is known).
+  if (user && !mfaStep && (!role || mfaCheckPending)) return <LoadingScreen />;
   if (needsMfaVerification && !activeMfaFactorId) return <LoadingScreen />;
 
   const handleLogin = async (e: React.FormEvent) => {

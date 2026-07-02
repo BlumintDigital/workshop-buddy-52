@@ -13,6 +13,8 @@ interface AuthContextType {
   role: AppRole | null;
   profile: { full_name: string | null; avatar_url: string | null; company_name: string | null; phone: string | null; address: string | null } | null;
   loading: boolean;
+  /** True while we're still working out whether this session requires MFA — don't route yet. */
+  mfaCheckPending: boolean;
   needsMfaVerification: boolean;
   pendingMfaFactorId: string | null;
   pendingMfaRole: AppRole | null;
@@ -35,6 +37,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<AppRole | null>(null);
   const [profile, setProfile] = useState<{ full_name: string | null; avatar_url: string | null; company_name: string | null; phone: string | null; address: string | null } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [mfaCheckPending, setMfaCheckPending] = useState(false);
   const [needsMfaVerification, setNeedsMfaVerification] = useState(false);
   const [pendingMfaFactorId, setPendingMfaFactorId] = useState<string | null>(null);
   const [pendingMfaRole, setPendingMfaRole] = useState<AppRole | null>(null);
@@ -227,9 +230,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setSession(session);
         setUser(session.user);
         setLoading(true);
+        setMfaCheckPending(true);
         fetchUserData(session.user.id)
           .then((nextRole) => checkMfaStatus(nextRole))
-          .finally(() => setLoading(false));
+          .finally(() => { setMfaCheckPending(false); setLoading(false); });
       } else {
         currentUserIdRef.current = null;
         currentAccessTokenRef.current = null;
@@ -280,6 +284,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signIn = async (email: string, password: string) => {
     isSigningInRef.current = true;
+    // Role state lands before the MFA requirement is known (the trusted-device
+    // check is a network call). Hold routing until the whole check resolves so
+    // neither the login form nor the dashboard flashes before the 2FA screen.
+    setMfaCheckPending(true);
     try {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
@@ -323,6 +331,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { role: nextRole, needsMfa: false };
     } finally {
       isSigningInRef.current = false;
+      setMfaCheckPending(false);
     }
   };
 
@@ -342,7 +351,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const clearMfaFlag = () => clearPendingMfa();
 
   return (
-    <AuthContext.Provider value={{ session, user, role, profile, loading, needsMfaVerification, pendingMfaFactorId, pendingMfaRole, mfaEnabled, sessionTimeLeft, signIn, signUp, signOut, clearMfaFlag, extendSession, refreshMfaStatus, refreshProfile }}>
+    <AuthContext.Provider value={{ session, user, role, profile, loading, mfaCheckPending, needsMfaVerification, pendingMfaFactorId, pendingMfaRole, mfaEnabled, sessionTimeLeft, signIn, signUp, signOut, clearMfaFlag, extendSession, refreshMfaStatus, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   );
