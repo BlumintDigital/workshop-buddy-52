@@ -20,6 +20,7 @@ import QuoteBuilderDialog from "@/components/requests/QuoteBuilderDialog";
 import { useCurrency } from "@/hooks/useCurrency";
 import { sendNotification } from "@/lib/notifications";
 import { sendEmail, requestApprovedEmailHtml } from "@/lib/email";
+import { requestStatusTone as statusTone, requestStatusLabelAdmin as statusLabel } from "@/lib/statusStyles";
 
 
 type Req = {
@@ -42,25 +43,6 @@ type Req = {
 
 type ClientInfo = { full_name: string | null; company_name: string | null };
 
-const statusTone: Record<string, string> = {
-  pending: "bg-tile-butter text-foreground/80",
-  quoted: "bg-tile-sky text-foreground/80",
-  approved: "bg-tile-sage text-foreground/80",
-  declined_by_client: "bg-tile-blush text-foreground/80",
-  converted: "bg-tile-sage text-foreground/80",
-  declined: "bg-tile-blush text-foreground/80",
-  cancelled: "bg-muted text-muted-foreground",
-};
-
-const statusLabel: Record<string, string> = {
-  pending: "Pending review",
-  quoted: "Quote sent — awaiting client",
-  approved: "Client approved",
-  declined_by_client: "Client declined quote",
-  converted: "Converted to job",
-  declined: "Declined",
-  cancelled: "Cancelled",
-};
 
 export default function AdminRequests() {
   const navigate = useNavigate();

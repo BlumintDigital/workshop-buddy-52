@@ -63,6 +63,8 @@ export default function AdminSettings() {
   const canBackupRestore = useFeature("backup_restore");
   const { resetOnboarding, updating: onboardingUpdating } = useAdminOnboarding();
   const [settings, setSettings] = useState<Settings>({ ...defaultSettings });
+  // Snapshot of last loaded/saved settings — used to detect unsaved edits.
+  const [savedSnapshot, setSavedSnapshot] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [seeding, setSeeding] = useState(false);
@@ -97,7 +99,7 @@ export default function AdminSettings() {
         .select("super_admin_email").eq("id", 1).maybeSingle(),
     ]).then(([{ data }, { data: adminData }]) => {
       if (data) {
-        setSettings({
+        const loaded: Settings = {
           workshop_name: data.workshop_name ?? "",
           contact_email: data.contact_email ?? "",
           phone: data.phone ?? "",
@@ -118,11 +120,28 @@ export default function AdminSettings() {
           logo_url: (data as any).logo_url ?? "",
           brand_primary_hsl: (data as any).brand_primary_hsl ?? "",
           brand_accent_hsl: (data as any).brand_accent_hsl ?? "",
-        });
+        };
+        setSettings(loaded);
+        setSavedSnapshot(JSON.stringify(loaded));
+      } else {
+        setSavedSnapshot(JSON.stringify({ ...defaultSettings }));
       }
       setLoading(false);
     });
   }, []);
+
+  const isDirty = savedSnapshot !== null && JSON.stringify(settings) !== savedSnapshot;
+
+  // Warn before leaving the page with unsaved settings edits.
+  useEffect(() => {
+    if (!isDirty) return;
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [isDirty]);
 
   const loadMonthlyGoals = async () => {
     const now = new Date();
@@ -200,6 +219,7 @@ export default function AdminSettings() {
     });
     setSaving(false);
     if (adminErr) { toast.error(adminErr.message); return; }
+    setSavedSnapshot(JSON.stringify(settings));
     toast.success("Settings saved — invoices and PDFs will refresh");
   };
 
@@ -714,7 +734,7 @@ export default function AdminSettings() {
                   <div>
                     <Label>Monthly Revenue Goal</Label>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      Set a revenue target each month. Once set, it cannot be changed for that month.
+                      Set a revenue target each month. Once set, it locks for that month so progress tracking stays honest — you can set a new goal when the next month starts.
                     </p>
                   </div>
                   {!goalsEnabled && (
@@ -1144,9 +1164,14 @@ export default function AdminSettings() {
           </TabsContent>
         </Tabs>
 
-        <Button onClick={handleSave} disabled={saving}>
-          {saving ? "Saving..." : "Save Settings"}
-        </Button>
+        <div className="flex items-center gap-3">
+          <Button onClick={handleSave} disabled={saving}>
+            {saving ? "Saving..." : "Save Settings"}
+          </Button>
+          {isDirty && !saving && (
+            <span className="text-sm text-amber-600 dark:text-amber-400">You have unsaved changes</span>
+          )}
+        </div>
       </div>
 
     </DashboardLayout>

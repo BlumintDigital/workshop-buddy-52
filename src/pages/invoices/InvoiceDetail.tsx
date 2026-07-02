@@ -47,6 +47,8 @@ export default function InvoiceDetail() {
   const [invoice, setInvoice] = useState<any>(null);
   const [clientName, setClientName] = useState("—");
   const [items, setItems] = useState<LineItem[]>([]);
+  // Snapshot of last loaded/saved editable fields — used to warn about unsaved edits.
+  const [savedSnapshot, setSavedSnapshot] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -57,6 +59,29 @@ export default function InvoiceDetail() {
   const canEdit = (role === "admin" || role === "manager") && invoice?.status === "draft";
   const canManage = role === "admin" || role === "manager";
   const isClient = role === "client";
+
+  const editableSnapshot = (inv: any, lineItems: LineItem[]) =>
+    JSON.stringify({
+      due_date: inv?.due_date ?? null,
+      tax_rate: inv?.tax_rate ?? 0,
+      notes: inv?.notes ?? null,
+      stripe_payment_url: inv?.stripe_payment_url ?? null,
+      payment_instructions: inv?.payment_instructions ?? null,
+      items: lineItems,
+    });
+
+  const isDirty = savedSnapshot !== null && invoice !== null && editableSnapshot(invoice, items) !== savedSnapshot;
+
+  // Warn before leaving the page with unsaved invoice edits.
+  useEffect(() => {
+    if (!isDirty || !canManage) return;
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [isDirty, canManage]);
 
 
   useEffect(() => {
@@ -72,14 +97,14 @@ export default function InvoiceDetail() {
       }
 
       const { data: lineItems } = await supabase.from("invoice_items").select("*").eq("invoice_id", id).order("id");
-      setItems(
-        (lineItems || []).map((i: any) => ({
-          id: i.id,
-          description: i.description,
-          quantity: Number(i.quantity),
-          unit_price: Number(i.unit_price),
-        }))
-      );
+      const mappedItems = (lineItems || []).map((i: any) => ({
+        id: i.id,
+        description: i.description,
+        quantity: Number(i.quantity),
+        unit_price: Number(i.unit_price),
+      }));
+      setItems(mappedItems);
+      setSavedSnapshot(editableSnapshot(inv, mappedItems));
 
       // Trace back to originating client request via the linked job (admin/manager only).
       if (inv.job_id && (role === "admin" || role === "manager")) {
@@ -138,6 +163,7 @@ export default function InvoiceDetail() {
     toast.success("Invoice saved");
     setSaving(false);
     setInvoice({ ...invoice, subtotal, tax_amount: taxAmount, total });
+    setSavedSnapshot(editableSnapshot(invoice, items));
   };
 
   const handleDelete = async () => {
@@ -663,9 +689,14 @@ export default function InvoiceDetail() {
         )}
 
         {(canEdit || canManage) && (
-          <Button onClick={handleSave} disabled={saving} className="w-full">
-            {saving ? "Saving..." : "Save Changes"}
-          </Button>
+          <div className="space-y-2">
+            {isDirty && !saving && (
+              <p className="text-center text-sm text-amber-600 dark:text-amber-400">You have unsaved changes</p>
+            )}
+            <Button onClick={handleSave} disabled={saving} className="w-full">
+              {saving ? "Saving..." : "Save Changes"}
+            </Button>
+          </div>
         )}
 
         <InvoicePdfVersions

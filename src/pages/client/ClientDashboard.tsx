@@ -20,25 +20,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import NotificationsPanel from "@/components/client/NotificationsPanel";
+import { jobStatusTone as statusTone, invoiceStatusTone as invoiceTone } from "@/lib/statusStyles";
 
 type Job = { id: string; title: string; status: string; date: string };
 type Invoice = { id: string; total: number; base_total?: number | null; currency?: string | null; status: string; created_at: string };
 type Appointment = { id: string; title: string | null; appointment_date: string; appointment_time: string };
 
-const statusTone: Record<string, string> = {
-  pending: "bg-tile-butter text-foreground/80",
-  in_progress: "bg-tile-sky text-foreground/80",
-  review: "bg-tile-blush text-foreground/80",
-  completed: "bg-tile-sage text-foreground/80",
-  cancelled: "bg-muted text-muted-foreground",
-};
-
-const invoiceTone: Record<string, string> = {
-  paid: "bg-tile-sage text-foreground/80",
-  draft: "bg-muted text-muted-foreground",
-  sent: "bg-tile-sky text-foreground/80",
-  overdue: "bg-tile-blush text-foreground/80",
-};
 
 export default function ClientDashboard() {
   const appointmentsEnabled = useFeature("appointments");

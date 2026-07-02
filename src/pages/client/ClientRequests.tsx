@@ -17,6 +17,7 @@ import NewRequestDialog from "@/components/client/NewRequestDialog";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useCurrency } from "@/hooks/useCurrency";
+import { requestStatusTone as statusTone, requestStatusLabelClient as statusLabel } from "@/lib/statusStyles";
 
 type ClientRequest = {
   id: string;
@@ -38,25 +39,6 @@ type ClientRequest = {
 
 type QuoteItem = { id: string; request_id: string; description: string; quantity: number; unit_price: number };
 
-const statusTone: Record<string, string> = {
-  pending: "bg-tile-butter text-foreground/80",
-  quoted: "bg-tile-sky text-foreground/80",
-  approved: "bg-tile-sage text-foreground/80",
-  declined_by_client: "bg-tile-blush text-foreground/80",
-  converted: "bg-tile-sage text-foreground/80",
-  declined: "bg-tile-blush text-foreground/80",
-  cancelled: "bg-muted text-muted-foreground",
-};
-
-const statusLabel: Record<string, string> = {
-  pending: "Awaiting review",
-  quoted: "Quote ready — your decision",
-  approved: "Approved — waiting for the workshop",
-  declined_by_client: "You declined this quote",
-  converted: "Converted to job",
-  declined: "Declined by workshop",
-  cancelled: "Cancelled",
-};
 
 export default function ClientRequests() {
   const { user } = useAuth();
