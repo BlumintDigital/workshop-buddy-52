@@ -10,12 +10,14 @@ import {
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useFeature } from "@/hooks/useFeatureFlags";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 type Job = { id: string; title: string; status: string; date: string; priority?: string | null };
 type Appointment = { id: string; title: string | null; appointment_date: string; appointment_time: string };
@@ -31,6 +33,7 @@ const statusTone: Record<string, string> = {
 type QueueFilter = "active" | "in_progress" | "pending" | "completed";
 
 export default function StaffDashboard() {
+  const appointmentsEnabled = useFeature("appointments");
   const { user, profile } = useAuth();
   const [stats, setStats] = useState({ assigned: 0, inProgress: 0, pending: 0, completed: 0 });
   const [myJobs, setMyJobs] = useState<Job[]>([]);
@@ -55,12 +58,14 @@ export default function StaffDashboard() {
         supabase.from("jobs").select("*", { count: "exact", head: true }).eq("assigned_staff_id", user.id).eq("status", "in_progress"),
         supabase.from("jobs").select("*", { count: "exact", head: true }).eq("assigned_staff_id", user.id).eq("status", "pending"),
         supabase.from("jobs").select("*", { count: "exact", head: true }).eq("assigned_staff_id", user.id).eq("status", "completed"),
-        supabase
-          .from("appointments")
-          .select("id, title, appointment_date, appointment_time")
-          .eq("appointment_date", startToday.toISOString().slice(0, 10))
-          .order("appointment_time", { ascending: true })
-          .limit(6),
+        appointmentsEnabled
+          ? supabase
+              .from("appointments")
+              .select("id, title, appointment_date, appointment_time")
+              .eq("appointment_date", startToday.toISOString().slice(0, 10))
+              .order("appointment_time", { ascending: true })
+              .limit(6)
+          : Promise.resolve({ data: [] } as any),
       ]);
 
       setStats({
@@ -95,8 +100,10 @@ export default function StaffDashboard() {
       );
     };
 
-    Promise.all([run(), fetchQueue()]).finally(() => setIsLoading(false));
-  }, [user, queueFilter]);
+    Promise.all([run(), fetchQueue()]).catch(() => {
+      toast.error("Failed to load dashboard data. Please refresh.");
+    }).finally(() => setIsLoading(false));
+  }, [user, appointmentsEnabled, queueFilter]);
 
   return (
     <DashboardLayout>
@@ -201,7 +208,9 @@ export default function StaffDashboard() {
                   <Link to="/staff/schedule" className="text-xs font-medium text-primary hover:underline">Open</Link>
                 </div>
                 <div className="mt-5 flex-1 space-y-2 overflow-auto">
-                  {todayAppts.length === 0 ? (
+                  {!appointmentsEnabled ? (
+                    <p className="py-4 text-sm text-muted-foreground">Appointments are disabled.</p>
+                  ) : todayAppts.length === 0 ? (
                     <div className="flex flex-col items-center gap-2 py-10 text-sm text-muted-foreground">
                       <CheckCircle2 className="h-6 w-6 text-primary" />
                       Nothing scheduled today.

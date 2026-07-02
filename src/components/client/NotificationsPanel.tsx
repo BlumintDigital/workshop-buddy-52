@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 interface Notification {
   id: string;
@@ -75,7 +76,8 @@ export default function NotificationsPanel() {
 
   const markAll = async () => {
     if (!user || unread === 0) return;
-    await supabase.from("notifications").update({ read: true }).eq("user_id", user.id).eq("read", false);
+    const { error } = await supabase.from("notifications").update({ read: true }).eq("user_id", user.id).eq("read", false);
+    if (error) { toast.error("Couldn't mark notifications as read"); return; }
     setItems((prev) => prev.map((n) => ({ ...n, read: true })));
   };
 

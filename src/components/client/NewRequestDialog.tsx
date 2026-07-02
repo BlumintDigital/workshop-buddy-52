@@ -102,18 +102,20 @@ export default function NewRequestDialog({ open, onOpenChange, onCreated }: Prop
           </div>
 
           <div>
-            <Label>Title</Label>
-            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Brake pad replacement" />
+            <Label>Title <span className="text-destructive">*</span></Label>
+            <Input value={title} onChange={(e) => setTitle(e.target.value.slice(0, 120))} placeholder="e.g. Brake pad replacement" />
+            <p className="mt-1 text-[11px] text-muted-foreground text-right">{title.length}/120</p>
           </div>
 
           <div>
             <Label>Details</Label>
             <Textarea
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              onChange={(e) => setDescription(e.target.value.slice(0, 1000))}
               placeholder="Describe what you need…"
               rows={4}
             />
+            <p className="mt-1 text-[11px] text-muted-foreground text-right">{description.length}/1000</p>
           </div>
 
           <div className="grid grid-cols-2 gap-3">

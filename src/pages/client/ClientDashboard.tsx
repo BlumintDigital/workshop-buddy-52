@@ -18,6 +18,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 import NotificationsPanel from "@/components/client/NotificationsPanel";
 
 type Job = { id: string; title: string; status: string; date: string };
@@ -161,7 +162,9 @@ export default function ClientDashboard() {
       );
     };
 
-    Promise.all([run(), fetchJobs()]).finally(() => setIsLoading(false));
+    Promise.all([run(), fetchJobs()]).catch(() => {
+      toast.error("Failed to load dashboard data. Please refresh.");
+    }).finally(() => setIsLoading(false));
   }, [user, appointmentsEnabled, jobsFilter]);
 
   return (
@@ -215,6 +218,21 @@ export default function ClientDashboard() {
               <Skeleton key={i} className={cn("h-40 rounded-2xl col-span-2", i === 0 ? "lg:col-span-8" : i === 1 ? "lg:col-span-4" : "lg:col-span-3")} />
             ))}
           </div>
+        ) : stats.jobs === 0 && stats.invoices === 0 && stats.appointments === 0 ? (
+          <Card tone="cream">
+            <CardContent className="flex flex-col items-center justify-center gap-3 py-16 text-center">
+              <div className="rounded-2xl bg-tile-sage p-4">
+                <Briefcase className="h-8 w-8 text-foreground/60" />
+              </div>
+              <h3 className="text-display text-2xl">Welcome aboard</h3>
+              <p className="max-w-sm text-sm text-muted-foreground">
+                You're all set. Your jobs, invoices, and appointments will appear here as the workshop adds them. You can also submit your first request now.
+              </p>
+              <Button asChild variant="glow" className="mt-2">
+                <Link to="/client/requests"><FileText className="h-4 w-4" />Submit a request</Link>
+              </Button>
+            </CardContent>
+          </Card>
         ) : (
           <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-12 lg:auto-rows-[minmax(0,auto)]">
             {/* Balance hero */}

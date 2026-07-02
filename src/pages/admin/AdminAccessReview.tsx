@@ -1,4 +1,3 @@
-import PageActions from "@/components/admin/PageActions";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import DashboardLayout from "@/components/layout/DashboardLayout";
@@ -11,118 +10,37 @@ import { toast } from "sonner";
 import { downloadCSV } from "@/lib/csv";
 import { formatDistanceToNow } from "date-fns";
 import { Skeleton } from "@/components/ui/skeleton";
-
-type ReviewUser = {
-  user_id: string;
-  full_name: string | null;
-  email?: string;
-  role: string;
-  is_active: boolean;
-  last_sign_in_at: string | null;
-  created_at: string;
-};
-
-const STALE_DAYS = 90;
-
-function isStale(lastSignIn: string | null): boolean {
-  if (!lastSignIn) return true;
-  const daysSince = (Date.now() - new Date(lastSignIn).getTime()) / 86_400_000;
-  return daysSince > STALE_DAYS;
-}
-
-function getActivityStatus(lastSignIn: string | null, unavailable: boolean) {
-  if (unavailable) return { label: "Unavailable", stale: false };
-  const stale = isStale(lastSignIn);
-  return { label: stale ? "Stale" : "Active", stale };
-}
+import {
+  ACCESS_REVIEW_STALE_DAYS,
+  ACCESS_REVIEW_CSV_HEADERS,
+  type AccessReviewUser,
+  buildAccessReviewCsvRows,
+  isAccessReviewUserStale,
+  prepareAccessReviewUsers,
+} from "@/lib/accessReview";
 
 export default function AdminAccessReview() {
-  const [users, setUsers] = useState<ReviewUser[]>([]);
+  const [users, setUsers] = useState<AccessReviewUser[]>([]);
   const [loading, setLoading] = useState(true);
-  const [lastSignInUnavailable, setLastSignInUnavailable] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   const fetchUsers = async () => {
     setLoading(true);
-    setLastSignInUnavailable(false);
-
-    const { data: sessionData } = await supabase.auth.getSession();
-    const accessToken = sessionData.session?.access_token;
-
-    if (!accessToken) {
-      toast.error("Please sign in again to load the access review.");
-      setLoading(false);
-      return;
-    }
-
-    const { data, error } = await supabase.functions.invoke("admin-access-review", {
-      body: {},
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
-
+    const { data, error } = await supabase.functions.invoke("admin-access-review");
     if (error) {
-      const fallback = await fetchUsersFallback();
-      setUsers(fallback);
-      setLastSignInUnavailable(true);
-      toast.error("Access review loaded without sign-in history. Try again shortly for full activity details.");
+      toast.error(error.message || "Unable to load access review data");
+      setUsers([]);
       setLoading(false);
       return;
     }
 
-    const list: ReviewUser[] = (data?.data ?? [])
-      .filter((u: any) => !u.is_super_admin)
-      .map((u: any) => ({
-        user_id: u.user_id,
-        full_name: u.full_name,
-        email: u.email ?? undefined,
-        role: u.role ?? "",
-        is_active: u.is_active !== false,
-        last_sign_in_at: u.last_sign_in_at ?? null,
-        created_at: u.created_at ?? "",
-      }));
-
-    list.sort((a, b) => {
-      const aStale = isStale(a.last_sign_in_at) ? 1 : 0;
-      const bStale = isStale(b.last_sign_in_at) ? 1 : 0;
-      return bStale - aStale;
-    });
-
-    setUsers(list);
+    setUsers(prepareAccessReviewUsers((data?.data ?? []) as AccessReviewUser[]));
     setLoading(false);
-  };
-
-  const fetchUsersFallback = async (): Promise<ReviewUser[]> => {
-    const [{ data: profiles, error: profilesError }, { data: roles, error: rolesError }] = await Promise.all([
-      supabase
-        .from("profiles")
-        .select("id, full_name, created_at, is_active, is_super_admin"),
-      supabase
-        .from("user_roles")
-        .select("user_id, role"),
-    ]);
-
-    if (profilesError || rolesError) {
-      toast.error(profilesError?.message || rolesError?.message || "Failed to load access review");
-      return [];
-    }
-
-    const roleMap = new Map((roles ?? []).map((role: any) => [role.user_id, role.role]));
-
-    return (profiles ?? [])
-      .filter((profile: any) => !profile.is_super_admin)
-      .map((profile: any) => ({
-        user_id: profile.id,
-        full_name: profile.full_name,
-        role: roleMap.get(profile.id) ?? "client",
-        is_active: profile.is_active !== false,
-        last_sign_in_at: null,
-        created_at: profile.created_at ?? "",
-      }));
   };
 
   useEffect(() => { fetchUsers(); }, []);
 
-  const toggleActive = async (u: ReviewUser) => {
+  const toggleActive = async (u: AccessReviewUser) => {
     setActionLoading(u.user_id + "-toggle");
     const newState = !u.is_active;
     const { error } = await supabase.functions.invoke("admin-toggle-user", {
@@ -134,7 +52,7 @@ export default function AdminAccessReview() {
     toast.success(`${u.full_name ?? "User"} ${newState ? "activated" : "deactivated"}`);
   };
 
-  const removeRole = async (u: ReviewUser) => {
+  const removeRole = async (u: AccessReviewUser) => {
     setActionLoading(u.user_id + "-role");
     const { error } = await supabase.from("user_roles").delete().eq("user_id", u.user_id);
     setActionLoading(null);
@@ -144,37 +62,30 @@ export default function AdminAccessReview() {
   };
 
   const handleExport = () => {
-    const headers = ["Name", "Role", "Status", "Last Sign-In", "Account Created", "Stale (>90d)"];
-    const rows = users.map((u) => [
-      u.full_name ?? "",
-      u.role,
-      u.is_active ? "Active" : "Inactive",
-      lastSignInUnavailable ? "Unavailable" : u.last_sign_in_at ? new Date(u.last_sign_in_at).toISOString() : "Never",
-      new Date(u.created_at).toISOString(),
-      lastSignInUnavailable ? "Unavailable" : isStale(u.last_sign_in_at) ? "Yes" : "No",
-    ]);
-    downloadCSV(`access-review-${new Date().toISOString().slice(0, 10)}.csv`, headers, rows);
+    downloadCSV(
+      `access-review-${new Date().toISOString().slice(0, 10)}.csv`,
+      ACCESS_REVIEW_CSV_HEADERS,
+      buildAccessReviewCsvRows(users)
+    );
   };
 
-  const staleCount = lastSignInUnavailable ? 0 : users.filter((u) => isStale(u.last_sign_in_at)).length;
+  const staleCount = users.filter((u) => isAccessReviewUserStale(u.last_sign_in_at)).length;
 
   return (
     <DashboardLayout>
-      <div className="min-w-0 max-w-full space-y-6">
-        <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div className="min-w-0">
-            <h2 className="flex items-center gap-2 text-2xl font-bold tracking-tight sm:text-3xl">
+      <div className="space-y-6">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-2">
               <ShieldCheck className="h-6 w-6 sm:h-7 sm:w-7" />
               Access Review
             </h2>
             <p className="text-muted-foreground">Quarterly audit of user accounts and privileges</p>
           </div>
-          <PageActions>
-            <Button variant="outline" size="sm" onClick={handleExport} className="gap-2">
-              <Download className="h-4 w-4" />
-              Export CSV
-            </Button>
-          </PageActions>
+          <Button variant="outline" size="sm" onClick={handleExport} className="gap-2 shrink-0">
+            <Download className="h-4 w-4" />
+            Export CSV
+          </Button>
         </div>
 
         {/* Summary */}
@@ -188,9 +99,7 @@ export default function AdminAccessReview() {
           <Card className={staleCount > 0 ? "border-amber-400" : ""}>
             <CardContent className="pt-6">
               <p className="text-2xl font-bold text-amber-600">{staleCount}</p>
-              <p className="text-sm text-muted-foreground">
-                {lastSignInUnavailable ? "Sign-in history unavailable" : `Inactive >${STALE_DAYS} days`}
-              </p>
+              <p className="text-sm text-muted-foreground">Inactive &gt;{ACCESS_REVIEW_STALE_DAYS} days</p>
             </CardContent>
           </Card>
           <Card>
@@ -209,7 +118,7 @@ export default function AdminAccessReview() {
               <div className="flex items-start gap-3">
                 <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
                 <p className="text-sm text-amber-800 dark:text-amber-400">
-                  <strong>{staleCount} user{staleCount > 1 ? "s have" : " has"}</strong> not signed in for more than {STALE_DAYS} days.
+                  <strong>{staleCount} user{staleCount > 1 ? "s have" : " has"}</strong> not signed in for more than {ACCESS_REVIEW_STALE_DAYS} days.
                   Review and deactivate accounts that are no longer needed.
                 </p>
               </div>
@@ -218,170 +127,98 @@ export default function AdminAccessReview() {
         )}
 
         {/* User table */}
-        <Card className="min-w-0 max-w-full overflow-hidden">
+        <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base">All Users</CardTitle>
             <CardDescription>
-              {lastSignInUnavailable
-                ? "Users loaded, but sign-in history could not be reached right now."
-                : `Rows highlighted in amber have not signed in for ${STALE_DAYS}+ days.`}
+              Rows highlighted in amber have not signed in for {ACCESS_REVIEW_STALE_DAYS}+ days.
             </CardDescription>
           </CardHeader>
           <CardContent className="p-0">
-            {/* Desktop table */}
-            <div className="hidden sm:block">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Role</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Last Sign-In</TableHead>
-                    <TableHead>Actions</TableHead>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Last Sign-In</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {loading ? Array.from({ length: 6 }).map((_, i) => (
+                  <TableRow key={i}>
+                    <TableCell><Skeleton className="h-4 w-36" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-40" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-20 rounded-full" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-20 rounded-full" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-28" /></TableCell>
                   </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {loading ? Array.from({ length: 6 }).map((_, i) => (
-                    <TableRow key={i}>
-                      <TableCell><Skeleton className="h-4 w-36" /></TableCell>
-                      <TableCell><Skeleton className="h-4 w-40" /></TableCell>
-                      <TableCell><Skeleton className="h-4 w-20 rounded-full" /></TableCell>
-                      <TableCell><Skeleton className="h-4 w-20 rounded-full" /></TableCell>
-                      <TableCell><Skeleton className="h-4 w-28" /></TableCell>
-                    </TableRow>
-                  )) : users.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
-                        No users found
+                )) : users.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                      No users found
+                    </TableCell>
+                  </TableRow>
+                ) : users.map((u) => {
+                  const stale = isAccessReviewUserStale(u.last_sign_in_at);
+                  return (
+                    <TableRow key={u.user_id} className={stale ? "bg-amber-50/60 dark:bg-amber-950/10" : ""}>
+                      <TableCell className="font-medium">
+                        {u.full_name ?? "—"}
+                        {!u.is_active && (
+                          <Badge variant="destructive" className="ml-2 text-xs">Inactive</Badge>
+                        )}
                       </TableCell>
-                    </TableRow>
-                  ) : users.map((u) => {
-                    const status = getActivityStatus(u.last_sign_in_at, lastSignInUnavailable);
-                    return (
-                      <TableRow key={u.user_id} className={status.stale ? "bg-amber-50/60 dark:bg-amber-950/10" : ""}>
-                        <TableCell className="font-medium">
-                          {u.full_name ?? "—"}
-                          {!u.is_active && (
-                            <Badge variant="destructive" className="ml-2 text-xs">Inactive</Badge>
-                          )}
-                        </TableCell>
-                        <TableCell className="capitalize">{u.role || <span className="text-muted-foreground">none</span>}</TableCell>
-                        <TableCell>
-                          {status.stale ? (
-                            <Badge variant="outline" className="text-amber-600 border-amber-400">{status.label}</Badge>
-                          ) : (
-                            <Badge variant="outline" className="text-emerald-600 border-emerald-400">{status.label}</Badge>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-sm text-muted-foreground">
-                          {lastSignInUnavailable
-                            ? "Unavailable"
-                            : u.last_sign_in_at
-                              ? formatDistanceToNow(new Date(u.last_sign_in_at), { addSuffix: true })
-                              : "Never"}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2 whitespace-nowrap">
+                      <TableCell className="capitalize">{u.role || <span className="text-muted-foreground">none</span>}</TableCell>
+                      <TableCell>
+                        {stale ? (
+                          <Badge variant="outline" className="text-amber-600 border-amber-400">
+                            Stale
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-emerald-600 border-emerald-400">
+                            Active
+                          </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {u.last_sign_in_at
+                          ? formatDistanceToNow(new Date(u.last_sign_in_at), { addSuffix: true })
+                          : "Never"}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="gap-1.5 h-7 text-xs"
+                            disabled={actionLoading === u.user_id + "-toggle"}
+                            onClick={() => toggleActive(u)}
+                          >
+                            {u.is_active
+                              ? <><UserX className="h-3.5 w-3.5" />Deactivate</>
+                              : <><UserCheck className="h-3.5 w-3.5" />Activate</>}
+                          </Button>
+                          {u.role && (
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="gap-1.5 h-7 text-xs"
-                              disabled={actionLoading === u.user_id + "-toggle"}
-                              onClick={() => toggleActive(u)}
+                              className="gap-1.5 h-7 text-xs text-destructive hover:text-destructive"
+                              disabled={actionLoading === u.user_id + "-role"}
+                              onClick={() => removeRole(u)}
                             >
-                              {u.is_active
-                                ? <><UserX className="h-3.5 w-3.5" />Deactivate</>
-                                : <><UserCheck className="h-3.5 w-3.5" />Activate</>}
+                              <Trash2 className="h-3.5 w-3.5" />
+                              Remove role
                             </Button>
-                            {u.role && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="gap-1.5 h-7 text-xs text-destructive hover:text-destructive"
-                                disabled={actionLoading === u.user_id + "-role"}
-                                onClick={() => removeRole(u)}
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                                Remove role
-                              </Button>
-                            )}
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
-
-            {/* Mobile cards */}
-            <div className="sm:hidden divide-y">
-              {loading ? Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="p-4 space-y-2">
-                  <Skeleton className="h-4 w-1/2" />
-                  <Skeleton className="h-3 w-2/3" />
-                  <Skeleton className="h-3 w-1/3" />
-                </div>
-              )) : users.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground text-sm">No users found</div>
-              ) : users.map((u) => {
-                const status = getActivityStatus(u.last_sign_in_at, lastSignInUnavailable);
-                return (
-                  <div key={u.user_id} className={`p-4 space-y-2 ${status.stale ? "bg-amber-50/60 dark:bg-amber-950/10" : ""}`}>
-                    <div className="flex items-start justify-between gap-2">
-                      <p className="font-medium break-words min-w-0 flex-1">
-                        {u.full_name ?? "—"}
-                      </p>
-                      {!u.is_active && (
-                        <Badge variant="destructive" className="shrink-0 text-xs">Inactive</Badge>
-                      )}
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2 text-xs">
-                      <span className="capitalize text-muted-foreground">
-                        Role: {u.role || "none"}
-                      </span>
-                      {status.stale ? (
-                        <Badge variant="outline" className="text-amber-600 border-amber-400">{status.label}</Badge>
-                      ) : (
-                        <Badge variant="outline" className="text-emerald-600 border-emerald-400">{status.label}</Badge>
-                      )}
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      Last sign-in: {lastSignInUnavailable
-                        ? "Unavailable"
-                        : u.last_sign_in_at
-                          ? formatDistanceToNow(new Date(u.last_sign_in_at), { addSuffix: true })
-                          : "Never"}
-                    </p>
-                    <div className="flex flex-wrap gap-2 pt-1">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="gap-1.5 h-8 text-xs"
-                        disabled={actionLoading === u.user_id + "-toggle"}
-                        onClick={() => toggleActive(u)}
-                      >
-                        {u.is_active
-                          ? <><UserX className="h-3.5 w-3.5" />Deactivate</>
-                          : <><UserCheck className="h-3.5 w-3.5" />Activate</>}
-                      </Button>
-                      {u.role && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="gap-1.5 h-8 text-xs text-destructive hover:text-destructive"
-                          disabled={actionLoading === u.user_id + "-role"}
-                          onClick={() => removeRole(u)}
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                          Remove role
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
           </CardContent>
         </Card>
 

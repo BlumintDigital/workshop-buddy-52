@@ -106,7 +106,7 @@ export default function InvoiceCreate() {
     load();
   }, [jobId]);
 
-  const subtotal = items.reduce((sum, i) => sum + i.quantity * i.unit_price, 0);
+  const subtotal = items.filter((i) => i.description.trim()).reduce((sum, i) => sum + i.quantity * i.unit_price, 0);
   const taxAmount = subtotal * (taxRate / 100);
   const total = subtotal + taxAmount;
 
@@ -212,20 +212,24 @@ export default function InvoiceCreate() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <Label>Client</Label>
-                    <Select
-                      value={clientId}
-                      onValueChange={(v) => {
-                        setClientId(v);
-                        setClientName(clients.find((c) => c.id === v)?.full_name || "");
-                      }}
-                    >
-                      <SelectTrigger><SelectValue placeholder="Select client" /></SelectTrigger>
-                      <SelectContent>
-                        {clients.map((c) => (
-                          <SelectItem key={c.id} value={c.id}>{c.full_name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    {clients.length === 0 ? (
+                      <p className="mt-1 text-sm text-muted-foreground">No clients yet — add a client account first.</p>
+                    ) : (
+                      <Select
+                        value={clientId}
+                        onValueChange={(v) => {
+                          setClientId(v);
+                          setClientName(clients.find((c) => c.id === v)?.full_name || "");
+                        }}
+                      >
+                        <SelectTrigger><SelectValue placeholder="Select client" /></SelectTrigger>
+                        <SelectContent>
+                          {clients.map((c) => (
+                            <SelectItem key={c.id} value={c.id}>{c.full_name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
                   </div>
                   <div>
                     <Label>Due Date</Label>

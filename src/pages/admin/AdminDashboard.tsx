@@ -28,6 +28,7 @@ import { useFeature } from "@/hooks/useFeatureFlags";
 import { useAuth } from "@/hooks/useAuth";
 import { useCurrency } from "@/hooks/useCurrency";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 type RecentJob = { id: string; title: string; status: string; date: string };
 type Appointment = { id: string; title: string | null; appointment_date: string; appointment_time: string };
@@ -215,7 +216,9 @@ export default function AdminDashboard() {
       );
     };
 
-    Promise.all([run(), fetchRecent()]).finally(() => setIsLoading(false));
+    Promise.all([run(), fetchRecent()]).catch(() => {
+      toast.error("Failed to load dashboard data. Please refresh.");
+    }).finally(() => setIsLoading(false));
   }, [appointmentsEnabled]);
 
   const maxLoad = Math.max(1, ...staffLoad.map((s) => s.jobs));

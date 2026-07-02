@@ -21,14 +21,14 @@ export function PendingActions() {
 
   const fetchCounts = useCallback(async () => {
     const nowIso = new Date().toISOString();
-    const [reviewJobs, overdueInv, lowStock, pendingInvites] = await Promise.all([
+    const [reviewJobs, overdueInv, stockItems, pendingInvites] = await Promise.all([
       supabase.from("jobs").select("id", { count: "exact", head: true }).eq("status", "pending_review"),
       supabase
         .from("invoices")
         .select("id", { count: "exact", head: true })
         .neq("status", "paid")
         .lt("due_date", nowIso),
-      supabase.from("inventory_items").select("id", { count: "exact", head: true }).lte("quantity", 5),
+      supabase.from("inventory_items").select("quantity, min_stock"),
       supabase
         .from("profiles")
         .select("id", { count: "exact", head: true })
@@ -36,10 +36,12 @@ export function PendingActions() {
         .is("invite_accepted_at", null),
     ]);
 
+    const lowStockCount = (stockItems.data || []).filter((i: any) => i.quantity <= i.min_stock).length;
+
     setCounts({
       review: reviewJobs.count ?? 0,
       overdue: overdueInv.count ?? 0,
-      lowStock: lowStock.count ?? 0,
+      lowStock: lowStockCount,
       invites: pendingInvites.count ?? 0,
     });
     setLoading(false);
