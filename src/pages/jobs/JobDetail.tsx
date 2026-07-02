@@ -1030,25 +1030,6 @@ export default function JobDetail() {
           {id && <JobComments jobId={id} jobTitle={job?.title} />}
         </FeatureGate>
 
-        {/* Activity Timeline */}
-        {updates.length > 0 && (
-          <Card>
-            <CardHeader><CardTitle className="text-lg">Activity Timeline</CardTitle></CardHeader>
-            <CardContent className="space-y-4">
-              {updates.map((u) => (
-                <div key={u.id} className="flex gap-3 text-sm">
-                  <div className="w-2 h-2 mt-1.5 rounded-full bg-primary shrink-0" />
-                  <div>
-                    {u.status && <Badge variant="outline" className="mr-2">{u.status.replace("_", " ")}</Badge>}
-                    {u.notes && <span className="text-muted-foreground">{u.notes}</span>}
-                    <p className="text-xs text-muted-foreground mt-1">{new Date(u.created_at).toLocaleString()}</p>
-                  </div>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        )}
-
         </div>{/* end left column */}
 
         {/* ── Right sidebar ── */}
@@ -1104,6 +1085,29 @@ export default function JobDetail() {
                   </div>
                 </div>
               )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Update Timeline — notes and status changes posted on the job */}
+        {updates.length > 0 && (
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Clock className="h-4 w-4" />Update Timeline
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {updates.map((u) => (
+                <div key={u.id} className="flex gap-3 text-sm">
+                  <div className="w-2 h-2 mt-1.5 rounded-full bg-primary shrink-0" />
+                  <div className="min-w-0">
+                    {u.status && <Badge variant="outline" className="mr-2">{u.status.replace("_", " ")}</Badge>}
+                    {u.notes && <span className="text-muted-foreground break-words">{u.notes}</span>}
+                    <p className="text-xs text-muted-foreground mt-1">{new Date(u.created_at).toLocaleString()}</p>
+                  </div>
+                </div>
+              ))}
             </CardContent>
           </Card>
         )}

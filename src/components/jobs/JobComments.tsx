@@ -72,12 +72,28 @@ export default function JobComments({ jobId, jobTitle }: Props) {
   }, [comments]);
 
   async function load() {
-    const { data } = await supabase
+    // job_comments.user_id references auth.users, not profiles, so PostgREST
+    // can't embed the profile — resolve author names with a second query.
+    const { data, error } = await supabase
       .from("job_comments" as any)
-      .select("*, profiles:user_id(full_name)")
+      .select("*")
       .eq("job_id", jobId)
       .order("created_at", { ascending: true });
-    setComments(((data as unknown) as Comment[]) || []);
+    if (error) {
+      console.error("Failed to load comments", error);
+      return;
+    }
+    const rows = ((data as unknown) as Comment[]) || [];
+    const authorIds = [...new Set(rows.map((r) => r.user_id))];
+    const nameMap: Record<string, string> = {};
+    if (authorIds.length > 0) {
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("id, full_name")
+        .in("id", authorIds);
+      profiles?.forEach((p) => { nameMap[p.id] = p.full_name || "Team member"; });
+    }
+    setComments(rows.map((r) => ({ ...r, profiles: { full_name: nameMap[r.user_id] ?? "Team member" } })));
   }
 
   async function handleSubmit(e?: React.FormEvent) {
