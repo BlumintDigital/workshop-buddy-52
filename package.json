@@ -11,6 +11,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:e2e": "playwright test -c e2e/playwright.config.ts",
+    "test:e2e:headed": "playwright test -c e2e/playwright.config.ts --headed",
     "db:push": "supabase db push",
     "db:status": "supabase migration list",
     "functions:deploy": "supabase functions deploy",
