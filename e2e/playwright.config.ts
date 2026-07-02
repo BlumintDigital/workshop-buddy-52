@@ -25,7 +25,9 @@ export default defineConfig({
     { name: "setup", testMatch: /global\.setup\.ts/ },
     {
       name: "chromium",
-      use: { browserName: "chromium" },
+      // channel: "chrome" uses the locally installed Google Chrome, so no
+      // Playwright browser download is required.
+      use: { browserName: "chromium", channel: "chrome" },
       dependencies: ["setup"],
       testIgnore: /global\.setup\.ts/,
     },
