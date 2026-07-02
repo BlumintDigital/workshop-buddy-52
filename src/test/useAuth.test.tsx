@@ -30,8 +30,22 @@ vi.mock("@/integrations/supabase/client", () => {
     return Promise.resolve({ data: null, error: null });
   };
 
+  const basicProfile = {
+    full_name: "Test User",
+    avatar_url: null,
+    company_name: null,
+    phone: null,
+    address: null,
+    invite_accepted_at: new Date().toISOString(),
+  };
+
   return {
     supabase: {
+      rpc: vi.fn(async (fn: string) => {
+        if (fn === "get_user_role") return { data: mockRole, error: null };
+        if (fn === "get_my_basic_profile") return { data: basicProfile, error: null };
+        return { data: null, error: null };
+      }),
       auth: {
         signInWithPassword: vi.fn(async () => {
           currentSession = mockSession;
