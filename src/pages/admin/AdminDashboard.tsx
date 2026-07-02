@@ -13,6 +13,7 @@ import {
   CheckCircle2,
   TrendingUp,
   TrendingDown,
+  RefreshCw,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -83,6 +84,7 @@ export default function AdminDashboard() {
   const [todayAppts, setTodayAppts] = useState<Appointment[]>([]);
   const [staffLoad, setStaffLoad] = useState<{ name: string; jobs: number }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const firstName = useMemo(() => {
     const full = (profile?.full_name || user?.email || "there").trim();
@@ -219,7 +221,7 @@ export default function AdminDashboard() {
     Promise.all([run(), fetchRecent()]).catch(() => {
       toast.error("Failed to load dashboard data. Please refresh.");
     }).finally(() => setIsLoading(false));
-  }, [appointmentsEnabled]);
+  }, [appointmentsEnabled, refreshKey]);
 
   const maxLoad = Math.max(1, ...staffLoad.map((s) => s.jobs));
   const deltaPositive = stats.revenueDelta >= 0;
@@ -245,6 +247,16 @@ export default function AdminDashboard() {
             <p className="mt-1.5 text-sm text-muted-foreground">A calmer view of everything happening today.</p>
           </div>
           <div className="flex flex-wrap gap-2">
+            <Button
+              variant="soft"
+              size="sm"
+              disabled={isLoading}
+              onClick={() => setRefreshKey((k) => k + 1)}
+              aria-label="Refresh dashboard data"
+            >
+              <RefreshCw className={cn("h-4 w-4", isLoading && "animate-spin")} />
+              Refresh
+            </Button>
             <Button asChild variant="glow" size="sm"><Link to="/admin/jobs"><Plus className="h-4 w-4" />New job</Link></Button>
             {appointmentsEnabled && (
               <Button asChild variant="soft" size="sm"><Link to="/admin/appointments"><CalendarPlus className="h-4 w-4" />Appointment</Link></Button>

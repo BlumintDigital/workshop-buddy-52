@@ -82,15 +82,20 @@ export default function ClientRequests() {
     setRequests(rows);
     const quotedIds = rows.filter((r: any) => ["quoted", "approved", "declined_by_client"].includes(r.status)).map((r: any) => r.id);
     if (quotedIds.length) {
-      const { data: it } = await supabase
+      const { data: it, error: itemsError } = await supabase
         .from("request_quote_items")
         .select("*")
         .in("request_id", quotedIds);
-      const map: Record<string, QuoteItem[]> = {};
-      ((it as any[]) || []).forEach((row: any) => {
-        (map[row.request_id] ||= []).push(row as QuoteItem);
-      });
-      setItems(map);
+      if (itemsError) {
+        toast.error("Couldn't load quote details. Please refresh.");
+        setItems({});
+      } else {
+        const map: Record<string, QuoteItem[]> = {};
+        ((it as any[]) || []).forEach((row: any) => {
+          (map[row.request_id] ||= []).push(row as QuoteItem);
+        });
+        setItems(map);
+      }
     } else {
       setItems({});
     }

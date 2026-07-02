@@ -38,7 +38,7 @@ export function useWorkshopDetails() {
     fetchOnce();
 
     const channel = supabase
-      .channel("workshop_settings_live")
+      .channel(`workshop_settings_live_${Math.random().toString(36).slice(2)}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "workshop_settings", filter: "id=eq.1" },

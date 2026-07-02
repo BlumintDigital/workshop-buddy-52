@@ -11,7 +11,9 @@ import { Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useCurrency } from "@/hooks/useCurrency";
 
-interface LineItem { description: string; quantity: number; unit_price: number; }
+interface LineItem { key: string; description: string; quantity: number; unit_price: number; }
+
+const newRow = (description = ""): LineItem => ({ key: crypto.randomUUID(), description, quantity: 1, unit_price: 0 });
 
 interface Props {
   open: boolean;
@@ -23,7 +25,7 @@ interface Props {
 
 export default function QuoteBuilderDialog({ open, onOpenChange, requestId, requestTitle, onSubmitted }: Props) {
   const { currency: baseCurrency, format: fmt } = useCurrency();
-  const [items, setItems] = useState<LineItem[]>([{ description: "", quantity: 1, unit_price: 0 }]);
+  const [items, setItems] = useState<LineItem[]>([newRow()]);
   const [notes, setNotes] = useState("");
   const [expires, setExpires] = useState("");
   const [currency, setCurrency] = useState(baseCurrency);
@@ -40,12 +42,13 @@ export default function QuoteBuilderDialog({ open, onOpenChange, requestId, requ
         .eq("request_id", requestId);
       if (data && data.length) {
         setItems(data.map((d: any) => ({
+          key: crypto.randomUUID(),
           description: d.description,
           quantity: Number(d.quantity),
           unit_price: Number(d.unit_price),
         })));
       } else {
-        setItems([{ description: requestTitle || "", quantity: 1, unit_price: 0 }]);
+        setItems([newRow(requestTitle || "")]);
       }
       const { data: req } = await supabase
         .from("client_requests")
@@ -62,7 +65,9 @@ export default function QuoteBuilderDialog({ open, onOpenChange, requestId, requ
 
   const submit = async () => {
     if (!requestId) return;
-    const clean = items.filter((i) => i.description.trim());
+    const clean = items
+      .filter((i) => i.description.trim())
+      .map(({ description, quantity, unit_price }) => ({ description, quantity, unit_price }));
     if (!clean.length) { toast.error("Add at least one line item"); return; }
     setSubmitting(true);
     const { error } = await supabase.rpc("submit_quote", {
@@ -103,7 +108,7 @@ export default function QuoteBuilderDialog({ open, onOpenChange, requestId, requ
               </TableHeader>
               <TableBody>
                 {items.map((it, idx) => (
-                  <TableRow key={idx}>
+                  <TableRow key={it.key}>
                     <TableCell>
                       <Input
                         value={it.description}
@@ -142,7 +147,7 @@ export default function QuoteBuilderDialog({ open, onOpenChange, requestId, requ
               </TableBody>
             </Table>
             <div className="flex items-center justify-between border-t p-3">
-              <Button variant="outline" size="sm" onClick={() => setItems((a) => [...a, { description: "", quantity: 1, unit_price: 0 }])}>
+              <Button variant="outline" size="sm" onClick={() => setItems((a) => [...a, newRow()])}>
                 <Plus className="h-4 w-4" /> Add line
               </Button>
               <p className="text-sm">
