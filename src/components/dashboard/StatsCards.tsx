@@ -24,7 +24,8 @@ export function StatCard({ title, value, description, icon: Icon, trend, iconCla
         <div className="flex min-w-0 items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{title}</p>
-            <p className="mt-3 text-display text-4xl leading-none tracking-tight tabular-nums sm:text-5xl">{value}</p>
+            {/* break-words + tighter sizes keep long currency values from colliding with the icon */}
+            <p className="mt-3 text-display text-2xl leading-tight tracking-tight tabular-nums break-words sm:text-4xl">{value}</p>
             {trend && (
               <p className={cn("mt-2 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium tabular-nums",
                 trendIsPositive ? "border-accent/30 bg-accent/10 text-accent" : "border-destructive/30 bg-destructive/10 text-destructive")}>

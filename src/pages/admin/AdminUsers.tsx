@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { friendlyErrorMessage } from "@/lib/friendlyError";
 import { Eye, Mail, Plus, Search, Trash2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
@@ -25,6 +26,7 @@ type UserRow = {
   is_active: boolean;
   invited_at: string | null;
   invite_accepted_at: string | null;
+  last_sign_in_at: string | null;
 };
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -47,7 +49,7 @@ export default function AdminUsers() {
     setIsLoading(true);
     const [{ data: roles }, { data: profiles }] = await Promise.all([
       supabase.from("user_roles").select("user_id, role").limit(500),
-      supabase.from("profiles").select("id, full_name, created_at, is_super_admin, is_active, invited_at, invite_accepted_at").limit(500),
+      supabase.from("profiles").select("id, full_name, created_at, is_super_admin, is_active, invited_at, invite_accepted_at, last_sign_in_at").limit(500),
     ]);
     if (profiles) {
       const merged: UserRow[] = profiles
@@ -62,6 +64,7 @@ export default function AdminUsers() {
             is_active: (p as any).is_active !== false,
             invited_at: (p as any).invited_at ?? null,
             invite_accepted_at: (p as any).invite_accepted_at ?? null,
+            last_sign_in_at: (p as any).last_sign_in_at ?? null,
           };
         });
       setUsers(merged);
@@ -84,7 +87,9 @@ export default function AdminUsers() {
       body: { user_id: userId },
     });
     if (error || data?.error) {
-      toast.error(data?.error || error?.message || "Failed to delete user");
+      // The function's explanation (e.g. existing records block deletion)
+      // lives in the error body — surface it instead of the generic message.
+      toast.error(data?.error || (await friendlyErrorMessage(error, "Failed to delete user")));
       return;
     }
     setUsers((prev) => prev.filter((u) => u.user_id !== userId));
@@ -141,7 +146,9 @@ export default function AdminUsers() {
   };
 
   const inviteStatus = (u: UserRow): "accepted" | "invited" | "unknown" => {
-    if (u.invite_accepted_at) return "accepted";
+    // A recorded sign-in is proof of acceptance even if invite_accepted_at
+    // was missed (older logins were blocked by RLS at aal1).
+    if (u.invite_accepted_at || u.last_sign_in_at) return "accepted";
     if (u.invited_at) return "invited";
     return "unknown";
   };

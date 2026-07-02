@@ -80,7 +80,11 @@ export function useDashboardStats(appointmentsEnabled: boolean) {
       ] = await Promise.all([
         supabase.from("jobs").select("*", { count: "exact", head: true }),
         appointmentsEnabled
-          ? supabase.from("appointments").select("*", { count: "exact", head: true })
+          ? supabase
+              .from("appointments")
+              .select("*", { count: "exact", head: true })
+              // "Total scheduled" — completed and cancelled don't count
+              .not("status", "in", "(completed,cancelled)")
           : Promise.resolve({ count: 0 } as any),
         supabase.from("inventory_items").select("*", { count: "exact", head: true }),
         supabase.from("invoices").select("*", { count: "exact", head: true }),

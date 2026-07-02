@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
+import { friendlyErrorMessage } from "@/lib/friendlyError";
 import { Plus, Search, Pencil, Check, X, Trash2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -121,7 +122,9 @@ export default function AdminClients() {
       body: { user_id: userId },
     });
     if (error || data?.error) {
-      toast.error(data?.error || error?.message || "Failed to delete client");
+      // The function's explanation (e.g. existing jobs/invoices block deletion)
+      // lives in the error body — surface it instead of the generic message.
+      toast.error(data?.error || (await friendlyErrorMessage(error, "Failed to delete client")));
       return;
     }
     setClients((prev) => prev.filter((c) => c.user_id !== userId));
@@ -236,7 +239,7 @@ export default function AdminClients() {
                         {isEditing ? <Input value={editCompanyName} onChange={(e) => setEditCompanyName(e.target.value)} className="h-8" autoFocus /> : <span className="font-medium text-primary hover:underline">{displayName(c)}</span>}
                       </TableCell>
                       <TableCell onClick={(e) => isEditing && e.stopPropagation()}>
-                        {isEditing ? <Input value={editContactPerson} onChange={(e) => setEditContactPerson(e.target.value)} className="h-8" placeholder="Contact" /> : c.contact_person || "—"}
+                        {isEditing ? <Input value={editContactPerson} onChange={(e) => setEditContactPerson(e.target.value)} className="h-8" placeholder="Contact" /> : c.contact_person || c.full_name || "—"}
                       </TableCell>
                       <TableCell onClick={(e) => isEditing && e.stopPropagation()}>
                         {isEditing ? <Input value={editPhone} onChange={(e) => setEditPhone(e.target.value)} className="h-8" placeholder="Phone" /> : c.phone || "—"}

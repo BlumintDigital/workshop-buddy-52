@@ -233,39 +233,38 @@ export default function AdminUserDetail() {
           </CardHeader>
           <CardContent>
             <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {isClient && profile?.company_name && (
+              {isClient && (
                 <div className="flex items-start gap-2">
                   <Building2 className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
                   <div>
                     <dt className="text-xs text-muted-foreground">Company</dt>
-                    <dd className="text-sm font-medium">{profile.company_name}</dd>
+                    <dd className="text-sm font-medium">{profile?.company_name || "—"}</dd>
                   </div>
                 </div>
               )}
-              {isClient && profile?.contact_person && (
+              {isClient && (
                 <div className="flex items-start gap-2">
                   <User className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
                   <div>
                     <dt className="text-xs text-muted-foreground">Contact Person</dt>
-                    <dd className="text-sm font-medium">{profile.contact_person}</dd>
+                    {/* Older client accounts predate the contact_person column — the signup name is the contact. */}
+                    <dd className="text-sm font-medium">{profile?.contact_person || profile?.full_name || "—"}</dd>
                   </div>
                 </div>
               )}
-              {profile?.phone && (
-                <div className="flex items-start gap-2">
-                  <Phone className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
-                  <div>
-                    <dt className="text-xs text-muted-foreground">Phone</dt>
-                    <dd className="text-sm font-medium">{profile.phone}</dd>
-                  </div>
+              <div className="flex items-start gap-2">
+                <Phone className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                <div>
+                  <dt className="text-xs text-muted-foreground">Phone</dt>
+                  <dd className="text-sm font-medium">{profile?.phone || "—"}</dd>
                 </div>
-              )}
-              {isClient && profile?.address && (
+              </div>
+              {isClient && (
                 <div className="flex items-start gap-2">
                   <MapPin className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
                   <div>
                     <dt className="text-xs text-muted-foreground">Address</dt>
-                    <dd className="text-sm font-medium">{profile.address}</dd>
+                    <dd className="text-sm font-medium">{profile?.address || "—"}</dd>
                   </div>
                 </div>
               )}

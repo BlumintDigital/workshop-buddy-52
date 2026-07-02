@@ -81,7 +81,11 @@ export default function ManagerDashboard() {
       ] = await Promise.all([
         supabase.from("jobs").select("*", { count: "exact", head: true }),
         appointmentsEnabled
-          ? supabase.from("appointments").select("*", { count: "exact", head: true })
+          ? supabase
+              .from("appointments")
+              .select("*", { count: "exact", head: true })
+              // Scheduled means not completed/cancelled
+              .not("status", "in", "(completed,cancelled)")
           : Promise.resolve({ count: 0 } as any),
         supabase.from("inventory_items").select("*", { count: "exact", head: true }),
         supabase.from("invoices").select("*", { count: "exact", head: true }),

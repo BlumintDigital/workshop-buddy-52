@@ -164,14 +164,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setProfile(profileRow ? { full_name: profileRow.full_name ?? null, avatar_url: profileRow.avatar_url ?? null, company_name: profileRow.company_name ?? null, phone: profileRow.phone ?? null, address: profileRow.address ?? null } : null);
     setMfaEnabled(!!(mfaRes.data?.totp?.find((f) => f.status === "verified")));
 
-    // Mark invite as accepted on first sign-in (one-time)
-    if (profileRow && !profileRow.invite_accepted_at) {
-      supabase
-        .from("profiles")
-        .update({ invite_accepted_at: new Date().toISOString() } as any)
-        .eq("id", userId)
-        .then(() => {});
-    }
+    // Record the sign-in (last_sign_in_at + first-time invite_accepted_at).
+    // Must go through the SECURITY DEFINER RPC: direct profile updates are
+    // blocked at aal1 for admin/manager by the restrictive MFA write policy.
+    void supabase.rpc("touch_profile_login" as any).then(() => {});
 
     return nextRole;
   };
@@ -302,11 +298,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { role: null, needsMfa: false };
       }
 
-      // Record sign-in time in profiles for the access review feature.
-      // auth.users.last_sign_in_at is unreliable in some Supabase configurations.
-      void supabase.from("profiles")
-        .update({ last_sign_in_at: new Date().toISOString() })
-        .eq("id", data.user.id);
+      // Sign-in time is recorded by touch_profile_login inside fetchUserData —
+      // the direct profiles update this used to do was silently blocked at aal1
+      // for admin/manager by the restrictive MFA write policy.
 
       const nextRole = await fetchUserData(data.user.id);
 
@@ -339,7 +333,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { full_name: fullName, role, company_name: companyName ?? null }, emailRedirectTo: window.location.origin },
+      options: {
+        data: {
+          full_name: fullName,
+          role,
+          company_name: companyName ?? null,
+          // For client accounts the person signing up is the company contact.
+          contact_person: role === "client" ? fullName : null,
+        },
+        emailRedirectTo: window.location.origin,
+      },
     });
     if (error) throw error;
   };
