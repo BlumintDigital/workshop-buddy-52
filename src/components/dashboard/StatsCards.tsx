@@ -27,7 +27,7 @@ export function StatCard({ title, value, description, icon: Icon, trend, iconCla
             {/* break-words + tighter sizes keep long currency values from colliding with the icon */}
             <p className="mt-3 text-display text-2xl leading-tight tracking-tight tabular-nums break-words sm:text-4xl">{value}</p>
             {trend && (
-              <p className={cn("mt-2 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium tabular-nums",
+              <p className={cn("mt-2 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium tabular-nums",
                 trendIsPositive ? "border-accent/30 bg-accent/10 text-accent" : "border-destructive/30 bg-destructive/10 text-destructive")}>
                 {trendIsPositive ? "↑" : "↓"} {trend.replace(/^-/, "")}
               </p>

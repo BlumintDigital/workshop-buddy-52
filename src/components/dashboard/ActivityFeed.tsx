@@ -86,7 +86,7 @@ export function ActivityFeed() {
           <div className="space-y-3">
             {entries.map((e) => (
               <div key={e.id} className="flex min-w-0 items-start gap-3">
-                <Badge variant="secondary" className={`shrink-0 text-[10px] ${actionColors[e.action] || ""}`}>
+                <Badge variant="secondary" className={`shrink-0 text-xs ${actionColors[e.action] || ""}`}>
                   {e.action}
                 </Badge>
                 <div className="flex-1 min-w-0">

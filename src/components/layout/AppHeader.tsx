@@ -20,7 +20,7 @@ import {
 import { NotificationBell } from "@/components/NotificationBell";
 import { SessionIndicator } from "@/components/SessionIndicator";
 import { Link, useLocation } from "react-router-dom";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth, getRoleDashboardPath } from "@/hooks/useAuth";
 
 const ROLE_SCOPED_SEGMENTS = new Set(["invoices", "jobs", "appointments", "inventory", "reports", "users", "clients", "calendar", "activity-logs", "settings", "feedback", "dashboard"]);
 
@@ -69,7 +69,7 @@ export function AppHeader() {
           {/* Home crumb — always shown */}
           <BreadcrumbItem>
             <BreadcrumbLink asChild>
-              <Link to="/admin/dashboard" className="text-sm sm:text-base">Home</Link>
+              <Link to={role ? getRoleDashboardPath(role) : "/"} className="text-sm sm:text-base">Home</Link>
             </BreadcrumbLink>
           </BreadcrumbItem>
 

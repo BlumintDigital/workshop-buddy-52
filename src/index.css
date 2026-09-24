@@ -2,66 +2,71 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Workshop Buddy — Sage & Cream pastel light system. All colors in HSL. */
+/* Shoplane — workshop operations system. All colors in HSL triplets.
+   Surfaces are neutral; colour is reserved for state (success / warning / destructive / info).
+   Every text/background pair used by components is >= 4.5:1 (WCAG AA). */
 
 @layer base {
   :root {
-    /* Cream surface, deep-sage ink */
-    --background: 36 33% 94%;          /* #f5f0e8 cream */
-    --foreground: 110 12% 18%;         /* deep sage ink */
+    --background: 80 14% 96%;          /* #F5F6F3 */
+    --foreground: 144 9% 11%;          /* #1A1F1C  15.4:1 */
 
-    --card: 40 40% 98%;                /* near-white cream tint */
-    --card-foreground: 110 12% 18%;
+    --card: 0 0% 100%;
+    --card-foreground: 144 9% 11%;
 
-    --popover: 40 40% 98%;
-    --popover-foreground: 110 12% 18%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 144 9% 11%;
 
-    --primary: 110 14% 54%;            /* sage #a8c0a0 area but darker for AA */
-    --primary-foreground: 40 40% 98%;
+    --primary: 150 39% 30%;            /* #2E6A4C  6.4:1 with white */
+    --primary-foreground: 0 0% 100%;
+    --primary-soft: 142 26% 92%;       /* #E4EFE8  selected / tinted surfaces */
 
-    --secondary: 96 22% 87%;           /* #dce5d4 mist */
-    --secondary-foreground: 110 18% 22%;
+    --secondary: 90 12% 93%;
+    --secondary-foreground: 144 9% 11%;
 
-    --muted: 36 25% 90%;
-    --muted-foreground: 110 8% 38%;
+    --muted: 90 12% 93%;               /* #EEF0EC */
+    --muted-foreground: 142 6% 36%;    /* #56615A  5.95:1 on background */
 
-    --accent: 108 18% 70%;             /* soft sage accent */
-    --accent-foreground: 110 18% 18%;
+    --accent: 142 26% 92%;
+    --accent-foreground: 144 9% 11%;
 
-    --destructive: 0 62% 56%;
+    /* Semantic state colours: text colour + soft background, each pair >= 5:1 */
+    --success: 150 56% 27%;            /* #1E6B45 */
+    --success-foreground: 0 0% 100%;
+    --success-soft: 143 37% 93%;       /* #E7F4EC */
+    --warning: 35 100% 30%;            /* #9A5A00 */
+    --warning-foreground: 0 0% 100%;
+    --warning-soft: 39 88% 94%;        /* #FDF3E1 */
+    --destructive: 3 71% 41%;          /* #B3261E */
     --destructive-foreground: 0 0% 100%;
+    --destructive-soft: 3 75% 95%;     /* #FCEBEA */
+    --info: 209 66% 36%;               /* #1F5E99 */
+    --info-foreground: 0 0% 100%;
+    --info-soft: 212 63% 95%;          /* #E9F1FA */
 
-    --border: 96 18% 82%;
-    --input: 96 18% 82%;
-    --ring: 110 22% 46%;
+    --border: 108 9% 89%;              /* #E1E5E0 */
+    --input: 120 6% 81%;               /* #CBD1CB */
+    --ring: 150 39% 30%;
 
-    --radius: 1rem;
+    --radius: 0.625rem;
 
-    /* Pastel tile tints used by the dashboard bento + accents */
-    --tile-cream: 36 45% 96%;
-    --tile-mist: 96 30% 90%;
-    --tile-sage: 108 22% 80%;
-    --tile-blush: 18 60% 92%;
-    --tile-sky: 200 55% 92%;
-    --tile-butter: 44 70% 90%;
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 142 6% 36%;
+    --sidebar-primary: 150 39% 30%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 142 26% 92%;
+    --sidebar-accent-foreground: 144 9% 11%;
+    --sidebar-border: 108 9% 89%;
+    --sidebar-ring: 150 39% 30%;
 
-    /* Sidebar — soft cream, sage active */
-    --sidebar-background: 36 38% 96%;
-    --sidebar-foreground: 110 10% 30%;
-    --sidebar-primary: 110 22% 42%;
-    --sidebar-primary-foreground: 40 40% 98%;
-    --sidebar-accent: 96 22% 90%;
-    --sidebar-accent-foreground: 110 18% 22%;
-    --sidebar-border: 96 18% 84%;
-    --sidebar-ring: 110 22% 46%;
-
-    /* Effects */
-    --gradient-surface: radial-gradient(120% 80% at 0% 0%, hsl(108 30% 78% / 0.35), transparent 60%);
-    --gradient-hero: linear-gradient(135deg, hsl(108 30% 80% / 0.55), hsl(36 50% 92% / 0.5) 60%, transparent);
-    --gradient-soft: linear-gradient(140deg, hsl(36 50% 96%), hsl(96 30% 92%));
-    --gradient-sage: linear-gradient(135deg, hsl(110 22% 56%), hsl(96 28% 70%));
-    --shadow-soft: 0 1px 0 hsl(0 0% 100% / 0.6) inset, 0 8px 24px -16px hsl(110 30% 20% / 0.18);
-    --shadow-elevation: 0 1px 0 hsl(0 0% 100% / 0.6) inset, 0 20px 50px -30px hsl(110 30% 20% / 0.30);
+    /* Effects — panels use a border, only floating layers get a shadow.
+       Gradients are retired; --gradient-sage is kept as a solid fill for legacy usages. */
+    --gradient-surface: none;
+    --gradient-hero: none;
+    --gradient-soft: none;
+    --gradient-sage: linear-gradient(hsl(var(--primary)), hsl(var(--primary)));
+    --shadow-soft: 0 0 #0000;
+    --shadow-elevation: 0 8px 24px -8px hsl(150 20% 10% / 0.18);
   }
 
   /* Mobile sidebar tracks the page background */
@@ -69,42 +74,51 @@
     :root {
       --sidebar-background: var(--background);
       --sidebar-foreground: var(--foreground);
-      --sidebar-accent: var(--accent);
-      --sidebar-accent-foreground: var(--accent-foreground);
       --sidebar-border: var(--border);
       --sidebar-ring: var(--ring);
     }
   }
 
-  /* Optional dusk-sage dark variant for explicit consumers */
   .dark {
-    --background: 120 10% 10%;
-    --foreground: 36 30% 94%;
-    --card: 120 10% 14%;
-    --card-foreground: 36 30% 94%;
-    --popover: 120 10% 14%;
-    --popover-foreground: 36 30% 94%;
-    --primary: 108 24% 66%;
-    --primary-foreground: 120 14% 10%;
-    --secondary: 120 8% 18%;
-    --secondary-foreground: 36 30% 94%;
-    --muted: 120 8% 18%;
-    --muted-foreground: 36 12% 70%;
-    --accent: 108 24% 60%;
-    --accent-foreground: 120 14% 10%;
-    --destructive: 0 62% 50%;
-    --destructive-foreground: 0 0% 100%;
-    --border: 120 8% 22%;
-    --input: 120 8% 22%;
-    --ring: 108 24% 66%;
-    --sidebar-background: 120 10% 8%;
-    --sidebar-foreground: 36 14% 70%;
-    --sidebar-primary: 108 24% 66%;
-    --sidebar-primary-foreground: 120 14% 10%;
-    --sidebar-accent: 120 8% 16%;
-    --sidebar-accent-foreground: 36 30% 94%;
-    --sidebar-border: 120 8% 18%;
-    --sidebar-ring: 108 24% 66%;
+    --background: 150 9% 9%;           /* #141816 */
+    --foreground: 105 9% 91%;          /* #E8EBE7 */
+    --card: 144 8% 12%;                /* #1B201D */
+    --card-foreground: 105 9% 91%;
+    --popover: 144 8% 12%;
+    --popover-foreground: 105 9% 91%;
+    --primary: 148 38% 63%;            /* #7CC49E */
+    --primary-foreground: 147 27% 8%;
+    --primary-soft: 147 24% 16%;
+    --secondary: 140 8% 15%;
+    --secondary-foreground: 105 9% 91%;
+    --muted: 140 8% 15%;
+    --muted-foreground: 142 6% 62%;    /* #98A39C */
+    --accent: 147 24% 16%;
+    --accent-foreground: 105 9% 91%;
+    --success: 148 38% 63%;
+    --success-foreground: 147 27% 8%;
+    --success-soft: 146 27% 12%;
+    --warning: 37 75% 63%;
+    --warning-foreground: 35 29% 13%;
+    --warning-soft: 35 29% 13%;
+    --destructive: 5 79% 72%;
+    --destructive-foreground: 6 30% 14%;
+    --destructive-soft: 6 30% 14%;
+    --info: 211 64% 73%;
+    --info-foreground: 211 30% 14%;
+    --info-soft: 211 30% 14%;
+    --border: 137 8% 18%;
+    --input: 140 7% 24%;
+    --ring: 148 38% 63%;
+    --sidebar-background: 140 9% 7%;
+    --sidebar-foreground: 142 6% 62%;
+    --sidebar-primary: 148 38% 63%;
+    --sidebar-primary-foreground: 147 27% 8%;
+    --sidebar-accent: 147 24% 16%;
+    --sidebar-accent-foreground: 105 9% 91%;
+    --sidebar-border: 137 8% 18%;
+    --sidebar-ring: 148 38% 63%;
+    --shadow-elevation: 0 8px 24px -8px hsl(0 0% 0% / 0.6);
   }
 }
 
@@ -123,10 +137,11 @@
     font-family: 'Figtree', system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    background-image:
-      radial-gradient(60% 40% at 15% 0%, hsl(108 30% 78% / 0.35), transparent 60%),
-      radial-gradient(50% 40% at 100% 10%, hsl(36 60% 88% / 0.45), transparent 60%);
-    background-attachment: fixed;
+  }
+
+  ::selection {
+    background-color: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
   }
 
   h1, h2, h3, h4 {
@@ -160,13 +175,6 @@
 }
 
 @layer utilities {
-  .bg-tile-cream  { background-color: hsl(var(--tile-cream)); }
-  .bg-tile-mist   { background-color: hsl(var(--tile-mist)); }
-  .bg-tile-sage   { background-color: hsl(var(--tile-sage)); }
-  .bg-tile-blush  { background-color: hsl(var(--tile-blush)); }
-  .bg-tile-sky    { background-color: hsl(var(--tile-sky)); }
-  .bg-tile-butter { background-color: hsl(var(--tile-butter)); }
-
   button:not(:disabled),
   [role="button"]:not(:disabled),
   a {

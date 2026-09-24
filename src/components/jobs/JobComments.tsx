@@ -173,7 +173,7 @@ export default function JobComments({ jobId, jobTitle }: Props) {
                     <div className={cn("flex items-center gap-1.5 text-xs text-muted-foreground", isOwn && "flex-row-reverse")}>
                       <span className="font-medium">{c.profiles?.full_name ?? "Unknown"}</span>
                       {c.is_internal && (
-                        <Badge variant="outline" className="py-0 px-1.5 text-[10px] border-amber-400 text-amber-600 dark:border-amber-700 dark:text-amber-400">
+                        <Badge variant="outline" className="py-0 px-1.5 text-xs border-amber-400 text-amber-600 dark:border-amber-700 dark:text-amber-400">
                           Internal
                         </Badge>
                       )}

@@ -232,7 +232,7 @@ export default function AdminRequests() {
                         <span className="text-xs uppercase tracking-wider text-muted-foreground">
                           {isQuote ? "Quote request" : "Job request"}
                         </span>
-                        <span className={cn("rounded-full px-2 py-0.5 text-[11px]", statusTone[r.status])}>
+                        <span className={cn("rounded-full px-2 py-0.5 text-xs", statusTone[r.status])}>
                           {statusLabel[r.status] || r.status}
                         </span>
                         <Badge variant="outline" className="capitalize">{r.priority}</Badge>
@@ -245,7 +245,7 @@ export default function AdminRequests() {
                         <span>Submitted {new Date(r.created_at).toLocaleString()}</span>
                       </div>
                       {isQuote && r.quoted_total != null && (r.status === "quoted" || r.status === "approved" || r.status === "declined_by_client") && (
-                        <div className="rounded-md border bg-tile-cream/40 px-3 py-2 text-xs">
+                        <div className="rounded-md border bg-secondary px-3 py-2 text-xs">
                           Quote total: <span className="font-semibold">{fmt(Number(r.quoted_total), r.quoted_currency || undefined)}</span>
                           {r.quote_expires_at && <> · expires {new Date(r.quote_expires_at).toLocaleDateString()}</>}
                           {r.client_decision_at && r.status === "approved" && <> · approved {new Date(r.client_decision_at).toLocaleString()}</>}

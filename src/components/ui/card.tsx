@@ -8,21 +8,23 @@ interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
   tone?: CardTone;
 }
 
+// Tones are deprecated: surfaces are neutral and colour is reserved for state.
+// The prop is kept so existing call sites compile; every tone renders as the card surface.
 const toneClass: Record<CardTone, string> = {
   default: "bg-card",
-  cream: "bg-tile-cream",
-  mist: "bg-tile-mist",
-  sage: "bg-tile-sage",
-  blush: "bg-tile-blush",
-  sky: "bg-tile-sky",
-  butter: "bg-tile-butter",
+  cream: "bg-card",
+  mist: "bg-card",
+  sage: "bg-card",
+  blush: "bg-card",
+  sky: "bg-card",
+  butter: "bg-card",
 };
 
 const Card = React.forwardRef<HTMLDivElement, CardProps>(({ className, tone = "default", ...props }, ref) => (
   <div
     ref={ref}
     className={cn(
-      "rounded-2xl border border-border/70 text-card-foreground card-soft",
+      "rounded-lg border border-border text-card-foreground",
       toneClass[tone],
       className,
     )}
@@ -40,7 +42,7 @@ CardHeader.displayName = "CardHeader";
 
 const CardTitle = React.forwardRef<HTMLParagraphElement, React.HTMLAttributes<HTMLHeadingElement>>(
   ({ className, ...props }, ref) => (
-    <h3 ref={ref} className={cn("text-2xl font-semibold leading-none tracking-tight", className)} {...props} />
+    <h3 ref={ref} className={cn("text-lg font-semibold leading-tight tracking-tight", className)} {...props} />
   ),
 );
 CardTitle.displayName = "CardTitle";

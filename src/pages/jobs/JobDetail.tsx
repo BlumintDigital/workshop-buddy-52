@@ -737,7 +737,7 @@ export default function JobDetail() {
         </div>
 
         {job.source_request_id && (role === "admin" || role === "manager") && (
-          <div className="rounded-md border border-primary/20 bg-tile-sage/40 px-4 py-2 text-sm flex items-center justify-between gap-3 flex-wrap">
+          <div className="rounded-md border border-border bg-primary-soft px-4 py-2 text-sm flex items-center justify-between gap-3 flex-wrap">
             <span className="text-foreground/80">This job was created from an approved client request.</span>
             <Link to={`/admin/requests?focus=${job.source_request_id}`} className="text-primary font-medium hover:underline">
               View request →
@@ -1066,13 +1066,13 @@ export default function JobDetail() {
                           <div className="flex items-start justify-between gap-1">
                             <span className="text-xs font-medium leading-tight">{event.label}</span>
                             {duration !== null && (
-                              <span className="text-[10px] text-muted-foreground shrink-0 mt-0.5">+{fmtDuration(duration)}</span>
+                              <span className="text-xs text-muted-foreground shrink-0 mt-0.5">+{fmtDuration(duration)}</span>
                             )}
                           </div>
                           {event.sub && (
-                            <p className="text-[10px] text-muted-foreground capitalize">{event.sub.replace(/_/g, " ")}</p>
+                            <p className="text-xs text-muted-foreground capitalize">{event.sub.replace(/_/g, " ")}</p>
                           )}
-                          <p className="text-[10px] text-muted-foreground mt-0.5">
+                          <p className="text-xs text-muted-foreground mt-0.5">
                             {event.at.toLocaleDateString(undefined, { month: "short", day: "numeric" })} · {event.at.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
                           </p>
                         </div>

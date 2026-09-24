@@ -138,12 +138,12 @@ export default function StaffDashboard() {
               <CardContent className="p-5 sm:p-6">
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground sm:text-xs">My queue</p>
+                    <p className="text-xs font-medium text-muted-foreground">My queue</p>
                     <h3 className="mt-1 text-display text-2xl sm:text-3xl">Jobs</h3>
                   </div>
                   <Link to="/staff/jobs" className="text-xs font-medium text-primary hover:underline">All</Link>
                 </div>
-                <div className="mt-3 flex flex-wrap gap-1 rounded-full border border-border/70 bg-card/60 p-1 text-[11px] sm:inline-flex sm:w-auto">
+                <div className="mt-3 flex flex-wrap gap-1 rounded-full border border-border/70 bg-card/60 p-1 text-xs sm:inline-flex sm:w-auto">
                   {(["active", "in_progress", "pending", "completed"] as const).map((f) => (
                     <button
                       key={f}
@@ -176,11 +176,11 @@ export default function StaffDashboard() {
                         </div>
                         <div className="flex items-center gap-2">
                           {j.priority && j.priority !== "normal" && (
-                            <span className="rounded-full bg-tile-blush px-2 py-0.5 text-[11px] capitalize text-foreground/80">
+                            <span className="rounded-full bg-warning-soft px-2 py-0.5 text-xs font-medium capitalize text-warning">
                               {j.priority}
                             </span>
                           )}
-                          <span className={cn("rounded-full px-2 py-0.5 text-[11px] capitalize", statusTone[j.status] || "bg-muted")}>
+                          <span className={cn("rounded-full px-2 py-0.5 text-xs capitalize", statusTone[j.status] || "bg-muted")}>
                             {j.status.replace("_", " ")}
                           </span>
                         </div>
@@ -196,7 +196,7 @@ export default function StaffDashboard() {
               <CardContent className="flex h-full flex-col p-5 sm:p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground sm:text-xs">Today</p>
+                    <p className="text-xs font-medium text-muted-foreground">Today</p>
                     <h3 className="mt-1 text-display text-2xl">Schedule</h3>
                   </div>
                   <Link to="/staff/schedule" className="text-xs font-medium text-primary hover:underline">Open</Link>
@@ -216,7 +216,7 @@ export default function StaffDashboard() {
                           <p className="truncate text-sm font-medium">{a.title || "Appointment"}</p>
                           <p className="text-xs text-muted-foreground">{(a.appointment_time || "").slice(0, 5)}</p>
                         </div>
-                        <span className="rounded-full bg-tile-sage px-2 py-0.5 text-[11px] text-foreground/80">Today</span>
+                        <span className="rounded-full bg-info-soft px-2 py-0.5 text-xs font-medium text-info">Today</span>
                       </div>
                     ))
                   )}
@@ -226,7 +226,7 @@ export default function StaffDashboard() {
 
             <Card tone="sage" className="lg:col-span-3">
               <CardContent className="p-5">
-                <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.18em] text-foreground/70 sm:text-xs">
+                <div className="flex items-center justify-between text-xs font-medium text-foreground/70">
                   Assigned <Briefcase className="h-4 w-4" />
                 </div>
                 <p className="mt-3 text-display text-[2rem] leading-none tabular-nums sm:text-4xl">{stats.assigned}</p>
@@ -235,7 +235,7 @@ export default function StaffDashboard() {
             </Card>
             <Card tone="sky" className="lg:col-span-3">
               <CardContent className="p-5">
-                <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.18em] text-foreground/70 sm:text-xs">
+                <div className="flex items-center justify-between text-xs font-medium text-foreground/70">
                   In progress <Clock className="h-4 w-4" />
                 </div>
                 <p className="mt-3 text-display text-[2rem] leading-none tabular-nums sm:text-4xl">{stats.inProgress}</p>
@@ -244,7 +244,7 @@ export default function StaffDashboard() {
             </Card>
             <Card tone="butter" className="lg:col-span-3">
               <CardContent className="p-5">
-                <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.18em] text-foreground/70 sm:text-xs">
+                <div className="flex items-center justify-between text-xs font-medium text-foreground/70">
                   Pending <ListChecks className="h-4 w-4" />
                 </div>
                 <p className="mt-3 text-display text-[2rem] leading-none tabular-nums sm:text-4xl">{stats.pending}</p>
@@ -253,7 +253,7 @@ export default function StaffDashboard() {
             </Card>
             <Card tone="blush" className="lg:col-span-3">
               <CardContent className="p-5">
-                <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.18em] text-foreground/70 sm:text-xs">
+                <div className="flex items-center justify-between text-xs font-medium text-foreground/70">
                   Completed <CheckCircle2 className="h-4 w-4" />
                 </div>
                 <p className="mt-3 text-display text-[2rem] leading-none tabular-nums sm:text-4xl">{stats.completed}</p>

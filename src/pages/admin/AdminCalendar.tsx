@@ -186,7 +186,7 @@ export default function AdminCalendar() {
       draggable={ev.type === "job"}
       onDragStart={ev.type === "job" ? (e) => { e.stopPropagation(); handleDragStart(e, ev.id); } : undefined}
       className={cn(
-        "text-[10px] leading-tight px-1 py-0.5 rounded truncate border-l-2",
+        "text-xs leading-tight px-1 py-0.5 rounded truncate border-l-2",
         ev.type === "appointment"
           ? "bg-primary/10 text-primary border-l-blue-500"
           : cn("bg-secondary text-secondary-foreground cursor-grab active:cursor-grabbing", priorityColors[ev.priority || "medium"]),
@@ -241,7 +241,7 @@ export default function AdminCalendar() {
         <div className="mt-1 space-y-0.5">
           {dayEvents.slice(0, maxShow).map(renderEventPill)}
           {!isWeek && dayEvents.length > 3 && (
-            <span className="text-[10px] text-muted-foreground px-1">+{dayEvents.length - 3} more</span>
+            <span className="text-xs text-muted-foreground px-1">+{dayEvents.length - 3} more</span>
           )}
         </div>
       </div>
@@ -262,21 +262,21 @@ export default function AdminCalendar() {
             <Briefcase className="h-4 w-4 sm:h-5 sm:w-5 text-primary shrink-0" />
             <div className="text-center sm:text-left min-w-0">
               <p className="text-xl sm:text-2xl font-bold">{totalJobs}</p>
-              <p className="text-[10px] sm:text-xs text-muted-foreground leading-tight">Jobs this month</p>
+              <p className="text-xs text-muted-foreground leading-tight">Jobs this month</p>
             </div>
           </Card>
           <Card className="p-3 sm:p-4 flex flex-col sm:flex-row items-center gap-1 sm:gap-3">
             <CalendarDays className="h-4 w-4 sm:h-5 sm:w-5 text-primary shrink-0" />
             <div className="text-center sm:text-left min-w-0">
               <p className="text-xl sm:text-2xl font-bold">{totalAppts}</p>
-              <p className="text-[10px] sm:text-xs text-muted-foreground leading-tight">Appointments</p>
+              <p className="text-xs text-muted-foreground leading-tight">Appointments</p>
             </div>
           </Card>
           <Card className="p-3 sm:p-4 flex flex-col sm:flex-row items-center gap-1 sm:gap-3">
             <AlertTriangle className="h-4 w-4 sm:h-5 sm:w-5 text-destructive shrink-0" />
             <div className="text-center sm:text-left min-w-0">
               <p className="text-xl sm:text-2xl font-bold">{overdueJobs}</p>
-              <p className="text-[10px] sm:text-xs text-muted-foreground leading-tight">Overdue jobs</p>
+              <p className="text-xs text-muted-foreground leading-tight">Overdue jobs</p>
             </div>
           </Card>
         </div>
@@ -384,14 +384,14 @@ export default function AdminCalendar() {
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
                           {ev.type === "job" && ev.priority && (
-                            <Badge variant="secondary" className={cn("text-[10px] capitalize", priorityBadgeColors[ev.priority])}>
+                            <Badge variant="secondary" className={cn("text-xs capitalize", priorityBadgeColors[ev.priority])}>
                               {ev.priority}
                             </Badge>
                           )}
-                          <Badge variant={ev.type === "appointment" ? "default" : "secondary"} className={cn("text-[10px] capitalize", ev.type === "job" && statusBadgeColors[ev.status])}>
+                          <Badge variant={ev.type === "appointment" ? "default" : "secondary"} className={cn("text-xs capitalize", ev.type === "job" && statusBadgeColors[ev.status])}>
                             {ev.status.replace("_", " ")}
                           </Badge>
-                          <Badge variant="outline" className="text-[10px] capitalize">{ev.type}</Badge>
+                          <Badge variant="outline" className="text-xs capitalize">{ev.type}</Badge>
                         </div>
                       </div>
                       {ev.type === "job" && (

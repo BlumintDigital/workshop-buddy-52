@@ -43,7 +43,7 @@ export function RecentActivity({ activities, title = "Recent Activity" }: { acti
                   <p className="truncate text-sm font-medium leading-none">{a.title}</p>
                   <p className="text-xs text-muted-foreground">{a.date}</p>
                 </div>
-                <span className={cn("shrink-0 rounded-full border px-2.5 py-0.5 text-[11px] font-medium capitalize", statusStyle(a.status))}>
+                <span className={cn("shrink-0 rounded-full border px-2.5 py-0.5 text-xs font-medium capitalize", statusStyle(a.status))}>
                   {a.status.replace("_", " ")}
                 </span>
               </div>

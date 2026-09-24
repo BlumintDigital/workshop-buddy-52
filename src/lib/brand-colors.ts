@@ -6,12 +6,12 @@ export type BrandColors = {
 };
 
 export const DEFAULT_BRAND = {
-  primary: "110 14% 54%",
+  primary: "150 39% 30%",
   accent: "82 35% 70%",
 } as const;
 
 export const PRESETS: { name: string; hex: string }[] = [
-  { name: "Sage", hex: "#7d9b76" },
+  { name: "Sage", hex: "#2e6a4c" },
   { name: "Indigo", hex: "#4f46e5" },
   { name: "Rose", hex: "#e11d48" },
   { name: "Amber", hex: "#d97706" },
@@ -73,15 +73,57 @@ function adjustL(hsl: string, delta: number): string {
   return `${parts[0]} ${parts[1]} ${l}%`;
 }
 
+function relativeLuminance(hex: string): number {
+  const [r, g, b] = [1, 3, 5].map((i) => {
+    const c = parseInt(hex.slice(i, i + 2), 16) / 255;
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+/** Contrast ratio of an HSL colour against white text (WCAG 2.1). */
+export function contrastWithWhite(hsl: string): number | null {
+  const hex = hslStringToHex(hsl);
+  if (!hex) return null;
+  return 1.05 / (relativeLuminance(hex) + 0.05);
+}
+
+/**
+ * Darkens a brand primary until white text on it reaches WCAG AA (4.5:1),
+ * so any colour an admin picks still yields readable buttons and links.
+ */
+export function ensureReadablePrimary(hsl: string): string {
+  const parts = hsl.trim().split(/\s+/);
+  if (parts.length !== 3) return hsl;
+  let l = parseFloat(parts[2]);
+  let candidate = hsl;
+  while (l > 5) {
+    const ratio = contrastWithWhite(candidate);
+    if (ratio === null || ratio >= 4.5) return candidate;
+    l -= 2;
+    candidate = `${parts[0]} ${parts[1]} ${l}%`;
+  }
+  return candidate;
+}
+
+/** Pale tint of the primary hue for selected / highlighted surfaces. */
+function softTint(hsl: string): string {
+  const parts = hsl.trim().split(/\s+/);
+  if (parts.length !== 3) return hsl;
+  const s = Math.min(parseFloat(parts[1]), 40);
+  return `${parts[0]} ${s}% 92%`;
+}
+
 export function applyBrandColors(colors: BrandColors) {
   const root = document.documentElement;
-  const primary = colors.primary || null;
+  const primary = colors.primary ? ensureReadablePrimary(colors.primary) : null;
   const accent = colors.accent || null;
   const setOrClear = (prop: string, value: string | null) => {
     if (value) root.style.setProperty(prop, value);
     else root.style.removeProperty(prop);
   };
   setOrClear("--primary", primary);
+  setOrClear("--primary-soft", primary ? softTint(primary) : null);
   setOrClear("--sidebar-primary", primary);
   setOrClear("--ring", primary);
   setOrClear("--accent", accent);

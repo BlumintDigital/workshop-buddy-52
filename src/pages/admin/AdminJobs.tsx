@@ -260,7 +260,7 @@ export default function AdminJobs() {
                           {job.title}
                         </Link>
                         {job.source_request_id && (
-                          <span className="mt-1 inline-block rounded-full bg-tile-sage/60 px-2 py-0.5 text-[10px] uppercase tracking-wider text-foreground/70">
+                          <span className="mt-1 inline-block rounded-full bg-secondary px-2 py-0.5 text-xs font-medium text-muted-foreground">
                             From request
                           </span>
                         )}
@@ -298,7 +298,7 @@ export default function AdminJobs() {
                     <Badge variant={statusColors[job.status]} className="shrink-0">{job.status.replace("_", " ")}</Badge>
                   </div>
                   {job.source_request_id && (
-                    <span className="mt-1 inline-block rounded-full bg-tile-sage/60 px-2 py-0.5 text-[10px] uppercase tracking-wider text-foreground/70">
+                    <span className="mt-1 inline-block rounded-full bg-secondary px-2 py-0.5 text-xs font-medium text-muted-foreground">
                       From request
                     </span>
                   )}

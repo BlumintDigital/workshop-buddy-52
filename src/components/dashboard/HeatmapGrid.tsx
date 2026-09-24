@@ -27,13 +27,13 @@ export function HeatmapGrid({ data, hours, className }: HeatmapGridProps) {
       <div className="grid gap-1.5" style={{ gridTemplateColumns: `40px repeat(${days.length}, minmax(0,1fr))` }}>
         <div />
         {days.map((d) => (
-          <div key={d} className="text-center text-[10px] uppercase tracking-wider text-muted-foreground">
+          <div key={d} className="text-center text-xs text-muted-foreground">
             {d}
           </div>
         ))}
         {hours.map((h, hourIdx) => (
           <>
-            <div key={`label-${h}`} className="text-right text-[10px] text-muted-foreground/80">{h}</div>
+            <div key={`label-${h}`} className="text-right text-xs text-muted-foreground/80">{h}</div>
             {days.map((d, dayIdx) => (
               <div
                 key={`${h}-${d}`}
@@ -44,7 +44,7 @@ export function HeatmapGrid({ data, hours, className }: HeatmapGridProps) {
           </>
         ))}
       </div>
-      <div className="mt-3 flex items-center justify-end gap-2 text-[10px] text-muted-foreground">
+      <div className="mt-3 flex items-center justify-end gap-2 text-xs text-muted-foreground">
         <span>Less</span>
         {[0.1, 0.3, 0.55, 0.8, 1].map((t) => (
           <div key={t} className={cn("h-2.5 w-2.5 rounded-sm", cell(t * max))} />

@@ -31,7 +31,7 @@ export function LiveTickerStrip({ items }: { items: TickerItem[] }) {
                 </div>
               )}
               <div className="min-w-0">
-                <p className="text-[11px] uppercase tracking-wider text-muted-foreground">{item.label}</p>
+                <p className="text-xs text-muted-foreground">{item.label}</p>
                 <p className={cn("text-display text-2xl leading-tight tabular-nums", toneMap[item.tone ?? "default"])}>
                   {item.value}
                 </p>

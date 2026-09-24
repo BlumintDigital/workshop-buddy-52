@@ -127,8 +127,8 @@ export default function AdminDashboard() {
               <CardContent className="flex h-full flex-col gap-6 p-5 sm:p-7 lg:p-8">
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground sm:text-xs">
-                      Revenue · last 6 months
+                    <p className="text-xs font-medium text-muted-foreground">
+                      Revenue, {new Date().toLocaleDateString(undefined, { month: "long" })}
                     </p>
                     <p className="mt-3 break-words text-display text-[2.5rem] leading-[0.95] tracking-tight tabular-nums sm:text-6xl lg:text-[4rem]">
                       {format(stats.revenueMonth)}
@@ -137,22 +137,22 @@ export default function AdminDashboard() {
                       {stats.revenueDelta !== 0 && (
                         <span className={cn(
                           "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium",
-                          deltaPositive ? "bg-tile-sage text-foreground/80" : "bg-tile-blush text-foreground/80",
+                          deltaPositive ? "bg-success-soft text-success" : "bg-destructive-soft text-destructive",
                         )}>
                           {deltaPositive ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
                           {Math.abs(stats.revenueDelta)}%
                         </span>
                       )}
-                      <span className="text-muted-foreground">vs. previous month</span>
+                      <span className="text-muted-foreground">vs. previous month · trend over the last 6 months below</span>
                     </div>
                   </div>
-                  <div className="shrink-0 rounded-2xl bg-tile-sage p-3 ring-1 ring-foreground/5">
+                  <div className="shrink-0 rounded-lg bg-secondary p-3">
                     <Receipt className="h-5 w-5 text-foreground/70" />
                   </div>
                 </div>
                 <div className="mt-auto">
                   <Sparkline values={revenueSeries.map((s) => s.value)} />
-                  <div className="mt-2 grid grid-cols-6 text-[10px] uppercase tracking-wider text-muted-foreground sm:text-[11px]">
+                  <div className="mt-2 grid grid-cols-6 text-xs text-muted-foreground">
                     {revenueSeries.map((s) => (
                       <span key={s.label} className="text-center">{s.label}</span>
                     ))}
@@ -167,7 +167,7 @@ export default function AdminDashboard() {
               <CardContent className="flex h-full flex-col p-5 sm:p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground sm:text-xs">Today</p>
+                    <p className="text-xs font-medium text-muted-foreground">Today</p>
                     <h3 className="mt-1 text-display text-2xl tracking-tight">Schedule</h3>
                   </div>
                   <Link to="/admin/appointments" className="text-xs font-medium text-primary hover:underline">Open</Link>
@@ -187,7 +187,7 @@ export default function AdminDashboard() {
                           <p className="truncate text-sm font-medium">{a.title || "Appointment"}</p>
                           <p className="text-xs text-muted-foreground">{(a.appointment_time || "").slice(0, 5)}</p>
                         </div>
-                        <span className="rounded-full bg-tile-sage px-2 py-0.5 text-[11px] font-medium text-foreground/80">Today</span>
+                        <span className="rounded-full bg-info-soft px-2 py-0.5 text-xs font-medium text-info">Today</span>
                       </div>
                     ))
                   )}
@@ -198,7 +198,7 @@ export default function AdminDashboard() {
             {/* Metric tiles row */}
             <Card tone="sage" className="lg:col-span-3">
               <CardContent className="p-5">
-                <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.18em] text-foreground/70 sm:text-xs">
+                <div className="flex items-center justify-between text-xs font-medium text-foreground/70">
                   Active jobs <Briefcase className="h-4 w-4" />
                 </div>
                 <p className="mt-3 text-display text-[2.25rem] leading-none tabular-nums sm:text-4xl">{stats.activeJobs}</p>
@@ -208,7 +208,7 @@ export default function AdminDashboard() {
 
             <Card tone="butter" className="lg:col-span-3">
               <CardContent className="p-5">
-                <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.18em] text-foreground/70 sm:text-xs">
+                <div className="flex items-center justify-between text-xs font-medium text-foreground/70">
                   Pending review <Clock className="h-4 w-4" />
                 </div>
                 <p className="mt-3 text-display text-[2.25rem] leading-none tabular-nums sm:text-4xl">{stats.pendingApprovals}</p>
@@ -218,7 +218,7 @@ export default function AdminDashboard() {
 
             <Card tone="blush" className="lg:col-span-2">
               <CardContent className="p-5">
-                <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.18em] text-foreground/70 sm:text-xs">
+                <div className="flex items-center justify-between text-xs font-medium text-foreground/70">
                   Low stock <AlertTriangle className="h-4 w-4" />
                 </div>
                 <p className="mt-3 text-display text-[2.25rem] leading-none tabular-nums sm:text-4xl">{stats.lowStock}</p>
@@ -254,7 +254,7 @@ export default function AdminDashboard() {
               <CardContent className="p-5 sm:p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground sm:text-xs">Team</p>
+                    <p className="text-xs font-medium text-muted-foreground">Team</p>
                     <h3 className="mt-1 text-display text-2xl tracking-tight">Staff load</h3>
                   </div>
                   <Link to="/admin/users" className="text-xs font-medium text-primary hover:underline">View team</Link>
@@ -287,7 +287,7 @@ export default function AdminDashboard() {
               <CardContent className="p-5 sm:p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground sm:text-xs">Recent</p>
+                    <p className="text-xs font-medium text-muted-foreground">Recent</p>
                     <h3 className="mt-1 text-display text-2xl tracking-tight">Jobs</h3>
                   </div>
                   <Link to="/admin/jobs" className="text-xs font-medium text-primary hover:underline">All</Link>
@@ -306,7 +306,7 @@ export default function AdminDashboard() {
                           <p className="truncate text-sm font-medium">{j.title}</p>
                           <p className="text-xs text-muted-foreground">{j.date}</p>
                         </div>
-                        <span className={cn("rounded-full px-2 py-0.5 text-[11px] font-medium capitalize", statusTone[j.status] || "bg-muted")}>
+                        <span className={cn("rounded-full px-2 py-0.5 text-xs font-medium capitalize", statusTone[j.status] || "bg-muted")}>
                           {j.status.replace("_", " ")}
                         </span>
                       </Link>
@@ -319,7 +319,7 @@ export default function AdminDashboard() {
             {/* Bottom: extra context */}
             <Card tone="cream" className="lg:col-span-4">
               <CardContent className="p-5">
-                <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.18em] text-foreground/70 sm:text-xs">
+                <div className="flex items-center justify-between text-xs font-medium text-foreground/70">
                   Inventory <Package className="h-4 w-4" />
                 </div>
                 <p className="mt-3 text-display text-[2.25rem] leading-none tabular-nums sm:text-4xl">{stats.inventory}</p>
@@ -328,7 +328,7 @@ export default function AdminDashboard() {
             </Card>
             <Card tone="mist" className="lg:col-span-4">
               <CardContent className="p-5">
-                <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.18em] text-foreground/70 sm:text-xs">
+                <div className="flex items-center justify-between text-xs font-medium text-foreground/70">
                   Overdue invoices <Receipt className="h-4 w-4" />
                 </div>
                 <p className="mt-3 text-display text-[2.25rem] leading-none tabular-nums sm:text-4xl">{stats.overdueInvoices}</p>
@@ -337,7 +337,7 @@ export default function AdminDashboard() {
             </Card>
             <Card tone="sage" className="col-span-2 lg:col-span-4">
               <CardContent className="p-5">
-                <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.18em] text-foreground/70 sm:text-xs">
+                <div className="flex items-center justify-between text-xs font-medium text-foreground/70">
                   Appointments <Calendar className="h-4 w-4" />
                 </div>
                 <p className="mt-3 text-display text-[2.25rem] leading-none tabular-nums sm:text-4xl">{stats.appointments}</p>

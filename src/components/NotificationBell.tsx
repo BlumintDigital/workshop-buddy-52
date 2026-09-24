@@ -79,7 +79,7 @@ export function NotificationBell() {
         <Button variant="ghost" size="icon" className="relative h-9 w-9 min-h-[44px] min-w-[44px]">
           <Bell className="h-5 w-5" />
           {unreadCount > 0 && (
-            <Badge className="absolute -top-1 -right-1 h-5 min-w-[20px] rounded-full px-1.5 text-[10px] font-bold">
+            <Badge className="absolute -top-1 -right-1 h-5 min-w-[20px] rounded-full px-1.5 text-xs font-bold">
               {unreadCount > 9 ? "9+" : unreadCount}
             </Badge>
           )}
@@ -111,7 +111,7 @@ export function NotificationBell() {
                   <div className={!notif.read ? "" : "pl-4"}>
                     <p className="text-sm font-medium leading-tight">{notif.title}</p>
                     {notif.message && <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{notif.message}</p>}
-                    <p className="text-[10px] text-muted-foreground mt-1">{new Date(notif.created_at).toLocaleString()}</p>
+                    <p className="text-xs text-muted-foreground mt-1">{new Date(notif.created_at).toLocaleString()}</p>
                   </div>
                 </div>
               </button>

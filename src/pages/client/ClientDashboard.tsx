@@ -183,7 +183,7 @@ export default function ClientDashboard() {
         </div>
 
         {missingContactDetails.length > 0 && (
-          <Card className="border-tile-butter/60 bg-tile-butter/40">
+          <Card className="border-warning/40 bg-warning-soft">
             <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="min-w-0">
                 <p className="text-sm font-semibold text-foreground">Finish setting up your profile</p>
@@ -208,7 +208,7 @@ export default function ClientDashboard() {
         ) : stats.jobs === 0 && stats.invoices === 0 && stats.appointments === 0 ? (
           <Card tone="cream">
             <CardContent className="flex flex-col items-center justify-center gap-3 py-16 text-center">
-              <div className="rounded-2xl bg-tile-sage p-4">
+              <div className="rounded-lg bg-secondary p-4">
                 <Briefcase className="h-8 w-8 text-foreground/60" />
               </div>
               <h3 className="text-display text-2xl">Welcome aboard</h3>
@@ -227,7 +227,7 @@ export default function ClientDashboard() {
               <CardContent className="flex h-full flex-col gap-6 p-5 sm:p-6">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground sm:text-xs">Outstanding balance</p>
+                    <p className="text-xs font-medium text-muted-foreground">Outstanding balance</p>
                     <p className="mt-2 text-display text-[2.25rem] leading-none tabular-nums sm:text-5xl lg:text-6xl break-words">
                       {format(stats.balance)}
                     </p>
@@ -235,7 +235,7 @@ export default function ClientDashboard() {
                       {stats.unpaid === 0 ? "All caught up — nothing due." : `${stats.unpaid} invoice${stats.unpaid === 1 ? "" : "s"} awaiting payment`}
                     </p>
                   </div>
-                  <div className="rounded-2xl bg-tile-sage p-3">
+                  <div className="rounded-lg bg-secondary p-3">
                     <Receipt className="h-5 w-5 text-foreground/70" />
                   </div>
                 </div>
@@ -258,7 +258,7 @@ export default function ClientDashboard() {
                         </div>
                         <div className="flex items-center gap-2">
                           <span className="text-sm font-semibold tabular-nums">{format(Number(inv.total) || 0, inv.currency || undefined)}</span>
-                          <span className={cn("rounded-full px-2 py-0.5 text-[11px] capitalize", invoiceTone[inv.status] || "bg-muted")}>
+                          <span className={cn("rounded-full px-2 py-0.5 text-xs capitalize", invoiceTone[inv.status] || "bg-muted")}>
                             {inv.status}
                           </span>
                         </div>
@@ -350,12 +350,12 @@ export default function ClientDashboard() {
               <CardContent className="p-5 sm:p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground sm:text-xs">Recent</p>
+                    <p className="text-xs font-medium text-muted-foreground">Recent</p>
                     <h3 className="mt-1 text-display text-2xl">Your jobs</h3>
                   </div>
                   <Link to="/client/jobs" className="text-xs text-primary hover:underline">All</Link>
                 </div>
-                <div className="mt-3 inline-flex rounded-full border border-border/70 bg-card/60 p-1 text-[11px]">
+                <div className="mt-3 inline-flex rounded-full border border-border/70 bg-card/60 p-1 text-xs">
                   {(["active", "completed", "all"] as const).map((f) => (
                     <button
                       key={f}
@@ -383,7 +383,7 @@ export default function ClientDashboard() {
                           <p className="truncate text-sm font-medium">{j.title}</p>
                           <p className="text-xs text-muted-foreground">{j.date}</p>
                         </div>
-                        <span className={cn("rounded-full px-2 py-0.5 text-[11px] capitalize", statusTone[j.status] || "bg-muted")}>
+                        <span className={cn("rounded-full px-2 py-0.5 text-xs capitalize", statusTone[j.status] || "bg-muted")}>
                           {j.status.replace("_", " ")}
                         </span>
                       </Link>

@@ -86,11 +86,11 @@ export default function NotificationsPanel() {
       <CardContent className="p-5 sm:p-6">
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground sm:text-xs">Updates</p>
+            <p className="text-xs font-medium text-muted-foreground">Updates</p>
             <h3 className="mt-1 flex items-center gap-2 text-display text-2xl">
               <Bell className="h-5 w-5 text-primary" /> Notifications
               {unread > 0 && (
-                <span className="rounded-full bg-primary px-2 py-0.5 text-[11px] font-semibold text-primary-foreground">
+                <span className="rounded-full bg-primary px-2 py-0.5 text-xs font-medium text-primary-foreground">
                   {unread} new
                 </span>
               )}
@@ -126,13 +126,13 @@ export default function NotificationsPanel() {
                       {n.title}
                     </p>
                     {n.message && <p className="mt-0.5 text-xs text-muted-foreground line-clamp-2">{n.message}</p>}
-                    <p className="mt-1 text-[11px] text-muted-foreground/80">{timeAgo(n.created_at)}</p>
+                    <p className="mt-1 text-xs text-muted-foreground/80">{timeAgo(n.created_at)}</p>
                   </div>
                 </div>
               );
               const cls = cn(
                 "block rounded-xl px-3 py-3 min-h-[56px] transition-colors",
-                n.read ? "hover:bg-secondary/60" : "bg-tile-sage/40 hover:bg-tile-sage/60",
+                n.read ? "hover:bg-secondary/60" : "bg-primary-soft hover:bg-primary-soft/70",
               );
               return n.link ? (
                 <Link key={n.id} to={n.link} onClick={() => markOne(n)} className={cls}>

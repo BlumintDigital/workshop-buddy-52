@@ -104,7 +104,7 @@ export default function NewRequestDialog({ open, onOpenChange, onCreated }: Prop
           <div>
             <Label>Title <span className="text-destructive">*</span></Label>
             <Input value={title} onChange={(e) => setTitle(e.target.value.slice(0, 120))} placeholder="e.g. Brake pad replacement" />
-            <p className="mt-1 text-[11px] text-muted-foreground text-right">{title.length}/120</p>
+            <p className="mt-1 text-xs text-muted-foreground text-right">{title.length}/120</p>
           </div>
 
           <div>
@@ -115,7 +115,7 @@ export default function NewRequestDialog({ open, onOpenChange, onCreated }: Prop
               placeholder="Describe what you need…"
               rows={4}
             />
-            <p className="mt-1 text-[11px] text-muted-foreground text-right">{description.length}/1000</p>
+            <p className="mt-1 text-xs text-muted-foreground text-right">{description.length}/1000</p>
           </div>
 
           <div className="grid grid-cols-2 gap-3">

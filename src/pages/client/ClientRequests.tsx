@@ -172,7 +172,7 @@ export default function ClientRequests() {
                           <span className="text-xs uppercase tracking-wider text-muted-foreground">
                             {r.request_type === "quote" ? "Quote request" : "Job request"}
                           </span>
-                          <span className={cn("rounded-full px-2 py-0.5 text-[11px]", statusTone[r.status])}>
+                          <span className={cn("rounded-full px-2 py-0.5 text-xs", statusTone[r.status])}>
                             {statusLabel[r.status]}
                           </span>
                         </div>
@@ -201,7 +201,7 @@ export default function ClientRequests() {
 
                     {/* Quote details */}
                     {(r.status === "quoted" || r.status === "approved" || r.status === "declined_by_client") && quoteItems.length > 0 && (
-                      <div className="rounded-xl border bg-tile-cream/40 p-3">
+                      <div className="rounded-lg border bg-secondary p-3">
                         <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Quote details</p>
                         <ul className="space-y-1 text-sm">
                           {quoteItems.map((it) => (
@@ -236,7 +236,7 @@ export default function ClientRequests() {
                     )}
 
                     {r.status === "approved" && (
-                      <p className="rounded-md bg-tile-sage/40 px-3 py-2 text-xs">
+                      <p className="rounded-md bg-primary-soft px-3 py-2 text-xs">
                         Thanks — the workshop will convert this into a job and contact you with next steps.
                       </p>
                     )}

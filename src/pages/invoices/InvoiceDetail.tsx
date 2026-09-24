@@ -441,7 +441,7 @@ export default function InvoiceDetail() {
 
 
         {canManage && sourceRequestId && (
-          <div className="rounded-xl border border-primary/30 bg-tile-sage/40 px-4 py-3 text-sm">
+          <div className="rounded-lg border border-border bg-primary-soft px-4 py-3 text-sm">
             Originated from a client request.{" "}
             <Link to={`/admin/requests?focus=${sourceRequestId}`} className="font-medium text-primary hover:underline">
               View request →
@@ -450,7 +450,7 @@ export default function InvoiceDetail() {
         )}
 
         {canManage && invoice.client_marked_paid_at && invoice.status !== "paid" && (
-          <div className="rounded-xl border border-primary/30 bg-tile-butter/40 px-4 py-3 text-sm flex items-center justify-between gap-3 flex-wrap">
+          <div className="rounded-lg border border-warning/40 bg-warning-soft px-4 py-3 text-sm flex items-center justify-between gap-3 flex-wrap">
             <span>The client marked this invoice as paid on {new Date(invoice.client_marked_paid_at).toLocaleString()}.</span>
             <Button size="sm" onClick={() => void markPaymentReceived()} disabled={confirmingPaid}>
               {confirmingPaid ? "Saving..." : "Confirm payment received"}
@@ -572,14 +572,14 @@ export default function InvoiceDetail() {
             )}
 
             {isClient && !invoice.stripe_payment_url && invoice.payment_instructions && invoice.status !== "paid" && (
-              <div className="rounded-xl border border-primary/30 bg-tile-sage/40 px-4 py-3">
+              <div className="rounded-lg border border-border bg-primary-soft px-4 py-3">
                 <p className="text-xs font-medium text-foreground mb-1">Payment instructions</p>
                 <p className="text-sm whitespace-pre-wrap text-foreground/80">{invoice.payment_instructions}</p>
               </div>
             )}
 
             {isClient && invoice.client_marked_paid_at && invoice.status !== "paid" && (
-              <div className="rounded-xl border border-primary/30 bg-tile-butter/40 px-4 py-3 text-sm">
+              <div className="rounded-lg border border-warning/40 bg-warning-soft px-4 py-3 text-sm">
                 You've let us know you paid on {new Date(invoice.client_marked_paid_at).toLocaleString()}. We'll confirm shortly.
               </div>
             )}
