@@ -1,11 +1,8 @@
-import PageActions from "@/components/admin/PageActions";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { appointmentSchema } from "@/lib/schemas/appointment";
 import DashboardLayout from "@/components/layout/DashboardLayout";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,22 +10,32 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, MoreHorizontal, Briefcase, Download, FileText, Eye } from "lucide-react";
-import { Link } from "react-router-dom";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Plus, MoreHorizontal, Briefcase, Download, FileText } from "lucide-react";
 import { DatePickerInput } from "@/components/ui/date-picker-input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { generateICS, downloadICS } from "@/lib/ical";
 import { toast } from "sonner";
 import { sendEmail, appointmentConfirmedEmailHtml } from "@/lib/email";
-import { Pagination, PaginationContent, PaginationItem, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import { usePagination, PAGE_SIZE } from "@/hooks/usePagination";
-import { Skeleton } from "@/components/ui/skeleton";
+import { PageBar } from "@/components/dashboard/PageBar";
+import { StatusPill, type StatusTone } from "@/components/dashboard/StatusPill";
+import { ListControls, type FilterOption } from "@/components/list/ListControls";
+import { DataList, type Column } from "@/components/list/DataList";
+import { ListPagination } from "@/components/list/ListPagination";
+import { EmptyState } from "@/components/list/EmptyState";
+import { todayIso } from "@/lib/dashboardQueries";
 
-const statusColors: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
-  pending: "outline", confirmed: "secondary", in_progress: "default", completed: "default", cancelled: "destructive",
+const APPT_TONE: Record<string, StatusTone> = {
+  pending: "neutral", confirmed: "info", in_progress: "info", completed: "success", cancelled: "neutral",
 };
+const APPT_LABEL: Record<string, string> = {
+  pending: "Pending", confirmed: "Confirmed", in_progress: "In progress", completed: "Completed", cancelled: "Cancelled",
+};
+
+function formatDate(iso: string) {
+  return iso ? new Date(iso).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" }) : "—";
+}
 
 const APPT_TYPES = ["consultation", "repair", "inspection", "pickup", "delivery"];
 const APPT_STATUSES = ["pending", "confirmed", "in_progress", "completed", "cancelled"];
@@ -65,18 +72,27 @@ export default function AdminAppointments() {
   const [jobForm, setJobForm] = useState({ ...emptyJobForm });
   const [creatingJob, setCreatingJob] = useState(false);
 
-  const { page, setPage } = usePagination();
+  const { page, setPage, reset } = usePagination();
+  const [filter, setFilter] = useState("upcoming");
 
-  const fetchAppointments = async (currentPage = page) => {
+  const fetchAppointments = async (currentPage = page, currentFilter = filter) => {
     setIsLoading(true);
-    const { data: appts, count } = await supabase
-      .from("appointments")
-      .select("*", { count: "exact" })
-      .order("appointment_date", { ascending: true })
-      .range(currentPage * PAGE_SIZE, currentPage * PAGE_SIZE + PAGE_SIZE - 1);
+    const today = todayIso();
+    let query = supabase.from("appointments").select("*", { count: "exact" });
+    if (currentFilter === "upcoming") {
+      query = query.gte("appointment_date", today).not("status", "in", "(completed,cancelled)")
+        .order("appointment_date", { ascending: true }).order("appointment_time", { ascending: true });
+    } else if (currentFilter === "today") {
+      query = query.eq("appointment_date", today).order("appointment_time", { ascending: true });
+    } else if (currentFilter === "past") {
+      query = query.lt("appointment_date", today).order("appointment_date", { ascending: false });
+    } else {
+      query = query.order("appointment_date", { ascending: false });
+    }
+    const { data: appts, count } = await query.range(currentPage * PAGE_SIZE, currentPage * PAGE_SIZE + PAGE_SIZE - 1);
 
     setTotalCount(count ?? 0);
-    if (!appts) { setAppointments([]); return; }
+    if (!appts) { setAppointments([]); setIsLoading(false); return; }
 
     const clientIds = [...new Set(appts.map(a => a.client_id).filter(Boolean))];
     let clientMap: Record<string, string> = {};
@@ -100,7 +116,10 @@ export default function AdminAppointments() {
     setStaffUsers(roles.filter(r => r.role === "staff").map(r => ({ id: r.user_id, full_name: profileMap.get(r.user_id) || "Unknown" })));
   };
 
-  useEffect(() => { fetchAppointments(page); }, [page]);
+  useEffect(() => {
+    fetchAppointments(page, filter);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, filter]);
   useEffect(() => { fetchUsers(); }, []);
 
   // Appointment save (create or update)
@@ -230,124 +249,98 @@ export default function AdminAppointments() {
     downloadICS("appointments", generateICS(events, "Workshop Appointments"));
   };
 
-  const totalPages = Math.ceil(totalCount / PAGE_SIZE);
+  const filters: FilterOption[] = [
+    { value: "upcoming", label: "Upcoming" },
+    { value: "today", label: "Today" },
+    { value: "past", label: "Past" },
+    { value: "all", label: "All" },
+  ];
+
+  const statusPill = (a: any) => (
+    <StatusPill tone={APPT_TONE[a.status] ?? "neutral"}>{APPT_LABEL[a.status] ?? a.status}</StatusPill>
+  );
+
+  const columns: Column<any>[] = [
+    { key: "title", header: "Appointment", cell: (a) => a.title },
+    { key: "client", header: "Client", cell: (a) => a.client_name, hideBelow: "md" },
+    { key: "when", header: "When", cell: (a) => `${formatDate(a.appointment_date)} · ${(a.appointment_time || "").slice(0, 5)}` },
+    { key: "type", header: "Type", cell: (a) => <span className="capitalize">{a.type}</span>, hideBelow: "lg" },
+    { key: "status", header: "Status", cell: statusPill },
+  ];
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Appointments</h2>
-            <p className="text-muted-foreground">Manage all scheduled appointments</p>
-          </div>
-          <PageActions>
-            {appointments.length > 0 && (
-              <Button variant="outline" onClick={handleExportCalendar}>
-                <Download className="mr-2 h-4 w-4" />Export to Calendar
+      <div className="min-w-0 max-w-full space-y-4">
+        <PageBar
+          title="Appointments"
+          subtitle={isLoading ? "Loading…" : `${totalCount} ${filters.find((f) => f.value === filter)?.label.toLowerCase()} ${totalCount === 1 ? "appointment" : "appointments"}`}
+          actions={
+            <>
+              {appointments.length > 0 && (
+                <Button variant="outline" onClick={handleExportCalendar}>
+                  <Download />
+                  <span className="hidden sm:inline">Export to calendar</span>
+                  <span className="sr-only sm:hidden">Export to calendar</span>
+                </Button>
+              )}
+              <Button onClick={() => { setEditItem(null); setForm({ ...emptyForm }); setOpen(true); }}>
+                <Plus />
+                New appointment
               </Button>
-            )}
-            <Button onClick={() => { setEditItem(null); setForm({ ...emptyForm }); setOpen(true); }}>
-              <Plus className="mr-2 h-4 w-4" />New Appointment
-            </Button>
-          </PageActions>
-        </div>
+            </>
+          }
+        />
 
-        <Card>
-          <CardContent className="p-0 overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Title</TableHead>
-                  <TableHead>Client</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead className="hidden sm:table-cell">Time</TableHead>
-                  <TableHead className="hidden md:table-cell">Type</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="w-10" />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {isLoading ? Array.from({ length: 6 }).map((_, i) => (
-                  <TableRow key={i}>
-                    <TableCell><Skeleton className="h-4 w-32" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-28" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-20" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-20" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-20 rounded-full" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-16" /></TableCell>
-                  </TableRow>
-                )) : appointments.length === 0 ? (
-                  <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No appointments</TableCell></TableRow>
-                ) : appointments.map((a) => (
-                  <TableRow key={a.id}>
-                    <TableCell className="font-medium">
-                      <Link to={`/appointments/${a.id}`} className="text-primary hover:underline">{a.title}</Link>
-                    </TableCell>
-                    <TableCell>{a.client_name}</TableCell>
-                    <TableCell>{a.appointment_date}</TableCell>
-                    <TableCell className="hidden sm:table-cell">{a.appointment_time}</TableCell>
-                    <TableCell className="capitalize hidden md:table-cell">{a.type}</TableCell>
-                    <TableCell>
-                      <Select value={a.status} onValueChange={(v) => handleStatusChange(a.id, v)}>
-                        <SelectTrigger className="w-32 h-8">
-                          <SelectValue>
-                            <Badge variant={statusColors[a.status] || "outline"}>{a.status?.replace("_", " ")}</Badge>
-                          </SelectValue>
-                        </SelectTrigger>
-                        <SelectContent>
-                          {APPT_STATUSES.map((s) => (
-                            <SelectItem key={s} value={s}>{s.replace("_", " ")}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => navigate(`/appointments/${a.id}`)}>
-                            <Eye className="mr-2 h-4 w-4" />View Details
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => handleOpenCreateJob(a)}>
-                            <Briefcase className="mr-2 h-4 w-4" />Create Job
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => handleOpenEdit(a)}>Edit</DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => setDeleteId(a.id)} className="text-destructive">Delete</DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
+        <ListControls filters={filters} filter={filter} onFilterChange={(v) => { setFilter(v); reset(); }} />
+
+        <DataList
+          rows={appointments}
+          columns={columns}
+          isLoading={isLoading}
+          getRowKey={(a) => a.id}
+          getRowHref={(a) => `/appointments/${a.id}`}
+          mobile={{
+            title: (a) => a.title,
+            trailing: statusPill,
+            meta: (a) => [`${formatDate(a.appointment_date)} · ${(a.appointment_time || "").slice(0, 5)}`, a.client_name !== "—" && a.client_name].filter(Boolean).join(" · "),
+          }}
+          actions={(a) => (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-9 w-9" aria-label={`Actions for ${a.title}`}>
+                  <MoreHorizontal />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-52">
+                <DropdownMenuLabel className="text-xs font-medium text-muted-foreground">Mark as</DropdownMenuLabel>
+                {APPT_STATUSES.filter((st) => st !== a.status).map((st) => (
+                  <DropdownMenuItem key={st} className="min-h-[40px]" onClick={() => handleStatusChange(a.id, st)}>
+                    {APPT_LABEL[st]}
+                  </DropdownMenuItem>
                 ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem className="min-h-[40px]" onClick={() => handleOpenCreateJob(a)}>
+                  <Briefcase className="mr-2 h-4 w-4" />Create job from this
+                </DropdownMenuItem>
+                <DropdownMenuItem className="min-h-[40px]" onClick={() => handleOpenEdit(a)}>Edit</DropdownMenuItem>
+                <DropdownMenuItem className="min-h-[40px] text-destructive focus:text-destructive" onClick={() => setDeleteId(a.id)}>Delete</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+          empty={
+            filter === "upcoming" || filter === "today" ? (
+              <EmptyState
+                title={filter === "today" ? "Nothing booked today" : "No upcoming appointments"}
+                description="Book a consultation, collection or delivery and it will show here."
+                action={<Button onClick={() => { setEditItem(null); setForm({ ...emptyForm }); setOpen(true); }}><Plus />New appointment</Button>}
+              />
+            ) : (
+              <EmptyState title="No appointments here" description="Try another filter." />
+            )
+          }
+        />
 
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between text-sm text-muted-foreground">
-            <span>Showing {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, totalCount)} of {totalCount}</span>
-            <Pagination>
-              <PaginationContent>
-                <PaginationItem>
-                  <PaginationPrevious onClick={() => setPage(p => Math.max(0, p - 1))} aria-disabled={page === 0} className={page === 0 ? "pointer-events-none opacity-50" : "cursor-pointer"} />
-                </PaginationItem>
-                <PaginationItem>
-                  <span className="px-3 py-1 text-sm">Page {page + 1} of {totalPages}</span>
-                </PaginationItem>
-                <PaginationItem>
-                  <PaginationNext onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))} aria-disabled={page >= totalPages - 1} className={page >= totalPages - 1 ? "pointer-events-none opacity-50" : "cursor-pointer"} />
-                </PaginationItem>
-              </PaginationContent>
-            </Pagination>
-          </div>
-        )}
+        <ListPagination page={page} pageSize={PAGE_SIZE} total={totalCount} onPageChange={setPage} noun="appointments" />
       </div>
 
       {/* Create / Edit appointment dialog */}

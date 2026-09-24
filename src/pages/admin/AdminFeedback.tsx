@@ -1,170 +1,150 @@
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import DashboardLayout from "@/components/layout/DashboardLayout";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Pagination, PaginationContent, PaginationItem, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
+import { PageBar } from "@/components/dashboard/PageBar";
+import { StatusPill, type StatusTone } from "@/components/dashboard/StatusPill";
+import { ListControls, type FilterOption } from "@/components/list/ListControls";
+import { DataList, type Column } from "@/components/list/DataList";
+import { ListPagination } from "@/components/list/ListPagination";
+import { EmptyState } from "@/components/list/EmptyState";
 import { usePagination, PAGE_SIZE } from "@/hooks/usePagination";
-import { MessageSquare } from "lucide-react";
-import { toast } from "sonner";
-import { Skeleton } from "@/components/ui/skeleton";
 
-const severityColors: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
-  low: "outline",
-  medium: "secondary",
-  high: "destructive",
+type Report = {
+  id: string;
+  title: string;
+  description: string | null;
+  severity: string;
+  status: string;
+  page_url: string | null;
+  created_at: string;
+  user_id: string | null;
+  submitter_name: string;
 };
 
-const statusColors: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
-  new: "secondary",
-  reviewed: "outline",
-  resolved: "default",
-};
+const SEVERITY_TONE: Record<string, StatusTone> = { low: "neutral", medium: "warning", high: "danger" };
+const STATUS_LABEL: Record<string, string> = { new: "New", reviewed: "Reviewed", resolved: "Resolved" };
+
+function formatDate(iso: string) {
+  return new Date(iso).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+}
 
 export default function AdminFeedback() {
-  const [reports, setReports] = useState<any[]>([]);
+  const [reports, setReports] = useState<Report[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
-  const { page, setPage } = usePagination();
+  const [filter, setFilter] = useState("open");
+  const { page, setPage, reset } = usePagination();
 
-  const fetchReports = async (currentPage = page) => {
+  const fetchReports = async (currentPage: number, currentFilter: string) => {
     setIsLoading(true);
-    const { data, count } = await (supabase
-      .from("bug_reports" as any)
+    let query = (supabase.from("bug_reports" as any) as any)
       .select("*", { count: "exact" })
-      .order("created_at", { ascending: false })
-      .range(currentPage * PAGE_SIZE, currentPage * PAGE_SIZE + PAGE_SIZE - 1)) as any;
+      .order("created_at", { ascending: false });
+    if (currentFilter === "open") query = query.in("status", ["new", "reviewed"]);
+    else if (currentFilter !== "all") query = query.eq("status", currentFilter);
+    const { data, count } = await query.range(currentPage * PAGE_SIZE, currentPage * PAGE_SIZE + PAGE_SIZE - 1);
 
     setTotalCount(count ?? 0);
-    if (!data) { setReports([]); setIsLoading(false); return; }
-
-    // Fetch submitter names
-    const userIds = [...new Set(data.map((r: any) => r.user_id).filter(Boolean))] as string[];
-    let nameMap: Record<string, string> = {};
+    const rows = (data || []) as Omit<Report, "submitter_name">[];
+    const userIds = [...new Set(rows.map((r) => r.user_id).filter(Boolean))] as string[];
+    const nameMap: Record<string, string> = {};
     if (userIds.length > 0) {
-      const { data: profiles } = await supabase.from("profiles").select("id, full_name").in("id", userIds as string[]);
-      if (profiles) profiles.forEach((p: any) => { nameMap[p.id] = p.full_name || "Unknown"; });
+      const { data: profiles } = await supabase.from("profiles").select("id, full_name").in("id", userIds);
+      (profiles || []).forEach((p: any) => {
+        nameMap[p.id] = p.full_name || "Unknown";
+      });
     }
-
-    setReports(data.map((r: any) => ({ ...r, submitter_name: nameMap[r.user_id] || "Unknown" })));
+    setReports(rows.map((r) => ({ ...r, submitter_name: (r.user_id && nameMap[r.user_id]) || "Unknown" })));
     setIsLoading(false);
   };
 
-  useEffect(() => { fetchReports(page); }, [page]);
+  useEffect(() => {
+    fetchReports(page, filter);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, filter]);
 
-  const handleStatusChange = async (id: string, status: string) => {
-    const { error } = await (supabase.from("bug_reports" as any) as any).update({ status }).eq("id", id);
-    if (error) { toast.error(error.message); return; }
-    setReports(prev => prev.map(r => r.id === id ? { ...r, status } : r));
+  const handleStatusChange = async (report: Report, status: string) => {
+    const { error } = await (supabase.from("bug_reports" as any) as any).update({ status }).eq("id", report.id);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success(`"${report.title}" marked ${STATUS_LABEL[status].toLowerCase()}`);
+    setReports((prev) => prev.map((r) => (r.id === report.id ? { ...r, status } : r)));
   };
 
-  const totalPages = Math.ceil(totalCount / PAGE_SIZE);
+  const statusSelect = (r: Report) => (
+    <Select value={r.status} onValueChange={(v) => handleStatusChange(r, v)}>
+      <SelectTrigger className="h-9 w-32" aria-label={`Status of ${r.title}`}>
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {Object.entries(STATUS_LABEL).map(([value, label]) => (
+          <SelectItem key={value} value={value}>
+            {label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+
+  const filters: FilterOption[] = [
+    { value: "open", label: "Open" },
+    { value: "new", label: "New" },
+    { value: "resolved", label: "Resolved" },
+    { value: "all", label: "All" },
+  ];
+
+  const columns: Column<Report>[] = [
+    {
+      key: "title",
+      header: "Report",
+      cell: (r) => (
+        <span className="block max-w-md">
+          <span className="block font-medium">{r.title}</span>
+          {r.description && <span className="line-clamp-1 text-xs text-muted-foreground">{r.description}</span>}
+        </span>
+      ),
+    },
+    { key: "by", header: "From", cell: (r) => r.submitter_name, hideBelow: "md" },
+    { key: "severity", header: "Severity", cell: (r) => <StatusPill tone={SEVERITY_TONE[r.severity] ?? "neutral"}><span className="capitalize">{r.severity}</span></StatusPill> },
+    { key: "page", header: "Page", cell: (r) => <span className="block max-w-[200px] truncate text-xs text-muted-foreground">{r.page_url || "—"}</span>, hideBelow: "xl" },
+    { key: "date", header: "Reported", cell: (r) => formatDate(r.created_at), hideBelow: "lg" },
+  ];
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
-        <div className="flex items-start gap-3">
-          <div className="w-10 h-10 rounded-lg bg-amber-500/10 text-amber-600 border border-amber-200 flex items-center justify-center shrink-0">
-            <MessageSquare className="h-5 w-5" />
-          </div>
-          <div>
-            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Issue Reports</h2>
-            <p className="text-muted-foreground">Bug reports and feedback submitted by users</p>
-          </div>
-        </div>
+      <div className="min-w-0 max-w-full space-y-4">
+        <PageBar
+          title="Issue reports"
+          subtitle={isLoading ? "Loading…" : `${totalCount} ${totalCount === 1 ? "report" : "reports"} · problems and feedback sent in from Report Issue`}
+        />
 
-        <Card>
-          <CardContent className="p-0 overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Title</TableHead>
-                  <TableHead>Submitted By</TableHead>
-                  <TableHead>Severity</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="hidden md:table-cell">Page</TableHead>
-                  <TableHead className="hidden sm:table-cell">Date</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {isLoading ? Array.from({ length: 6 }).map((_, i) => (
-                  <TableRow key={i}>
-                    <TableCell><Skeleton className="h-4 w-40" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-28" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-20 rounded-full" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-20 rounded-full" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-20" /></TableCell>
-                  </TableRow>
-                )) : reports.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                      No reports submitted yet
-                    </TableCell>
-                  </TableRow>
-                ) : reports.map((r) => (
-                  <TableRow key={r.id}>
-                    <TableCell>
-                      <div>
-                        <p className="font-medium text-sm">{r.title}</p>
-                        <p className="text-xs text-muted-foreground line-clamp-1 max-w-xs">{r.description}</p>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-sm">{r.submitter_name}</TableCell>
-                    <TableCell>
-                      <Badge variant={severityColors[r.severity] || "outline"} className="capitalize">
-                        {r.severity}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Select value={r.status} onValueChange={(v) => handleStatusChange(r.id, v)}>
-                        <SelectTrigger className="w-32 h-8">
-                          <SelectValue>
-                            <Badge variant={statusColors[r.status] || "outline"} className="capitalize">
-                              {r.status}
-                            </Badge>
-                          </SelectValue>
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="new">New</SelectItem>
-                          <SelectItem value="reviewed">Reviewed</SelectItem>
-                          <SelectItem value="resolved">Resolved</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell text-xs text-muted-foreground max-w-[200px] truncate">
-                      {r.page_url || "—"}
-                    </TableCell>
-                    <TableCell className="hidden sm:table-cell text-sm text-muted-foreground">
-                      {new Date(r.created_at).toLocaleDateString()}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+        <ListControls filters={filters} filter={filter} onFilterChange={(v) => { setFilter(v); reset(); }} />
 
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between text-sm text-muted-foreground">
-            <span>Showing {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, totalCount)} of {totalCount}</span>
-            <Pagination>
-              <PaginationContent>
-                <PaginationItem>
-                  <PaginationPrevious onClick={() => setPage(p => Math.max(0, p - 1))} aria-disabled={page === 0} className={page === 0 ? "pointer-events-none opacity-50" : "cursor-pointer"} />
-                </PaginationItem>
-                <PaginationItem>
-                  <span className="px-3 py-1 text-sm">Page {page + 1} of {totalPages}</span>
-                </PaginationItem>
-                <PaginationItem>
-                  <PaginationNext onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))} aria-disabled={page >= totalPages - 1} className={page >= totalPages - 1 ? "pointer-events-none opacity-50" : "cursor-pointer"} />
-                </PaginationItem>
-              </PaginationContent>
-            </Pagination>
-          </div>
-        )}
+        <DataList
+          rows={reports}
+          columns={columns}
+          isLoading={isLoading}
+          getRowKey={(r) => r.id}
+          mobile={{
+            title: (r) => r.title,
+            trailing: (r) => <StatusPill tone={SEVERITY_TONE[r.severity] ?? "neutral"}><span className="capitalize">{r.severity}</span></StatusPill>,
+            meta: (r) => `${r.submitter_name} · ${formatDate(r.created_at)}`,
+          }}
+          actions={statusSelect}
+          empty={
+            filter === "open" ? (
+              <EmptyState title="No open reports" description="Everything reported has been resolved." />
+            ) : (
+              <EmptyState title="No reports here" description="Reports appear when someone uses Report Issue in the Help menu." />
+            )
+          }
+        />
+
+        <ListPagination page={page} pageSize={PAGE_SIZE} total={totalCount} onPageChange={setPage} noun="reports" />
       </div>
     </DashboardLayout>
   );

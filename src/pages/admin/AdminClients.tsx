@@ -1,23 +1,37 @@
-import PageActions from "@/components/admin/PageActions";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState } from "react";
+import { MoreHorizontal, Plus } from "lucide-react";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { usePagination, PAGE_SIZE } from "@/hooks/usePagination";
-import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
-import { useNavigate } from "react-router-dom";
 import DashboardLayout from "@/components/layout/DashboardLayout";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { toast } from "sonner";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { PageBar } from "@/components/dashboard/PageBar";
+import { StatusPill } from "@/components/dashboard/StatusPill";
+import { ListControls, type FilterOption } from "@/components/list/ListControls";
+import { DataList, type Column } from "@/components/list/DataList";
+import { ListPagination } from "@/components/list/ListPagination";
+import { EmptyState } from "@/components/list/EmptyState";
+import { usePagination, PAGE_SIZE } from "@/hooks/usePagination";
 import { friendlyErrorMessage } from "@/lib/friendlyError";
-import { Plus, Search, Pencil, Check, X, Trash2 } from "lucide-react";
-import { Skeleton } from "@/components/ui/skeleton";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
 type ClientRow = {
   user_id: string;
@@ -30,337 +44,340 @@ type ClientRow = {
   is_active: boolean;
 };
 
+type ClientForm = { company: string; contact: string; email: string; phone: string; address: string };
+const EMPTY_FORM: ClientForm = { company: "", contact: "", email: "", phone: "", address: "" };
+
+const displayName = (c: ClientRow) => c.company_name || c.full_name || "Unnamed client";
+
 export default function AdminClients() {
   const [clients, setClients] = useState<ClientRow[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
-  const navigate = useNavigate();
+  const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const { page, setPage, reset } = usePagination();
+
   const [addOpen, setAddOpen] = useState(false);
-  const [newCompanyName, setNewCompanyName] = useState("");
-  const [newContactPerson, setNewContactPerson] = useState("");
-  const [newEmail, setNewEmail] = useState("");
-  const [newPhone, setNewPhone] = useState("");
-  const [newAddress, setNewAddress] = useState("");
   const [adding, setAdding] = useState(false);
-  const { page, setPage, from, to, reset: resetPage } = usePagination();
+  const [form, setForm] = useState<ClientForm>(EMPTY_FORM);
+  const [editing, setEditing] = useState<ClientRow | null>(null);
+  const [editForm, setEditForm] = useState<ClientForm>(EMPTY_FORM);
+  const [deleting, setDeleting] = useState<ClientRow | null>(null);
 
-  // Inline editing state
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editCompanyName, setEditCompanyName] = useState("");
-  const [editContactPerson, setEditContactPerson] = useState("");
-  const [editPhone, setEditPhone] = useState("");
-  const [editAddress, setEditAddress] = useState("");
-
-  const fetchClients = async () => {
+  const fetchClients = async (currentPage: number, currentFilter: string, currentSearch: string) => {
     setIsLoading(true);
     const { data: roles } = await supabase.from("user_roles").select("user_id").eq("role", "client");
-    if (!roles?.length) { setClients([]); setTotalCount(0); setIsLoading(false); return; }
-    const ids = roles.map((r) => r.user_id);
-    const { data: profiles, count } = await supabase.from("profiles").select("id, full_name, phone, created_at, is_active, company_name, contact_person, address" as any, { count: "exact" }).in("id", ids).range(from, to);
+    const ids = (roles || []).map((r) => r.user_id);
+    if (ids.length === 0) {
+      setClients([]);
+      setTotalCount(0);
+      setIsLoading(false);
+      return;
+    }
+    let query = (supabase.from("profiles") as any)
+      .select("id, full_name, phone, created_at, is_active, company_name, contact_person, address", { count: "exact" })
+      .in("id", ids)
+      .order("company_name", { ascending: true, nullsFirst: false });
+    if (currentFilter === "active") query = query.eq("is_active", true);
+    if (currentFilter === "inactive") query = query.eq("is_active", false);
+    const term = currentSearch.trim().replace(/[%,()]/g, " ");
+    if (term) {
+      query = query.or(
+        `company_name.ilike.%${term}%,contact_person.ilike.%${term}%,full_name.ilike.%${term}%,phone.ilike.%${term}%`,
+      );
+    }
+    const { data, count, error } = await query.range(currentPage * PAGE_SIZE, currentPage * PAGE_SIZE + PAGE_SIZE - 1);
+    if (error) toast.error("Couldn't load clients. Reload the page to try again.");
     setTotalCount(count ?? 0);
-    setClients((profiles || []).map((p: any) => ({
-      user_id: p.id,
-      full_name: p.full_name,
-      company_name: p.company_name || null,
-      contact_person: p.contact_person || null,
-      phone: p.phone,
-      address: p.address || null,
-      created_at: p.created_at,
-      is_active: p.is_active ?? true,
-    })));
+    setClients(
+      ((data || []) as any[]).map((p) => ({
+        user_id: p.id,
+        full_name: p.full_name,
+        company_name: p.company_name || null,
+        contact_person: p.contact_person || null,
+        phone: p.phone,
+        address: p.address || null,
+        created_at: p.created_at,
+        is_active: p.is_active ?? true,
+      })),
+    );
     setIsLoading(false);
   };
 
-  useEffect(() => { fetchClients(); }, [page]);
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      reset();
+      setDebouncedSearch(search);
+    }, 300);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search]);
 
-  const filtered = useMemo(() => {
-    return clients.filter((c) => {
-      const searchStr = [c.company_name, c.contact_person, c.full_name, c.phone].filter(Boolean).join(" ").toLowerCase();
-      const matchesSearch = !search || searchStr.includes(search.toLowerCase());
-      const matchesStatus = statusFilter === "all" || (statusFilter === "active" ? c.is_active : !c.is_active);
-      return matchesSearch && matchesStatus;
-    });
-  }, [clients, search, statusFilter]);
+  useEffect(() => {
+    fetchClients(page, filter, debouncedSearch);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, filter, debouncedSearch]);
 
-  const toggleActive = async (userId: string, active: boolean) => {
-    const { error } = await supabase.from("profiles").update({ is_active: active } as any).eq("id", userId);
-    if (error) { toast.error(error.message); return; }
-    setClients((prev) => prev.map((c) => (c.user_id === userId ? { ...c, is_active: active } : c)));
-    toast.success(active ? "Client portal activated" : "Client portal deactivated");
-  };
+  const refresh = () => fetchClients(page, filter, debouncedSearch);
 
-  const startEditing = (c: ClientRow) => {
-    setEditingId(c.user_id);
-    setEditCompanyName(c.company_name || c.full_name || "");
-    setEditContactPerson(c.contact_person || "");
-    setEditPhone(c.phone || "");
-    setEditAddress(c.address || "");
-  };
-
-  const cancelEditing = () => { setEditingId(null); };
-
-  const saveEditing = async (userId: string) => {
-    const { error } = await supabase.from("profiles").update({
-      full_name: editCompanyName,
-      company_name: editCompanyName,
-      contact_person: editContactPerson || null,
-      phone: editPhone || null,
-      address: editAddress || null,
-    } as any).eq("id", userId);
-    if (error) { toast.error(error.message); return; }
-    setClients((prev) => prev.map((c) => (c.user_id === userId ? {
-      ...c, full_name: editCompanyName, company_name: editCompanyName, contact_person: editContactPerson || null, phone: editPhone || null, address: editAddress || null,
-    } : c)));
-    setEditingId(null);
-    toast.success("Client updated");
-  };
-
-  const handleDelete = async (userId: string, name: string) => {
-    const { data, error } = await supabase.functions.invoke("admin-delete-user", {
-      body: { user_id: userId },
-    });
-    if (error || data?.error) {
-      // The function's explanation (e.g. existing jobs/invoices block deletion)
-      // lives in the error body — surface it instead of the generic message.
-      toast.error(data?.error || (await friendlyErrorMessage(error, "Failed to delete client")));
+  const toggleActive = async (c: ClientRow) => {
+    const active = !c.is_active;
+    const { error } = await supabase.from("profiles").update({ is_active: active } as any).eq("id", c.user_id);
+    if (error) {
+      toast.error(error.message);
       return;
     }
-    setClients((prev) => prev.filter((c) => c.user_id !== userId));
-    toast.success(`${name} deleted`);
+    setClients((prev) => prev.map((x) => (x.user_id === c.user_id ? { ...x, is_active: active } : x)));
+    toast.success(active ? `Portal turned on for ${displayName(c)}` : `Portal turned off for ${displayName(c)}`);
   };
 
-  const handleAddClient = async () => {
-    if (!newEmail || !newCompanyName) return;
+  const openEdit = (c: ClientRow) => {
+    setEditing(c);
+    setEditForm({
+      company: c.company_name || c.full_name || "",
+      contact: c.contact_person || "",
+      email: "",
+      phone: c.phone || "",
+      address: c.address || "",
+    });
+  };
+
+  const saveEdit = async () => {
+    if (!editing || !editForm.company.trim()) return;
+    const { error } = await supabase
+      .from("profiles")
+      .update({
+        full_name: editForm.company,
+        company_name: editForm.company,
+        contact_person: editForm.contact || null,
+        phone: editForm.phone || null,
+        address: editForm.address || null,
+      } as any)
+      .eq("id", editing.user_id);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success(`Saved ${editForm.company}`);
+    setEditing(null);
+    refresh();
+  };
+
+  const handleDelete = async (c: ClientRow) => {
+    setDeleting(null);
+    const { data, error } = await supabase.functions.invoke("admin-delete-user", { body: { user_id: c.user_id } });
+    if (error || data?.error) {
+      // The function explains why deletion is blocked (e.g. existing jobs or invoices).
+      toast.error(data?.error || (await friendlyErrorMessage(error, "Couldn't delete the client")));
+      return;
+    }
+    toast.success(`Deleted ${displayName(c)}`);
+    refresh();
+  };
+
+  const handleAdd = async () => {
+    if (!form.email || !form.company) return;
     setAdding(true);
     const { data, error } = await supabase.functions.invoke("create-client", {
       body: {
-        email: newEmail,
-        full_name: newCompanyName,
-        phone: newPhone || undefined,
-        company_name: newCompanyName,
-        contact_person: newContactPerson || undefined,
-        address: newAddress || undefined,
+        email: form.email,
+        full_name: form.company,
+        phone: form.phone || undefined,
+        company_name: form.company,
+        contact_person: form.contact || undefined,
+        address: form.address || undefined,
       },
     });
+    setAdding(false);
     if (error || data?.error) {
-      toast.error(data?.error || error?.message || "Failed to create client");
-      setAdding(false);
+      toast.error(data?.error || error?.message || "Couldn't create the client");
       return;
     }
-    toast.success(`Client "${newCompanyName}" created. They can use "Forgot Password" to set their password.`);
+    toast.success(`${form.company} added. They can set a password with "Forgot password" on the sign-in page.`);
     setAddOpen(false);
-    setNewCompanyName(""); setNewContactPerson(""); setNewEmail(""); setNewPhone(""); setNewAddress("");
-    setAdding(false);
-    setTimeout(fetchClients, 1500);
+    setForm(EMPTY_FORM);
+    setTimeout(refresh, 1500);
   };
 
-  const displayName = (c: ClientRow) => c.company_name || c.full_name || "—";
+  const filters: FilterOption[] = [
+    { value: "all", label: "All" },
+    { value: "active", label: "Portal on" },
+    { value: "inactive", label: "Portal off" },
+  ];
+
+  const portalPill = (c: ClientRow) =>
+    c.is_active ? <StatusPill tone="success">Portal on</StatusPill> : <StatusPill tone="neutral">Portal off</StatusPill>;
+
+  const columns: Column<ClientRow>[] = [
+    { key: "company", header: "Company", cell: displayName },
+    { key: "contact", header: "Contact", cell: (c) => c.contact_person || "—", hideBelow: "md" },
+    { key: "phone", header: "Phone", cell: (c) => c.phone || "—", hideBelow: "md" },
+    { key: "address", header: "Address", cell: (c) => <span className="block max-w-xs truncate">{c.address || "—"}</span>, hideBelow: "xl" },
+    { key: "portal", header: "Portal", cell: portalPill },
+  ];
+
+  const hasQuery = filter !== "all" || debouncedSearch.trim() !== "";
+
+  const fields = (value: ClientForm, onChange: (v: ClientForm) => void, withEmail: boolean) => (
+    <div className="space-y-4">
+      <div className="space-y-1.5">
+        <Label htmlFor="client-company">Company name</Label>
+        <Input id="client-company" value={value.company} onChange={(e) => onChange({ ...value, company: e.target.value })} placeholder="Acme Fabrication Ltd" />
+      </div>
+      <div className="space-y-1.5">
+        <Label htmlFor="client-contact">Contact person</Label>
+        <Input id="client-contact" value={value.contact} onChange={(e) => onChange({ ...value, contact: e.target.value })} placeholder="Jo Smith" />
+      </div>
+      {withEmail && (
+        <div className="space-y-1.5">
+          <Label htmlFor="client-email">Email</Label>
+          <Input id="client-email" type="email" value={value.email} onChange={(e) => onChange({ ...value, email: e.target.value })} placeholder="orders@acme.co.uk" />
+        </div>
+      )}
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="space-y-1.5">
+          <Label htmlFor="client-phone">Phone</Label>
+          <Input id="client-phone" value={value.phone} onChange={(e) => onChange({ ...value, phone: e.target.value })} />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="client-address">Address</Label>
+          <Input id="client-address" value={value.address} onChange={(e) => onChange({ ...value, address: e.target.value })} />
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Clients</h2>
-            <p className="text-muted-foreground">Manage client companies and portal access</p>
-          </div>
-          <PageActions>
-          <Dialog open={addOpen} onOpenChange={setAddOpen}>
-            <DialogTrigger asChild><Button><Plus className="mr-2 h-4 w-4" />Add Client</Button></DialogTrigger>
-            <DialogContent className="max-h-[90vh] overflow-y-auto">
-              <DialogHeader><DialogTitle>Add New Client Company</DialogTitle></DialogHeader>
-              <div className="space-y-4">
-                <div><Label>Company Name *</Label><Input value={newCompanyName} onChange={(e) => setNewCompanyName(e.target.value)} placeholder="Acme Industries" /></div>
-                <div><Label>Contact Person</Label><Input value={newContactPerson} onChange={(e) => setNewContactPerson(e.target.value)} placeholder="John Smith" /></div>
-                <div><Label>Email *</Label><Input type="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} placeholder="info@acme.com" /></div>
-                <div><Label>Phone</Label><Input value={newPhone} onChange={(e) => setNewPhone(e.target.value)} placeholder="+1 555 0123" /></div>
-                <div><Label>Address</Label><Input value={newAddress} onChange={(e) => setNewAddress(e.target.value)} placeholder="123 Main St, City, State" /></div>
-                <p className="text-xs text-muted-foreground">The client will receive a confirmation email and can set their password via "Forgot Password".</p>
-                <Button onClick={handleAddClient} className="w-full" disabled={adding || !newEmail || !newCompanyName}>
-                  {adding ? "Creating…" : "Create Client"}
+      <div className="min-w-0 max-w-full space-y-4">
+        <PageBar
+          title="Clients"
+          subtitle={isLoading ? "Loading…" : `${totalCount} ${totalCount === 1 ? "company" : "companies"}`}
+          actions={
+            <Button onClick={() => setAddOpen(true)}>
+              <Plus />
+              Add client
+            </Button>
+          }
+        />
+
+        <ListControls
+          filters={filters}
+          filter={filter}
+          onFilterChange={(v) => {
+            setFilter(v);
+            reset();
+          }}
+          search={search}
+          onSearchChange={setSearch}
+          searchPlaceholder="Search company, contact or phone"
+        />
+
+        <DataList
+          rows={clients}
+          columns={columns}
+          isLoading={isLoading}
+          getRowKey={(c) => c.user_id}
+          getRowHref={(c) => `/admin/users/${c.user_id}`}
+          mobile={{
+            title: displayName,
+            trailing: portalPill,
+            meta: (c) => [c.contact_person, c.phone].filter(Boolean).join(" · "),
+          }}
+          actions={(c) => (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-9 w-9" aria-label={`Actions for ${displayName(c)}`}>
+                  <MoreHorizontal />
                 </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
-          </PageActions>
-        </div>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-52">
+                <DropdownMenuItem className="min-h-[40px]" onClick={() => openEdit(c)}>
+                  Edit details
+                </DropdownMenuItem>
+                <DropdownMenuItem className="min-h-[40px]" onClick={() => toggleActive(c)}>
+                  {c.is_active ? "Turn portal off" : "Turn portal on"}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem className="min-h-[40px] text-destructive focus:text-destructive" onClick={() => setDeleting(c)}>
+                  Delete client
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+          empty={
+            hasQuery ? (
+              <EmptyState title="No clients match" description="Try another filter or search." />
+            ) : (
+              <EmptyState
+                title="No clients yet"
+                description="Add a client company to give them a portal for quotes, orders and invoices."
+                action={
+                  <Button onClick={() => setAddOpen(true)}>
+                    <Plus />
+                    Add client
+                  </Button>
+                }
+              />
+            )
+          }
+        />
 
-
-        <div className="flex flex-col sm:flex-row gap-3">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="Search by company, contact or phone…" value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
-          </div>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-full sm:w-[160px]"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="inactive">Inactive</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Desktop Table */}
-        <Card className="hidden sm:block">
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Company Name</TableHead>
-                  <TableHead>Contact Person</TableHead>
-                  <TableHead>Phone</TableHead>
-                  <TableHead className="hidden md:table-cell">Address</TableHead>
-                  <TableHead>Active</TableHead>
-                  <TableHead className="w-[100px]">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {isLoading ? (
-                  Array.from({ length: 6 }).map((_, i) => (
-                    <TableRow key={i}>
-                      <TableCell><Skeleton className="h-4 w-36" /></TableCell>
-                      <TableCell><Skeleton className="h-4 w-28" /></TableCell>
-                      <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                      <TableCell className="hidden md:table-cell"><Skeleton className="h-4 w-40" /></TableCell>
-                      <TableCell><Skeleton className="h-5 w-10 rounded-full" /></TableCell>
-                      <TableCell><Skeleton className="h-7 w-7 rounded" /></TableCell>
-                    </TableRow>
-                  ))
-                ) : filtered.length === 0 ? (
-                  <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No clients found</TableCell></TableRow>
-                ) : filtered.map((c) => {
-                  const isEditing = editingId === c.user_id;
-                  return (
-                    <TableRow key={c.user_id} className={isEditing ? "" : "cursor-pointer"} onClick={() => !isEditing && navigate(`/admin/users/${c.user_id}`)}>
-                      <TableCell onClick={(e) => isEditing && e.stopPropagation()}>
-                        {isEditing ? <Input value={editCompanyName} onChange={(e) => setEditCompanyName(e.target.value)} className="h-8" autoFocus /> : <span className="font-medium text-primary hover:underline">{displayName(c)}</span>}
-                      </TableCell>
-                      <TableCell onClick={(e) => isEditing && e.stopPropagation()}>
-                        {isEditing ? <Input value={editContactPerson} onChange={(e) => setEditContactPerson(e.target.value)} className="h-8" placeholder="Contact" /> : c.contact_person || c.full_name || "—"}
-                      </TableCell>
-                      <TableCell onClick={(e) => isEditing && e.stopPropagation()}>
-                        {isEditing ? <Input value={editPhone} onChange={(e) => setEditPhone(e.target.value)} className="h-8" placeholder="Phone" /> : c.phone || "—"}
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell" onClick={(e) => isEditing && e.stopPropagation()}>
-                        {isEditing ? <Input value={editAddress} onChange={(e) => setEditAddress(e.target.value)} className="h-8" placeholder="Address" /> : c.address || "—"}
-                      </TableCell>
-                      <TableCell onClick={(e) => e.stopPropagation()}>
-                        <Switch checked={c.is_active} onCheckedChange={(v) => toggleActive(c.user_id, v)} />
-                      </TableCell>
-                      <TableCell onClick={(e) => e.stopPropagation()}>
-                        {isEditing ? (
-                          <div className="flex gap-1">
-                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => saveEditing(c.user_id)}><Check className="h-4 w-4 text-primary" /></Button>
-                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={cancelEditing}><X className="h-4 w-4 text-destructive" /></Button>
-                          </div>
-                        ) : (
-                          <div className="flex gap-1">
-                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => startEditing(c)}><Pencil className="h-4 w-4" /></Button>
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Delete client">
-                                  <Trash2 className="h-4 w-4 text-destructive" />
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Delete {displayName(c)}?</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    This permanently removes their account and cannot be undone. If this client has existing records, deactivation is safer.
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                  <AlertDialogAction onClick={() => handleDelete(c.user_id, displayName(c))}>Delete</AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          </div>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-
-        {/* Mobile Cards */}
-        <div className="sm:hidden space-y-3">
-          {isLoading ? (
-            Array.from({ length: 4 }).map((_, i) => (
-              <Card key={i}>
-                <CardContent className="p-4 space-y-2">
-                  <Skeleton className="h-5 w-40" />
-                  <Skeleton className="h-4 w-32" />
-                  <Skeleton className="h-4 w-28" />
-                </CardContent>
-              </Card>
-            ))
-          ) : filtered.length === 0 ? (
-            <p className="text-center py-8 text-muted-foreground">No clients found</p>
-          ) : filtered.map((c) => (
-            <Card key={c.user_id} className="cursor-pointer" onClick={() => navigate(`/admin/users/${c.user_id}`)}>
-              <CardContent className="p-4 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="font-medium text-primary">{displayName(c)}</span>
-                  <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                    <Switch checked={c.is_active} onCheckedChange={(v) => toggleActive(c.user_id, v)} />
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Delete client">
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Delete {displayName(c)}?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            This permanently removes their account and cannot be undone. If this client has existing records, deactivation is safer.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => handleDelete(c.user_id, displayName(c))}>Delete</AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </div>
-                </div>
-                {c.contact_person && <p className="text-sm text-muted-foreground">Contact: {c.contact_person}</p>}
-                {c.phone && <p className="text-sm text-muted-foreground">Phone: {c.phone}</p>}
-                {c.address && <p className="text-sm text-muted-foreground truncate">Address: {c.address}</p>}
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-
-        {/* Pagination */}
-        {totalCount > PAGE_SIZE && (() => {
-          const totalPages = Math.ceil(totalCount / PAGE_SIZE);
-          return (
-            <Pagination>
-              <PaginationContent>
-                <PaginationItem>
-                  <PaginationPrevious onClick={() => setPage(Math.max(0, page - 1))} className={page === 0 ? "pointer-events-none opacity-50" : "cursor-pointer"} />
-                </PaginationItem>
-                {Array.from({ length: totalPages }, (_, i) => (
-                  <PaginationItem key={i}>
-                    <PaginationLink isActive={page === i} onClick={() => setPage(i)} className="cursor-pointer">{i + 1}</PaginationLink>
-                  </PaginationItem>
-                ))}
-                <PaginationItem>
-                  <PaginationNext onClick={() => setPage(Math.min(totalPages - 1, page + 1))} className={page >= totalPages - 1 ? "pointer-events-none opacity-50" : "cursor-pointer"} />
-                </PaginationItem>
-              </PaginationContent>
-            </Pagination>
-          );
-        })()}
+        <ListPagination page={page} pageSize={PAGE_SIZE} total={totalCount} onPageChange={setPage} noun="clients" />
       </div>
+
+      <Dialog open={addOpen} onOpenChange={setAddOpen}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Add a client</DialogTitle>
+            <DialogDescription>They'll get a confirmation email and can set their password with "Forgot password".</DialogDescription>
+          </DialogHeader>
+          {fields(form, setForm, true)}
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setAddOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleAdd} disabled={adding || !form.email || !form.company}>
+              {adding ? "Adding…" : "Add client"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!editing} onOpenChange={(open) => !open && setEditing(null)}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit {editing ? displayName(editing) : "client"}</DialogTitle>
+          </DialogHeader>
+          {fields(editForm, setEditForm, false)}
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setEditing(null)}>
+              Cancel
+            </Button>
+            <Button onClick={saveEdit} disabled={!editForm.company.trim()}>
+              Save changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={!!deleting} onOpenChange={(open) => !open && setDeleting(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {deleting ? displayName(deleting) : "this client"}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Their account is removed permanently. If they have jobs or invoices, turning their portal off is safer.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep client</AlertDialogCancel>
+            <AlertDialogAction onClick={() => deleting && handleDelete(deleting)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete client
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DashboardLayout>
   );
 }

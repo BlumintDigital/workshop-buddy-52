@@ -1,10 +1,7 @@
-import PageActions from "@/components/admin/PageActions";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import DashboardLayout from "@/components/layout/DashboardLayout";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,12 +9,17 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Plus, MoreHorizontal } from "lucide-react";
 import { toast } from "sonner";
-import { Pagination, PaginationContent, PaginationItem, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import { usePagination, PAGE_SIZE } from "@/hooks/usePagination";
-import { Skeleton } from "@/components/ui/skeleton";
+import { useCurrency } from "@/hooks/useCurrency";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { PageBar } from "@/components/dashboard/PageBar";
+import { StatusPill } from "@/components/dashboard/StatusPill";
+import { ListControls, type FilterOption } from "@/components/list/ListControls";
+import { DataList, type Column } from "@/components/list/DataList";
+import { ListPagination } from "@/components/list/ListPagination";
+import { EmptyState } from "@/components/list/EmptyState";
 
 export default function AdminInventory() {
   const { user } = useAuth();
@@ -26,26 +28,53 @@ export default function AdminInventory() {
   const [totalCount, setTotalCount] = useState(0);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ name: "", sku: "", category: "", quantity: "0", min_stock: "0", unit_cost: "0", unit: "pcs" });
-  const { page, setPage } = usePagination();
+  const { page, setPage, reset } = usePagination();
+  const { format: fmt } = useCurrency();
+  const [filter, setFilter] = useState("all");
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [deleting, setDeleting] = useState<any | null>(null);
 
   // Adjust stock dialog
   const [adjustOpen, setAdjustOpen] = useState(false);
   const [adjustItem, setAdjustItem] = useState<any | null>(null);
   const [adjustForm, setAdjustForm] = useState({ type: "out", quantity: "1", notes: "" });
 
-  const fetchItems = async (currentPage = page) => {
+  const fetchItems = async (currentPage = page, currentFilter = filter, currentSearch = debouncedSearch) => {
     setIsLoading(true);
-    const { data, count } = await supabase
-      .from("inventory_items")
-      .select("*", { count: "exact" })
-      .order("name")
-      .range(currentPage * PAGE_SIZE, currentPage * PAGE_SIZE + PAGE_SIZE - 1);
+    const term = currentSearch.trim().replace(/[%,()]/g, " ");
+    if (currentFilter === "low") {
+      // Low stock compares two columns, which PostgREST can't filter on, so filter client-side.
+      let query = supabase.from("inventory_items").select("*").order("name");
+      if (term) query = query.or(`name.ilike.%${term}%,sku.ilike.%${term}%`);
+      const { data } = await query;
+      const low = (data || []).filter((i: any) => i.quantity <= i.min_stock);
+      setTotalCount(low.length);
+      setItems(low.slice(currentPage * PAGE_SIZE, currentPage * PAGE_SIZE + PAGE_SIZE));
+      setIsLoading(false);
+      return;
+    }
+    let query = supabase.from("inventory_items").select("*", { count: "exact" }).order("name");
+    if (term) query = query.or(`name.ilike.%${term}%,sku.ilike.%${term}%`);
+    const { data, count } = await query.range(currentPage * PAGE_SIZE, currentPage * PAGE_SIZE + PAGE_SIZE - 1);
     setTotalCount(count ?? 0);
     setItems(data || []);
     setIsLoading(false);
   };
 
-  useEffect(() => { fetchItems(page); }, [page]);
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      reset();
+      setDebouncedSearch(search);
+    }, 300);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search]);
+
+  useEffect(() => {
+    fetchItems(page, filter, debouncedSearch);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, filter, debouncedSearch]);
 
   const handleCreate = async () => {
     const { error } = await supabase.from("inventory_items").insert({
@@ -67,10 +96,10 @@ export default function AdminInventory() {
   };
 
   const handleDelete = async (item: any) => {
-    if (!confirm(`Delete "${item.name}"? This cannot be undone.`)) return;
+    setDeleting(null);
     const { error } = await supabase.from("inventory_items").delete().eq("id", item.id);
-    if (error) { toast.error("Failed to delete: " + error.message); return; }
-    toast.success("Item deleted");
+    if (error) { toast.error("Couldn't delete: " + error.message); return; }
+    toast.success(`Deleted ${item.name}`);
     fetchItems(page);
   };
 
@@ -108,128 +137,116 @@ export default function AdminInventory() {
     fetchItems(page);
   };
 
+  const filters: FilterOption[] = [
+    { value: "all", label: "All items" },
+    { value: "low", label: "Low stock" },
+  ];
+
+  const columns: Column<any>[] = [
+    { key: "name", header: "Item", cell: (item) => <span className="font-medium">{item.name}</span> },
+    { key: "sku", header: "SKU", cell: (item) => item.sku || "—", hideBelow: "md" },
+    { key: "category", header: "Category", cell: (item) => item.category || "—", hideBelow: "lg" },
+    { key: "qty", header: "In stock", cell: (item) => `${item.quantity} ${item.unit ?? ""}`.trim(), align: "right" },
+    { key: "min", header: "Reorder at", cell: (item) => item.min_stock, align: "right", hideBelow: "md" },
+    { key: "cost", header: "Unit cost", cell: (item) => fmt(Number(item.unit_cost)), align: "right", hideBelow: "lg" },
+    { key: "status", header: "Status", cell: (item) => <StockPill item={item} /> },
+  ];
+
+  const hasQuery = filter !== "all" || debouncedSearch.trim() !== "";
+
   return (
     <DashboardLayout>
-      <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Inventory</h2>
-            <p className="text-muted-foreground">Manage workshop inventory</p>
-          </div>
-          <PageActions>
-          <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>
-              <Button><Plus className="mr-2 h-4 w-4" />Add Item</Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader><DialogTitle>Add Inventory Item</DialogTitle></DialogHeader>
-              <div className="space-y-4">
-                <div><Label>Name</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div><Label>SKU</Label><Input value={form.sku} onChange={(e) => setForm({ ...form, sku: e.target.value })} /></div>
-                  <div><Label>Category</Label><Input value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} /></div>
-                </div>
-                <div className="grid grid-cols-3 gap-4">
-                  <div><Label>Quantity</Label><Input type="number" value={form.quantity} onChange={(e) => setForm({ ...form, quantity: e.target.value })} /></div>
-                  <div><Label>Min Stock</Label><Input type="number" value={form.min_stock} onChange={(e) => setForm({ ...form, min_stock: e.target.value })} /></div>
-                  <div><Label>Unit Cost</Label><Input type="number" value={form.unit_cost} onChange={(e) => setForm({ ...form, unit_cost: e.target.value })} /></div>
-                </div>
-                <Button onClick={handleCreate} className="w-full">Add Item</Button>
+      <div className="min-w-0 max-w-full space-y-4">
+        <PageBar
+          title="Inventory"
+          subtitle={isLoading ? "Loading…" : `${totalCount} ${totalCount === 1 ? "item" : "items"}${filter === "low" ? " at or below reorder level" : ""}`}
+          actions={
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogTrigger asChild>
+            <Button><Plus />Add item</Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader><DialogTitle>Add Inventory Item</DialogTitle></DialogHeader>
+            <div className="space-y-4">
+              <div><Label>Name</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
+              <div className="grid grid-cols-2 gap-4">
+                <div><Label>SKU</Label><Input value={form.sku} onChange={(e) => setForm({ ...form, sku: e.target.value })} /></div>
+                <div><Label>Category</Label><Input value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} /></div>
               </div>
-            </DialogContent>
-          </Dialog>
-          </PageActions>
-        </div>
+              <div className="grid grid-cols-3 gap-4">
+                <div><Label>Quantity</Label><Input type="number" value={form.quantity} onChange={(e) => setForm({ ...form, quantity: e.target.value })} /></div>
+                <div><Label>Min Stock</Label><Input type="number" value={form.min_stock} onChange={(e) => setForm({ ...form, min_stock: e.target.value })} /></div>
+                <div><Label>Unit Cost</Label><Input type="number" value={form.unit_cost} onChange={(e) => setForm({ ...form, unit_cost: e.target.value })} /></div>
+              </div>
+              <Button onClick={handleCreate} className="w-full">Add Item</Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+          }
+        />
 
-        <Card>
-          <CardContent className="p-0 overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead className="hidden sm:table-cell">SKU</TableHead>
-                  <TableHead className="hidden md:table-cell">Category</TableHead>
-                  <TableHead>Quantity</TableHead>
-                  <TableHead className="hidden sm:table-cell">Min Stock</TableHead>
-                  <TableHead className="hidden md:table-cell">Unit Cost</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="w-10" />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {isLoading ? Array.from({ length: 6 }).map((_, i) => (
-                  <TableRow key={i}>
-                    <TableCell><Skeleton className="h-4 w-40" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-16" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-16" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-20" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-20 rounded-full" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-16" /></TableCell>
-                  </TableRow>
-                )) : items.length === 0 ? (
-                  <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">No items</TableCell></TableRow>
-                ) : items.map((item) => (
-                  <TableRow key={item.id}>
-                    <TableCell className="font-medium">{item.name}</TableCell>
-                    <TableCell className="hidden sm:table-cell">{item.sku || "—"}</TableCell>
-                    <TableCell className="hidden md:table-cell">{item.category || "—"}</TableCell>
-                    <TableCell>{item.quantity} {item.unit}</TableCell>
-                    <TableCell className="hidden sm:table-cell">{item.min_stock}</TableCell>
-                    <TableCell className="hidden md:table-cell">${Number(item.unit_cost).toFixed(2)}</TableCell>
-                    <TableCell>
-                      {item.quantity <= item.min_stock ? (
-                        <Badge variant="destructive">Low Stock</Badge>
-                      ) : (
-                        <Badge variant="outline">In Stock</Badge>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => handleOpenAdjust(item)}>Adjust Stock</DropdownMenuItem>
-                          <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(item)}>Delete Item</DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+        <ListControls
+          filters={filters}
+          filter={filter}
+          onFilterChange={(v) => { setFilter(v); reset(); }}
+          search={search}
+          onSearchChange={setSearch}
+          searchPlaceholder="Search by name or SKU"
+        />
 
-        {Math.ceil(totalCount / PAGE_SIZE) > 1 && (
-          <div className="flex items-center justify-between text-sm text-muted-foreground">
-            <span>Showing {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, totalCount)} of {totalCount}</span>
-            <Pagination>
-              <PaginationContent>
-                <PaginationItem>
-                  <PaginationPrevious onClick={() => setPage(p => Math.max(0, p - 1))} aria-disabled={page === 0} className={page === 0 ? "pointer-events-none opacity-50" : "cursor-pointer"} />
-                </PaginationItem>
-                <PaginationItem>
-                  <span className="px-3 py-1 text-sm">Page {page + 1} of {Math.ceil(totalCount / PAGE_SIZE)}</span>
-                </PaginationItem>
-                <PaginationItem>
-                  <PaginationNext onClick={() => setPage(p => Math.min(Math.ceil(totalCount / PAGE_SIZE) - 1, p + 1))} aria-disabled={page >= Math.ceil(totalCount / PAGE_SIZE) - 1} className={page >= Math.ceil(totalCount / PAGE_SIZE) - 1 ? "pointer-events-none opacity-50" : "cursor-pointer"} />
-                </PaginationItem>
-              </PaginationContent>
-            </Pagination>
-          </div>
-        )}
+        <DataList
+          rows={items}
+          columns={columns}
+          isLoading={isLoading}
+          getRowKey={(item) => item.id}
+          mobile={{
+            title: (item) => item.name,
+            trailing: (item) => <StockPill item={item} />,
+            meta: (item) => [`${item.quantity} ${item.unit ?? ""} in stock`, `reorder at ${item.min_stock}`, item.sku].filter(Boolean).join(" · "),
+          }}
+          actions={(item) => (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-9 w-9" aria-label={`Actions for ${item.name}`}>
+                  <MoreHorizontal />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem className="min-h-[40px]" onClick={() => handleOpenAdjust(item)}>Adjust stock</DropdownMenuItem>
+                <DropdownMenuItem className="min-h-[40px] text-destructive focus:text-destructive" onClick={() => setDeleting(item)}>Delete item</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+          empty={
+            hasQuery ? (
+              <EmptyState title={filter === "low" ? "Nothing is low on stock" : "No items match"} description={filter === "low" ? "Every item is above its reorder level." : "Try another search."} />
+            ) : (
+              <EmptyState title="No inventory yet" description="Add the materials and parts you track, with a reorder level for each." action={<Button onClick={() => setOpen(true)}><Plus />Add item</Button>} />
+            )
+          }
+        />
+
+        <ListPagination page={page} pageSize={PAGE_SIZE} total={totalCount} onPageChange={setPage} noun="items" />
       </div>
+
+      <AlertDialog open={!!deleting} onOpenChange={(v) => !v && setDeleting(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {deleting?.name}?</AlertDialogTitle>
+            <AlertDialogDescription>The item and its stock level are removed permanently. This can't be undone.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep item</AlertDialogCancel>
+            <AlertDialogAction onClick={() => deleting && handleDelete(deleting)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete item</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Adjust Stock dialog */}
       <Dialog open={adjustOpen} onOpenChange={(v) => { setAdjustOpen(v); if (!v) setAdjustItem(null); }}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>Adjust Stock — {adjustItem?.name}</DialogTitle>
+            <DialogTitle>Adjust stock: {adjustItem?.name}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="text-sm text-muted-foreground">
@@ -274,4 +291,10 @@ export default function AdminInventory() {
       </Dialog>
     </DashboardLayout>
   );
+}
+
+function StockPill({ item }: { item: { quantity: number; min_stock: number } }) {
+  if (item.quantity <= 0) return <StatusPill tone="danger">Out of stock</StatusPill>;
+  if (item.quantity <= item.min_stock) return <StatusPill tone="warning">Low stock</StatusPill>;
+  return <StatusPill tone="success">In stock</StatusPill>;
 }

@@ -1,29 +1,24 @@
-import PageActions from "@/components/admin/PageActions";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Link } from "react-router-dom";
 import DashboardLayout from "@/components/layout/DashboardLayout";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Pagination, PaginationContent, PaginationItem, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
-import { Plus, Search, FileText } from "lucide-react";
+import { Plus, FileText } from "lucide-react";
 import { DatePickerInput } from "@/components/ui/date-picker-input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { usePagination, PAGE_SIZE } from "@/hooks/usePagination";
-import { Skeleton } from "@/components/ui/skeleton";
+import { PageBar } from "@/components/dashboard/PageBar";
+import { JobStatusPill, StatusPill } from "@/components/dashboard/StatusPill";
+import { ListControls, type FilterOption } from "@/components/list/ListControls";
+import { DataList, type Column } from "@/components/list/DataList";
+import { ListPagination } from "@/components/list/ListPagination";
+import { EmptyState } from "@/components/list/EmptyState";
 
-const statusColors: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
-  quote: "secondary", pending: "outline", in_progress: "secondary", review: "default", completed: "default", cancelled: "destructive",
-};
 
 interface UserOption { id: string; full_name: string; }
 
@@ -49,7 +44,7 @@ export default function AdminJobs() {
 
     const { data, count } = await query;
     setTotalCount(count ?? 0);
-    if (!data) { setJobs([]); return; }
+    if (!data) { setJobs([]); setIsLoading(false); return; }
 
     const staffIds = [...new Set(data.filter(j => j.assigned_staff_id).map(j => j.assigned_staff_id!))];
     const clientIds = [...new Set(data.filter(j => j.client_id).map(j => j.client_id!))];
@@ -118,232 +113,143 @@ export default function AdminJobs() {
     fetchJobs(page, filter, debouncedSearch);
   };
 
-  const totalPages = Math.ceil(totalCount / PAGE_SIZE);
+  const filters: FilterOption[] = [
+    { value: "all", label: "All" },
+    { value: "quote", label: "Quotes" },
+    { value: "pending", label: "Pending" },
+    { value: "in_progress", label: "In progress" },
+    { value: "review", label: "Awaiting review" },
+    { value: "completed", label: "Completed" },
+  ];
+
+  const columns: Column<any>[] = [
+    {
+      key: "title",
+      header: "Job",
+      cell: (job) => job.title,
+    },
+    { key: "status", header: "Status", cell: (job) => <JobStatusPill status={job.status} /> },
+    { key: "priority", header: "Priority", cell: (job) => <PriorityLabel priority={job.priority} />, hideBelow: "md" },
+    { key: "staff", header: "Assigned to", cell: (job) => job.staff_name, hideBelow: "lg" },
+    { key: "client", header: "Client", cell: (job) => job.client_name, hideBelow: "md" },
+    { key: "due", header: "Due", cell: (job) => formatDate(job.due_date), hideBelow: "lg" },
+    { key: "created", header: "Created", cell: (job) => formatDate(job.created_at) },
+  ];
+
+  const hasQuery = filter !== "all" || debouncedSearch.trim() !== "";
 
   return (
     <DashboardLayout>
-      <div className="min-w-0 max-w-full space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="min-w-0">
-            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Jobs</h2>
-            <p className="text-muted-foreground">Manage all workshop jobs</p>
-          </div>
-          <PageActions>
-          <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>
-              <Button onClick={() => fetchUsers()}><Plus className="mr-2 h-4 w-4" />New Job</Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-              <DialogHeader><DialogTitle>Create New Job</DialogTitle></DialogHeader>
-              <div className="space-y-4">
-                <div><Label>Title</Label><Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} /></div>
-                <div><Label>Description</Label><Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></div>
-                <div><Label>Priority</Label>
-                  <Select value={form.priority} onValueChange={(v) => setForm({ ...form, priority: v })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="low">Low</SelectItem>
-                      <SelectItem value="medium">Medium</SelectItem>
-                      <SelectItem value="high">High</SelectItem>
-                      <SelectItem value="urgent">Urgent</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div><Label>Assign Staff</Label>
-                  <Select value={form.assigned_staff_id} onValueChange={(v) => setForm({ ...form, assigned_staff_id: v })}>
-                    <SelectTrigger><SelectValue placeholder="None" /></SelectTrigger>
-                    <SelectContent>
-                      {staffUsers.map(u => <SelectItem key={u.id} value={u.id}>{u.full_name}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div><Label>Assign Client</Label>
-                  <Select value={form.client_id} onValueChange={(v) => setForm({ ...form, client_id: v })}>
-                    <SelectTrigger><SelectValue placeholder="None" /></SelectTrigger>
-                    <SelectContent>
-                      {clientUsers.map(u => <SelectItem key={u.id} value={u.id}>{u.full_name}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label>Due Date</Label>
-                  <DatePickerInput value={form.due_date} onChange={(v) => setForm({ ...form, due_date: v })} className="mt-1" />
-                </div>
-                <div className="flex items-center gap-2 pt-1">
-                  <Checkbox
-                    id="isQuote"
-                    checked={form.isQuote}
-                    onCheckedChange={(v) => setForm({ ...form, isQuote: !!v })}
-                  />
-                  <label htmlFor="isQuote" className="text-sm cursor-pointer select-none">
-                    <span className="font-medium">Save as quote</span>
-                    <span className="text-muted-foreground ml-1">— client must approve before work begins</span>
-                  </label>
-                </div>
-                <Button onClick={handleCreate} className="w-full">
-                  {form.isQuote ? <><FileText className="mr-2 h-4 w-4" />Create Quote</> : "Create Job"}
-                </Button>
+      <div className="min-w-0 max-w-full space-y-4">
+        <PageBar
+          title="Jobs"
+          subtitle={isLoading ? "Loading…" : `${totalCount} ${totalCount === 1 ? "job" : "jobs"}${filter !== "all" ? ` · ${filters.find((f) => f.value === filter)?.label}` : ""}`}
+          actions={
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogTrigger asChild>
+            <Button onClick={() => fetchUsers()}><Plus />New job</Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+            <DialogHeader><DialogTitle>Create New Job</DialogTitle></DialogHeader>
+            <div className="space-y-4">
+              <div><Label>Title</Label><Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} /></div>
+              <div><Label>Description</Label><Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></div>
+              <div><Label>Priority</Label>
+                <Select value={form.priority} onValueChange={(v) => setForm({ ...form, priority: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="low">Low</SelectItem>
+                    <SelectItem value="medium">Medium</SelectItem>
+                    <SelectItem value="high">High</SelectItem>
+                    <SelectItem value="urgent">Urgent</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-            </DialogContent>
-          </Dialog>
-          </PageActions>
-        </div>
-
-        <div className="flex min-w-0 flex-col gap-3 sm:flex-row">
-          {/* Mobile dropdown filter */}
-          <div className="sm:hidden">
-            <Select value={filter} onValueChange={handleFilterChange}>
-              <SelectTrigger className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All</SelectItem>
-                <SelectItem value="quote">Quotes</SelectItem>
-                <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="in_progress">In Progress</SelectItem>
-                <SelectItem value="completed">Completed</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          {/* Desktop tabs */}
-          <Tabs value={filter} onValueChange={handleFilterChange} className="hidden sm:block flex-1">
-            <TabsList className="h-auto gap-1 inline-flex">
-              <TabsTrigger value="all">All</TabsTrigger>
-              <TabsTrigger value="quote">Quotes</TabsTrigger>
-              <TabsTrigger value="pending">Pending</TabsTrigger>
-              <TabsTrigger value="in_progress">In Progress</TabsTrigger>
-              <TabsTrigger value="completed">Completed</TabsTrigger>
-            </TabsList>
-          </Tabs>
-          <div className="relative w-full sm:w-64">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search all jobs..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-8"
-            />
-          </div>
-        </div>
-
-        <Card className="min-w-0 max-w-full overflow-hidden">
-          <CardContent className="p-0">
-            {/* Desktop table */}
-            <div className="hidden sm:block">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Title</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Priority</TableHead>
-                    <TableHead className="hidden md:table-cell">Staff</TableHead>
-                    <TableHead className="hidden md:table-cell">Client</TableHead>
-                    <TableHead>Created</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {isLoading ? Array.from({ length: 6 }).map((_, i) => (
-                    <TableRow key={i}>
-                      <TableCell><Skeleton className="h-4 w-40" /></TableCell>
-                      <TableCell><Skeleton className="h-4 w-20 rounded-full" /></TableCell>
-                      <TableCell><Skeleton className="h-4 w-16" /></TableCell>
-                      <TableCell className="hidden md:table-cell"><Skeleton className="h-4 w-28" /></TableCell>
-                      <TableCell className="hidden md:table-cell"><Skeleton className="h-4 w-28" /></TableCell>
-                      <TableCell><Skeleton className="h-4 w-20" /></TableCell>
-                    </TableRow>
-                  )) : jobs.length === 0 ? (
-                    <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No jobs found</TableCell></TableRow>
-                  ) : jobs.map((job) => (
-                    <TableRow key={job.id} className="cursor-pointer hover:bg-muted/50">
-                      <TableCell>
-                        <Link to={`/jobs/${job.id}`} className="block font-medium text-primary hover:underline">
-                          {job.title}
-                        </Link>
-                        {job.source_request_id && (
-                          <span className="mt-1 inline-block rounded-full bg-secondary px-2 py-0.5 text-xs font-medium text-muted-foreground">
-                            From request
-                          </span>
-                        )}
-                      </TableCell>
-                      <TableCell><Badge variant={statusColors[job.status]}>{job.status.replace("_", " ")}</Badge></TableCell>
-                      <TableCell className="capitalize">{job.priority}</TableCell>
-                      <TableCell className="hidden md:table-cell">{job.staff_name}</TableCell>
-                      <TableCell className="hidden md:table-cell">{job.client_name}</TableCell>
-                      <TableCell>{new Date(job.created_at).toLocaleDateString()}</TableCell>
-                    </TableRow>
-                  ))}
-
-                </TableBody>
-              </Table>
+              <div><Label>Assign Staff</Label>
+                <Select value={form.assigned_staff_id} onValueChange={(v) => setForm({ ...form, assigned_staff_id: v })}>
+                  <SelectTrigger><SelectValue placeholder="None" /></SelectTrigger>
+                  <SelectContent>
+                    {staffUsers.map(u => <SelectItem key={u.id} value={u.id}>{u.full_name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div><Label>Assign Client</Label>
+                <Select value={form.client_id} onValueChange={(v) => setForm({ ...form, client_id: v })}>
+                  <SelectTrigger><SelectValue placeholder="None" /></SelectTrigger>
+                  <SelectContent>
+                    {clientUsers.map(u => <SelectItem key={u.id} value={u.id}>{u.full_name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Due Date</Label>
+                <DatePickerInput value={form.due_date} onChange={(v) => setForm({ ...form, due_date: v })} className="mt-1" />
+              </div>
+              <div className="flex items-center gap-2 pt-1">
+                <Checkbox
+                  id="isQuote"
+                  checked={form.isQuote}
+                  onCheckedChange={(v) => setForm({ ...form, isQuote: !!v })}
+                />
+                <label htmlFor="isQuote" className="text-sm cursor-pointer select-none">
+                  <span className="font-medium">Save as quote</span>
+                  <span className="text-muted-foreground ml-1">— client must approve before work begins</span>
+                </label>
+              </div>
+              <Button onClick={handleCreate} className="w-full">
+                {form.isQuote ? <><FileText className="mr-2 h-4 w-4" />Create Quote</> : "Create Job"}
+              </Button>
             </div>
+          </DialogContent>
+        </Dialog>
+          }
+        />
 
-            {/* Mobile cards */}
-            <div className="sm:hidden divide-y">
-              {isLoading ? Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="p-4 space-y-2">
-                  <Skeleton className="h-4 w-3/4" />
-                  <Skeleton className="h-3 w-1/2" />
-                  <Skeleton className="h-3 w-2/3" />
-                </div>
-              )) : jobs.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground text-sm">No jobs found</div>
-              ) : jobs.map((job) => (
-                <Link
-                  key={job.id}
-                  to={`/jobs/${job.id}`}
-                  className="block p-4 hover:bg-muted/50 active:bg-muted"
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <p className="font-medium text-primary break-words min-w-0 flex-1">{job.title}</p>
-                    <Badge variant={statusColors[job.status]} className="shrink-0">{job.status.replace("_", " ")}</Badge>
-                  </div>
-                  {job.source_request_id && (
-                    <span className="mt-1 inline-block rounded-full bg-secondary px-2 py-0.5 text-xs font-medium text-muted-foreground">
-                      From request
-                    </span>
-                  )}
-                  <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                    <span className="capitalize">Priority: {job.priority}</span>
-                    <span>{new Date(job.created_at).toLocaleDateString()}</span>
-                  </div>
-                  <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                    <span className="truncate">Staff: {job.staff_name}</span>
-                    <span className="truncate">Client: {job.client_name}</span>
-                  </div>
-                </Link>
-              ))}
+        <ListControls
+          filters={filters}
+          filter={filter}
+          onFilterChange={handleFilterChange}
+          search={search}
+          onSearchChange={setSearch}
+          searchPlaceholder="Search jobs by title"
+        />
 
-            </div>
-          </CardContent>
-        </Card>
+        <DataList
+          rows={jobs}
+          columns={columns}
+          isLoading={isLoading}
+          getRowKey={(job) => job.id}
+          getRowHref={(job) => `/jobs/${job.id}`}
+          mobile={{
+            title: (job) => job.title,
+            trailing: (job) => <JobStatusPill status={job.status} />,
+            meta: (job) => [job.client_name !== "—" && job.client_name, job.staff_name !== "—" && `Assigned to ${job.staff_name}`, job.due_date && `Due ${formatDate(job.due_date)}`].filter(Boolean).join(" · "),
+          }}
+          empty={
+            hasQuery ? (
+              <EmptyState title="No jobs match" description="Try another filter or clear the search." />
+            ) : (
+              <EmptyState
+                title="No jobs yet"
+                description="Create a job, or convert an approved client request into one."
+                action={<Button onClick={() => { fetchUsers(); setOpen(true); }}><Plus />New job</Button>}
+              />
+            )
+          }
+        />
 
-        {totalPages > 1 && (
-          <div className="flex flex-col gap-3 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-            <span>Showing {from + 1}–{Math.min(from + PAGE_SIZE, totalCount)} of {totalCount}</span>
-            <Pagination>
-              <PaginationContent>
-                <PaginationItem>
-                  <PaginationPrevious
-                    onClick={() => setPage(p => Math.max(0, p - 1))}
-                    aria-disabled={page === 0}
-                    className={page === 0 ? "pointer-events-none opacity-50" : "cursor-pointer"}
-                  />
-                </PaginationItem>
-                <PaginationItem>
-                  <span className="px-3 py-1 text-sm">Page {page + 1} of {totalPages}</span>
-                </PaginationItem>
-                <PaginationItem>
-                  <PaginationNext
-                    onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
-                    aria-disabled={page >= totalPages - 1}
-                    className={page >= totalPages - 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
-                  />
-                </PaginationItem>
-              </PaginationContent>
-            </Pagination>
-          </div>
-        )}
+        <ListPagination page={page} pageSize={PAGE_SIZE} total={totalCount} onPageChange={setPage} noun="jobs" />
       </div>
     </DashboardLayout>
   );
+}
+
+function formatDate(iso: string | null | undefined) {
+  return iso ? new Date(iso).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" }) : "—";
+}
+
+function PriorityLabel({ priority }: { priority: string }) {
+  if (priority === "urgent") return <StatusPill tone="danger">Urgent</StatusPill>;
+  if (priority === "high") return <StatusPill tone="warning">High</StatusPill>;
+  return <span className="capitalize text-muted-foreground">{priority}</span>;
 }

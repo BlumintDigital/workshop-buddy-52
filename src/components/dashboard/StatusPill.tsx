@@ -33,6 +33,7 @@ export function StatusPill({ tone, children, className }: StatusPillProps) {
 }
 
 const JOB_TONE: Record<string, StatusTone> = {
+  quote: "warning",
   pending: "neutral",
   in_progress: "info",
   review: "warning",
@@ -41,6 +42,7 @@ const JOB_TONE: Record<string, StatusTone> = {
 };
 
 const JOB_LABEL: Record<string, string> = {
+  quote: "Quote",
   pending: "Pending",
   in_progress: "In progress",
   review: "Awaiting review",
