@@ -24,7 +24,8 @@ import { DatePickerInput } from "@/components/ui/date-picker-input";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { sendNotifications } from "@/lib/notifications";
-import { sendEmail, jobStatusEmailHtml, quoteReadyEmailHtml } from "@/lib/email";
+import { notifyJobParticipants, notifyJobStatusChange } from "@/lib/jobNotifications";
+import { sendEmail, jobStatusEmailHtml } from "@/lib/email";
 import { FeatureGate } from "@/hooks/useFeatureFlags";
 import JobComments from "@/components/jobs/JobComments";
 import { generateJobReport } from "@/lib/jobReportPdf";
@@ -393,13 +394,7 @@ export default function JobDetail() {
     }
   };
 
-  const sendJobNotifications = (jobData: any, message: string) => {
-    const notifs: { user_id: string; title: string; message: string; link: string }[] = [];
-    if (jobData.client_id) notifs.push({ user_id: jobData.client_id, title: "Job updated", message, link: `/jobs/${jobData.id}` });
-    if (jobData.assigned_staff_id && jobData.assigned_staff_id !== user?.id)
-      notifs.push({ user_id: jobData.assigned_staff_id, title: "Job updated", message, link: `/jobs/${jobData.id}` });
-    if (notifs.length > 0) sendNotifications(notifs);
-  };
+  const sendJobNotifications = (jobData: any, message: string) => notifyJobParticipants(jobData, message, user?.id);
 
   const handleStatusChange = async (status: string) => {
     if (!job) return;
@@ -408,17 +403,7 @@ export default function JobDetail() {
     setJob({ ...job, status });
     toast.success("Status updated");
     if (canEdit) fetchJobLogs();
-    sendJobNotifications(job, `${job.title} is now ${status.replace(/_/g, " ")}`);
-    if (job.client_id) {
-      const emailHtml = status === "quote"
-        ? quoteReadyEmailHtml(job.title, `${window.location.origin}/jobs/${job.id}`)
-        : jobStatusEmailHtml(job.title, status, `${window.location.origin}/jobs/${job.id}`);
-      sendEmail({
-        to_user_id: job.client_id,
-        subject: status === "quote" ? `Quote ready: ${job.title}` : `Job update: ${job.title}`,
-        html: emailHtml,
-      }).catch(() => {});
-    }
+    notifyJobStatusChange(job, status, user?.id);
   };
 
   const handleActualHoursBlur = async () => {

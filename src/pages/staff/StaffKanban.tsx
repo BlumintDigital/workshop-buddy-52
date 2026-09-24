@@ -1,6 +1,7 @@
 import { useEffect, useState, DragEvent } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { notifyJobStatusChange } from "@/lib/jobNotifications";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -104,7 +105,9 @@ export default function StaffKanban() {
     if (error) {
       toast.error("Failed to update status");
       setJobs((prev) => prev.map((j) => (j.id === draggedId ? { ...j, status: job.status } : j)));
+      return;
     }
+    notifyJobStatusChange(job, newStatus, user?.id);
   };
 
   return (

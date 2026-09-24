@@ -13,6 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useFeature } from "@/hooks/useFeatureFlags";
 import { todayIso } from "@/lib/dashboardQueries";
+import { notifyJobStatusChange } from "@/lib/jobNotifications";
 import { cn } from "@/lib/utils";
 
 type Job = {
@@ -120,6 +121,7 @@ export default function StaffDashboard() {
       return;
     }
     toast.success(`${action.done}: ${job.title}`);
+    notifyJobStatusChange(job, action.to, user?.id);
     load();
   };
 
