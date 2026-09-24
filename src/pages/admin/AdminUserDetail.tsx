@@ -290,13 +290,11 @@ export default function AdminUserDetail() {
               title="Total Jobs"
               value={jobs.length}
               icon={Briefcase}
-              iconClassName="bg-gradient-to-br from-blue-500 to-blue-700"
             />
             <StatCard
               title="Completed"
               value={completedJobs}
               icon={CheckCircle2}
-              iconClassName="bg-gradient-to-br from-emerald-500 to-emerald-700"
             />
             {isClient ? (
               <>
@@ -304,14 +302,12 @@ export default function AdminUserDetail() {
                   title="Active / Pending"
                   value={activeJobs}
                   icon={Clock}
-                  iconClassName="bg-gradient-to-br from-amber-500 to-amber-700"
                 />
                 <StatCard
                   title="Total Billed"
                   value={fmt(totalBilled)}
                   description={unpaidCount > 0 ? `${unpaidCount} unpaid invoice${unpaidCount > 1 ? "s" : ""}` : "All settled"}
                   icon={DollarSign}
-                  iconClassName="bg-gradient-to-br from-violet-500 to-violet-700"
                 />
               </>
             ) : (
@@ -320,14 +316,12 @@ export default function AdminUserDetail() {
                   title="Active"
                   value={activeJobs}
                   icon={Clock}
-                  iconClassName="bg-gradient-to-br from-amber-500 to-amber-700"
                 />
                 <StatCard
                   title="Hours Logged"
                   value={hoursLogged.toFixed(1)}
                   description="actual hours on jobs"
                   icon={Timer}
-                  iconClassName="bg-gradient-to-br from-violet-500 to-violet-700"
                 />
               </>
             )}

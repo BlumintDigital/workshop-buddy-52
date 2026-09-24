@@ -97,7 +97,7 @@ export default function ReportIssue() {
       <DashboardLayout>
         <div className="max-w-lg mx-auto space-y-6 py-8">
           <div className="flex flex-col items-center text-center gap-4">
-            <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center">
+            <div className="w-16 h-16 rounded-full bg-success-soft text-success flex items-center justify-center">
               <CheckCircle2 className="h-8 w-8" />
             </div>
             <div>
@@ -130,7 +130,7 @@ export default function ReportIssue() {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-base">
-                  <AlertCircle className="h-4 w-4 text-amber-500" />
+                  <AlertCircle className="h-4 w-4 text-warning" />
                   Issue Details
                 </CardTitle>
                 <CardDescription>Describe what happened as clearly as possible.</CardDescription>

@@ -91,14 +91,14 @@ export default function ClientJobs() {
             <p className="text-muted-foreground">Track your workshop jobs</p>
           </div>
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <Wifi className={`h-3.5 w-3.5 ${live ? "text-emerald-500" : ""}`} />
+            <Wifi className={`h-3.5 w-3.5 ${live ? "text-success" : ""}`} />
             {live ? "Live" : "Connecting..."}
           </div>
         </div>
 
         {/* Quotes awaiting approval */}
         {quotes.length > 0 && (
-          <Card className="border-amber-400/40 bg-amber-50/40 dark:bg-amber-950/20">
+          <Card className="border-warning/40 bg-warning-soft">
             <CardHeader className="pb-2">
               <CardTitle className="text-base">Quotes Pending Your Approval</CardTitle>
             </CardHeader>

@@ -34,8 +34,8 @@ test.describe.serial("inventory", () => {
     const row = page.getByRole("row").filter({ hasText: ITEM_NAME });
     await expect(row).toBeVisible({ timeout: 15_000 });
     // Open the row's actions dropdown (last button in the row).
-    await row.getByRole("button").last().click();
-    await page.getByRole("menuitem", { name: "Adjust Stock" }).click();
+    await row.getByRole("button", { name: /actions for/i }).click();
+    await page.getByRole("menuitem", { name: "Adjust stock" }).click();
 
     const dialog = page.getByRole("dialog");
     await expect(dialog.getByText(/adjust stock/i)).toBeVisible();
@@ -67,10 +67,10 @@ test.describe.serial("inventory", () => {
     const row = page.getByRole("row").filter({ hasText: ITEM_NAME });
     await expect(row).toBeVisible({ timeout: 15_000 });
 
-    // Delete uses a native confirm() dialog.
-    page.on("dialog", (d) => void d.accept());
-    await row.getByRole("button").last().click();
-    await page.getByRole("menuitem", { name: "Delete Item" }).click();
+    await row.getByRole("button", { name: /actions for/i }).click();
+    await page.getByRole("menuitem", { name: "Delete item" }).click();
+    // Deleting asks for confirmation in an in-app dialog.
+    await page.getByRole("alertdialog").getByRole("button", { name: "Delete item" }).click();
 
     await expect(page.getByRole("row").filter({ hasText: ITEM_NAME })).toHaveCount(0, { timeout: 15_000 });
   });

@@ -134,10 +134,10 @@ export default function AdminSignupCodes() {
 
   const roleBadge = (role: AppRole) => {
     const config: Record<string, { label: string; className: string }> = {
-      client:  { label: "Client",  className: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-300 dark:border-emerald-800" },
-      staff:   { label: "Staff",   className: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/30 dark:text-blue-300 dark:border-blue-800" },
-      manager: { label: "Manager", className: "bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-950/30 dark:text-violet-300 dark:border-violet-800" },
-      admin:   { label: "Admin",   className: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-300 dark:border-amber-800" },
+      client:  { label: "Client",  className: "bg-success-soft text-success border-success/40" },
+      staff:   { label: "Staff",   className: "bg-info-soft text-info border-info/40" },
+      manager: { label: "Manager", className: "bg-primary-soft text-primary border-primary/40" },
+      admin:   { label: "Admin",   className: "bg-warning-soft text-warning border-warning/40" },
     };
     const c = config[role] ?? { label: role, className: "" };
     return <Badge variant="outline" className={c.className}>{c.label}</Badge>;

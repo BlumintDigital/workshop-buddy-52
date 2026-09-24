@@ -26,24 +26,28 @@ type CalendarEvent = {
   estimatedHours?: number | null;
 };
 
-const priorityColors: Record<string, string> = {
-  high: "border-l-red-500",
-  medium: "border-l-amber-500",
-  low: "border-l-emerald-500",
+/** Priority is shown as a small dot (not a coloured side stripe) so the pill stays calm. */
+const priorityDot: Record<string, string> = {
+  urgent: "bg-destructive",
+  high: "bg-destructive",
+  medium: "bg-warning",
+  low: "bg-success",
 };
 
 const priorityBadgeColors: Record<string, string> = {
-  high: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
-  medium: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400",
-  low: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400",
+  urgent: "bg-destructive-soft text-destructive",
+  high: "bg-destructive-soft text-destructive",
+  medium: "bg-warning-soft text-warning",
+  low: "bg-success-soft text-success",
 };
 
 const statusBadgeColors: Record<string, string> = {
-  pending: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
-  in_progress: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
-  completed: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400",
-  cancelled: "bg-muted text-muted-foreground",
-};
+  pending: "bg-secondary text-muted-foreground",
+  in_progress: "bg-info-soft text-info",
+  review: "bg-warning-soft text-warning",
+  completed: "bg-success-soft text-success",
+  cancelled: "bg-secondary text-muted-foreground",
+}
 
 export default function AdminCalendar() {
   const [viewMode, setViewMode] = useState<"month" | "week">("month");
@@ -186,14 +190,18 @@ export default function AdminCalendar() {
       draggable={ev.type === "job"}
       onDragStart={ev.type === "job" ? (e) => { e.stopPropagation(); handleDragStart(e, ev.id); } : undefined}
       className={cn(
-        "text-xs leading-tight px-1 py-0.5 rounded truncate border-l-2",
+        "flex items-center gap-1 truncate rounded px-1.5 py-0.5 text-xs leading-tight",
         ev.type === "appointment"
-          ? "bg-primary/10 text-primary border-l-blue-500"
-          : cn("bg-secondary text-secondary-foreground cursor-grab active:cursor-grabbing", priorityColors[ev.priority || "medium"]),
+          ? "bg-info-soft text-info"
+          : "cursor-grab bg-secondary text-secondary-foreground active:cursor-grabbing",
         draggedEventId === ev.id && "opacity-50"
       )}
+      title={ev.type === "job" ? `${ev.title} (${ev.priority || "medium"} priority)` : ev.title}
     >
-      {ev.title}
+      {ev.type === "job" && (
+        <span aria-hidden className={cn("h-1.5 w-1.5 shrink-0 rounded-full", priorityDot[ev.priority || "medium"])} />
+      )}
+      <span className="truncate">{ev.title}</span>
     </div>
   );
 
@@ -372,12 +380,12 @@ export default function AdminCalendar() {
               ) : (
                 <div className="space-y-3">
                   {selectedEvents.map((ev) => (
-                    <div key={ev.id} className={cn("border rounded-md p-3 border-l-4", ev.type === "job" ? priorityColors[ev.priority || "medium"] : "border-l-blue-500")}>
+                    <div key={ev.id} className="rounded-md border p-3">
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex-1 min-w-0">
                           <p className="font-medium text-sm">{ev.title}</p>
                           <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-xs text-muted-foreground">
-                            {ev.time && <span>🕐 {ev.time}</span>}
+                            {ev.time && <span>{ev.time}</span>}
                             {ev.clientName && <span>Client: {ev.clientName}</span>}
                             {ev.staffName && <span>Staff: {ev.staffName}</span>}
                             {ev.estimatedHours != null && <span>{ev.estimatedHours}h est.</span>}

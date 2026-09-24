@@ -13,7 +13,6 @@ interface StatCardProps {
 
 /**
  * Legacy StatCard — kept for callers that haven't migrated to MetricCard.
- * Restyled to match the 2026 dark/violet system.
  */
 export function StatCard({ title, value, description, icon: Icon, trend, iconClassName }: StatCardProps) {
   const trendIsPositive = trend && !trend.startsWith("-");
@@ -37,7 +36,7 @@ export function StatCard({ title, value, description, icon: Icon, trend, iconCla
             )}
           </div>
           <div className={cn(
-            "shrink-0 rounded-xl border border-primary/30 bg-primary/10 p-2.5 text-primary",
+            "shrink-0 rounded-lg bg-secondary p-2.5 text-foreground",
             iconClassName,
           )}>
             <Icon className="h-4 w-4 sm:h-5 sm:w-5" />

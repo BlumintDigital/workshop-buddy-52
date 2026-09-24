@@ -23,10 +23,10 @@ function evaluateStrength(pw: string): Strength {
   const map: Strength[] = [
     { score: 0, label: "Too weak", color: "bg-destructive" },
     { score: 1, label: "Weak", color: "bg-destructive" },
-    { score: 2, label: "Fair", color: "bg-orange-500" },
-    { score: 3, label: "Good", color: "bg-yellow-500" },
-    { score: 4, label: "Strong", color: "bg-green-500" },
-    { score: 5, label: "Excellent", color: "bg-green-600" },
+    { score: 2, label: "Fair", color: "bg-warning" },
+    { score: 3, label: "Good", color: "bg-warning" },
+    { score: 4, label: "Strong", color: "bg-success" },
+    { score: 5, label: "Excellent", color: "bg-success" },
   ];
   return map[score];
 }
@@ -143,8 +143,8 @@ export default function ResetPassword() {
           {success ? (
             <>
               <CardHeader className="text-center">
-                <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30">
-                  <CheckCircle2 className="h-7 w-7 text-green-600 dark:text-green-400" />
+                <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-success-soft">
+                  <CheckCircle2 className="h-7 w-7 text-success" />
                 </div>
                 <CardTitle>You're all set!</CardTitle>
                 <CardDescription>
@@ -217,7 +217,7 @@ export default function ResetPassword() {
                         </button>
                       </div>
                       {confirmError && <p className="text-xs text-destructive">Passwords do not match</p>}
-                      {checks.match && <p className="text-xs text-green-600 dark:text-green-400 inline-flex items-center gap-1"><Check className="h-3 w-3" /> Passwords match</p>}
+                      {checks.match && <p className="text-xs text-success inline-flex items-center gap-1"><Check className="h-3 w-3" /> Passwords match</p>}
                     </div>
                     <Button type="submit" className="w-full" disabled={!canSubmit}>
                       {submitting ? "Updating..." : isInvite ? "Activate Account" : "Update Password"}
@@ -236,7 +236,7 @@ export default function ResetPassword() {
 
 function Requirement({ met, label }: { met: boolean; label: string }) {
   return (
-    <li className={`inline-flex items-center gap-1 ${met ? "text-green-600 dark:text-green-400" : ""}`}>
+    <li className={`inline-flex items-center gap-1 ${met ? "text-success" : ""}`}>
       {met ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
       {label}
     </li>

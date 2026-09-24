@@ -61,14 +61,14 @@ export function AdminOnboardingChecklist() {
             Dismiss
           </Button>
         </div>
-        <Progress value={progress} className="mt-3 h-2" />
+        <Progress value={progress} className="mt-3 h-2" aria-label={`Setup ${progress}% complete`} />
       </CardHeader>
       <CardContent className="space-y-2">
         {activeSteps.map((step) => (
           <div key={step.id} className="flex flex-col gap-3 rounded-lg border p-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex min-w-0 gap-3">
               {step.completed ? (
-                <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" />
+                <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-success" />
               ) : (
                 <Circle className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
               )}

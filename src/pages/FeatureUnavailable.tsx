@@ -44,7 +44,7 @@ export function ClientPortalUnavailable() {
     <main className="min-h-screen bg-muted/30 flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-amber-100 text-amber-700">
+          <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-warning-soft text-warning">
             <AlertTriangle className="h-6 w-6" />
           </div>
           <CardTitle>Portal temporarily unavailable</CardTitle>

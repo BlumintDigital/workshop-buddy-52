@@ -11,7 +11,7 @@ test.describe.serial("settings and goals", () => {
     const original = await phone.inputValue();
 
     await phone.fill("+44 700 900 1234");
-    await page.getByRole("button", { name: "Save Settings" }).click();
+    await page.getByRole("button", { name: "Save changes" }).click();
     await expect(page.getByText("Settings saved — invoices and PDFs will refresh")).toBeVisible({ timeout: 15_000 });
 
     // Persisted across reload?
@@ -20,7 +20,7 @@ test.describe.serial("settings and goals", () => {
 
     // Restore the original value so the test leaves no trace.
     await page.locator("#phone").fill(original);
-    await page.getByRole("button", { name: "Save Settings" }).click();
+    await page.getByRole("button", { name: "Save changes" }).click();
     await expect(page.getByText("Settings saved — invoices and PDFs will refresh")).toBeVisible({ timeout: 15_000 });
   });
 

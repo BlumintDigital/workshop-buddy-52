@@ -173,7 +173,7 @@ export default function JobComments({ jobId, jobTitle }: Props) {
                     <div className={cn("flex items-center gap-1.5 text-xs text-muted-foreground", isOwn && "flex-row-reverse")}>
                       <span className="font-medium">{c.profiles?.full_name ?? "Unknown"}</span>
                       {c.is_internal && (
-                        <Badge variant="outline" className="py-0 px-1.5 text-xs border-amber-400 text-amber-600 dark:border-amber-700 dark:text-amber-400">
+                        <Badge variant="outline" className="py-0 px-1.5 text-xs border-warning/40 text-warning">
                           Internal
                         </Badge>
                       )}
@@ -185,7 +185,7 @@ export default function JobComments({ jobId, jobTitle }: Props) {
                         isOwn
                           ? "bg-primary text-primary-foreground rounded-br-sm"
                           : c.is_internal
-                            ? "bg-amber-50 border border-amber-200 rounded-bl-sm dark:bg-amber-950/30 dark:border-amber-800"
+                            ? "bg-warning-soft border border-warning/40 rounded-bl-sm"
                             : "bg-muted rounded-bl-sm",
                       )}
                     >
@@ -214,7 +214,7 @@ export default function JobComments({ jobId, jobTitle }: Props) {
             rows={2}
             className={cn(
               "resize-none text-sm",
-              isInternal && "border-amber-300 focus-visible:ring-amber-400 dark:border-amber-700",
+              isInternal && "border-warning/40 focus-visible:ring-warning",
             )}
             maxLength={2000}
           />
@@ -224,7 +224,7 @@ export default function JobComments({ jobId, jobTitle }: Props) {
                 <Switch
                   checked={isInternal}
                   onCheckedChange={setIsInternal}
-                  className="data-[state=checked]:bg-amber-500"
+                  className="data-[state=checked]:bg-warning"
                 />
                 <span className="text-muted-foreground">Internal note</span>
               </label>

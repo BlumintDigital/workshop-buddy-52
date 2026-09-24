@@ -134,7 +134,7 @@
 
   body {
     @apply bg-background text-foreground;
-    font-family: 'Figtree', system-ui, sans-serif;
+    font-family: 'Geist Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
@@ -145,7 +145,7 @@
   }
 
   h1, h2, h3, h4 {
-    font-family: 'Outfit', 'Figtree', system-ui, sans-serif;
+    font-family: 'Geist Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
     letter-spacing: -0.015em;
   }
   h1 { font-weight: 700; }
@@ -164,7 +164,7 @@
     background-image: var(--gradient-surface);
   }
   .text-display {
-    font-family: 'Outfit', 'Figtree', system-ui, sans-serif;
+    font-family: 'Geist Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
     font-weight: 600;
     letter-spacing: -0.025em;
   }

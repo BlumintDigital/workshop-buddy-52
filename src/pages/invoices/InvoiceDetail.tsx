@@ -692,7 +692,7 @@ export default function InvoiceDetail() {
         {(canEdit || canManage) && (
           <div className="space-y-2">
             {isDirty && !saving && (
-              <p className="text-center text-sm text-amber-600 dark:text-amber-400">You have unsaved changes</p>
+              <p className="text-center text-sm text-warning">You have unsaved changes</p>
             )}
             <Button onClick={handleSave} disabled={saving} className="w-full">
               {saving ? "Saving..." : "Save Changes"}

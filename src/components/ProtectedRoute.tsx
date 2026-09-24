@@ -32,7 +32,7 @@ export default function ProtectedRoute({ children, allowedRoles }: ProtectedRout
     return (
       <div className="min-h-screen flex items-center justify-center p-6 bg-background">
         <div className="max-w-md w-full rounded-lg border bg-card p-6 text-center space-y-4">
-          <AlertTriangle className="h-10 w-10 text-amber-500 mx-auto" />
+          <AlertTriangle className="h-10 w-10 text-warning mx-auto" />
           <h1 className="text-lg font-semibold">No role assigned</h1>
           <p className="text-sm text-muted-foreground">
             Your account doesn't have a role yet. Please contact an administrator to be granted access.

@@ -735,7 +735,7 @@ export default function JobDetail() {
 
         {/* Quote approval banner — clients only */}
         {role === "client" && job.status === "quote" && (
-          <Card className="border-amber-400/40 bg-amber-50/40 dark:bg-amber-950/20">
+          <Card className="border-warning/40 bg-warning-soft">
             <CardContent className="pt-5 flex items-center justify-between gap-4 flex-wrap">
               <div>
                 <p className="font-semibold">Quote pending your approval</p>
@@ -1040,7 +1040,7 @@ export default function JobDetail() {
                     const dotColor =
                       event.type === "created" ? "border-muted-foreground bg-muted" :
                       event.type === "status" ? "border-primary bg-primary" :
-                      "border-blue-500 bg-blue-500";
+                      "border-info bg-info";
                     return (
                       <div key={event.key} className="relative flex gap-3">
                         {!isLast && (
@@ -1156,7 +1156,7 @@ export default function JobDetail() {
                 <div>
                   <div className="flex gap-0.5 text-2xl mb-2">
                     {[1, 2, 3, 4, 5].map(s => (
-                      <span key={s} className={s <= existingRating.rating ? "text-amber-400" : "text-muted-foreground"}>★</span>
+                      <span key={s} className={s <= existingRating.rating ? "text-warning" : "text-muted-foreground"}>★</span>
                     ))}
                   </div>
                   {existingRating.comment && <p className="text-sm text-muted-foreground">{existingRating.comment}</p>}
@@ -1168,7 +1168,7 @@ export default function JobDetail() {
                   <div className="flex gap-1 text-3xl">
                     {[1, 2, 3, 4, 5].map(s => (
                       <button key={s} onClick={() => setRatingValue(s)}
-                        className={cn("transition-colors leading-none", s <= ratingValue ? "text-amber-400" : "text-muted-foreground hover:text-amber-300")}>
+                        className={cn("transition-colors leading-none", s <= ratingValue ? "text-warning" : "text-muted-foreground hover:text-warning")}>
                         ★
                       </button>
                     ))}

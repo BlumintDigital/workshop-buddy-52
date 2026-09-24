@@ -30,7 +30,7 @@ import { cn } from "@/lib/utils";
 
 
 import { CURRENCIES } from "@/lib/currencies";
-import { PRESETS, hexToHslString, hslStringToHex, applyBrandColors, DEFAULT_BRAND } from "@/lib/brand-colors";
+import { PRESETS, hexToHslString, hslStringToHex, applyBrandColors, DEFAULT_BRAND, contrastWithWhite, ensureReadablePrimary } from "@/lib/brand-colors";
 const currencies = CURRENCIES;
 
 const defaultSettings = {
@@ -921,7 +921,7 @@ export default function AdminSettings() {
                             });
                           }}
                           className="max-w-[140px] font-mono text-xs"
-                          placeholder="#7d9b76"
+                          placeholder="#2e6a4c"
                         />
                         <div className="flex flex-wrap gap-2">
                           {PRESETS.map((p) => (
@@ -929,6 +929,7 @@ export default function AdminSettings() {
                               key={p.name}
                               type="button"
                               title={p.name}
+                              aria-label={`Use ${p.name} as ${kind} colour`}
                               onClick={() => {
                                 const hsl = hexToHslString(p.hex)!;
                                 set(field as any, hsl);
@@ -943,6 +944,19 @@ export default function AdminSettings() {
                           ))}
                         </div>
                       </div>
+                      {kind === "primary" && current && (contrastWithWhite(current) ?? 5) < 4.5 && (() => {
+                        const readable = ensureReadablePrimary(current);
+                        return (
+                          <p className="flex flex-wrap items-center gap-2 rounded-md bg-warning-soft px-3 py-2 text-sm">
+                            <AlertTriangle className="h-4 w-4 shrink-0 text-warning" aria-hidden />
+                            This colour is too light for white text. Buttons and links will use a darker shade so they stay readable:
+                            <span className="inline-flex items-center gap-1.5 font-mono text-xs">
+                              <span aria-hidden className="h-4 w-4 rounded border" style={{ background: hslStringToHex(readable) ?? undefined }} />
+                              {hslStringToHex(readable)}
+                            </span>
+                          </p>
+                        );
+                      })()}
                     </div>
                   );
                 })}

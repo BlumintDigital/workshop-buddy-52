@@ -96,9 +96,9 @@ export default function AdminAccessReview() {
               <p className="text-sm text-muted-foreground">Total users</p>
             </CardContent>
           </Card>
-          <Card className={staleCount > 0 ? "border-amber-400" : ""}>
+          <Card className={staleCount > 0 ? "border-warning/40" : ""}>
             <CardContent className="pt-6">
-              <p className="text-2xl font-bold text-amber-600">{staleCount}</p>
+              <p className="text-2xl font-bold text-warning">{staleCount}</p>
               <p className="text-sm text-muted-foreground">Inactive &gt;{ACCESS_REVIEW_STALE_DAYS} days</p>
             </CardContent>
           </Card>
@@ -113,11 +113,11 @@ export default function AdminAccessReview() {
         </div>
 
         {staleCount > 0 && (
-          <Card className="border-amber-400 bg-amber-50 dark:bg-amber-950/20">
+          <Card className="border-warning/40 bg-warning-soft">
             <CardContent className="pt-4 pb-4">
               <div className="flex items-start gap-3">
-                <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
-                <p className="text-sm text-amber-800 dark:text-amber-400">
+                <AlertTriangle className="h-4 w-4 text-warning mt-0.5 shrink-0" />
+                <p className="text-sm text-warning">
                   <strong>{staleCount} user{staleCount > 1 ? "s have" : " has"}</strong> not signed in for more than {ACCESS_REVIEW_STALE_DAYS} days.
                   Review and deactivate accounts that are no longer needed.
                 </p>
@@ -163,7 +163,7 @@ export default function AdminAccessReview() {
                 ) : users.map((u) => {
                   const stale = isAccessReviewUserStale(u.last_sign_in_at);
                   return (
-                    <TableRow key={u.user_id} className={stale ? "bg-amber-50/60 dark:bg-amber-950/10" : ""}>
+                    <TableRow key={u.user_id} className={stale ? "bg-warning-soft" : ""}>
                       <TableCell className="font-medium">
                         {u.full_name ?? "—"}
                         {!u.is_active && (

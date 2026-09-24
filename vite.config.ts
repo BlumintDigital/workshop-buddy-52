@@ -12,6 +12,11 @@ export default defineConfig(({ mode }) => ({
     hmr: {
       overlay: false,
     },
+    // Generated output the dev server never needs to reload for. Watching it
+    // holds file handles on Windows and blocks Playwright/graphify from clearing it.
+    watch: {
+      ignored: ["**/e2e/.results/**", "**/e2e/.report/**", "**/e2e/.state/**", "**/graphify-out/**"],
+    },
   },
   plugins: [
     react(),

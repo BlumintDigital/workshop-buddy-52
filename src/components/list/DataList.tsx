@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 export type Column<T> = {
   key: string;
@@ -39,18 +40,22 @@ const HIDE: Record<NonNullable<Column<unknown>["hideBelow"]>, string> = {
 };
 
 /**
- * The shared list body: a table from 640px up and a stack of tappable cards on
- * phones, from one column definition. Loading and empty states are built in.
+ * The shared list body: a table from 768px up and a stack of tappable cards on
+ * phones, from one column definition. Only one layout is rendered at a time, so
+ * each row exists once in the page (for screen readers and tests alike).
+ * Loading and empty states are built in.
  */
 export function DataList<T>({ rows, columns, getRowKey, getRowHref, mobile, isLoading, empty, actions }: DataListProps<T>) {
+  const isMobile = useIsMobile();
+
   if (!isLoading && rows.length === 0) {
     return <div className="rounded-lg border bg-card px-4 py-10 text-center">{empty}</div>;
   }
 
   return (
     <div className="min-w-0 overflow-hidden rounded-lg border bg-card">
-      {/* Table: 640px and up */}
-      <div className="hidden sm:block">
+      {!isMobile && (
+      <div>
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
@@ -106,9 +111,10 @@ export function DataList<T>({ rows, columns, getRowKey, getRowHref, mobile, isLo
           </TableBody>
         </Table>
       </div>
+      )}
 
-      {/* Cards: phones */}
-      <ul className="divide-y sm:hidden">
+      {isMobile && (
+      <ul className="divide-y">
         {isLoading
           ? Array.from({ length: 5 }).map((_, i) => (
               <li key={i} className="space-y-2 p-4">
@@ -141,6 +147,7 @@ export function DataList<T>({ rows, columns, getRowKey, getRowHref, mobile, isLo
               );
             })}
       </ul>
+      )}
     </div>
   );
 }

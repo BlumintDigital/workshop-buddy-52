@@ -34,7 +34,7 @@ const severityConfig: Record<Severity, { variant: "default" | "destructive"; cla
   warning: {
     variant: "default",
     className:
-      "border-amber-300 bg-amber-50 text-amber-900 [&>svg]:text-amber-600 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200 dark:[&>svg]:text-amber-400",
+      "border-warning/40 bg-warning-soft text-warning [&>svg]:text-warning",
     Icon: AlertTriangle,
   },
   critical: {

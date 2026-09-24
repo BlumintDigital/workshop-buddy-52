@@ -39,7 +39,7 @@ export function SessionIndicator() {
   // Only surface the indicator when the session is actually approaching expiry
   if (!user || !isWarning) return null;
 
-  const colorClass = isUrgent ? "text-destructive" : "text-yellow-500";
+  const colorClass = isUrgent ? "text-destructive" : "text-warning";
 
   const handleExtend = () => {
     extendSession();

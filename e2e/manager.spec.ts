@@ -7,7 +7,8 @@ test.describe("manager role", () => {
   test("manager signs in with 2FA and reaches the manager dashboard", async ({ page }) => {
     await login(page, "MANAGER");
     await expect(page).toHaveURL(/\/manager\/dashboard/);
-    await expect(page.getByText("Staff workload")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Today" })).toBeVisible();
+    await expect(page.getByText("Needs attention")).toBeVisible();
   });
 
   test("manager sees the staff management page", async ({ page }) => {
