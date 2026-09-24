@@ -15,7 +15,7 @@ import {
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { Database, Trash2, Loader2, Upload, ImageIcon, X, Users, AlertTriangle, Lock, Send, Download } from "lucide-react";
+import { Bell, Building2, Database, Trash2, Loader2, Upload, ImageIcon, X, Users, AlertTriangle, Lock, Mail, Palette, Receipt, Send, Download } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
@@ -23,6 +23,10 @@ import {
 import { getCustomLogoUrl, resolveLogoUrl, useDefaultLogoOnError } from "@/lib/branding";
 import { useAdminOnboarding } from "@/hooks/useAdminOnboarding";
 import { useAuth } from "@/hooks/useAuth";
+import { PageBar } from "@/components/dashboard/PageBar";
+import { useSidebar } from "@/components/ui/sidebar";
+import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 
 
 import { CURRENCIES } from "@/lib/currencies";
@@ -81,6 +85,7 @@ export default function AdminSettings() {
   const [uploadingImage, setUploadingImage] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [activeTab, setActiveTab] = useState("general");
+  const { state: sidebarState } = useSidebar();
   const [currentMonthGoal, setCurrentMonthGoal] = useState<number | null | undefined>(undefined);
   const [pastGoals, setPastGoals] = useState<{ year: number; month: number; goal_amount: number }[]>([]);
   const [goalInput, setGoalInput] = useState("");
@@ -544,7 +549,17 @@ export default function AdminSettings() {
   const set = (key: keyof Settings, value: string | boolean | string[]) =>
     setSettings(prev => ({ ...prev, [key]: value }));
 
-  if (loading || authLoading) return <DashboardLayout><p className="p-8 text-muted-foreground">Loading...</p></DashboardLayout>;
+  if (loading || authLoading) return (
+    <DashboardLayout>
+      <div className="mx-auto max-w-6xl space-y-4">
+        <Skeleton className="h-9 w-40" />
+        <div className="grid gap-6 md:grid-cols-[220px_1fr]">
+          <Skeleton className="hidden h-72 md:block" />
+          <Skeleton className="h-96" />
+        </div>
+      </div>
+    </DashboardLayout>
+  );
 
   if (!isAdmin) return (
     <DashboardLayout>
@@ -563,40 +578,31 @@ export default function AdminSettings() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6 max-w-6xl">
-        <div>
-          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Settings</h2>
-          <p className="text-muted-foreground">Workshop configuration</p>
-        </div>
+      <div className="mx-auto max-w-6xl space-y-4 pb-24">
+        <PageBar title="Settings" subtitle="Workshop details, billing, notifications, branding and data" />
 
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          {/* Mobile dropdown */}
-          <div className="sm:hidden">
-            <Select value={activeTab} onValueChange={setActiveTab}>
-              <SelectTrigger className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="general">General</SelectItem>
-                <SelectItem value="billing">Billing</SelectItem>
-                <SelectItem value="notifications">Notifications</SelectItem>
-                <SelectItem value="branding">Branding</SelectItem>
-                <SelectItem value="email">Email</SelectItem>
-                <SelectItem value="data">Data</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          {/* Desktop tabs */}
-          <TabsList className="hidden sm:grid sm:grid-cols-7 w-full h-auto">
-            <TabsTrigger value="general" className="text-xs sm:text-sm">General</TabsTrigger>
-            <TabsTrigger value="billing" className="text-xs sm:text-sm">Billing</TabsTrigger>
-            <TabsTrigger value="notifications" className="text-xs sm:text-sm">Notifications</TabsTrigger>
-            <TabsTrigger value="branding" className="text-xs sm:text-sm">Branding</TabsTrigger>
-            <TabsTrigger value="email" className="text-xs sm:text-sm">Email</TabsTrigger>
-            <TabsTrigger value="data" className="text-xs sm:text-sm">Data</TabsTrigger>
+        <Tabs value={activeTab} onValueChange={setActiveTab} orientation="vertical" className="grid gap-6 md:grid-cols-[220px_minmax(0,1fr)]">
+          <TabsList
+            aria-label="Settings sections"
+            className="-mx-3 flex h-auto justify-start gap-1.5 overflow-x-auto bg-transparent px-3 pb-1 [scrollbar-width:none] md:sticky md:top-20 md:mx-0 md:flex-col md:items-stretch md:gap-0.5 md:self-start md:px-0 [&::-webkit-scrollbar]:hidden"
+          >
+            {SETTINGS_SECTIONS.map(({ value, label, hint, icon: Icon }) => (
+              <TabsTrigger
+                key={value}
+                value={value}
+                className="h-9 shrink-0 justify-start gap-2 rounded-full border border-input bg-card px-3.5 text-sm font-medium text-foreground shadow-none data-[state=active]:border-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-none md:h-auto md:rounded-md md:border-0 md:bg-transparent md:px-3 md:py-2.5 md:text-left md:hover:bg-secondary md:data-[state=active]:bg-primary"
+              >
+                <Icon className="hidden h-4 w-4 shrink-0 md:block" aria-hidden />
+                <span className="flex flex-col items-start">
+                  <span>{label}</span>
+                  <span className="hidden text-xs font-normal opacity-80 md:block">{hint}</span>
+                </span>
+              </TabsTrigger>
+            ))}
           </TabsList>
 
-          <TabsContent value="general" className="mt-4">
+          <div className="min-w-0">
+          <TabsContent value="general" className="mt-0">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
               <div className="space-y-4 lg:col-span-2 min-w-0">
                 <Card>
@@ -676,7 +682,7 @@ export default function AdminSettings() {
           </TabsContent>
 
 
-          <TabsContent value="billing" className="mt-4 max-w-2xl">
+          <TabsContent value="billing" className="mt-0 max-w-3xl">
             <Card>
               <CardHeader>
                 <CardTitle>Billing</CardTitle>
@@ -794,7 +800,7 @@ export default function AdminSettings() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="notifications" className="mt-4 max-w-2xl">
+          <TabsContent value="notifications" className="mt-0 max-w-3xl">
             <Card>
               <CardHeader>
                 <CardTitle>In-app Notifications</CardTitle>
@@ -826,7 +832,7 @@ export default function AdminSettings() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="branding" className="mt-4 space-y-4 max-w-2xl">
+          <TabsContent value="branding" className="mt-0 max-w-3xl space-y-4">
             <Card>
               <CardHeader>
                 <CardTitle>Workshop Logo</CardTitle>
@@ -957,7 +963,7 @@ export default function AdminSettings() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="email" className="mt-4 space-y-4 max-w-2xl">
+          <TabsContent value="email" className="mt-0 max-w-3xl space-y-4">
             <Card>
               <CardHeader>
                 <CardTitle>Email Notifications</CardTitle>
@@ -1003,7 +1009,8 @@ export default function AdminSettings() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="data" className="mt-4 space-y-4 max-w-2xl">
+          <TabsContent value="data" className="mt-0 max-w-3xl space-y-4">
+            <SectionHeading title="Demo and testing" description="Only shown where demo tools are enabled." />
             {canSetupDemoUsers && (
             <Card>
               <CardHeader>
@@ -1038,6 +1045,7 @@ export default function AdminSettings() {
             )}
             {canBackupRestore && (
             <>
+            <SectionHeading title="Backups" description="Keep a copy of your data somewhere safe, and restore it if something goes wrong." />
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2"><Download className="h-5 w-5" />Create Backup</CardTitle>
@@ -1101,6 +1109,7 @@ export default function AdminSettings() {
             </Card>
             </>
             )}
+            <SectionHeading title="Danger zone" description="These permanently delete data. Take a backup first." danger />
             <Card className="border-destructive/50">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-destructive"><Trash2 className="h-5 w-5" />Delete All Data</CardTitle>
@@ -1162,18 +1171,47 @@ export default function AdminSettings() {
               </CardContent>
             </Card>
           </TabsContent>
+          </div>
         </Tabs>
-
-        <div className="flex items-center gap-3">
-          <Button onClick={handleSave} disabled={saving}>
-            {saving ? "Saving..." : "Save Settings"}
-          </Button>
-          {isDirty && !saving && (
-            <span className="text-sm text-amber-600 dark:text-amber-400">You have unsaved changes</span>
-          )}
-        </div>
       </div>
 
+      {(isDirty || saving) && (
+        <div
+          role="region"
+          aria-label="Unsaved changes"
+          className={cn("fixed inset-x-0 bottom-[calc(56px+env(safe-area-inset-bottom,0px))] z-30 border-t bg-card md:bottom-0", sidebarState === "collapsed" ? "md:left-[var(--sidebar-width-icon)]" : "md:left-[var(--sidebar-width)]")}
+        >
+          <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3">
+            <p className="text-sm font-medium">You have unsaved changes</p>
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" disabled={saving} onClick={() => savedSnapshot && setSettings(JSON.parse(savedSnapshot))}>
+                Discard
+              </Button>
+              <Button onClick={handleSave} disabled={saving}>
+                {saving ? "Saving…" : "Save changes"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </DashboardLayout>
+  );
+}
+
+const SETTINGS_SECTIONS = [
+  { value: "general", label: "General", hint: "Name, contact details", icon: Building2 },
+  { value: "billing", label: "Billing", hint: "Currency, tax, invoices", icon: Receipt },
+  { value: "notifications", label: "Notifications", hint: "In-app alerts", icon: Bell },
+  { value: "branding", label: "Branding", hint: "Logo, colours, sign-in image", icon: Palette },
+  { value: "email", label: "Email", hint: "Delivery and test sends", icon: Mail },
+  { value: "data", label: "Data", hint: "Backups, demo, reset", icon: Database },
+] as const;
+
+function SectionHeading({ title, description, danger }: { title: string; description: string; danger?: boolean }) {
+  return (
+    <div className="pt-2">
+      <h2 className={cn("font-sans text-base font-semibold", danger && "text-destructive")}>{title}</h2>
+      <p className="text-sm text-muted-foreground">{description}</p>
+    </div>
   );
 }
