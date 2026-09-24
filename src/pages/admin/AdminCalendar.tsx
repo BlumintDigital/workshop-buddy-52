@@ -226,13 +226,14 @@ export default function AdminCalendar() {
             {isWeek ? format(day, "EEE, MMM d") : format(day, "d")}
           </span>
           <div className="flex items-center gap-1">
-            {jobCount > 0 && <span className="text-[9px] bg-secondary text-secondary-foreground rounded-full px-1">{jobCount}J</span>}
-            {apptCount > 0 && <span className="text-[9px] bg-primary/10 text-primary rounded-full px-1">{apptCount}A</span>}
+            {jobCount > 0 && <span className="text-xs bg-secondary text-secondary-foreground rounded-full px-1.5" title={`${jobCount} jobs`}>{jobCount}J</span>}
+            {apptCount > 0 && <span className="text-xs bg-primary-soft text-primary rounded-full px-1.5" title={`${apptCount} appointments`}>{apptCount}A</span>}
             <Button
               variant="ghost"
               size="icon"
               onClick={(e) => { e.stopPropagation(); openCreateJob(day); }}
-              className="h-5 w-5 p-0 text-muted-foreground"
+              aria-label={`Add job on ${format(day, "d MMMM")}`}
+              className="h-6 w-6 p-0 text-muted-foreground"
             >
               <Plus className="h-3 w-3" />
             </Button>
@@ -330,7 +331,7 @@ export default function AdminCalendar() {
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1">
-                <Button variant="ghost" size="icon" onClick={goBack}>
+                <Button variant="ghost" size="icon" onClick={goBack} aria-label="Previous">
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
                 <Button variant="outline" size="sm" className="text-xs" onClick={() => { const now = new Date(); setCurrentMonth(now); setCurrentWeekDate(now); setSelectedDate(now); }}>
@@ -338,7 +339,7 @@ export default function AdminCalendar() {
                 </Button>
               </div>
               <CardTitle className="text-lg">{headerLabel}</CardTitle>
-              <Button variant="ghost" size="icon" onClick={goForward}>
+              <Button variant="ghost" size="icon" onClick={goForward} aria-label="Next">
                 <ChevronRight className="h-4 w-4" />
               </Button>
             </div>

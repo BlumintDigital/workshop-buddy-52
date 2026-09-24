@@ -253,7 +253,7 @@ export default function GoalsPage() {
               </div>
               <div>
                 <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Today</p>
-                <p className="text-xs text-muted-foreground/70">{dailyTarget ? `Target ${fmt(dailyTarget)}` : "No daily target"}</p>
+                <p className="text-xs text-muted-foreground">{dailyTarget ? `Target ${fmt(dailyTarget)}` : "No daily target"}</p>
               </div>
             </div>
             <p className="text-4xl font-bold tabular-nums">{fmt(dailyCompleted)}</p>
@@ -276,7 +276,7 @@ export default function GoalsPage() {
               </div>
               <div>
                 <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">This Month</p>
-                <p className="text-xs text-muted-foreground/70">{monthlyGoal ? `Goal ${fmt(monthlyGoal)}` : "No goal set"}</p>
+                <p className="text-xs text-muted-foreground">{monthlyGoal ? `Goal ${fmt(monthlyGoal)}` : "No goal set"}</p>
               </div>
             </div>
             <p className="text-4xl font-bold tabular-nums">{fmt(totalCompleted)}</p>

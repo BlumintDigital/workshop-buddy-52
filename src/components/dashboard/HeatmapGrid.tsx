@@ -33,7 +33,7 @@ export function HeatmapGrid({ data, hours, className }: HeatmapGridProps) {
         ))}
         {hours.map((h, hourIdx) => (
           <>
-            <div key={`label-${h}`} className="text-right text-xs text-muted-foreground/80">{h}</div>
+            <div key={`label-${h}`} className="text-right text-xs text-muted-foreground">{h}</div>
             {days.map((d, dayIdx) => (
               <div
                 key={`${h}-${d}`}

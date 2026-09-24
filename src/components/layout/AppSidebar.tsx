@@ -239,7 +239,7 @@ export function AppSidebar() {
       >
         {groups.map((group) => (
           <SidebarGroup key={group.label}>
-            <SidebarGroupLabel className="text-sidebar-foreground/60 text-xs font-medium tracking-wider uppercase">{group.label}</SidebarGroupLabel>
+            <SidebarGroupLabel className="text-sidebar-foreground text-xs font-medium">{group.label}</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
                 {group.items.map((item) => (

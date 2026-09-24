@@ -126,7 +126,7 @@ export default function NotificationsPanel() {
                       {n.title}
                     </p>
                     {n.message && <p className="mt-0.5 text-xs text-muted-foreground line-clamp-2">{n.message}</p>}
-                    <p className="mt-1 text-xs text-muted-foreground/80">{timeAgo(n.created_at)}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{timeAgo(n.created_at)}</p>
                   </div>
                 </div>
               );

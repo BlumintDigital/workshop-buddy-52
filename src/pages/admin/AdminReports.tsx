@@ -13,13 +13,20 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from "recharts";
 
+// Series colours are drawn from the semantic palette and each clears 3:1 against the
+// card surface (WCAG 1.4.11 non-text contrast).
 const COLORS = [
-  "hsl(217, 91%, 60%)",   // bright blue
-  "hsl(152, 69%, 46%)",   // emerald
-  "hsl(38, 95%, 56%)",    // amber
-  "hsl(0, 84%, 60%)",     // red
-  "hsl(267, 84%, 64%)",   // violet
+  "#2E6A4C", // primary
+  "#1F5E99", // info
+  "#9A5A00", // warning
+  "#B3261E", // destructive
+  "#5B4B8A", // neutral violet
 ];
+
+// Legend text follows the page foreground instead of the series colour, so it stays readable.
+const legendFormatter = (value: string) => (
+  <span className="text-sm text-foreground">{value.replace(/_/g, " ")}</span>
+);
 
 interface StaffStat {
   staff_name: string;
@@ -112,7 +119,7 @@ export default function AdminReports() {
                       <XAxis dataKey="month" className="text-xs" />
                       <YAxis className="text-xs" />
                       <Tooltip />
-                      <Bar dataKey="count" fill="hsl(217, 91%, 60%)" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="count" fill="#1F5E99" radius={[4, 4, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </CardContent>
@@ -133,7 +140,7 @@ export default function AdminReports() {
                       <XAxis dataKey="month" className="text-xs" />
                       <YAxis className="text-xs" />
                       <Tooltip />
-                      <Line type="monotone" dataKey="revenue" stroke="hsl(152, 69%, 46%)" strokeWidth={2} dot={{ fill: "hsl(152, 69%, 46%)", r: 4 }} />
+                      <Line type="monotone" dataKey="revenue" stroke="#2E6A4C" strokeWidth={2} dot={{ fill: "#2E6A4C", r: 4 }} />
                     </LineChart>
                   </ResponsiveContainer>
                 </CardContent>
@@ -165,7 +172,7 @@ export default function AdminReports() {
                         ))}
                       </Pie>
                       <Tooltip />
-                      <Legend />
+                      <Legend formatter={legendFormatter} />
                     </PieChart>
                   </ResponsiveContainer>
                 </CardContent>
@@ -211,9 +218,9 @@ export default function AdminReports() {
                           <XAxis type="number" className="text-xs" />
                           <YAxis type="category" dataKey="staff_name" width={100} className="text-xs" />
                           <Tooltip />
-                          <Legend />
-                          <Bar dataKey="estimated_hours" name="Estimated (h)" fill="hsl(217, 91%, 80%)" radius={[0, 4, 4, 0]} />
-                          <Bar dataKey="actual_hours" name="Actual (h)" fill="hsl(217, 91%, 60%)" radius={[0, 4, 4, 0]} />
+                          <Legend formatter={legendFormatter} />
+                          <Bar dataKey="estimated_hours" name="Estimated (h)" fill="#8DB8E6" radius={[0, 4, 4, 0]} />
+                          <Bar dataKey="actual_hours" name="Actual (h)" fill="#1F5E99" radius={[0, 4, 4, 0]} />
                         </BarChart>
                       </ResponsiveContainer>
                     </CardContent>
@@ -232,7 +239,7 @@ export default function AdminReports() {
                           <XAxis type="number" unit="%" className="text-xs" />
                           <YAxis type="category" dataKey="staff_name" width={100} className="text-xs" />
                           <Tooltip formatter={(v) => `${v}%`} />
-                          <Bar dataKey="efficiency" name="Efficiency %" fill="hsl(267, 84%, 64%)" radius={[0, 4, 4, 0]} />
+                          <Bar dataKey="efficiency" name="Efficiency %" fill="#5B4B8A" radius={[0, 4, 4, 0]} />
                         </BarChart>
                       </ResponsiveContainer>
                     </CardContent>

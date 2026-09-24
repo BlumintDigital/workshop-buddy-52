@@ -173,11 +173,11 @@ export default function AdminAccessReview() {
                       <TableCell className="capitalize">{u.role || <span className="text-muted-foreground">none</span>}</TableCell>
                       <TableCell>
                         {stale ? (
-                          <Badge variant="outline" className="text-amber-600 border-amber-400">
+                          <Badge variant="outline" className="border-warning/40 bg-warning-soft text-warning">
                             Stale
                           </Badge>
                         ) : (
-                          <Badge variant="outline" className="text-emerald-600 border-emerald-400">
+                          <Badge variant="outline" className="border-success/40 bg-success-soft text-success">
                             Active
                           </Badge>
                         )}
