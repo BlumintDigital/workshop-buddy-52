@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { NotificationBell } from "@/components/NotificationBell";
 import { SessionIndicator } from "@/components/SessionIndicator";
+import { GlobalSearch } from "./GlobalSearch";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth, getRoleDashboardPath } from "@/hooks/useAuth";
 
@@ -39,7 +40,10 @@ const LABELS: Record<string, string> = {
   feedback: "Feedback",
 };
 
-function toLabel(segment: string) {
+const HOME_LABEL: Record<string, string> = { admin: "Today", manager: "Today", staff: "My day", client: "Your orders" };
+
+function toLabel(segment: string, role: string | null) {
+  if (segment === "dashboard" && role) return HOME_LABEL[role] ?? LABELS.dashboard;
   return LABELS[segment] ?? segment.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
@@ -57,7 +61,7 @@ export function AppHeader() {
     if (!hasRolePrefix && i === 0 && role && ROLE_SCOPED_SEGMENTS.has(seg)) {
       href = `/${role}/${seg}`;
     }
-    return [...acc, { label: toLabel(seg), href }];
+    return [...acc, { label: toLabel(seg, role), href }];
   }, []);
 
   return (
@@ -126,7 +130,8 @@ export function AppHeader() {
           )}
         </BreadcrumbList>
       </Breadcrumb>
-      <div className="ml-auto flex items-center gap-3">
+      <div className="ml-auto flex items-center gap-2 sm:gap-3">
+        <GlobalSearch />
         <SessionIndicator />
         <NotificationBell />
       </div>

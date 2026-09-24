@@ -1,41 +1,81 @@
-import { useEffect, useMemo, useState } from "react";
-import {
-  Briefcase,
-  Calendar,
-  CalendarPlus,
-  CheckCircle2,
-  FileText,
-  Receipt,
-} from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
-import { useFeature } from "@/hooks/useFeatureFlags";
-import { useCurrency } from "@/hooks/useCurrency";
+import { Clock, FileText, Plus } from "lucide-react";
+import { toast } from "sonner";
 import DashboardLayout from "@/components/layout/DashboardLayout";
-import { Card, CardContent } from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import NotificationsPanel from "@/components/client/NotificationsPanel";
+import { PageBar } from "@/components/dashboard/PageBar";
+import { Panel } from "@/components/dashboard/Panel";
+import { StatusPill } from "@/components/dashboard/StatusPill";
+import { StepTracker } from "@/components/dashboard/StepTracker";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { cn } from "@/lib/utils";
-import { toast } from "sonner";
-import NotificationsPanel from "@/components/client/NotificationsPanel";
-import { jobStatusTone as statusTone, invoiceStatusTone as invoiceTone } from "@/lib/statusStyles";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { useCurrency } from "@/hooks/useCurrency";
+import { useFeature } from "@/hooks/useFeatureFlags";
+import { todayIso } from "@/lib/dashboardQueries";
 
-type Job = { id: string; title: string; status: string; date: string };
-type Invoice = { id: string; total: number; base_total?: number | null; currency?: string | null; status: string; created_at: string };
+type Quote = {
+  id: string;
+  title: string;
+  quoted_total: number | null;
+  quoted_currency: string | null;
+  quote_expires_at: string | null;
+  updated_at: string;
+};
+type Order = { id: string; title: string; status: string; due_date: string | null; updated_at: string };
+type Invoice = {
+  id: string;
+  invoice_number: string | null;
+  total: number;
+  base_total: number | null;
+  currency: string | null;
+  status: string;
+  due_date: string | null;
+};
 type Appointment = { id: string; title: string | null; appointment_date: string; appointment_time: string };
 
+const ORDER_STEPS = ["Received", "In production", "Final checks", "Ready"];
+const ORDER_STEP: Record<string, number> = { pending: 0, in_progress: 1, review: 2, completed: 3 };
+const ORDER_LABEL: Record<string, string> = {
+  pending: "Received",
+  in_progress: "In production",
+  review: "Final checks",
+  completed: "Ready",
+};
 
+function shortDate(iso: string) {
+  return new Date(iso).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
+}
+
+/** Client home screen: decisions waiting on them first, then progress on their orders, then money owed. */
 export default function ClientDashboard() {
   const appointmentsEnabled = useFeature("appointments");
   const { user, profile, refreshProfile } = useAuth();
   const { format } = useCurrency();
 
-  // Gate the "Finish setting up your profile" banner on a fresh profile read.
-  // We refresh on mount (and on tab focus) and only evaluate the banner once
-  // the latest data has loaded — so returning from /profile after saving never
-  // flashes a stale reminder.
+  const [quotes, setQuotes] = useState<Quote[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [deciding, setDeciding] = useState<string | null>(null);
+  const [declineFor, setDeclineFor] = useState<Quote | null>(null);
+  const [declineReason, setDeclineReason] = useState("");
+
+  // Evaluate the "finish your profile" prompt only on a fresh profile read, so
+  // returning from /profile after saving never flashes a stale reminder.
   const [profileChecked, setProfileChecked] = useState(false);
   useEffect(() => {
     let cancelled = false;
@@ -44,33 +84,15 @@ export default function ClientDashboard() {
       if (!cancelled) setProfileChecked(true);
     };
     void refresh();
-    const onFocus = () => { void refresh(); };
+    const onFocus = () => void refresh();
     window.addEventListener("focus", onFocus);
-    return () => { cancelled = true; window.removeEventListener("focus", onFocus); };
+    return () => {
+      cancelled = true;
+      window.removeEventListener("focus", onFocus);
+    };
   }, [refreshProfile]);
 
-
-  const [stats, setStats] = useState({ jobs: 0, openJobs: 0, appointments: 0, invoices: 0, unpaid: 0, balance: 0 });
-  const [recentJobs, setRecentJobs] = useState<Job[]>([]);
-  const [jobsFilter, setJobsFilter] = useState<"active" | "completed" | "all">("active");
-  const [upcomingAppts, setUpcomingAppts] = useState<Appointment[]>([]);
-  const [openInvoices, setOpenInvoices] = useState<Invoice[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-
-  const firstName = useMemo(() => {
-    const full = (profile?.full_name || user?.email || "there").trim();
-    return full.split(/\s+|@/)[0];
-  }, [profile, user]);
-
-  // Clients are companies — prefer the company name in the greeting so it reads
-  // "Welcome, Acme Limited" instead of the contact person's first name.
-  const greetingName = useMemo(() => {
-    const company = profile?.company_name?.trim();
-    if (company) return company;
-    return firstName;
-  }, [profile, firstName]);
-
-  const missingContactDetails = useMemo(() => {
+  const missingDetails = useMemo(() => {
     if (!profileChecked || !profile) return [] as string[];
     const missing: string[] = [];
     if (!profile.company_name?.trim()) missing.push("company name");
@@ -79,322 +101,246 @@ export default function ClientDashboard() {
     return missing;
   }, [profile, profileChecked]);
 
-
+  const load = useCallback(async () => {
+    if (!user) return;
+    const recent = new Date(Date.now() - 14 * 86_400_000).toISOString();
+    const [quotesRes, ordersRes, invoicesRes, apptsRes] = await Promise.all([
+      supabase
+        .from("client_requests")
+        .select("id, title, quoted_total, quoted_currency, quote_expires_at, updated_at")
+        .eq("client_id", user.id)
+        .eq("status", "quoted")
+        .order("updated_at", { ascending: true }),
+      supabase
+        .from("jobs")
+        .select("id, title, status, due_date, updated_at")
+        .eq("client_id", user.id)
+        .or(`status.in.(pending,in_progress,review),and(status.eq.completed,updated_at.gte.${recent})`)
+        .order("due_date", { ascending: true, nullsFirst: false }),
+      supabase
+        .from("invoices")
+        .select("id, invoice_number, total, base_total, currency, status, due_date")
+        .eq("client_id", user.id)
+        .in("status", ["sent", "overdue"])
+        .order("due_date", { ascending: true }),
+      appointmentsEnabled
+        ? supabase
+            .from("appointments")
+            .select("id, title, appointment_date, appointment_time")
+            .eq("client_id", user.id)
+            .gte("appointment_date", todayIso())
+            .order("appointment_date", { ascending: true })
+            .order("appointment_time", { ascending: true })
+            .limit(3)
+        : Promise.resolve({ data: [] as any[] }),
+    ]);
+    if (quotesRes.error || ordersRes.error || invoicesRes.error) {
+      toast.error("Some of your information didn't load. Reload the page to try again.");
+    }
+    setQuotes((quotesRes.data || []) as Quote[]);
+    setOrders((ordersRes.data || []) as Order[]);
+    setInvoices((invoicesRes.data || []) as Invoice[]);
+    setAppointments((apptsRes.data || []) as Appointment[]);
+    setIsLoading(false);
+  }, [user, appointmentsEnabled]);
 
   useEffect(() => {
-    if (!user) return;
-    setIsLoading(true);
-    const today = new Date().toISOString().slice(0, 10);
+    load();
+  }, [load]);
 
-    const run = async () => {
-      const [jobsCnt, openJobsCnt, apptsCnt, invsCnt, apptsRes, invRes] = await Promise.all([
-        supabase.from("jobs").select("*", { count: "exact", head: true }).eq("client_id", user.id),
-        supabase.from("jobs").select("*", { count: "exact", head: true }).eq("client_id", user.id).not("status", "in", "(completed,cancelled)"),
-        appointmentsEnabled
-          ? supabase.from("appointments").select("*", { count: "exact", head: true }).eq("client_id", user.id)
-          : Promise.resolve({ count: 0 } as any),
-        supabase.from("invoices").select("*", { count: "exact", head: true }).eq("client_id", user.id).in("status", ["sent", "paid", "overdue"]),
-        appointmentsEnabled
-          ? supabase
-              .from("appointments")
-              .select("id, title, appointment_date, appointment_time")
-              .eq("client_id", user.id)
-              .gte("appointment_date", today)
-              .order("appointment_date", { ascending: true })
-              .order("appointment_time", { ascending: true })
-              .limit(4)
-          : Promise.resolve({ data: [] } as any),
-        supabase
-          .from("invoices")
-          .select("id, total, base_total, currency, status, created_at")
-          .eq("client_id", user.id)
-          .in("status", ["sent", "overdue"])
-          .order("created_at", { ascending: false })
-          .limit(4),
-      ]);
+  const decide = async (quote: Quote, approve: boolean, reason?: string) => {
+    if (deciding) return;
+    setDeciding(quote.id);
+    const { error } = await supabase.rpc("client_decide_quote", {
+      _request_id: quote.id,
+      _approve: approve,
+      _reason: reason ?? (null as any),
+    });
+    setDeciding(null);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success(approve ? "Quote approved. The workshop has been told and will schedule the work." : "Quote declined.");
+    setDeclineFor(null);
+    setDeclineReason("");
+    load();
+  };
 
-      const open = (invRes.data || []) as Invoice[];
-      // Sum balance in workshop base currency for accuracy across currencies
-      const balance = open.reduce((sum, i) => sum + (Number(i.base_total ?? i.total) || 0), 0);
-
-      setStats({
-        jobs: jobsCnt.count || 0,
-        openJobs: openJobsCnt.count || 0,
-        appointments: apptsCnt.count || 0,
-        invoices: invsCnt.count || 0,
-        unpaid: open.length,
-        balance,
-      });
-      setUpcomingAppts((apptsRes.data || []) as Appointment[]);
-      setOpenInvoices(open);
-    };
-
-    const fetchJobs = async () => {
-      let q = supabase
-        .from("jobs")
-        .select("id, title, status, created_at")
-        .eq("client_id", user.id)
-        .order("created_at", { ascending: false })
-        .limit(5);
-      if (jobsFilter === "active") q = q.not("status", "in", "(completed,cancelled)");
-      else if (jobsFilter === "completed") q = q.eq("status", "completed");
-      const { data } = await q;
-      setRecentJobs(
-        (data || []).map((j: any) => ({
-          id: j.id,
-          title: j.title,
-          status: j.status,
-          date: new Date(j.created_at).toLocaleDateString(),
-        })),
-      );
-    };
-
-    Promise.all([run(), fetchJobs()]).catch(() => {
-      toast.error("Failed to load dashboard data. Please refresh.");
-    }).finally(() => setIsLoading(false));
-  }, [user, appointmentsEnabled, jobsFilter]);
+  // Sum in the workshop base currency so invoices in different currencies add up correctly.
+  const owed = invoices.reduce((sum, i) => sum + (Number(i.base_total ?? i.total) || 0), 0);
+  const today = todayIso();
+  const hasAnything = quotes.length + orders.length + invoices.length + appointments.length > 0;
+  const company = profile?.company_name?.trim();
 
   return (
     <DashboardLayout>
-      <div className="min-w-0 max-w-full space-y-6">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-          <div className="min-w-0">
-            <p className="text-sm text-muted-foreground">
-              {new Date().toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" })}
+      <div className="mx-auto min-w-0 max-w-2xl space-y-4">
+        <PageBar
+          title="Your orders"
+          subtitle={company || undefined}
+          actions={
+            <Button asChild size="sm" className="h-10">
+              <Link to="/client/requests">
+                <Plus />
+                New request
+              </Link>
+            </Button>
+          }
+        />
+
+        {missingDetails.length > 0 && (
+          <section className="flex flex-col gap-3 rounded-lg border border-warning/40 bg-warning-soft p-4 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm">
+              <span className="font-semibold">Finish setting up your profile.</span> Add your {missingDetails.join(", ")} so the workshop can reach you.
             </p>
-            <h1 className="mt-1 flex items-center gap-3 text-display text-4xl leading-tight sm:text-5xl">
-              <Avatar className="h-10 w-10 sm:h-14 sm:w-14 ring-2 ring-primary/20 shrink-0">
-                {profile?.avatar_url && <AvatarImage src={profile.avatar_url} alt={greetingName} />}
-                <AvatarFallback className="bg-primary/10 text-primary text-base sm:text-xl font-semibold">
-                  {greetingName.slice(0, 2).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              <span className="truncate">Welcome, <span className="text-primary">{greetingName}</span></span>
-            </h1>
-            <p className="mt-1 text-sm text-muted-foreground">Your jobs, appointments, and invoices in one place.</p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button asChild variant="glow" size="sm"><Link to="/client/requests"><FileText className="h-4 w-4" />Request quote or job</Link></Button>
-            {appointmentsEnabled && (
-              <Button asChild variant="soft" size="sm"><Link to="/client/appointments"><CalendarPlus className="h-4 w-4" />Book appointment</Link></Button>
-            )}
-            <Button asChild variant="soft" size="sm"><Link to="/client/invoices"><Receipt className="h-4 w-4" />Invoices</Link></Button>
-          </div>
-        </div>
-
-        {missingContactDetails.length > 0 && (
-          <Card className="border-warning/40 bg-warning-soft">
-            <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
-              <div className="min-w-0">
-                <p className="text-sm font-semibold text-foreground">Finish setting up your profile</p>
-                <p className="text-sm text-muted-foreground">
-                  Please add your {missingContactDetails.join(", ")} so we can serve you better.
-                </p>
-              </div>
-              <Button asChild size="sm" variant="soft" className="shrink-0">
-                <Link to="/profile">Update profile</Link>
-              </Button>
-            </CardContent>
-          </Card>
+            <Button asChild size="sm" variant="outline" className="shrink-0">
+              <Link to="/profile">Update profile</Link>
+            </Button>
+          </section>
         )}
-
 
         {isLoading ? (
-          <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-12">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <Skeleton key={i} className={cn("h-40 rounded-2xl col-span-2", i === 0 ? "lg:col-span-8" : i === 1 ? "lg:col-span-4" : "lg:col-span-3")} />
-            ))}
-          </div>
-        ) : stats.jobs === 0 && stats.invoices === 0 && stats.appointments === 0 ? (
-          <Card tone="cream">
-            <CardContent className="flex flex-col items-center justify-center gap-3 py-16 text-center">
-              <div className="rounded-lg bg-secondary p-4">
-                <Briefcase className="h-8 w-8 text-foreground/60" />
-              </div>
-              <h3 className="text-display text-2xl">Welcome aboard</h3>
-              <p className="max-w-sm text-sm text-muted-foreground">
-                You're all set. Your jobs, invoices, and appointments will appear here as the workshop adds them. You can also submit your first request now.
-              </p>
-              <Button asChild variant="glow" className="mt-2">
-                <Link to="/client/requests"><FileText className="h-4 w-4" />Submit a request</Link>
-              </Button>
-            </CardContent>
-          </Card>
+          <>
+            <Skeleton className="h-44 w-full rounded-lg" />
+            <Skeleton className="h-32 w-full rounded-lg" />
+          </>
+        ) : !hasAnything ? (
+          <section className="rounded-lg border bg-card p-6 text-center">
+            <FileText className="mx-auto h-8 w-8 text-muted-foreground" />
+            <h2 className="mt-2 font-sans text-lg font-semibold">Nothing in progress</h2>
+            <p className="mt-1 text-sm text-muted-foreground">Send the workshop a request and you'll see the quote, progress and invoices here.</p>
+            <Button asChild className="mt-4">
+              <Link to="/client/requests">Request a quote or job</Link>
+            </Button>
+          </section>
         ) : (
-          <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-12 lg:auto-rows-[minmax(0,auto)]">
-            {/* Balance hero */}
-            <Card tone="cream" className="col-span-2 lg:col-span-8 lg:row-span-2">
-              <CardContent className="flex h-full flex-col gap-6 p-5 sm:p-6">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="text-xs font-medium text-muted-foreground">Outstanding balance</p>
-                    <p className="mt-2 text-display text-[2.25rem] leading-none tabular-nums sm:text-5xl lg:text-6xl break-words">
-                      {format(stats.balance)}
-                    </p>
-                    <p className="mt-2 text-sm text-muted-foreground">
-                      {stats.unpaid === 0 ? "All caught up — nothing due." : `${stats.unpaid} invoice${stats.unpaid === 1 ? "" : "s"} awaiting payment`}
+          <>
+            {quotes.map((q) => {
+              const expired = q.quote_expires_at && q.quote_expires_at.slice(0, 10) < today;
+              return (
+                <section key={q.id} aria-label={`Quote: ${q.title}`} className="space-y-3 rounded-lg border border-warning/40 bg-card p-4">
+                  <StatusPill tone="warning">Quote ready: your decision</StatusPill>
+                  <div>
+                    <h2 className="font-sans text-lg font-semibold leading-snug">{q.title}</h2>
+                    <p className="text-sm text-muted-foreground">
+                      Quoted {shortDate(q.updated_at)}
+                      {q.quote_expires_at && ` · ${expired ? "expired" : "valid until"} ${shortDate(q.quote_expires_at)}`}
                     </p>
                   </div>
-                  <div className="rounded-lg bg-secondary p-3">
-                    <Receipt className="h-5 w-5 text-foreground/70" />
+                  {q.quoted_total != null && (
+                    <p className="text-2xl font-semibold tabular-nums">{format(Number(q.quoted_total), q.quoted_currency || undefined)}</p>
+                  )}
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button variant="outline" className="h-12" disabled={!!deciding} onClick={() => setDeclineFor(q)}>
+                      Decline
+                    </Button>
+                    <Button className="h-12" disabled={!!deciding} onClick={() => decide(q, true)}>
+                      {deciding === q.id ? "Approving…" : "Approve quote"}
+                    </Button>
                   </div>
-                </div>
-                <div className="mt-auto space-y-2">
-                  {openInvoices.length === 0 ? (
-                    <div className="flex flex-col items-center gap-2 py-6 text-sm text-muted-foreground">
-                      <CheckCircle2 className="h-6 w-6 text-primary" />
-                      No open invoices.
-                    </div>
-                  ) : (
-                    openInvoices.map((inv) => (
-                      <Link
-                        key={inv.id}
-                        to={`/invoices/${inv.id}`}
-                        className="flex items-center justify-between gap-3 rounded-xl bg-card/70 px-3 py-3 min-h-[52px] hover:bg-card"
-                      >
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-medium">Invoice #{inv.id.slice(0, 8)}</p>
-                          <p className="text-xs text-muted-foreground">{new Date(inv.created_at).toLocaleDateString()}</p>
+                  <Link to="/client/requests" className="inline-block text-sm font-medium text-primary hover:underline">
+                    See the full quote
+                  </Link>
+                </section>
+              );
+            })}
+
+            {orders.length > 0 && (
+              <Panel title="In progress" link={{ label: "All jobs", to: "/client/jobs" }}>
+                <ul className="divide-y">
+                  {orders.map((o) => (
+                    <li key={o.id}>
+                      <Link to={`/jobs/${o.id}`} className="block space-y-2.5 px-4 py-3.5 hover:bg-secondary/60">
+                        <div className="flex items-start justify-between gap-3">
+                          <span className="min-w-0 text-sm font-semibold">{o.title}</span>
+                          <StatusPill tone={o.status === "completed" ? "success" : "info"}>{ORDER_LABEL[o.status] ?? o.status}</StatusPill>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-semibold tabular-nums">{format(Number(inv.total) || 0, inv.currency || undefined)}</span>
-                          <span className={cn("rounded-full px-2 py-0.5 text-xs capitalize", invoiceTone[inv.status] || "bg-muted")}>
-                            {inv.status}
-                          </span>
-                        </div>
+                        <StepTracker steps={ORDER_STEPS} current={ORDER_STEP[o.status] ?? 0} />
+                        {o.status !== "completed" && o.due_date && (
+                          <p className="text-xs text-muted-foreground">Expected by {shortDate(o.due_date)}</p>
+                        )}
                       </Link>
-                    ))
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Upcoming appointments */}
-            <Card tone="mist" className="col-span-2 lg:col-span-4 lg:row-span-2">
-              <CardContent className="flex h-full flex-col p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Upcoming</p>
-                    <h3 className="text-display text-2xl">Appointments</h3>
-                  </div>
-                  {appointmentsEnabled && (
-                    <Link to="/client/appointments" className="text-xs text-primary hover:underline">All</Link>
-                  )}
-                </div>
-                <div className="mt-5 flex-1 space-y-2 overflow-auto">
-                  {!appointmentsEnabled ? (
-                    <p className="py-4 text-sm text-muted-foreground">Appointments are not enabled.</p>
-                  ) : upcomingAppts.length === 0 ? (
-                    <div className="flex flex-col items-center gap-2 py-10 text-sm text-muted-foreground">
-                      <Calendar className="h-6 w-6 text-primary" />
-                      No upcoming appointments.
-                    </div>
-                  ) : (
-                    upcomingAppts.map((a) => (
-                      <div key={a.id} className="rounded-xl bg-card/70 px-3 py-2.5">
-                        <p className="truncate text-sm font-medium">{a.title || "Appointment"}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {new Date(a.appointment_date).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}
-                          {" · "}
-                          {(a.appointment_time || "").slice(0, 5)}
-                        </p>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card tone="sage" className="col-span-1 lg:col-span-3">
-              <CardContent className="p-5">
-                <div className="flex items-center justify-between text-xs font-medium uppercase tracking-wider text-foreground/70">
-                  Open jobs <Briefcase className="h-4 w-4" />
-                </div>
-                <p className="mt-3 text-display text-4xl tabular-nums">{stats.openJobs}</p>
-                <Link to="/client/jobs" className="mt-2 inline-block text-xs text-primary hover:underline">View →</Link>
-              </CardContent>
-            </Card>
-            <Card tone="sky" className="col-span-1 lg:col-span-3">
-              <CardContent className="p-5">
-                <div className="flex items-center justify-between text-xs font-medium uppercase tracking-wider text-foreground/70">
-                  Total jobs <FileText className="h-4 w-4" />
-                </div>
-                <p className="mt-3 text-display text-4xl tabular-nums">{stats.jobs}</p>
-                <p className="mt-1 text-xs text-muted-foreground">All time</p>
-              </CardContent>
-            </Card>
-            <Card tone="butter" className="col-span-1 lg:col-span-3">
-              <CardContent className="p-5">
-                <div className="flex items-center justify-between text-xs font-medium uppercase tracking-wider text-foreground/70">
-                  Invoices <Receipt className="h-4 w-4" />
-                </div>
-                <p className="mt-3 text-display text-4xl tabular-nums">{stats.invoices}</p>
-                <Link to="/client/invoices" className="mt-2 inline-block text-xs text-primary hover:underline">View →</Link>
-              </CardContent>
-            </Card>
-            <Card tone="blush" className="col-span-1 lg:col-span-3">
-              <CardContent className="p-5">
-                <div className="flex items-center justify-between text-xs font-medium uppercase tracking-wider text-foreground/70">
-                  Appointments <Calendar className="h-4 w-4" />
-                </div>
-                <p className="mt-3 text-display text-4xl tabular-nums">{stats.appointments}</p>
-                <p className="mt-1 text-xs text-muted-foreground">Total booked</p>
-              </CardContent>
-            </Card>
-
-            {/* Notifications panel */}
-            <NotificationsPanel />
-
-            {/* Recent jobs full width */}
-            <Card tone="default" className="col-span-2 lg:col-span-12">
-              <CardContent className="p-5 sm:p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs font-medium text-muted-foreground">Recent</p>
-                    <h3 className="mt-1 text-display text-2xl">Your jobs</h3>
-                  </div>
-                  <Link to="/client/jobs" className="text-xs text-primary hover:underline">All</Link>
-                </div>
-                <div className="mt-3 inline-flex rounded-full border border-border/70 bg-card/60 p-1 text-xs">
-                  {(["active", "completed", "all"] as const).map((f) => (
-                    <button
-                      key={f}
-                      onClick={() => setJobsFilter(f)}
-                      className={cn(
-                        "rounded-full px-2.5 py-1 capitalize transition-colors min-h-[28px]",
-                        jobsFilter === f ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground",
-                      )}
-                    >
-                      {f}
-                    </button>
+                    </li>
                   ))}
-                </div>
-                <div className="mt-3 space-y-1.5">
-                  {recentJobs.length === 0 ? (
-                    <p className="py-3 text-sm text-muted-foreground">No jobs match this filter.</p>
-                  ) : (
-                    recentJobs.map((j) => (
-                      <Link
-                        key={j.id}
-                        to={`/client/jobs/${j.id}`}
-                        className="flex items-center justify-between gap-2 rounded-xl px-3 py-3 min-h-[48px] hover:bg-secondary"
-                      >
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-medium">{j.title}</p>
-                          <p className="text-xs text-muted-foreground">{j.date}</p>
-                        </div>
-                        <span className={cn("rounded-full px-2 py-0.5 text-xs capitalize", statusTone[j.status] || "bg-muted")}>
-                          {j.status.replace("_", " ")}
+                </ul>
+              </Panel>
+            )}
+
+            {invoices.length > 0 && (
+              <Panel title={`To pay · ${format(owed)}`} link={{ label: "All invoices", to: "/client/invoices" }}>
+                <ul className="divide-y">
+                  {invoices.map((inv) => {
+                    const overdue = inv.status === "overdue" || (!!inv.due_date && inv.due_date < today);
+                    return (
+                      <li key={inv.id}>
+                        <Link to={`/invoices/${inv.id}`} className="flex min-h-[60px] items-center justify-between gap-3 px-4 py-3 hover:bg-secondary/60">
+                          <span className="min-w-0">
+                            <span className="block text-sm font-medium">{inv.invoice_number || "Invoice"}</span>
+                            <span className="text-xs text-muted-foreground">{inv.due_date ? `Due ${shortDate(inv.due_date)}` : "No due date"}</span>
+                          </span>
+                          <span className="flex shrink-0 flex-col items-end gap-1">
+                            <span className="text-sm font-semibold tabular-nums">{format(Number(inv.total), inv.currency || undefined)}</span>
+                            <StatusPill tone={overdue ? "danger" : "info"}>{overdue ? "Overdue" : "To pay"}</StatusPill>
+                          </span>
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </Panel>
+            )}
+
+            {appointments.length > 0 && (
+              <Panel title="Coming up" link={{ label: "All bookings", to: "/client/appointments" }}>
+                <ul className="divide-y">
+                  {appointments.map((a) => (
+                    <li key={a.id}>
+                      <Link to={`/appointments/${a.id}`} className="flex min-h-[52px] items-center gap-3 px-4 py-2.5 hover:bg-secondary/60">
+                        <Clock className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+                        <span className="text-sm tabular-nums">
+                          {shortDate(a.appointment_date)} · {(a.appointment_time || "").slice(0, 5)}
                         </span>
+                        <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground">{a.title || "Appointment"}</span>
                       </Link>
-                    ))
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+                    </li>
+                  ))}
+                </ul>
+              </Panel>
+            )}
+          </>
         )}
+
+        {!isLoading && <NotificationsPanel />}
       </div>
+
+      <AlertDialog open={!!declineFor} onOpenChange={(open) => !open && setDeclineFor(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Decline this quote?</AlertDialogTitle>
+            <AlertDialogDescription>
+              The workshop will be told you've declined "{declineFor?.title}". Adding a reason helps them send a better quote.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <Textarea
+            id="decline-reason"
+            value={declineReason}
+            onChange={(e) => setDeclineReason(e.target.value)}
+            placeholder="Reason (optional), e.g. price or timing"
+            aria-label="Reason for declining"
+          />
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep quote</AlertDialogCancel>
+            <Button
+              variant="destructive"
+              disabled={!!deciding}
+              onClick={() => declineFor && decide(declineFor, false, declineReason.trim() || undefined)}
+            >
+              {deciding ? "Declining…" : "Decline quote"}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DashboardLayout>
   );
 }

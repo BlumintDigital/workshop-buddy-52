@@ -3,7 +3,9 @@ import { Link, Outlet } from "react-router-dom";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "./AppSidebar";
 import { AppHeader } from "./AppHeader";
+import { MobileTabBar } from "./MobileTabBar";
 import { useAuth } from "@/hooks/useAuth";
+import { NavCountsProvider } from "@/hooks/useNavCounts";
 import { BroadcastBanner } from "@/components/BroadcastBanner";
 import { SystemNoticesBanner } from "@/components/SystemNoticesBanner";
 import { Button } from "@/components/ui/button";
@@ -60,21 +62,24 @@ function MfaReminder() {
 function ShellFrame({ children }: { children: ReactNode }) {
   return (
     <ShellContext.Provider value={true}>
-      <SidebarProvider>
-        <div className="flex min-h-svh w-full max-w-full overflow-x-hidden">
-          <AppSidebar />
-          <SidebarInset className="min-w-0 max-w-full overflow-x-hidden">
-            <AppHeader />
-            <BroadcastBanner />
-            <SystemNoticesBanner />
-            <MfaReminder />
-            <main className="flex-1 min-w-0 max-w-full overflow-x-hidden p-3 sm:p-6">{children}</main>
-            <footer className="border-t py-3 px-3 sm:px-6 text-xs text-muted-foreground text-center">
-              Shoplane is powered by Blumint Workspace · © {new Date().getFullYear()} Blumint Digital Limited · Registered in England and Wales · Company No. 15709531
-            </footer>
-          </SidebarInset>
-        </div>
-      </SidebarProvider>
+      <NavCountsProvider>
+        <SidebarProvider>
+          <div className="flex min-h-svh w-full max-w-full overflow-x-hidden">
+            <AppSidebar />
+            <SidebarInset className="min-w-0 max-w-full overflow-x-hidden">
+              <AppHeader />
+              <BroadcastBanner />
+              <SystemNoticesBanner />
+              <MfaReminder />
+              <main className="flex-1 min-w-0 max-w-full overflow-x-hidden p-3 sm:p-6">{children}</main>
+              <footer className="border-t px-3 pb-24 pt-3 text-center text-xs text-muted-foreground sm:px-6 md:pb-3">
+                Shoplane is powered by Blumint Workspace · © {new Date().getFullYear()} Blumint Digital Limited · Registered in England and Wales · Company No. 15709531
+              </footer>
+            </SidebarInset>
+          </div>
+          <MobileTabBar />
+        </SidebarProvider>
+      </NavCountsProvider>
     </ShellContext.Provider>
   );
 }

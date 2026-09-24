@@ -1,131 +1,75 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  LayoutDashboard, Briefcase, Calendar, Package, FileText, Users, Settings, LogOut, ChevronDown, BarChart3, Columns3, UserCheck, CalendarDays, User, Activity, Target, AlertCircle, MessageSquare, KeyRound, ShieldCheck, BookOpen, Inbox,
-} from "lucide-react";
+import { useEffect, useState } from "react";
+import { ChevronDown, ChevronRight, LogOut, User } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { useFeatureFlags, type FeatureKey } from "@/hooks/useFeatureFlags";
+import { useFeatureFlags } from "@/hooks/useFeatureFlags";
+import { useNavCounts, type NavCounts } from "@/hooks/useNavCounts";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
-  SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarSeparator, useSidebar,
+  SidebarHeader, SidebarMenu, SidebarMenuBadge, SidebarMenuButton, SidebarMenuItem, SidebarSeparator, useSidebar,
 } from "@/components/ui/sidebar";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { resolveLogoUrl, useDefaultLogoOnError } from "@/lib/branding";
+import { NAV_GROUPS, isItemActive, isItemEnabled, type NavGroup, type NavItem } from "@/lib/navigation";
 
-type AppRole = "admin" | "manager" | "staff" | "client";
+const COLLAPSE_KEY = "nav-collapsed-groups";
 
-type NavItem = {
-  title: string;
-  url: string;
-  icon: any;
-  features?: FeatureKey[];
-};
+function readCollapsed(): Record<string, boolean> {
+  try {
+    return JSON.parse(localStorage.getItem(COLLAPSE_KEY) || "{}");
+  } catch {
+    return {};
+  }
+}
 
-type NavGroup = { label: string; items: NavItem[] };
+function NavItems({
+  items,
+  pathname,
+  collapsed,
+  counts,
+  onNavigate,
+}: {
+  items: NavItem[];
+  pathname: string;
+  collapsed: boolean;
+  counts: NavCounts;
+  onNavigate: () => void;
+}) {
+  return (
+    <SidebarMenu>
+      {items.map((item) => {
+        const count = item.count ? counts[item.count] ?? 0 : 0;
+        return (
+          <SidebarMenuItem key={item.url}>
+            <SidebarMenuButton asChild isActive={isItemActive(item, pathname)} tooltip={item.title}>
+              <NavLink
+                to={item.url}
+                end={item.exact}
+                className="min-h-[44px] rounded-md text-sidebar-foreground transition-colors duration-150 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground"
+                onClick={onNavigate}
+              >
+                <item.icon className="h-5 w-5" />
+                {!collapsed && <span>{item.title}</span>}
+              </NavLink>
+            </SidebarMenuButton>
+            {count > 0 && !collapsed && (
+              <SidebarMenuBadge className="rounded-md bg-warning-soft px-1.5 text-warning" aria-label={`${count} need attention`}>
+                {count}
+              </SidebarMenuBadge>
+            )}
+          </SidebarMenuItem>
+        );
+      })}
+    </SidebarMenu>
+  );
+}
 
-const navGroups: Record<AppRole, NavGroup[]> = {
-  admin: [
-    { label: "Overview", items: [
-      { title: "Today", url: "/admin/dashboard", icon: LayoutDashboard },
-    ]},
-    { label: "Operations", items: [
-      { title: "Jobs", url: "/admin/jobs", icon: Briefcase },
-      { title: "Requests", url: "/admin/requests", icon: Inbox },
-      { title: "Appointments", url: "/admin/appointments", icon: Calendar, features: ["appointments"] },
-      { title: "Calendar", url: "/admin/calendar", icon: CalendarDays, features: ["appointments"] },
-    ]},
-    { label: "Management", items: [
-      { title: "Inventory", url: "/admin/inventory", icon: Package },
-      { title: "Invoices", url: "/admin/invoices", icon: FileText },
-      { title: "Reports", url: "/admin/reports", icon: BarChart3, features: ["reports"] },
-      { title: "Goals", url: "/goals", icon: Target, features: ["goals"] },
-    ]},
-    { label: "People", items: [
-      { title: "Users", url: "/admin/users", icon: Users },
-      { title: "Clients", url: "/admin/clients", icon: UserCheck, features: ["client_portal"] },
-    ]},
-    { label: "System", items: [
-      { title: "Activity Logs", url: "/admin/activity-logs", icon: Activity },
-      { title: "Access Review", url: "/admin/access-review", icon: ShieldCheck },
-      { title: "Signup Codes", url: "/admin/signup-codes", icon: KeyRound },
-      { title: "Settings", url: "/admin/settings", icon: Settings },
-      { title: "Issue Reports", url: "/admin/feedback", icon: MessageSquare },
-    ]},
-    { label: "Help", items: [
-      { title: "User Guide", url: "/help", icon: BookOpen },
-      { title: "Report Issue", url: "/report-issue", icon: AlertCircle },
-    ]},
-  ],
-  manager: [
-    { label: "Overview", items: [
-      { title: "Today", url: "/manager/dashboard", icon: LayoutDashboard },
-    ]},
-    { label: "Operations", items: [
-      { title: "Jobs", url: "/manager/jobs", icon: Briefcase },
-      { title: "Requests", url: "/manager/requests", icon: Inbox },
-      { title: "Appointments", url: "/manager/appointments", icon: Calendar, features: ["appointments"] },
-      { title: "Calendar", url: "/manager/calendar", icon: CalendarDays, features: ["appointments"] },
-    ]},
-    { label: "Management", items: [
-      { title: "Inventory", url: "/manager/inventory", icon: Package },
-      { title: "Invoices", url: "/manager/invoices", icon: FileText },
-      { title: "Goals", url: "/goals", icon: Target, features: ["goals"] },
-    ]},
-    { label: "People", items: [
-      { title: "Staff", url: "/manager/staff", icon: Users },
-    ]},
-    { label: "System", items: [
-      { title: "Signup Codes", url: "/admin/signup-codes", icon: KeyRound },
-    ]},
-    { label: "Help", items: [
-      { title: "User Guide", url: "/help", icon: BookOpen },
-      { title: "Report Issue", url: "/report-issue", icon: AlertCircle },
-    ]},
-  ],
-  staff: [
-    { label: "Overview", items: [
-      { title: "Dashboard", url: "/staff/dashboard", icon: LayoutDashboard },
-    ]},
-    { label: "Work", items: [
-      { title: "My Jobs", url: "/staff/jobs", icon: Briefcase },
-      { title: "Kanban", url: "/staff/kanban", icon: Columns3 },
-      { title: "Schedule", url: "/staff/schedule", icon: Calendar, features: ["appointments"] },
-    ]},
-    { label: "Resources", items: [
-      { title: "Inventory", url: "/staff/inventory", icon: Package },
-      { title: "Goals", url: "/goals", icon: Target, features: ["goals"] },
-    ]},
-    { label: "Help", items: [
-      { title: "User Guide", url: "/help", icon: BookOpen },
-      { title: "Report Issue", url: "/report-issue", icon: AlertCircle },
-    ]},
-  ],
-  client: [
-    { label: "Overview", items: [
-      { title: "Dashboard", url: "/client/dashboard", icon: LayoutDashboard, features: ["client_portal"] },
-    ]},
-    { label: "My Account", items: [
-      { title: "My Requests", url: "/client/requests", icon: Inbox, features: ["client_portal"] },
-      { title: "My Jobs", url: "/client/jobs", icon: Briefcase, features: ["client_portal"] },
-      { title: "Appointments", url: "/client/appointments", icon: Calendar, features: ["client_portal", "appointments"] },
-      { title: "Invoices", url: "/client/invoices", icon: FileText, features: ["client_portal"] },
-    ]},
-    { label: "Help", items: [
-      { title: "User Guide", url: "/help", icon: BookOpen },
-      { title: "Report Issue", url: "/report-issue", icon: AlertCircle },
-    ]},
-  ],
-};
-
-// Persists sidebar scroll position across component remounts caused by route navigation.
-let _savedScrollTop = 0;
-
-// Items gated per feature flag: url fragment → flag key
 export function AppSidebar() {
   const { state, setOpenMobile } = useSidebar();
   const collapsed = state === "collapsed";
@@ -133,11 +77,10 @@ export function AppSidebar() {
   const navigate = useNavigate();
   const { role, profile, signOut } = useAuth();
   const { flags } = useFeatureFlags();
+  const counts = useNavCounts();
   const [workshopName, setWorkshopName] = useState("Workshop Manager");
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
-  const scrollTopRef = useRef(_savedScrollTop);
-  const contentRef = useRef<HTMLDivElement>(null);
-  const prevState = useRef(state);
+  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>(readCollapsed);
 
   useEffect(() => {
     supabase
@@ -169,33 +112,19 @@ export function AppSidebar() {
     };
   }, []);
 
-  // Restore scroll on mount (after navigation remounts the component).
-  useEffect(() => {
-    if (contentRef.current && _savedScrollTop > 0) {
-      contentRef.current.scrollTop = _savedScrollTop;
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const groups: NavGroup[] = NAV_GROUPS[role || "client"]
+    .map((g) => ({ ...g, items: g.items.filter((item) => isItemEnabled(item, flags)) }))
+    .filter((g) => g.items.length > 0);
 
-  // Restore scroll when sidebar re-expands after being collapsed.
-  useEffect(() => {
-    if (prevState.current === "collapsed" && state === "expanded" && contentRef.current) {
-      contentRef.current.scrollTop = scrollTopRef.current;
+  const toggleGroup = (label: string, open: boolean) => {
+    const next = { ...collapsedGroups, [label]: !open };
+    setCollapsedGroups(next);
+    try {
+      localStorage.setItem(COLLAPSE_KEY, JSON.stringify(next));
+    } catch {
+      // Storage unavailable: keep the choice for this session only.
     }
-    prevState.current = state;
-  }, [state]);
-
-  const groups = useMemo(() => {
-    const rawGroups = navGroups[role || "client"];
-    return rawGroups
-      .map((g) => ({
-        ...g,
-        items: g.items.filter((item) =>
-          !item.features || item.features.every((feature) => flags[feature])
-        ),
-      }))
-      .filter((g) => g.items.length > 0);
-  }, [role, flags]);
+  };
 
   const initials = (profile?.full_name || "U").split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
 
@@ -204,9 +133,7 @@ export function AppSidebar() {
     navigate("/auth");
   };
 
-  const handleNavClick = () => {
-    setOpenMobile(false);
-  };
+  const handleNavClick = () => setOpenMobile(false);
 
   return (
     <Sidebar collapsible="icon">
@@ -218,7 +145,7 @@ export function AppSidebar() {
               {!collapsed && (
                 <div className="flex flex-col gap-0.5 leading-none">
                   <span className="font-semibold text-sidebar-accent-foreground">{workshopName}</span>
-                  <span className="text-xs text-sidebar-foreground capitalize">{role || "user"}</span>
+                  <span className="text-xs capitalize text-sidebar-foreground">{role || "user"}</span>
                 </div>
               )}
             </SidebarMenuButton>
@@ -228,40 +155,42 @@ export function AppSidebar() {
 
       <SidebarSeparator className="bg-sidebar-border" />
 
-      <SidebarContent
-        ref={contentRef}
-        onScroll={(e) => {
-          const top = (e.currentTarget as HTMLElement).scrollTop;
-          scrollTopRef.current = top;
-          _savedScrollTop = top;
-        }}
-        className="[&::-webkit-scrollbar]:hidden [scrollbar-width:none] [-ms-overflow-style:none]"
-      >
-        {groups.map((group) => (
-          <SidebarGroup key={group.label}>
-            <SidebarGroupLabel className="text-sidebar-foreground text-xs font-medium">{group.label}</SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {group.items.map((item) => (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild isActive={location.pathname === item.url}>
-                      <NavLink
-                        to={item.url}
-                        end
-                        className="text-sidebar-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground min-h-[44px] rounded-lg transition-colors duration-150"
-                        activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-semibold border-l-2 border-sidebar-primary pl-[calc(0.75rem-2px)]"
-                        onClick={handleNavClick}
-                      >
-                        <item.icon className="h-5 w-5" />
-                        {!collapsed && <span>{item.title}</span>}
-                      </NavLink>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        ))}
+      <SidebarContent className="[&::-webkit-scrollbar]:hidden [scrollbar-width:none] [-ms-overflow-style:none]">
+        {groups.map((group, index) => {
+          const key = group.label ?? `group-${index}`;
+          const items = (
+            <NavItems items={group.items} pathname={location.pathname} collapsed={collapsed} counts={counts} onNavigate={handleNavClick} />
+          );
+
+          if (group.collapsible && group.label && !collapsed) {
+            const containsActive = group.items.some((item) => isItemActive(item, location.pathname));
+            const open = containsActive || collapsedGroups[group.label] === false;
+            return (
+              <Collapsible key={key} open={open} onOpenChange={(o) => toggleGroup(group.label!, o)} asChild>
+                <SidebarGroup>
+                  <SidebarGroupLabel asChild className="text-xs font-medium text-sidebar-foreground">
+                    <CollapsibleTrigger className="flex w-full items-center gap-1 hover:text-sidebar-accent-foreground">
+                      {open ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+                      {group.label}
+                    </CollapsibleTrigger>
+                  </SidebarGroupLabel>
+                  <CollapsibleContent>
+                    <SidebarGroupContent>{items}</SidebarGroupContent>
+                  </CollapsibleContent>
+                </SidebarGroup>
+              </Collapsible>
+            );
+          }
+
+          return (
+            <SidebarGroup key={key}>
+              {group.label && (
+                <SidebarGroupLabel className="text-xs font-medium text-sidebar-foreground">{group.label}</SidebarGroupLabel>
+              )}
+              <SidebarGroupContent>{items}</SidebarGroupContent>
+            </SidebarGroup>
+          );
+        })}
       </SidebarContent>
 
       <SidebarFooter>
@@ -269,15 +198,15 @@ export function AppSidebar() {
           <SidebarMenuItem>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <SidebarMenuButton size="lg" className="min-h-[44px] hover:bg-sidebar-accent/60 transition-colors duration-150">
+                <SidebarMenuButton size="lg" className="min-h-[44px] transition-colors duration-150 hover:bg-sidebar-accent/60">
                   <Avatar className="h-8 w-8">
                     {profile?.avatar_url && <AvatarImage src={profile.avatar_url} alt={profile.full_name || "Avatar"} />}
-                    <AvatarFallback className="bg-sidebar-accent text-sidebar-accent-foreground text-xs font-semibold">{initials}</AvatarFallback>
+                    <AvatarFallback className="bg-sidebar-accent text-xs font-semibold text-sidebar-accent-foreground">{initials}</AvatarFallback>
                   </Avatar>
                   {!collapsed && (
                     <div className="flex flex-1 flex-col gap-0.5 leading-none">
                       <span className="text-sm font-medium text-sidebar-accent-foreground">{profile?.full_name || "User"}</span>
-                      <span className="text-xs text-sidebar-foreground capitalize">{role}</span>
+                      <span className="text-xs capitalize text-sidebar-foreground">{role}</span>
                     </div>
                   )}
                   {!collapsed && <ChevronDown className="ml-auto h-4 w-4 text-sidebar-foreground" />}
