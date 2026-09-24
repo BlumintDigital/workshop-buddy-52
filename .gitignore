@@ -31,3 +31,6 @@ dist-ssr
 e2e/.state/
 e2e/.results/
 e2e/.report/
+
+# graphify knowledge-graph outputs and caches
+graphify-out/

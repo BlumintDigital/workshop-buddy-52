@@ -31,7 +31,7 @@ type NavGroup = { label: string; items: NavItem[] };
 const navGroups: Record<AppRole, NavGroup[]> = {
   admin: [
     { label: "Overview", items: [
-      { title: "Dashboard", url: "/admin/dashboard", icon: LayoutDashboard },
+      { title: "Today", url: "/admin/dashboard", icon: LayoutDashboard },
     ]},
     { label: "Operations", items: [
       { title: "Jobs", url: "/admin/jobs", icon: Briefcase },
@@ -63,7 +63,7 @@ const navGroups: Record<AppRole, NavGroup[]> = {
   ],
   manager: [
     { label: "Overview", items: [
-      { title: "Dashboard", url: "/manager/dashboard", icon: LayoutDashboard },
+      { title: "Today", url: "/manager/dashboard", icon: LayoutDashboard },
     ]},
     { label: "Operations", items: [
       { title: "Jobs", url: "/manager/jobs", icon: Briefcase },

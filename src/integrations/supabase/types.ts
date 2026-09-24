@@ -289,6 +289,27 @@ export type Database = {
           },
         ]
       }
+      dashboard_prefs: {
+        Row: {
+          card_order: string[]
+          hidden: string[]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          card_order?: string[]
+          hidden?: string[]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          card_order?: string[]
+          hidden?: string[]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       dismissed_broadcasts: {
         Row: {
           broadcast_id: string
