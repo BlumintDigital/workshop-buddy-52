@@ -1,22 +1,19 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { Link } from "react-router-dom";
 import DashboardLayout from "@/components/layout/DashboardLayout";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { PageBar } from "@/components/dashboard/PageBar";
+import { JobStatusPill, PriorityLabel } from "@/components/dashboard/StatusPill";
 import { ListControls } from "@/components/list/ListControls";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Skeleton } from "@/components/ui/skeleton";
-
-const statusColors: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
-  pending: "outline", in_progress: "secondary", review: "default", completed: "default", cancelled: "destructive",
-};
+import { DataList, type Column } from "@/components/list/DataList";
+import { EmptyState } from "@/components/list/EmptyState";
+import { formatDate } from "@/lib/format";
 
 export default function StaffJobs() {
   const { user } = useAuth();
   const [jobs, setJobs] = useState<any[]>([]);
   const [filter, setFilter] = useState("mine");
+  const [search, setSearch] = useState("");
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchJobs = async () => {
@@ -35,76 +32,64 @@ export default function StaffJobs() {
     fetchJobs();
   }, [user]);
 
-  const filtered = jobs.filter((j) => {
-    if (filter === "mine") return j.assigned_staff_id === user?.id;
-    if (filter === "all") return true;
-    return j.status === filter;
-  });
+  const mine = jobs.filter((j) => j.assigned_staff_id === user?.id);
+  const q = search.trim().toLowerCase();
+  const filtered = jobs
+    .filter((j) => (filter === "mine" ? j.assigned_staff_id === user?.id : filter === "all" ? true : j.status === filter))
+    .filter((j) => !q || j.title?.toLowerCase().includes(q));
+  const openMine = mine.filter((j) => j.status !== "completed" && j.status !== "cancelled").length;
 
-  const skeletonRows = Array.from({ length: 6 }).map((_, i) => (
-    <TableRow key={i}>
-      <TableCell><Skeleton className="h-4 w-40" /></TableCell>
-      <TableCell><Skeleton className="h-4 w-20 rounded-full" /></TableCell>
-      <TableCell className="hidden sm:table-cell"><Skeleton className="h-4 w-16" /></TableCell>
-      <TableCell className="hidden sm:table-cell"><Skeleton className="h-4 w-24" /></TableCell>
-      <TableCell className="hidden md:table-cell"><Skeleton className="h-4 w-28" /></TableCell>
-    </TableRow>
-  ));
+  const assignment = (job: any) => (job.assigned_staff_id === user?.id ? "You" : job.assigned_staff_id ? "Another technician" : "Unassigned");
+
+  const columns: Column<any>[] = [
+    { key: "title", header: "Job", cell: (job) => job.title },
+    { key: "status", header: "Status", cell: (job) => <JobStatusPill status={job.status} /> },
+    { key: "priority", header: "Priority", cell: (job) => <PriorityLabel priority={job.priority} />, hideBelow: "md" },
+    { key: "assigned", header: "Assigned to", cell: assignment, hideBelow: "lg" },
+    { key: "due", header: "Due", cell: (job) => formatDate(job.due_date) },
+  ];
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Jobs</h1>
-          <p className="text-sm text-muted-foreground">View all organisation jobs. You can only update jobs assigned to you.</p>
-        </div>
+      <div className="mx-auto min-w-0 max-w-5xl space-y-4">
+        <PageBar
+          title="Jobs"
+          subtitle={isLoading ? "Loading…" : `${openMine} open and assigned to you · you can update only your own jobs`}
+        />
         <ListControls
           filters={[
-            { value: "mine", label: "Assigned to me" },
+            { value: "mine", label: "Assigned to me", count: mine.length },
             { value: "all", label: "All jobs" },
             { value: "pending", label: "Pending" },
             { value: "in_progress", label: "In progress" },
+            { value: "review", label: "Awaiting review" },
             { value: "completed", label: "Completed" },
           ]}
           filter={filter}
           onFilterChange={setFilter}
+          search={search}
+          onSearchChange={setSearch}
+          searchPlaceholder="Search jobs by title"
         />
-        <Card>
-          <CardContent className="p-0 overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Title</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="hidden sm:table-cell">Priority</TableHead>
-                  <TableHead className="hidden sm:table-cell">Due Date</TableHead>
-                  <TableHead className="hidden md:table-cell">Assignment</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {isLoading ? skeletonRows : filtered.length === 0 ? (
-                  <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">No jobs</TableCell></TableRow>
-                ) : filtered.map((job) => (
-                  <TableRow key={job.id} className="cursor-pointer hover:bg-muted/50">
-                    <TableCell>
-                      <Link to={`/jobs/${job.id}`} className="font-medium text-primary hover:underline">
-                        {job.title}
-                      </Link>
-                    </TableCell>
-                    <TableCell><Badge variant={statusColors[job.status]}>{job.status.replace("_", " ")}</Badge></TableCell>
-                    <TableCell className="capitalize hidden sm:table-cell">{job.priority}</TableCell>
-                    <TableCell className="hidden sm:table-cell">{job.due_date || "—"}</TableCell>
-                    <TableCell className="hidden md:table-cell">
-                      {job.assigned_staff_id === user?.id
-                        ? <Badge variant="secondary">Assigned to me</Badge>
-                        : <span className="text-xs text-muted-foreground">Other staff</span>}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+        <DataList
+          rows={filtered}
+          columns={columns}
+          isLoading={isLoading}
+          getRowKey={(job) => job.id}
+          getRowHref={(job) => `/jobs/${job.id}`}
+          mobile={{
+            title: (job) => job.title,
+            trailing: (job) => <JobStatusPill status={job.status} />,
+            meta: (job) => [filter !== "mine" && assignment(job), job.due_date && `Due ${formatDate(job.due_date)}`].filter(Boolean).join(" · "),
+          }}
+          empty={
+            filter === "mine" && !q ? (
+              <EmptyState title="Nothing assigned to you" description="Jobs a manager assigns to you show here. Browse All jobs to see the whole workshop." />
+            ) : (
+              <EmptyState title="No jobs match" description="Try another filter or clear the search." />
+            )
+          }
+        />
       </div>
     </DashboardLayout>
   );

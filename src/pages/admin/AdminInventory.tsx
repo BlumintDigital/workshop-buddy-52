@@ -15,7 +15,7 @@ import { usePagination, PAGE_SIZE } from "@/hooks/usePagination";
 import { useCurrency } from "@/hooks/useCurrency";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { PageBar } from "@/components/dashboard/PageBar";
-import { StatusPill } from "@/components/dashboard/StatusPill";
+import { StockPill } from "@/components/dashboard/StatusPill";
 import { ListControls, type FilterOption } from "@/components/list/ListControls";
 import { DataList, type Column } from "@/components/list/DataList";
 import { ListPagination } from "@/components/list/ListPagination";
@@ -293,8 +293,3 @@ export default function AdminInventory() {
   );
 }
 
-function StockPill({ item }: { item: { quantity: number; min_stock: number } }) {
-  if (item.quantity <= 0) return <StatusPill tone="danger">Out of stock</StatusPill>;
-  if (item.quantity <= item.min_stock) return <StatusPill tone="warning">Low stock</StatusPill>;
-  return <StatusPill tone="success">In stock</StatusPill>;
-}

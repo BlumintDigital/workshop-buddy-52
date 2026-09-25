@@ -48,14 +48,14 @@ test.describe.serial("inventory", () => {
     await expect(row.getByText("Low Stock")).toBeVisible({ timeout: 15_000 });
   });
 
-  test("staff sees the item read-only with a Low badge and Log Usage", async ({ page }) => {
+  test("staff sees the item read-only with a Low stock badge and Log usage", async ({ page }) => {
     await login(page, "STAFF");
     await page.goto("/staff/inventory");
 
     const row = page.getByRole("row").filter({ hasText: ITEM_NAME });
     await expect(row).toBeVisible({ timeout: 15_000 });
-    await expect(row.getByText("Low", { exact: true })).toBeVisible();
-    await expect(row.getByRole("button", { name: "Log Usage" })).toBeVisible();
+    await expect(row.getByText("Low stock", { exact: true })).toBeVisible();
+    await expect(row.getByRole("button", { name: `Log usage of ${ITEM_NAME}` })).toBeVisible();
     // No admin-only controls for staff.
     await expect(page.getByRole("button", { name: "Add Item" })).toHaveCount(0);
   });

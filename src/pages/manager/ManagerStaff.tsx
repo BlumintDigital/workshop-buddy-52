@@ -1,15 +1,13 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useNavigate } from "react-router-dom";
 import DashboardLayout from "@/components/layout/DashboardLayout";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { PageBar } from "@/components/dashboard/PageBar";
+import { ListControls } from "@/components/list/ListControls";
+import { DataList, type Column } from "@/components/list/DataList";
+import { EmptyState } from "@/components/list/EmptyState";
+import { formatDate, plural } from "@/lib/format";
 import { toast } from "sonner";
-import { Eye } from "lucide-react";
-import { Skeleton } from "@/components/ui/skeleton";
 
 type StaffRow = {
   user_id: string;
@@ -21,7 +19,8 @@ type StaffRow = {
 export default function ManagerStaff() {
   const [staff, setStaff] = useState<StaffRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const navigate = useNavigate();
+  const [filter, setFilter] = useState("all");
+  const [search, setSearch] = useState("");
 
   const fetchStaff = async () => {
     setIsLoading(true);
@@ -51,60 +50,69 @@ export default function ManagerStaff() {
     toast.success("Role updated");
   };
 
+  const q = search.trim().toLowerCase();
+  const rows = staff
+    .filter((s) => filter === "all" || s.role === filter)
+    .filter((s) => !q || (s.full_name ?? "").toLowerCase().includes(q))
+    .sort((a, b) => (a.full_name ?? "").localeCompare(b.full_name ?? ""));
+  const managers = staff.filter((s) => s.role === "manager").length;
+  const roleLabel = (role: string) => (role === "manager" ? "Manager" : "Technician");
+
+  const columns: Column<StaffRow>[] = [
+    { key: "name", header: "Name", cell: (s) => s.full_name },
+    { key: "joined", header: "Joined", cell: (s) => formatDate(s.created_at), hideBelow: "md" },
+  ];
+
+  const roleSelect = (s: StaffRow) => (
+    <Select value={s.role} onValueChange={(v) => changeRole(s.user_id, v)}>
+      <SelectTrigger className="h-10 w-[150px]" aria-label={`Role for ${s.full_name}`}>
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="manager">Manager</SelectItem>
+        <SelectItem value="staff">Technician</SelectItem>
+      </SelectContent>
+    </Select>
+  );
+
   return (
     <DashboardLayout>
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Staff</h1>
-          <p className="text-sm text-muted-foreground">Manage staff and manager accounts</p>
-        </div>
-        <Card>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Joined</TableHead>
-                  <TableHead className="w-[80px]">Details</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {isLoading ? Array.from({ length: 6 }).map((_, i) => (
-                  <TableRow key={i}>
-                    <TableCell><Skeleton className="h-4 w-36" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-28" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-16" /></TableCell>
-                  </TableRow>
-                )) : staff.length === 0 ? (
-                  <TableRow><TableCell colSpan={4} className="text-center py-8 text-muted-foreground">No staff members</TableCell></TableRow>
-                ) : staff.map((s) => (
-                  <TableRow key={s.user_id}>
-                    <TableCell className="font-medium">{s.full_name}</TableCell>
-                    <TableCell>
-                      <Select value={s.role} onValueChange={(v) => changeRole(s.user_id, v)}>
-                        <SelectTrigger className="h-9 w-[130px]" aria-label={`Role for ${s.full_name}`}>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="manager">Manager</SelectItem>
-                          <SelectItem value="staff">Staff</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </TableCell>
-                    <TableCell>{s.created_at ? new Date(s.created_at).toLocaleDateString() : "—"}</TableCell>
-                    <TableCell>
-                      <Button variant="ghost" size="icon" aria-label={`View ${s.full_name}`} onClick={() => navigate(`/manager/staff/${s.user_id}`)}>
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+      <div className="mx-auto min-w-0 max-w-4xl space-y-4">
+        <PageBar
+          title="Staff"
+          subtitle={isLoading ? "Loading…" : `${plural(staff.length - managers, "technician")} · ${plural(managers, "manager")} · change a role or open a profile`}
+        />
+        <ListControls
+          filters={[
+            { value: "all", label: "Everyone" },
+            { value: "staff", label: "Technicians", count: staff.length - managers },
+            { value: "manager", label: "Managers", count: managers },
+          ]}
+          filter={filter}
+          onFilterChange={setFilter}
+          search={search}
+          onSearchChange={setSearch}
+          searchPlaceholder="Search by name"
+        />
+        <DataList
+          rows={rows}
+          columns={columns}
+          isLoading={isLoading}
+          getRowKey={(s) => s.user_id}
+          getRowHref={(s) => `/manager/staff/${s.user_id}`}
+          actions={roleSelect}
+          mobile={{
+            title: (s) => s.full_name,
+            meta: (s) => `${roleLabel(s.role)} · joined ${formatDate(s.created_at)}`,
+          }}
+          empty={
+            q || filter !== "all" ? (
+              <EmptyState title="Nobody matches" description="Try another filter or clear the search." />
+            ) : (
+              <EmptyState title="No staff yet" description="An admin can invite technicians and managers with a sign-up code." />
+            )
+          }
+        />
       </div>
     </DashboardLayout>
   );

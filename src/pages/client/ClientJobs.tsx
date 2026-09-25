@@ -4,22 +4,21 @@ import { useAuth } from "@/hooks/useAuth";
 import { Link } from "react-router-dom";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { PageBar } from "@/components/dashboard/PageBar";
+import { JobStatusPill, PriorityLabel } from "@/components/dashboard/StatusPill";
 import { ListControls } from "@/components/list/ListControls";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { CheckCircle2, XCircle, Wifi } from "lucide-react";
+import { DataList, type Column } from "@/components/list/DataList";
+import { EmptyState } from "@/components/list/EmptyState";
+import { formatDate } from "@/lib/format";
+import { CheckCircle2, XCircle } from "lucide-react";
 import { toast } from "sonner";
-import { Skeleton } from "@/components/ui/skeleton";
-
-const statusColors: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
-  quote: "secondary", pending: "outline", in_progress: "secondary", review: "default", completed: "default", cancelled: "destructive",
-};
 
 export default function ClientJobs() {
   const { user } = useAuth();
   const [jobs, setJobs] = useState<any[]>([]);
   const [filter, setFilter] = useState("all");
+  const [search, setSearch] = useState("");
   const [live, setLive] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -69,38 +68,40 @@ export default function ClientJobs() {
   };
 
   const quotes = jobs.filter(j => j.status === "quote");
-  const filtered = filter === "all"
-    ? jobs.filter(j => j.status !== "quote")
-    : jobs.filter(j => j.status === filter);
+  const q = search.trim().toLowerCase();
+  const filtered = (filter === "all" ? jobs.filter((j) => j.status !== "quote") : jobs.filter((j) => j.status === filter)).filter(
+    (j) => !q || j.title?.toLowerCase().includes(q),
+  );
+  const countOf = (status: string) => jobs.filter((j) => j.status === status).length;
+  const active = jobs.filter((j) => j.status === "pending" || j.status === "in_progress" || j.status === "review").length;
 
-  const skeletonRows = Array.from({ length: 6 }).map((_, i) => (
-    <TableRow key={i}>
-      <TableCell><Skeleton className="h-4 w-40" /></TableCell>
-      <TableCell><Skeleton className="h-4 w-20 rounded-full" /></TableCell>
-      <TableCell className="hidden sm:table-cell"><Skeleton className="h-4 w-16" /></TableCell>
-      <TableCell className="hidden sm:table-cell"><Skeleton className="h-4 w-24" /></TableCell>
-    </TableRow>
-  ));
+  const columns: Column<any>[] = [
+    { key: "title", header: "Job", cell: (job) => job.title },
+    { key: "status", header: "Status", cell: (job) => <JobStatusPill status={job.status} /> },
+    { key: "priority", header: "Priority", cell: (job) => <PriorityLabel priority={job.priority} />, hideBelow: "md" },
+    { key: "due", header: "Due", cell: (job) => formatDate(job.due_date), hideBelow: "lg" },
+    { key: "created", header: "Created", cell: (job) => formatDate(job.created_at) },
+  ];
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight">My Jobs</h1>
-            <p className="text-sm text-muted-foreground">Track your workshop jobs</p>
-          </div>
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <Wifi className={`h-3.5 w-3.5 ${live ? "text-success" : ""}`} />
-            {live ? "Live" : "Connecting..."}
-          </div>
-        </div>
+      <div className="mx-auto min-w-0 max-w-5xl space-y-4">
+        <PageBar
+          title="Jobs"
+          subtitle={isLoading ? "Loading…" : `${active} in progress · ${jobs.length} in total`}
+          actions={
+            <span className="flex items-center gap-1.5 text-xs text-muted-foreground" role="status">
+              <span aria-hidden className={`h-2 w-2 rounded-full ${live ? "bg-success" : "bg-muted-foreground"}`} />
+              {live ? "Live updates" : "Connecting…"}
+            </span>
+          }
+        />
 
         {/* Quotes awaiting approval */}
         {quotes.length > 0 && (
           <Card className="border-warning/40 bg-warning-soft">
             <CardHeader className="pb-2">
-              <CardTitle className="text-base">Quotes Pending Your Approval</CardTitle>
+              <CardTitle className="text-base">Quotes waiting for your approval</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               {quotes.map(q => (
@@ -110,11 +111,11 @@ export default function ClientJobs() {
                     {q.description && <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{q.description}</p>}
                   </div>
                   <div className="flex gap-2 shrink-0">
-                    <Button size="sm" variant="outline" onClick={() => handleQuoteAction(q.id, false)}>
-                      <XCircle className="mr-1.5 h-3.5 w-3.5 text-destructive" />Decline
+                    <Button size="sm" variant="outline" className="min-h-[40px]" onClick={() => handleQuoteAction(q.id, false)}>
+                      <XCircle className="mr-1.5 h-3.5 w-3.5 text-destructive" aria-hidden />Decline
                     </Button>
-                    <Button size="sm" onClick={() => handleQuoteAction(q.id, true)}>
-                      <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" />Approve
+                    <Button size="sm" className="min-h-[40px]" onClick={() => handleQuoteAction(q.id, true)}>
+                      <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" aria-hidden />Approve
                     </Button>
                   </div>
                 </div>
@@ -126,46 +127,37 @@ export default function ClientJobs() {
         <ListControls
           filters={[
             { value: "all", label: "All" },
-            { value: "pending", label: "Pending" },
-            { value: "in_progress", label: "In progress" },
+            { value: "pending", label: "Pending", count: countOf("pending") },
+            { value: "in_progress", label: "In progress", count: countOf("in_progress") },
+            { value: "review", label: "Awaiting review", count: countOf("review") },
             { value: "completed", label: "Completed" },
           ]}
           filter={filter}
           onFilterChange={setFilter}
+          search={search}
+          onSearchChange={setSearch}
+          searchPlaceholder="Search jobs by title"
         />
 
-        <Card>
-          <CardContent className="p-0 overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Title</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="hidden sm:table-cell">Priority</TableHead>
-                  <TableHead className="hidden sm:table-cell">Created</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {isLoading ? skeletonRows : filtered.length === 0 ? (
-                  <TableRow><TableCell colSpan={4} className="text-center py-8 text-muted-foreground">No jobs</TableCell></TableRow>
-                ) : filtered.map((job) => (
-                  <TableRow key={job.id} className="cursor-pointer hover:bg-muted/50">
-                    <TableCell>
-                      <Link to={`/jobs/${job.id}`} className="font-medium text-primary hover:underline">
-                        {job.title}
-                      </Link>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={statusColors[job.status]}>{job.status.replace("_", " ")}</Badge>
-                    </TableCell>
-                    <TableCell className="capitalize hidden sm:table-cell">{job.priority}</TableCell>
-                    <TableCell className="hidden sm:table-cell">{new Date(job.created_at).toLocaleDateString()}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+        <DataList
+          rows={filtered}
+          columns={columns}
+          isLoading={isLoading}
+          getRowKey={(job) => job.id}
+          getRowHref={(job) => `/jobs/${job.id}`}
+          mobile={{
+            title: (job) => job.title,
+            trailing: (job) => <JobStatusPill status={job.status} />,
+            meta: (job) => (job.due_date ? `Due ${formatDate(job.due_date)}` : `Created ${formatDate(job.created_at)}`),
+          }}
+          empty={
+            filter !== "all" || q ? (
+              <EmptyState title="No jobs match" description="Try another filter or clear the search." />
+            ) : (
+              <EmptyState title="No jobs yet" description="When the workshop starts work for you, the job and its progress show here." />
+            )
+          }
+        />
       </div>
     </DashboardLayout>
   );

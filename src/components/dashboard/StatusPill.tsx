@@ -53,3 +53,17 @@ const JOB_LABEL: Record<string, string> = {
 export function JobStatusPill({ status }: { status: string }) {
   return <StatusPill tone={JOB_TONE[status] ?? "neutral"}>{JOB_LABEL[status] ?? status.replace(/_/g, " ")}</StatusPill>;
 }
+
+/** Priority as a pill for urgent and high, plain text otherwise, so only what needs attention stands out. */
+export function PriorityLabel({ priority }: { priority: string }) {
+  if (priority === "urgent") return <StatusPill tone="danger">Urgent</StatusPill>;
+  if (priority === "high") return <StatusPill tone="warning">High</StatusPill>;
+  return <span className="capitalize text-muted-foreground">{priority}</span>;
+}
+
+/** Stock level against the item's reorder point. */
+export function StockPill({ item }: { item: { quantity: number; min_stock: number } }) {
+  if (item.quantity <= 0) return <StatusPill tone="danger">Out of stock</StatusPill>;
+  if (item.quantity <= item.min_stock) return <StatusPill tone="warning">Low stock</StatusPill>;
+  return <StatusPill tone="success">In stock</StatusPill>;
+}

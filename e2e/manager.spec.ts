@@ -14,7 +14,7 @@ test.describe("manager role", () => {
   test("manager sees the staff management page", async ({ page }) => {
     await login(page, "MANAGER");
     await page.goto("/manager/staff");
-    await expect(page.getByText("Manage staff and manager accounts")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Staff", level: 1 })).toBeVisible();
     // Requires the "Managers can view all profiles" RLS policy (restored
     // 2026-07-02) — without it every name renders as "Unknown".
     await expect(page.getByText("Demo Staff")).toBeVisible({ timeout: 15_000 });

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import DashboardLayout from "@/components/layout/DashboardLayout";
+import { formatDate } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,7 +14,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { usePagination, PAGE_SIZE } from "@/hooks/usePagination";
 import { PageBar } from "@/components/dashboard/PageBar";
-import { JobStatusPill, StatusPill } from "@/components/dashboard/StatusPill";
+import { JobStatusPill, PriorityLabel } from "@/components/dashboard/StatusPill";
 import { ListControls, type FilterOption } from "@/components/list/ListControls";
 import { DataList, type Column } from "@/components/list/DataList";
 import { ListPagination } from "@/components/list/ListPagination";
@@ -244,12 +245,4 @@ export default function AdminJobs() {
   );
 }
 
-function formatDate(iso: string | null | undefined) {
-  return iso ? new Date(iso).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" }) : "—";
-}
 
-function PriorityLabel({ priority }: { priority: string }) {
-  if (priority === "urgent") return <StatusPill tone="danger">Urgent</StatusPill>;
-  if (priority === "high") return <StatusPill tone="warning">High</StatusPill>;
-  return <span className="capitalize text-muted-foreground">{priority}</span>;
-}

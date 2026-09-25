@@ -2,17 +2,19 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import DashboardLayout from "@/components/layout/DashboardLayout";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { PageBar } from "@/components/dashboard/PageBar";
+import { StockPill } from "@/components/dashboard/StatusPill";
+import { ListControls } from "@/components/list/ListControls";
+import { DataList, type Column } from "@/components/list/DataList";
+import { EmptyState } from "@/components/list/EmptyState";
 import { toast } from "sonner";
-import { Skeleton } from "@/components/ui/skeleton";
+import { plural } from "@/lib/format";
 
 export default function StaffInventory() {
   const { user } = useAuth();
@@ -21,6 +23,8 @@ export default function StaffInventory() {
   const [adjustItem, setAdjustItem] = useState<any | null>(null);
   const [adjustForm, setAdjustForm] = useState({ type: "out", quantity: "1", notes: "" });
   const [isLoading, setIsLoading] = useState(true);
+  const [filter, setFilter] = useState("all");
+  const [search, setSearch] = useState("");
 
   const fetchItems = async () => {
     setIsLoading(true);
@@ -74,59 +78,68 @@ export default function StaffInventory() {
     fetchItems();
   };
 
-  const skeletonRows = Array.from({ length: 6 }).map((_, i) => (
-    <TableRow key={i}>
-      <TableCell><Skeleton className="h-4 w-40" /></TableCell>
-      <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-      <TableCell><Skeleton className="h-4 w-16" /></TableCell>
-      <TableCell><Skeleton className="h-4 w-20 rounded-full" /></TableCell>
-      <TableCell><Skeleton className="h-4 w-16" /></TableCell>
-    </TableRow>
-  ));
+  const isLow = (item: any) => item.quantity <= item.min_stock;
+  const low = items.filter(isLow);
+  const q = search.trim().toLowerCase();
+  const rows = (filter === "low" ? low : items).filter(
+    (item) => !q || item.name?.toLowerCase().includes(q) || item.sku?.toLowerCase().includes(q),
+  );
+  const qty = (item: any) => `${item.quantity} ${item.unit ?? ""}`.trim();
+
+  const columns: Column<any>[] = [
+    { key: "name", header: "Item", cell: (item) => <span className="font-medium">{item.name}</span> },
+    { key: "sku", header: "SKU", cell: (item) => item.sku || "—", hideBelow: "md" },
+    { key: "status", header: "Status", cell: (item) => <StockPill item={item} /> },
+    { key: "qty", header: "In stock", cell: qty, align: "right" },
+  ];
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Inventory</h1>
-          <p className="text-sm text-muted-foreground">View and log stock usage</p>
-        </div>
-        <Card>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>SKU</TableHead>
-                  <TableHead>Quantity</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="w-24"><span className="sr-only">Actions</span></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {isLoading ? skeletonRows : items.length === 0 ? (
-                  <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">No items</TableCell></TableRow>
-                ) : items.map((item) => (
-                  <TableRow key={item.id}>
-                    <TableCell className="font-medium">{item.name}</TableCell>
-                    <TableCell>{item.sku || "—"}</TableCell>
-                    <TableCell>{item.quantity} {item.unit}</TableCell>
-                    <TableCell>{item.quantity <= item.min_stock ? <Badge variant="destructive">Low</Badge> : <Badge variant="outline">OK</Badge>}</TableCell>
-                    <TableCell>
-                      <Button variant="outline" size="sm" onClick={() => handleOpenAdjust(item)}>Log Usage</Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+      <div className="mx-auto min-w-0 max-w-4xl space-y-4">
+        <PageBar
+          title="Inventory"
+          subtitle={isLoading ? "Loading…" : `${plural(items.length, "item")}${low.length ? ` · ${low.length} low on stock` : ""} · log what you use on a job`}
+        />
+        <ListControls
+          filters={[
+            { value: "all", label: "All" },
+            { value: "low", label: "Low stock", count: low.length },
+          ]}
+          filter={filter}
+          onFilterChange={setFilter}
+          search={search}
+          onSearchChange={setSearch}
+          searchPlaceholder="Search by name or SKU"
+        />
+        <DataList
+          rows={rows}
+          columns={columns}
+          isLoading={isLoading}
+          getRowKey={(item) => item.id}
+          actions={(item) => (
+            <Button variant="outline" size="sm" className="min-h-[40px]" onClick={() => handleOpenAdjust(item)}>
+              Log usage<span className="sr-only"> of {item.name}</span>
+            </Button>
+          )}
+          mobile={{
+            title: (item) => item.name,
+            trailing: (item) => <StockPill item={item} />,
+            meta: (item) => [`${qty(item)} in stock`, item.sku].filter(Boolean).join(" · "),
+          }}
+          empty={
+            q || filter !== "all" ? (
+              <EmptyState title={filter === "low" && !q ? "Nothing is low on stock" : "No items match"} description={q ? "Try another name or SKU." : undefined} />
+            ) : (
+              <EmptyState title="No stock items yet" description="An admin adds items on the inventory page. You can log usage once they exist." />
+            )
+          }
+        />
       </div>
 
       <Dialog open={adjustOpen} onOpenChange={(v) => { setAdjustOpen(v); if (!v) setAdjustItem(null); }}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>Log Stock — {adjustItem?.name}</DialogTitle>
+            <DialogTitle>Log stock: {adjustItem?.name}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="text-sm text-muted-foreground">

@@ -4,6 +4,7 @@ import { MoreHorizontal, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import DashboardLayout from "@/components/layout/DashboardLayout";
+import { formatDate } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -57,9 +58,6 @@ function displayStatus(inv: Invoice): { label: string; tone: StatusTone } {
   return { label: STATUS_LABEL[inv.status] ?? inv.status, tone: tone[inv.status] ?? "neutral" };
 }
 
-function formatDate(iso: string | null) {
-  return iso ? new Date(iso).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" }) : "—";
-}
 
 export default function AdminInvoices() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
