@@ -112,8 +112,8 @@ export default function ClientAppointments() {
         </div>
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-3xl font-bold tracking-tight">Appointments</h2>
-            <p className="text-muted-foreground">Book and manage your appointments</p>
+            <h1 className="text-2xl font-semibold tracking-tight">Appointments</h1>
+            <p className="text-sm text-muted-foreground">Book and manage your appointments</p>
           </div>
           <div className="flex gap-2">
             {appointments.length > 0 && (
@@ -126,10 +126,10 @@ export default function ClientAppointments() {
             <DialogContent className="sm:max-w-lg">
               <DialogHeader><DialogTitle>Book Appointment</DialogTitle></DialogHeader>
               <div className="space-y-4">
-                <div><Label>Title</Label><Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Oil Change" /></div>
-                <div><Label>Type</Label>
+                <div><Label htmlFor="f-title">Title</Label><Input id="f-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Oil Change" /></div>
+                <div><Label htmlFor="f-type">Type</Label>
                   <Select value={type} onValueChange={setType}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectTrigger id="f-type"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="consultation">Consultation</SelectItem>
                       <SelectItem value="repair">Repair</SelectItem>

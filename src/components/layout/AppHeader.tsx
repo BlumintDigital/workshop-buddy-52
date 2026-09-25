@@ -73,7 +73,7 @@ export function AppHeader() {
           {/* Home crumb — always shown */}
           <BreadcrumbItem>
             <BreadcrumbLink asChild>
-              <Link to={role ? getRoleDashboardPath(role) : "/"} className="text-sm sm:text-base">Home</Link>
+              <Link to={role ? getRoleDashboardPath(role) : "/"} className="inline-flex min-h-[44px] items-center text-sm sm:text-base">Home</Link>
             </BreadcrumbLink>
           </BreadcrumbItem>
 
@@ -89,7 +89,7 @@ export function AppHeader() {
             <>
               <BreadcrumbItem>
                 <BreadcrumbLink asChild>
-                  <Link to={crumbs[0].href} className="text-sm sm:text-base">{crumbs[0].label}</Link>
+                  <Link to={crumbs[0].href} className="inline-flex min-h-[44px] items-center text-sm sm:text-base">{crumbs[0].label}</Link>
                 </BreadcrumbLink>
               </BreadcrumbItem>
               <BreadcrumbSeparator />
@@ -104,7 +104,7 @@ export function AppHeader() {
               <BreadcrumbItem>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button size="icon" variant="ghost" className="h-6 w-6">
+                    <Button size="icon" variant="ghost" className="h-9 w-9">
                       <BreadcrumbEllipsis className="h-4 w-4" />
                       <span className="sr-only">Show intermediate pages</span>
                     </Button>

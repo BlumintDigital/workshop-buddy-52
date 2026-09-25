@@ -14,17 +14,10 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ['"Geist Variable"', 'system-ui', '-apple-system', '"Segoe UI"', 'sans-serif'],
-        display: ['"Geist Variable"', 'system-ui', '-apple-system', '"Segoe UI"', 'sans-serif'],
-      },
-      backgroundImage: {
-        'gradient-sage': 'var(--gradient-sage)',
-        'gradient-surface': 'var(--gradient-surface)',
-        'gradient-hero': 'var(--gradient-hero)',
-        'gradient-soft': 'var(--gradient-soft)',
+        sans: ['"Archivo Variable"', 'system-ui', '-apple-system', '"Segoe UI"', 'sans-serif'],
+        display: ['"Archivo Variable"', 'system-ui', '-apple-system', '"Segoe UI"', 'sans-serif'],
       },
       boxShadow: {
-        'soft': 'var(--shadow-soft)',
         'elevation': 'var(--shadow-elevation)',
       },
       colors: {

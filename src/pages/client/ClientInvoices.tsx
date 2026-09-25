@@ -46,8 +46,8 @@ export default function ClientInvoices() {
     <DashboardLayout>
       <div className="space-y-6">
         <div>
-          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">My Invoices</h2>
-          <p className="text-muted-foreground">View your invoices</p>
+          <h1 className="text-2xl font-semibold tracking-tight">My Invoices</h1>
+          <p className="text-sm text-muted-foreground">View your invoices</p>
         </div>
         <Card>
           <CardContent className="p-0 overflow-x-auto">
@@ -58,7 +58,7 @@ export default function ClientInvoices() {
                   <TableHead>Status</TableHead>
                   <TableHead>Total</TableHead>
                   <TableHead className="hidden sm:table-cell">Due Date</TableHead>
-                  <TableHead />
+                  <TableHead><span className="sr-only">Actions</span></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

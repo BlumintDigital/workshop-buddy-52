@@ -119,8 +119,8 @@ export default function ReportIssue() {
     <DashboardLayout>
       <div className="max-w-6xl space-y-6">
         <div>
-          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Report an Issue</h2>
-          <p className="text-muted-foreground">
+          <h1 className="text-2xl font-semibold tracking-tight">Report an Issue</h1>
+          <p className="text-sm text-muted-foreground">
             Encountered a bug or something not working? Let us know and we'll fix it.
           </p>
         </div>
@@ -152,7 +152,7 @@ export default function ReportIssue() {
                   <div>
                     <Label htmlFor="issue-severity">Severity</Label>
                     <Select value={severity} onValueChange={setSeverity}>
-                      <SelectTrigger className="mt-1">
+                      <SelectTrigger id="issue-severity" className="mt-1">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -196,7 +196,7 @@ export default function ReportIssue() {
           </div>
 
           <aside className="space-y-6 lg:sticky lg:top-6">
-            <Card tone="butter">
+            <Card>
               <CardHeader>
                 <div className="flex items-center gap-2">
                   <Lightbulb className="h-5 w-5 text-primary" />
@@ -211,7 +211,7 @@ export default function ReportIssue() {
               </CardContent>
             </Card>
 
-            <Card tone="mist">
+            <Card>
               <CardHeader>
                 <div className="flex items-center gap-2">
                   <LifeBuoy className="h-5 w-5 text-primary" />
@@ -224,7 +224,7 @@ export default function ReportIssue() {
               </CardContent>
             </Card>
 
-            <Card tone="sky">
+            <Card>
               <CardHeader>
                 <div className="flex items-center gap-2">
                   <Clock className="h-5 w-5 text-primary" />

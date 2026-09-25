@@ -350,33 +350,33 @@ export default function AdminAppointments() {
             <DialogTitle>{editItem ? "Edit Appointment" : "New Appointment"}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <div><Label>Title *</Label><Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className="mt-1" /></div>
+            <div><Label htmlFor="f-title">Title *</Label><Input id="f-title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className="mt-1" /></div>
             <div>
-              <Label>Client *</Label>
+              <Label htmlFor="f-client">Client *</Label>
               <Select value={form.client_id} onValueChange={(v) => setForm({ ...form, client_id: v })}>
-                <SelectTrigger className="mt-1"><SelectValue placeholder="Select client" /></SelectTrigger>
+                <SelectTrigger id="f-client" className="mt-1"><SelectValue placeholder="Select client" /></SelectTrigger>
                 <SelectContent>
                   {clients.map(c => <SelectItem key={c.id} value={c.id}>{c.full_name}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <div><Label>Date *</Label><DatePickerInput value={form.appointment_date} onChange={(v) => setForm({ ...form, appointment_date: v })} className="mt-1" /></div>
-              <div><Label>Time *</Label><Input type="time" value={form.appointment_time} onChange={(e) => setForm({ ...form, appointment_time: e.target.value })} className="mt-1" /></div>
+              <div><Label htmlFor="f-date">Date *</Label><DatePickerInput id="f-date" value={form.appointment_date} onChange={(v) => setForm({ ...form, appointment_date: v })} className="mt-1" /></div>
+              <div><Label htmlFor="f-time">Time *</Label><Input id="f-time" type="time" value={form.appointment_time} onChange={(e) => setForm({ ...form, appointment_time: e.target.value })} className="mt-1" /></div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label>Type</Label>
+                <Label htmlFor="f-type">Type</Label>
                 <Select value={form.type} onValueChange={(v) => setForm({ ...form, type: v })}>
-                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectTrigger id="f-type" className="mt-1"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {APPT_TYPES.map(t => <SelectItem key={t} value={t} className="capitalize">{t}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
-              <div><Label>Duration (min)</Label><Input type="number" min="15" step="15" value={form.duration_minutes} onChange={(e) => setForm({ ...form, duration_minutes: e.target.value })} className="mt-1" /></div>
+              <div><Label htmlFor="f-duration-min">Duration (min)</Label><Input id="f-duration-min" type="number" min="15" step="15" value={form.duration_minutes} onChange={(e) => setForm({ ...form, duration_minutes: e.target.value })} className="mt-1" /></div>
             </div>
-            <div><Label>Notes</Label><Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} className="mt-1" /></div>
+            <div><Label htmlFor="f-notes">Notes</Label><Textarea id="f-notes" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} className="mt-1" /></div>
             <Button onClick={handleSave} className="w-full">{editItem ? "Save Changes" : "Create Appointment"}</Button>
           </div>
         </DialogContent>
@@ -393,18 +393,18 @@ export default function AdminAppointments() {
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label>Job Title</Label>
-              <Input value={jobForm.title} onChange={(e) => setJobForm({ ...jobForm, title: e.target.value })} className="mt-1" />
+              <Label htmlFor="f-job-title">Job Title</Label>
+              <Input id="f-job-title" value={jobForm.title} onChange={(e) => setJobForm({ ...jobForm, title: e.target.value })} className="mt-1" />
             </div>
             <div>
-              <Label>Description</Label>
-              <Textarea value={jobForm.description} onChange={(e) => setJobForm({ ...jobForm, description: e.target.value })} className="mt-1" rows={3} placeholder="Describe the work to be done..." />
+              <Label htmlFor="f-description">Description</Label>
+              <Textarea id="f-description" value={jobForm.description} onChange={(e) => setJobForm({ ...jobForm, description: e.target.value })} className="mt-1" rows={3} placeholder="Describe the work to be done..." />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label>Priority</Label>
+                <Label htmlFor="f-priority">Priority</Label>
                 <Select value={jobForm.priority} onValueChange={(v) => setJobForm({ ...jobForm, priority: v })}>
-                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectTrigger id="f-priority" className="mt-1"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="low">Low</SelectItem>
                     <SelectItem value="medium">Medium</SelectItem>
@@ -414,9 +414,9 @@ export default function AdminAppointments() {
                 </Select>
               </div>
               <div>
-                <Label>Assign Staff</Label>
+                <Label htmlFor="f-assign-staff">Assign Staff</Label>
                 <Select value={jobForm.assigned_staff_id} onValueChange={(v) => setJobForm({ ...jobForm, assigned_staff_id: v })}>
-                  <SelectTrigger className="mt-1"><SelectValue placeholder="None" /></SelectTrigger>
+                  <SelectTrigger id="f-assign-staff" className="mt-1"><SelectValue placeholder="None" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="">None</SelectItem>
                     {staffUsers.map(u => <SelectItem key={u.id} value={u.id}>{u.full_name}</SelectItem>)}
@@ -425,8 +425,8 @@ export default function AdminAppointments() {
               </div>
             </div>
             <div>
-              <Label>Due Date</Label>
-              <DatePickerInput value={jobForm.due_date} onChange={(v) => setJobForm({ ...jobForm, due_date: v })} className="mt-1" />
+              <Label htmlFor="f-due-date">Due Date</Label>
+              <DatePickerInput id="f-due-date" value={jobForm.due_date} onChange={(v) => setJobForm({ ...jobForm, due_date: v })} className="mt-1" />
             </div>
             <div className="flex items-center gap-2 pt-1">
               <Checkbox

@@ -606,7 +606,8 @@ export default function JobDetail() {
 
   if (!job) return (
     <DashboardLayout>
-      <div className="space-y-6 max-w-6xl">
+      <div className="space-y-6 max-w-6xl" aria-busy="true">
+        <h1 className="sr-only">Loading job…</h1>
         <Skeleton className="h-8 w-28" />
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-2">
@@ -699,8 +700,8 @@ export default function JobDetail() {
 
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h2 className="text-3xl font-bold tracking-tight">{job.title}</h2>
-            <p className="text-muted-foreground">{job.description || "No description"}</p>
+            <h1 className="text-2xl font-semibold tracking-tight">{job.title}</h1>
+            <p className="text-sm text-muted-foreground">{job.description || "No description"}</p>
           </div>
           {canEdit && (
             <div className="flex gap-2 shrink-0 flex-wrap">
@@ -761,10 +762,10 @@ export default function JobDetail() {
         <Card>
           <CardContent className="pt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
             <div>
-              <Label className="text-xs text-muted-foreground">Status</Label>
+              <Label htmlFor="f-status" className="text-xs text-muted-foreground">Status</Label>
               {canEdit ? (
                 <Select value={job.status} onValueChange={handleStatusChange}>
-                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectTrigger id="f-status" className="mt-1"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {["quote", "pending", "in_progress", "review", "completed", "cancelled"].map((s) => (
                       <SelectItem key={s} value={s}>{s.replace("_", " ")}</SelectItem>
@@ -810,9 +811,9 @@ export default function JobDetail() {
             <div className="flex items-start gap-2">
               <Clock className="h-4 w-4 text-muted-foreground mt-5" />
               <div className="flex-1">
-                <Label className="text-xs text-muted-foreground">Actual</Label>
+                <Label htmlFor="f-actual" className="text-xs text-muted-foreground">Actual</Label>
                 {canAddUpdate ? (
-                  <Input type="number" min="0" step="0.5" value={actualHoursInput}
+                  <Input id="f-actual" type="number" min="0" step="0.5" value={actualHoursInput}
                     onChange={(e) => setActualHoursInput(e.target.value)}
                     onBlur={handleActualHoursBlur} className="mt-1 h-7 w-24 text-sm" placeholder="0" />
                 ) : (
@@ -820,7 +821,7 @@ export default function JobDetail() {
                 )}
                 {hoursProgress !== null && (
                   <div className="mt-2">
-                    <Progress value={hoursProgress} className="h-1.5 w-24" />
+                    <Progress value={hoursProgress} aria-label="Hours used against estimate" className="h-1.5 w-24" />
                     <p className="text-xs text-muted-foreground mt-0.5">{Math.round(hoursProgress)}% of estimate</p>
                   </div>
                 )}
@@ -858,7 +859,7 @@ export default function JobDetail() {
               </p>
             ) : (
               <>
-                {tasks.length > 1 && <Progress value={taskProgress ?? 0} className="h-1 mb-4" />}
+                {tasks.length > 1 && <Progress value={taskProgress ?? 0} aria-label="Tasks completed" className="h-1 mb-4" />}
                 <div className="divide-y divide-border">
                   {tasks.map(task => {
                     const canChangeStatus = canEdit || task.assigned_to === user?.id;
@@ -876,7 +877,7 @@ export default function JobDetail() {
                             </button>
                             {canChangeStatus ? (
                               <Select value={task.status} onValueChange={(v) => handleTaskStatusChange(task.id, v)}>
-                                <SelectTrigger className="h-6 w-[120px] text-xs px-2"><SelectValue /></SelectTrigger>
+                                <SelectTrigger className="h-8 w-[120px] text-xs px-2" aria-label={`Status of task ${task.title}`}><SelectValue /></SelectTrigger>
                                 <SelectContent>
                                   <SelectItem value="pending">Pending</SelectItem>
                                   <SelectItem value="in_progress">In progress</SelectItem>
@@ -914,10 +915,10 @@ export default function JobDetail() {
                             )}
                             {canEdit && (
                               <>
-                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleOpenEditTask(task)}>
+                                <Button variant="ghost" size="icon" className="h-8 w-8" aria-label={`Edit task ${task.title}`} onClick={() => handleOpenEditTask(task)}>
                                   <Pencil className="h-3 w-3" />
                                 </Button>
-                                <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive"
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" aria-label={`Delete task ${task.title}`}
                                   onClick={() => handleDeleteTask(task.id)}>
                                   <Trash2 className="h-3 w-3" />
                                 </Button>
@@ -988,11 +989,11 @@ export default function JobDetail() {
           <Card>
             <CardHeader><CardTitle className="text-lg">Add Update</CardTitle></CardHeader>
             <CardContent className="space-y-3">
-              <Textarea placeholder="Add a note or progress update..." value={newNote}
+              <Textarea aria-label="Progress update" placeholder="Add a note or progress update..." value={newNote}
                 onChange={(e) => setNewNote(e.target.value)} rows={3} />
               <div className="flex items-center gap-3 flex-wrap">
                 <Select value={newStatus} onValueChange={setNewStatus}>
-                  <SelectTrigger className="w-44">
+                  <SelectTrigger className="w-44" aria-label="Change job status with this update (optional)">
                     <SelectValue placeholder="Status change (optional)" />
                   </SelectTrigger>
                   <SelectContent>
@@ -1125,12 +1126,12 @@ export default function JobDetail() {
                       </div>
                     )}
                     <div className="p-2"><p className="text-xs truncate">{a.file_name}</p></div>
-                    <div className="absolute top-1 right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="absolute top-1 right-1 flex gap-1 transition-opacity focus-within:opacity-100 sm:opacity-0 sm:group-hover:opacity-100">
                       <a href={getFileUrl(a.file_path)} target="_blank" rel="noreferrer">
-                        <Button size="icon" variant="secondary" className="h-6 w-6"><Download className="h-3 w-3" /></Button>
+                        <Button size="icon" variant="secondary" className="h-8 w-8" aria-label={`Download ${a.file_name}`}><Download className="h-4 w-4" /></Button>
                       </a>
                       {canEdit && (
-                        <Button size="icon" variant="destructive" className="h-6 w-6"
+                        <Button size="icon" variant="destructive" className="h-8 w-8" aria-label={`Delete ${a.file_name}`}
                           onClick={() => handleDeleteAttachment(a.id, a.file_path, false)}>
                           <Trash2 className="h-3 w-3" />
                         </Button>
@@ -1175,7 +1176,7 @@ export default function JobDetail() {
                   </div>
                   {ratingValue > 0 && (
                     <>
-                      <Textarea placeholder="Tell us about your experience (optional)..."
+                      <Textarea aria-label="Your feedback (optional)" placeholder="Tell us about your experience (optional)..."
                         value={ratingComment} onChange={(e) => setRatingComment(e.target.value)} rows={2} />
                       <Button size="sm" disabled={submittingRating} onClick={handleSubmitRating}>
                         {submittingRating ? "Submitting..." : "Submit Rating"}
@@ -1196,28 +1197,28 @@ export default function JobDetail() {
           <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader><DialogTitle>Edit Job</DialogTitle></DialogHeader>
             <div className="space-y-4">
-              <div><Label>Title</Label><Input value={editForm.title || ""} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} /></div>
-              <div><Label>Description</Label><Textarea value={editForm.description || ""} onChange={(e) => setEditForm({ ...editForm, description: e.target.value })} /></div>
+              <div><Label htmlFor="f-title">Title</Label><Input id="f-title" value={editForm.title || ""} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} /></div>
+              <div><Label htmlFor="f-description">Description</Label><Textarea id="f-description" value={editForm.description || ""} onChange={(e) => setEditForm({ ...editForm, description: e.target.value })} /></div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label>Priority</Label>
+                  <Label htmlFor="f-priority">Priority</Label>
                   <Select value={editForm.priority} onValueChange={(v) => setEditForm({ ...editForm, priority: v })}>
-                    <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                    <SelectTrigger id="f-priority" className="mt-1"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       {["low", "medium", "high", "urgent"].map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
-                <div><Label>Due Date</Label><DatePickerInput value={editForm.due_date || ""} onChange={(v) => setEditForm({ ...editForm, due_date: v })} className="mt-1" /></div>
+                <div><Label htmlFor="f-due-date">Due Date</Label><DatePickerInput id="f-due-date" value={editForm.due_date || ""} onChange={(v) => setEditForm({ ...editForm, due_date: v })} className="mt-1" /></div>
               </div>
               <div>
-                <Label>Estimated Hours</Label>
-                <Input type="number" min="0" step="0.5" value={editForm.estimated_hours || ""} onChange={(e) => setEditForm({ ...editForm, estimated_hours: e.target.value })} className="mt-1" />
+                <Label htmlFor="f-estimated-hours">Estimated Hours</Label>
+                <Input id="f-estimated-hours" type="number" min="0" step="0.5" value={editForm.estimated_hours || ""} onChange={(e) => setEditForm({ ...editForm, estimated_hours: e.target.value })} className="mt-1" />
               </div>
               <div>
-                <Label>Assign Staff</Label>
+                <Label htmlFor="f-assign-staff">Assign Staff</Label>
                 <Select value={editForm.assigned_staff_id || "__none__"} onValueChange={(v) => setEditForm({ ...editForm, assigned_staff_id: v === "__none__" ? "" : v })}>
-                  <SelectTrigger className="mt-1"><SelectValue placeholder="None" /></SelectTrigger>
+                  <SelectTrigger id="f-assign-staff" className="mt-1"><SelectValue placeholder="None" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="__none__">None</SelectItem>
                     {staffUsers.map(u => <SelectItem key={u.id} value={u.id}>{u.full_name}</SelectItem>)}
@@ -1225,9 +1226,9 @@ export default function JobDetail() {
                 </Select>
               </div>
               <div>
-                <Label>Assign Client</Label>
+                <Label htmlFor="f-assign-client">Assign Client</Label>
                 <Select value={editForm.client_id || "__none__"} onValueChange={(v) => setEditForm({ ...editForm, client_id: v === "__none__" ? "" : v })}>
-                  <SelectTrigger className="mt-1"><SelectValue placeholder="None" /></SelectTrigger>
+                  <SelectTrigger id="f-assign-client" className="mt-1"><SelectValue placeholder="None" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="__none__">None</SelectItem>
                     {clientUsers.map(u => <SelectItem key={u.id} value={u.id}>{u.full_name}</SelectItem>)}
@@ -1251,9 +1252,9 @@ export default function JobDetail() {
                 <p className="mt-1 text-sm font-medium">{handoffTask?.title}</p>
               </div>
               <div>
-                <Label>Hand off to</Label>
+                <Label htmlFor="f-hand-off-to">Hand off to</Label>
                 <Select value={handoffAssignee} onValueChange={setHandoffAssignee} disabled={handingOff}>
-                  <SelectTrigger className="mt-1">
+                  <SelectTrigger id="f-hand-off-to" className="mt-1">
                     <SelectValue placeholder="Select staff member" />
                   </SelectTrigger>
                   <SelectContent>
@@ -1267,8 +1268,8 @@ export default function JobDetail() {
                 )}
               </div>
               <div>
-                <Label>Handoff note</Label>
-                <Textarea
+                <Label htmlFor="f-handoff-note">Handoff note</Label>
+                <Textarea id="f-handoff-note"
                   value={handoffNote}
                   onChange={(e) => setHandoffNote(e.target.value)}
                   placeholder="Completed fabrication, passing to paint."
@@ -1300,17 +1301,17 @@ export default function JobDetail() {
             <DialogHeader><DialogTitle>{editingTask ? "Edit Task" : "Add Task"}</DialogTitle></DialogHeader>
             <div className="space-y-4">
               <div>
-                <Label>Title</Label>
-                <Input value={taskForm.title} onChange={(e) => setTaskForm({ ...taskForm, title: e.target.value })} placeholder="e.g. Change engine oil" className="mt-1" />
+                <Label htmlFor="f-title-2">Title</Label>
+                <Input id="f-title-2" value={taskForm.title} onChange={(e) => setTaskForm({ ...taskForm, title: e.target.value })} placeholder="e.g. Change engine oil" className="mt-1" />
               </div>
               <div>
-                <Label>Description <span className="text-muted-foreground text-xs">(optional)</span></Label>
-                <Textarea value={taskForm.description} onChange={(e) => setTaskForm({ ...taskForm, description: e.target.value })} className="mt-1" rows={2} />
+                <Label htmlFor="f-description-optional">Description <span className="text-muted-foreground text-xs">(optional)</span></Label>
+                <Textarea id="f-description-optional" value={taskForm.description} onChange={(e) => setTaskForm({ ...taskForm, description: e.target.value })} className="mt-1" rows={2} />
               </div>
               <div>
-                <Label>Assign To</Label>
+                <Label htmlFor="f-assign-to">Assign To</Label>
                 <Select value={taskForm.assigned_to || "__none__"} onValueChange={(v) => setTaskForm({ ...taskForm, assigned_to: v === "__none__" ? "" : v })}>
-                  <SelectTrigger className="mt-1"><SelectValue placeholder="Unassigned" /></SelectTrigger>
+                  <SelectTrigger id="f-assign-to" className="mt-1"><SelectValue placeholder="Unassigned" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="__none__">Unassigned</SelectItem>
                     {staffUsers.map(u => <SelectItem key={u.id} value={u.id}>{u.full_name}</SelectItem>)}
@@ -1318,9 +1319,9 @@ export default function JobDetail() {
                 </Select>
               </div>
               <div>
-                <Label>Status</Label>
+                <Label htmlFor="f-status-2">Status</Label>
                 <Select value={taskForm.status} onValueChange={(v) => setTaskForm({ ...taskForm, status: v })}>
-                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectTrigger id="f-status-2" className="mt-1"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="pending">Pending</SelectItem>
                     <SelectItem value="in_progress">In Progress</SelectItem>
@@ -1329,13 +1330,13 @@ export default function JobDetail() {
                 </Select>
               </div>
               <div>
-                <Label>Due Date <span className="text-muted-foreground text-xs">(optional)</span></Label>
-                <DatePickerInput value={taskForm.due_date} onChange={(v) => setTaskForm({ ...taskForm, due_date: v })} className="mt-1" />
+                <Label htmlFor="f-due-date-optional">Due Date <span className="text-muted-foreground text-xs">(optional)</span></Label>
+                <DatePickerInput id="f-due-date-optional" value={taskForm.due_date} onChange={(v) => setTaskForm({ ...taskForm, due_date: v })} className="mt-1" />
               </div>
               {canEdit && (
                 <div>
-                  <Label>Task Value ($) <span className="text-muted-foreground text-xs">(optional)</span></Label>
-                  <Input type="number" min="0" step="0.01" value={taskForm.value} onChange={(e) => setTaskForm({ ...taskForm, value: e.target.value })} className="mt-1 w-32" placeholder="0.00" />
+                  <Label htmlFor="f-task-value-optional">Task Value ($) <span className="text-muted-foreground text-xs">(optional)</span></Label>
+                  <Input id="f-task-value-optional" type="number" min="0" step="0.01" value={taskForm.value} onChange={(e) => setTaskForm({ ...taskForm, value: e.target.value })} className="mt-1 w-32" placeholder="0.00" />
                   <p className="text-xs text-muted-foreground mt-1">Counts toward the monthly company goal when completed.</p>
                 </div>
               )}
@@ -1354,7 +1355,7 @@ export default function JobDetail() {
                       {taskPendingFiles.map((f, i) => (
                         <div key={i} className="flex items-center justify-between text-xs border rounded px-2 py-1">
                           <span className="truncate">{f.name}</span>
-                          <Button variant="ghost" size="icon" className="h-5 w-5 shrink-0" onClick={() => setTaskPendingFiles(prev => prev.filter((_, idx) => idx !== i))}>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" aria-label={`Remove ${f.name}`} onClick={() => setTaskPendingFiles(prev => prev.filter((_, idx) => idx !== i))}>
                             <Trash2 className="h-3 w-3" />
                           </Button>
                         </div>
@@ -1374,9 +1375,9 @@ export default function JobDetail() {
             <DialogHeader><DialogTitle>Log Material Usage</DialogTitle></DialogHeader>
             <div className="space-y-4">
               <div>
-                <Label>Item</Label>
+                <Label htmlFor="f-item">Item</Label>
                 <Select value={matForm.item_id} onValueChange={(v) => setMatForm({ ...matForm, item_id: v })}>
-                  <SelectTrigger className="mt-1"><SelectValue placeholder="Select inventory item" /></SelectTrigger>
+                  <SelectTrigger id="f-item" className="mt-1"><SelectValue placeholder="Select inventory item" /></SelectTrigger>
                   <SelectContent>
                     {inventoryItems.map(i => (
                       <SelectItem key={i.id} value={i.id}>
@@ -1387,13 +1388,13 @@ export default function JobDetail() {
                 </Select>
               </div>
               <div>
-                <Label>Quantity Used</Label>
-                <Input type="number" min="1" value={matForm.quantity}
+                <Label htmlFor="f-quantity-used">Quantity Used</Label>
+                <Input id="f-quantity-used" type="number" min="1" value={matForm.quantity}
                   onChange={(e) => setMatForm({ ...matForm, quantity: e.target.value })} className="mt-1" />
               </div>
               <div>
-                <Label>Notes <span className="text-muted-foreground text-xs">(optional)</span></Label>
-                <Input value={matForm.notes} onChange={(e) => setMatForm({ ...matForm, notes: e.target.value })} className="mt-1" />
+                <Label htmlFor="f-notes-optional">Notes <span className="text-muted-foreground text-xs">(optional)</span></Label>
+                <Input id="f-notes-optional" value={matForm.notes} onChange={(e) => setMatForm({ ...matForm, notes: e.target.value })} className="mt-1" />
               </div>
               <Button onClick={handleAddMaterial} disabled={addingMat} className="w-full">
                 {addingMat ? "Saving..." : "Log Usage"}
@@ -1425,7 +1426,7 @@ export default function JobDetail() {
                 {taskNotes.length === 0 && <p className="text-sm text-muted-foreground mb-3">No notes yet.</p>}
                 {canAddUpdate && (
                   <div className="space-y-2">
-                    <Textarea placeholder="Add a note..." value={newTaskNote} onChange={(e) => setNewTaskNote(e.target.value)} rows={2} />
+                    <Textarea aria-label="Task note" placeholder="Add a note..." value={newTaskNote} onChange={(e) => setNewTaskNote(e.target.value)} rows={2} />
                     <Button size="sm" disabled={addingNote || !newTaskNote.trim()} onClick={handleAddTaskNote}>
                       {addingNote ? "Saving..." : "Add Note"}
                     </Button>
@@ -1458,12 +1459,12 @@ export default function JobDetail() {
                           </div>
                         )}
                         <div className="p-1.5"><p className="text-xs truncate">{a.file_name}</p></div>
-                        <div className="absolute top-1 right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="absolute top-1 right-1 flex gap-1 transition-opacity focus-within:opacity-100 sm:opacity-0 sm:group-hover:opacity-100">
                           <a href={getFileUrl(a.file_path)} target="_blank" rel="noreferrer">
-                            <Button size="icon" variant="secondary" className="h-6 w-6"><Download className="h-3 w-3" /></Button>
+                            <Button size="icon" variant="secondary" className="h-8 w-8" aria-label={`Download ${a.file_name}`}><Download className="h-4 w-4" /></Button>
                           </a>
                           {canEdit && (
-                            <Button size="icon" variant="destructive" className="h-6 w-6"
+                            <Button size="icon" variant="destructive" className="h-8 w-8" aria-label={`Delete ${a.file_name}`}
                               onClick={() => handleDeleteAttachment(a.id, a.file_path, true)}>
                               <Trash2 className="h-3 w-3" />
                             </Button>

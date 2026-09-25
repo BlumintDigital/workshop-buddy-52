@@ -3,7 +3,7 @@ import { createRoot } from "react-dom/client";
 import * as Sentry from "@sentry/react";
 import App from "./App.tsx";
 import "./index.css";
-import "@fontsource-variable/geist";
+import "@fontsource-variable/archivo/wdth.css";
 
 if (import.meta.env.VITE_SENTRY_DSN) {
   Sentry.init({

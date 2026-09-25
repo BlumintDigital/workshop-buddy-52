@@ -99,7 +99,8 @@ export function ensureReadablePrimary(hsl: string): string {
   let candidate = hsl;
   while (l > 5) {
     const ratio = contrastWithWhite(candidate);
-    if (ratio === null || ratio >= 4.5) return candidate;
+    const onTint = contrastBetween(candidate, softTint(candidate));
+    if (ratio === null || onTint === null || (ratio >= 4.5 && onTint >= 4.5)) return candidate;
     l -= 2;
     candidate = `${parts[0]} ${parts[1]} ${l}%`;
   }
@@ -114,18 +115,77 @@ function softTint(hsl: string): string {
   return `${parts[0]} ${s}% 92%`;
 }
 
+/** WCAG contrast ratio between two colours, each an HSL triplet or a hex string. */
+function contrastBetween(a: string, b: string): number | null {
+  const ha = a.startsWith("#") ? a : hslStringToHex(a);
+  const hb = b.startsWith("#") ? b : hslStringToHex(b);
+  if (!ha || !hb) return null;
+  const [la, lb] = [relativeLuminance(ha), relativeLuminance(hb)];
+  return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
+}
+
+/** The dark theme's button text (#0F1A14) and card surface (#1B201D). */
+const DARK_INK = "#0f1a14";
+const DARK_CARD = "#1b201d";
+
+/** Contrast ratio of an HSL colour against the dark theme's near-black button text. */
+export function contrastWithDarkInk(hsl: string): number | null {
+  return contrastBetween(hsl, DARK_INK);
+}
+
+/**
+ * Worst contrast of a dark-theme primary across the places it appears: under
+ * button text, as text on cards, and as text on its own selected tint.
+ */
+export function worstDarkContrast(hsl: string): number | null {
+  const ratios = [contrastBetween(hsl, DARK_INK), contrastBetween(hsl, DARK_CARD), contrastBetween(hsl, darkTint(hsl))];
+  return ratios.some((r) => r === null) ? null : Math.min(...(ratios as number[]));
+}
+
+/** Lightens a brand primary for the dark theme until it passes AA as a button fill and as text. */
+export function ensureReadablePrimaryDark(hsl: string): string {
+  const parts = hsl.trim().split(/\s+/);
+  if (parts.length !== 3) return hsl;
+  // A near-neutral brand (black, charcoal, grey) turns muddy when lifted to a
+  // mid tone, so its dark-theme counterpart is near-white instead.
+  if (parseFloat(parts[1]) < 12) return `${parts[0]} ${Math.min(parseFloat(parts[1]), 5)}% 90%`;
+  let l = Math.max(parseFloat(parts[2]), 50);
+  let candidate = `${parts[0]} ${parts[1]} ${l}%`;
+  while (l < 95) {
+    const ratio = worstDarkContrast(candidate);
+    if (ratio === null || ratio >= 4.5) return candidate;
+    l += 2;
+    candidate = `${parts[0]} ${parts[1]} ${l}%`;
+  }
+  return candidate;
+}
+
+/** Deep tint of the primary hue for selected surfaces in the dark theme. */
+function darkTint(hsl: string): string {
+  const parts = hsl.trim().split(/\s+/);
+  if (parts.length !== 3) return hsl;
+  return `${parts[0]} ${Math.min(parseFloat(parts[1]), 30)}% 16%`;
+}
+
+/**
+ * Applies the workshop's brand colours as --brand-* variables on <html>. The
+ * stylesheet maps them onto the light and dark palettes, so each theme gets a
+ * variant that keeps text on buttons and links readable.
+ */
 export function applyBrandColors(colors: BrandColors) {
   const root = document.documentElement;
-  const primary = colors.primary ? ensureReadablePrimary(colors.primary) : null;
-  const accent = colors.accent || null;
   const setOrClear = (prop: string, value: string | null) => {
     if (value) root.style.setProperty(prop, value);
     else root.style.removeProperty(prop);
   };
-  setOrClear("--primary", primary);
-  setOrClear("--primary-soft", primary ? softTint(primary) : null);
-  setOrClear("--sidebar-primary", primary);
-  setOrClear("--ring", primary);
-  setOrClear("--accent", accent);
-  setOrClear("--sidebar-accent", accent ? adjustL(accent, 10) : null);
+  const primary = colors.primary || null;
+  setOrClear("--brand-primary", primary ? ensureReadablePrimary(primary) : null);
+  setOrClear("--brand-primary-soft", primary ? softTint(ensureReadablePrimary(primary)) : null);
+  setOrClear("--brand-primary-dark", primary ? ensureReadablePrimaryDark(primary) : null);
+  setOrClear("--brand-primary-soft-dark", primary ? darkTint(primary) : null);
+  setOrClear("--brand-accent", colors.accent ? adjustL(colors.accent, 0) : null);
+  // Clear variables written by earlier versions, which overrode both themes.
+  for (const legacy of ["--primary", "--primary-soft", "--sidebar-primary", "--ring", "--accent", "--sidebar-accent"]) {
+    root.style.removeProperty(legacy);
+  }
 }

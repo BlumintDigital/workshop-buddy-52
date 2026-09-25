@@ -12,9 +12,12 @@ interface DatePickerInputProps {
   placeholder?: string;
   className?: string;
   disabled?: boolean;
+  /** Lets a <Label htmlFor> name the field. */
+  id?: string;
+  "aria-label"?: string;
 }
 
-export function DatePickerInput({ value, onChange, placeholder = "Pick a date", className, disabled }: DatePickerInputProps) {
+export function DatePickerInput({ value, onChange, placeholder = "Pick a date", className, disabled, id, "aria-label": ariaLabel }: DatePickerInputProps) {
   const [open, setOpen] = useState(false);
   const [month, setMonth] = useState<Date | undefined>(value ? parseISO(value) : new Date());
 
@@ -23,6 +26,8 @@ export function DatePickerInput({ value, onChange, placeholder = "Pick a date", 
   return (
     <InputGroup className={className}>
       <InputGroupInput
+        id={id}
+        aria-label={ariaLabel}
         value={displayValue}
         placeholder={placeholder}
         disabled={disabled}

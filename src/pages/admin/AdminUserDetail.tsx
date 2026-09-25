@@ -172,7 +172,8 @@ export default function AdminUserDetail() {
   if (isLoading) {
     return (
       <DashboardLayout>
-        <div className="space-y-6">
+        <div className="space-y-6" aria-busy="true">
+          <h1 className="sr-only">Loading user…</h1>
           <Skeleton className="h-8 w-20" />
           <div className="flex items-start justify-between gap-4">
             <div className="space-y-2">
@@ -205,7 +206,7 @@ export default function AdminUserDetail() {
         {/* Header */}
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h2 className="text-3xl font-bold tracking-tight">{profile?.full_name || "User"}</h2>
+            <h1 className="text-2xl font-semibold tracking-tight">{profile?.full_name || "User"}</h1>
             <div className="flex items-center gap-2 mt-1">
               <Badge variant="secondary" className="capitalize">{role}</Badge>
               {profile?.is_active === false && <Badge variant="destructive">Inactive</Badge>}
@@ -234,51 +235,36 @@ export default function AdminUserDetail() {
           <CardContent>
             <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {isClient && (
-                <div className="flex items-start gap-2">
-                  <Building2 className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
-                  <div>
-                    <dt className="text-xs text-muted-foreground">Company</dt>
-                    <dd className="text-sm font-medium">{profile?.company_name || "—"}</dd>
-                  </div>
+                <div>
+                  <dt className="flex items-center gap-1.5 text-xs text-muted-foreground"><Building2 className="h-3.5 w-3.5 shrink-0" aria-hidden />Company</dt>
+                  <dd className="mt-0.5 text-sm font-medium">{profile?.company_name || "—"}</dd>
                 </div>
               )}
               {isClient && (
-                <div className="flex items-start gap-2">
-                  <User className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
-                  <div>
-                    <dt className="text-xs text-muted-foreground">Contact Person</dt>
+                <div>
+                  <dt className="flex items-center gap-1.5 text-xs text-muted-foreground"><User className="h-3.5 w-3.5 shrink-0" aria-hidden />Contact Person</dt>
                     {/* Older client accounts predate the contact_person column — the signup name is the contact. */}
-                    <dd className="text-sm font-medium">{profile?.contact_person || profile?.full_name || "—"}</dd>
-                  </div>
+                  <dd className="mt-0.5 text-sm font-medium">{profile?.contact_person || profile?.full_name || "—"}</dd>
                 </div>
               )}
-              <div className="flex items-start gap-2">
-                <Phone className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
-                <div>
-                  <dt className="text-xs text-muted-foreground">Phone</dt>
-                  <dd className="text-sm font-medium">{profile?.phone || "—"}</dd>
+              <div>
+                  <dt className="flex items-center gap-1.5 text-xs text-muted-foreground"><Phone className="h-3.5 w-3.5 shrink-0" aria-hidden />Phone</dt>
+                  <dd className="mt-0.5 text-sm font-medium">{profile?.phone || "—"}</dd>
                 </div>
-              </div>
               {isClient && (
-                <div className="flex items-start gap-2">
-                  <MapPin className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
-                  <div>
-                    <dt className="text-xs text-muted-foreground">Address</dt>
-                    <dd className="text-sm font-medium">{profile?.address || "—"}</dd>
-                  </div>
+                <div>
+                  <dt className="flex items-center gap-1.5 text-xs text-muted-foreground"><MapPin className="h-3.5 w-3.5 shrink-0" aria-hidden />Address</dt>
+                  <dd className="mt-0.5 text-sm font-medium">{profile?.address || "—"}</dd>
                 </div>
               )}
-              <div className="flex items-start gap-2">
-                <Calendar className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
-                <div>
-                  <dt className="text-xs text-muted-foreground">Member Since</dt>
-                  <dd className="text-sm font-medium">
+              <div>
+                  <dt className="flex items-center gap-1.5 text-xs text-muted-foreground"><Calendar className="h-3.5 w-3.5 shrink-0" aria-hidden />Member Since</dt>
+                  <dd className="mt-0.5 text-sm font-medium">
                     {profile?.created_at
                       ? new Date(profile.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })
                       : "—"}
                   </dd>
                 </div>
-              </div>
             </dl>
           </CardContent>
         </Card>

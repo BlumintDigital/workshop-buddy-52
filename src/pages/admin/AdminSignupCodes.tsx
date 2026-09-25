@@ -231,8 +231,8 @@ export default function AdminSignupCodes() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Expiry date</Label>
-                    <DatePickerInput value={newExpiresDate} onChange={setNewExpiresDate} placeholder="No expiry" />
+                    <Label htmlFor="f-expiry-date">Expiry date</Label>
+                    <DatePickerInput id="f-expiry-date" value={newExpiresDate} onChange={setNewExpiresDate} placeholder="No expiry" />
                   </div>
                 </div>
                 {newExpiresDate && (

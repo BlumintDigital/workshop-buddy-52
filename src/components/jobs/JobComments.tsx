@@ -202,6 +202,7 @@ export default function JobComments({ jobId, jobTitle }: Props) {
         {/* Compose */}
         <form onSubmit={handleSubmit} className="space-y-2 border-t pt-3">
           <Textarea
+            aria-label={isInternal ? "Internal note" : "Message to the client"}
             ref={textareaRef}
             value={body}
             onChange={(e) => setBody(e.target.value)}

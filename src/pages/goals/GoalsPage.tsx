@@ -259,7 +259,7 @@ export default function GoalsPage() {
             <p className="text-4xl font-bold tabular-nums">{fmt(dailyCompleted)}</p>
             {dailyTarget && dailyTarget > 0 && (
               <>
-                <Progress value={dailyPct} className="h-3" />
+                <Progress value={dailyPct} aria-label="Daily goal progress" className="h-3" />
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-muted-foreground">{dailyPct}% of daily target</span>
                   {dailyCompleted >= dailyTarget && (
@@ -282,7 +282,7 @@ export default function GoalsPage() {
             <p className="text-4xl font-bold tabular-nums">{fmt(totalCompleted)}</p>
             {monthlyGoal && monthlyGoal > 0 && (
               <>
-                <Progress value={monthlyPct} className="h-3" />
+                <Progress value={monthlyPct} aria-label="Monthly goal progress" className="h-3" />
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-muted-foreground">{monthlyPct}% of monthly goal</span>
                   {goalReached && (

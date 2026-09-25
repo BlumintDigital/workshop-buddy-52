@@ -88,8 +88,8 @@ export default function StaffInventory() {
     <DashboardLayout>
       <div className="space-y-6">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Inventory</h2>
-          <p className="text-muted-foreground">View and log stock usage</p>
+          <h1 className="text-2xl font-semibold tracking-tight">Inventory</h1>
+          <p className="text-sm text-muted-foreground">View and log stock usage</p>
         </div>
         <Card>
           <CardContent className="p-0">
@@ -100,7 +100,7 @@ export default function StaffInventory() {
                   <TableHead>SKU</TableHead>
                   <TableHead>Quantity</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead className="w-24" />
+                  <TableHead className="w-24"><span className="sr-only">Actions</span></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -133,9 +133,9 @@ export default function StaffInventory() {
               Current: <span className="font-medium text-foreground">{adjustItem?.quantity} {adjustItem?.unit}</span>
             </div>
             <div>
-              <Label>Type</Label>
+              <Label htmlFor="f-type">Type</Label>
               <Select value={adjustForm.type} onValueChange={(v) => setAdjustForm({ ...adjustForm, type: v })}>
-                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                <SelectTrigger id="f-type" className="mt-1"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="out">Used (stock out)</SelectItem>
                   <SelectItem value="in">Returned (stock in)</SelectItem>
@@ -144,8 +144,8 @@ export default function StaffInventory() {
               </Select>
             </div>
             <div>
-              <Label>{adjustForm.type === "adjustment" ? "New Quantity" : "Quantity"}</Label>
-              <Input
+              <Label htmlFor="f-field">{adjustForm.type === "adjustment" ? "New Quantity" : "Quantity"}</Label>
+              <Input id="f-field"
                 type="number"
                 min="1"
                 value={adjustForm.quantity}
@@ -154,8 +154,8 @@ export default function StaffInventory() {
               />
             </div>
             <div>
-              <Label>Notes (optional)</Label>
-              <Textarea
+              <Label htmlFor="f-notes-optional">Notes (optional)</Label>
+              <Textarea id="f-notes-optional"
                 value={adjustForm.notes}
                 onChange={(e) => setAdjustForm({ ...adjustForm, notes: e.target.value })}
                 className="mt-1"

@@ -64,6 +64,12 @@ function ShellFrame({ children }: { children: ReactNode }) {
     <ShellContext.Provider value={true}>
       <NavCountsProvider>
         <SidebarProvider>
+          <a
+            href="#main-content"
+            className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-50 focus:rounded-md focus:bg-primary focus:px-4 focus:py-2 focus:text-primary-foreground"
+          >
+            Skip to content
+          </a>
           <div className="flex min-h-svh w-full max-w-full overflow-x-hidden">
             <AppSidebar />
             <SidebarInset className="min-w-0 max-w-full overflow-x-hidden">
@@ -71,7 +77,10 @@ function ShellFrame({ children }: { children: ReactNode }) {
               <BroadcastBanner />
               <SystemNoticesBanner />
               <MfaReminder />
-              <main className="flex-1 min-w-0 max-w-full overflow-x-hidden p-3 sm:p-6">{children}</main>
+              {/* SidebarInset is already the <main> landmark; this is its content region. */}
+              <div id="main-content" tabIndex={-1} className="flex-1 min-w-0 max-w-full overflow-x-hidden p-3 outline-none sm:p-6">
+                {children}
+              </div>
               <footer className="border-t px-3 pb-24 pt-3 text-center text-xs text-muted-foreground sm:px-6 md:pb-3">
                 Shoplane is powered by Blumint Workspace · © {new Date().getFullYear()} Blumint Digital Limited · Registered in England and Wales · Company No. 15709531
               </footer>

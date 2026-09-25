@@ -201,17 +201,17 @@ export default function AdminUsers() {
               <DialogHeader><DialogTitle>Add a user</DialogTitle></DialogHeader>
               <div className="space-y-4">
                 <div>
-                  <Label>Full Name *</Label>
-                  <Input value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} placeholder="Jane Doe" maxLength={100} />
+                  <Label htmlFor="f-full-name">Full Name *</Label>
+                  <Input id="f-full-name" value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} placeholder="Jane Doe" maxLength={100} />
                 </div>
                 <div>
-                  <Label>Email *</Label>
-                  <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="jane@example.com" maxLength={255} />
+                  <Label htmlFor="f-email">Email *</Label>
+                  <Input id="f-email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="jane@example.com" maxLength={255} />
                 </div>
                 <div>
-                  <Label>Role *</Label>
+                  <Label htmlFor="f-role">Role *</Label>
                   <Select value={form.role} onValueChange={(v) => setForm({ ...form, role: v })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectTrigger id="f-role"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       {canAssignAdmin && <SelectItem value="admin">Admin</SelectItem>}
                       <SelectItem value="manager">Manager</SelectItem>
@@ -221,8 +221,8 @@ export default function AdminUsers() {
                   </Select>
                 </div>
                 <div>
-                  <Label>Phone</Label>
-                  <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="+1 555 0123" maxLength={32} />
+                  <Label htmlFor="f-phone">Phone</Label>
+                  <Input id="f-phone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="+1 555 0123" maxLength={32} />
                 </div>
                 <p className="text-xs text-muted-foreground">
                   The user will receive an invite email to set their password.

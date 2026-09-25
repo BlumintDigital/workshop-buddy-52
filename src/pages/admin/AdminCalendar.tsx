@@ -261,8 +261,8 @@ export default function AdminCalendar() {
     <DashboardLayout>
       <div className="space-y-6">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Calendar</h2>
-          <p className="text-muted-foreground">Plan projects and track appointments at a glance</p>
+          <h1 className="text-2xl font-semibold tracking-tight">Calendar</h1>
+          <p className="text-sm text-muted-foreground">Plan projects and track appointments at a glance</p>
         </div>
 
         {/* Stats row */}
@@ -310,7 +310,7 @@ export default function AdminCalendar() {
             <div className="flex items-center gap-2">
               <span className="text-sm font-medium">Status:</span>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-[130px] h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="h-9 w-[130px] text-xs" aria-label="Filter by status"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All</SelectItem>
                   <SelectItem value="pending">Pending</SelectItem>
@@ -322,7 +322,7 @@ export default function AdminCalendar() {
             <div className="flex items-center gap-2">
               <span className="text-sm font-medium">Priority:</span>
               <Select value={priorityFilter} onValueChange={setPriorityFilter}>
-                <SelectTrigger className="w-[110px] h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="h-9 w-[110px] text-xs" aria-label="Filter by priority"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All</SelectItem>
                   <SelectItem value="high">High</SelectItem>

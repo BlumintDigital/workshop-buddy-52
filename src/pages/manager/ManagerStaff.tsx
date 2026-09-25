@@ -55,8 +55,8 @@ export default function ManagerStaff() {
     <DashboardLayout>
       <div className="space-y-6">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Staff</h2>
-          <p className="text-muted-foreground">Manage staff and manager accounts</p>
+          <h1 className="text-2xl font-semibold tracking-tight">Staff</h1>
+          <p className="text-sm text-muted-foreground">Manage staff and manager accounts</p>
         </div>
         <Card>
           <CardContent className="p-0">
@@ -84,7 +84,7 @@ export default function ManagerStaff() {
                     <TableCell className="font-medium">{s.full_name}</TableCell>
                     <TableCell>
                       <Select value={s.role} onValueChange={(v) => changeRole(s.user_id, v)}>
-                        <SelectTrigger className="w-[130px] h-8">
+                        <SelectTrigger className="h-9 w-[130px]" aria-label={`Role for ${s.full_name}`}>
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -95,7 +95,7 @@ export default function ManagerStaff() {
                     </TableCell>
                     <TableCell>{s.created_at ? new Date(s.created_at).toLocaleDateString() : "—"}</TableCell>
                     <TableCell>
-                      <Button variant="ghost" size="icon" onClick={() => navigate(`/manager/staff/${s.user_id}`)}>
+                      <Button variant="ghost" size="icon" aria-label={`View ${s.full_name}`} onClick={() => navigate(`/manager/staff/${s.user_id}`)}>
                         <Eye className="h-4 w-4" />
                       </Button>
                     </TableCell>

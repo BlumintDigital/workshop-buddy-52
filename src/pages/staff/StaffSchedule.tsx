@@ -2,58 +2,95 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import DashboardLayout from "@/components/layout/DashboardLayout";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { PageBar } from "@/components/dashboard/PageBar";
+import { StatusPill, type StatusTone } from "@/components/dashboard/StatusPill";
+import { ListControls } from "@/components/list/ListControls";
+import { DataList, type Column } from "@/components/list/DataList";
+import { EmptyState } from "@/components/list/EmptyState";
+import { todayIso } from "@/lib/dashboardQueries";
 
+type Appointment = {
+  id: string;
+  title: string | null;
+  appointment_date: string;
+  appointment_time: string | null;
+  type: string | null;
+  status: string;
+};
+
+const TONE: Record<string, StatusTone> = {
+  pending: "neutral",
+  confirmed: "info",
+  in_progress: "info",
+  completed: "success",
+  cancelled: "neutral",
+};
+
+function when(a: Appointment) {
+  const date = new Date(a.appointment_date).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
+  return `${date} · ${(a.appointment_time || "").slice(0, 5)}`;
+}
+
+/** Upcoming bookings for the technician, soonest first. */
 export default function StaffSchedule() {
   const { user } = useAuth();
-  const [appointments, setAppointments] = useState<any[]>([]);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [filter, setFilter] = useState("upcoming");
 
   useEffect(() => {
     if (!user?.id) return;
-    supabase
-      .from("appointments")
-      .select("*")
-      .order("appointment_date", { ascending: true })
-      .then(({ data }) => setAppointments(data || []));
-  }, [user?.id]);
+    setIsLoading(true);
+    let query = supabase.from("appointments").select("id, title, appointment_date, appointment_time, type, status");
+    query =
+      filter === "upcoming"
+        ? query.gte("appointment_date", todayIso()).not("status", "in", "(completed,cancelled)").order("appointment_date").order("appointment_time")
+        : query.lt("appointment_date", todayIso()).order("appointment_date", { ascending: false });
+    query.then(({ data }) => {
+      setAppointments((data || []) as Appointment[]);
+      setIsLoading(false);
+    });
+  }, [user?.id, filter]);
+
+  const statusPill = (a: Appointment) => (
+    <StatusPill tone={TONE[a.status] ?? "neutral"}>
+      <span className="capitalize">{a.status.replace(/_/g, " ")}</span>
+    </StatusPill>
+  );
+
+  const columns: Column<Appointment>[] = [
+    { key: "title", header: "Appointment", cell: (a) => a.title || "Appointment" },
+    { key: "when", header: "When", cell: when },
+    { key: "type", header: "Type", cell: (a) => <span className="capitalize">{a.type ?? "—"}</span>, hideBelow: "lg" },
+    { key: "status", header: "Status", cell: statusPill },
+  ];
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight">My Schedule</h2>
-          <p className="text-muted-foreground">View your upcoming appointments</p>
-        </div>
-        <Card>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Title</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Time</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {appointments.length === 0 ? (
-                  <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">No appointments scheduled</TableCell></TableRow>
-                ) : appointments.map((a) => (
-                  <TableRow key={a.id}>
-                    <TableCell className="font-medium">{a.title}</TableCell>
-                    <TableCell>{a.appointment_date}</TableCell>
-                    <TableCell>{a.appointment_time}</TableCell>
-                    <TableCell className="capitalize">{a.type}</TableCell>
-                    <TableCell><Badge variant="outline">{a.status}</Badge></TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+      <div className="mx-auto min-w-0 max-w-4xl space-y-4">
+        <PageBar title="My schedule" subtitle={isLoading ? "Loading…" : `${appointments.length} ${filter === "upcoming" ? "upcoming" : "past"} bookings`} />
+        <ListControls
+          filters={[
+            { value: "upcoming", label: "Upcoming" },
+            { value: "past", label: "Past" },
+          ]}
+          filter={filter}
+          onFilterChange={setFilter}
+        />
+        <DataList
+          rows={appointments}
+          columns={columns}
+          isLoading={isLoading}
+          getRowKey={(a) => a.id}
+          getRowHref={(a) => `/appointments/${a.id}`}
+          mobile={{ title: (a) => a.title || "Appointment", trailing: statusPill, meta: when }}
+          empty={
+            <EmptyState
+              title={filter === "upcoming" ? "Nothing booked" : "No past bookings"}
+              description={filter === "upcoming" ? "Consultations, collections and deliveries you're part of will show here." : undefined}
+            />
+          }
+        />
       </div>
     </DashboardLayout>
   );

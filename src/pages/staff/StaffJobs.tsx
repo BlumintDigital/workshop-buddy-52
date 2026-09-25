@@ -5,7 +5,7 @@ import { Link } from "react-router-dom";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ListControls } from "@/components/list/ListControls";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -55,18 +55,20 @@ export default function StaffJobs() {
     <DashboardLayout>
       <div className="space-y-6">
         <div>
-          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Jobs</h2>
-          <p className="text-muted-foreground">View all organisation jobs. You can only update jobs assigned to you.</p>
+          <h1 className="text-2xl font-semibold tracking-tight">Jobs</h1>
+          <p className="text-sm text-muted-foreground">View all organisation jobs. You can only update jobs assigned to you.</p>
         </div>
-        <Tabs value={filter} onValueChange={setFilter}>
-          <TabsList className="h-auto flex-wrap gap-1">
-            <TabsTrigger value="mine">Assigned to Me</TabsTrigger>
-            <TabsTrigger value="all">All Jobs</TabsTrigger>
-            <TabsTrigger value="pending">Pending</TabsTrigger>
-            <TabsTrigger value="in_progress">In Progress</TabsTrigger>
-            <TabsTrigger value="completed">Completed</TabsTrigger>
-          </TabsList>
-        </Tabs>
+        <ListControls
+          filters={[
+            { value: "mine", label: "Assigned to me" },
+            { value: "all", label: "All jobs" },
+            { value: "pending", label: "Pending" },
+            { value: "in_progress", label: "In progress" },
+            { value: "completed", label: "Completed" },
+          ]}
+          filter={filter}
+          onFilterChange={setFilter}
+        />
         <Card>
           <CardContent className="p-0 overflow-x-auto">
             <Table>

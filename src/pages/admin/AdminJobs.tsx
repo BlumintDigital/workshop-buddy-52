@@ -152,11 +152,11 @@ export default function AdminJobs() {
           <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader><DialogTitle>Create New Job</DialogTitle></DialogHeader>
             <div className="space-y-4">
-              <div><Label>Title</Label><Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} /></div>
-              <div><Label>Description</Label><Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></div>
-              <div><Label>Priority</Label>
+              <div><Label htmlFor="f-title">Title</Label><Input id="f-title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} /></div>
+              <div><Label htmlFor="f-description">Description</Label><Textarea id="f-description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></div>
+              <div><Label htmlFor="f-priority">Priority</Label>
                 <Select value={form.priority} onValueChange={(v) => setForm({ ...form, priority: v })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectTrigger id="f-priority"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="low">Low</SelectItem>
                     <SelectItem value="medium">Medium</SelectItem>
@@ -165,25 +165,25 @@ export default function AdminJobs() {
                   </SelectContent>
                 </Select>
               </div>
-              <div><Label>Assign Staff</Label>
+              <div><Label htmlFor="f-assign-staff">Assign Staff</Label>
                 <Select value={form.assigned_staff_id} onValueChange={(v) => setForm({ ...form, assigned_staff_id: v })}>
-                  <SelectTrigger><SelectValue placeholder="None" /></SelectTrigger>
+                  <SelectTrigger id="f-assign-staff"><SelectValue placeholder="None" /></SelectTrigger>
                   <SelectContent>
                     {staffUsers.map(u => <SelectItem key={u.id} value={u.id}>{u.full_name}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
-              <div><Label>Assign Client</Label>
+              <div><Label htmlFor="f-assign-client">Assign Client</Label>
                 <Select value={form.client_id} onValueChange={(v) => setForm({ ...form, client_id: v })}>
-                  <SelectTrigger><SelectValue placeholder="None" /></SelectTrigger>
+                  <SelectTrigger id="f-assign-client"><SelectValue placeholder="None" /></SelectTrigger>
                   <SelectContent>
                     {clientUsers.map(u => <SelectItem key={u.id} value={u.id}>{u.full_name}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
               <div>
-                <Label>Due Date</Label>
-                <DatePickerInput value={form.due_date} onChange={(v) => setForm({ ...form, due_date: v })} className="mt-1" />
+                <Label htmlFor="f-due-date">Due Date</Label>
+                <DatePickerInput id="f-due-date" value={form.due_date} onChange={(v) => setForm({ ...form, due_date: v })} className="mt-1" />
               </div>
               <div className="flex items-center gap-2 pt-1">
                 <Checkbox

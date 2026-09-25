@@ -130,12 +130,12 @@ export default function ClientRequests() {
       <div className="space-y-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <h1 className="text-display text-3xl">My Requests</h1>
-            <p className="mt-1 text-sm text-muted-foreground">
+            <h1 className="text-2xl font-semibold tracking-tight">My Requests</h1>
+            <p className="text-sm text-muted-foreground">
               Submit a quote or job request and track responses from the workshop.
             </p>
           </div>
-          <Button onClick={() => setDialogOpen(true)} variant="glow">
+          <Button onClick={() => setDialogOpen(true)} variant="default">
             <Plus className="h-4 w-4" /> New request
           </Button>
         </div>
@@ -145,14 +145,14 @@ export default function ClientRequests() {
             {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-28 rounded-2xl" />)}
           </div>
         ) : requests.length === 0 ? (
-          <Card tone="cream">
+          <Card>
             <CardContent className="flex flex-col items-center justify-center gap-3 py-14 text-center">
               <Inbox className="h-10 w-10 text-primary/70" />
-              <h3 className="text-display text-xl">No requests yet</h3>
+              <h2 className="text-display text-xl">No requests yet</h2>
               <p className="max-w-sm text-sm text-muted-foreground">
                 Start by asking for a quote or requesting work to be done. The workshop will review and respond.
               </p>
-              <Button onClick={() => setDialogOpen(true)} variant="glow" className="mt-2">
+              <Button onClick={() => setDialogOpen(true)} variant="default" className="mt-2">
                 <Plus className="h-4 w-4" /> New request
               </Button>
             </CardContent>
@@ -163,7 +163,7 @@ export default function ClientRequests() {
               const quoteItems = items[r.id] || [];
               const isQuoted = r.status === "quoted";
               return (
-                <Card key={r.id} tone="default">
+                <Card key={r.id}>
                   <CardContent className="space-y-3 p-5">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                       <div className="min-w-0 flex-1">

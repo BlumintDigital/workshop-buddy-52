@@ -199,8 +199,8 @@ export default function InvoiceCreate() {
     <DashboardLayout>
       <div className="space-y-6">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Create Invoice</h2>
-          <p className="text-muted-foreground">New draft invoice{jobId ? " linked to job" : ""}</p>
+          <h1 className="text-2xl font-semibold tracking-tight">Create Invoice</h1>
+          <p className="text-sm text-muted-foreground">New draft invoice{jobId ? " linked to job" : ""}</p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -211,7 +211,7 @@ export default function InvoiceCreate() {
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label>Client</Label>
+                    <Label htmlFor="f-client">Client</Label>
                     {clients.length === 0 ? (
                       <p className="mt-1 text-sm text-muted-foreground">No clients yet — add a client account first.</p>
                     ) : (
@@ -222,7 +222,7 @@ export default function InvoiceCreate() {
                           setClientName(clients.find((c) => c.id === v)?.full_name || "");
                         }}
                       >
-                        <SelectTrigger><SelectValue placeholder="Select client" /></SelectTrigger>
+                        <SelectTrigger id="f-client"><SelectValue placeholder="Select client" /></SelectTrigger>
                         <SelectContent>
                           {clients.map((c) => (
                             <SelectItem key={c.id} value={c.id}>{c.full_name}</SelectItem>
@@ -232,22 +232,22 @@ export default function InvoiceCreate() {
                     )}
                   </div>
                   <div>
-                    <Label>Due Date</Label>
-                    <DatePickerInput value={dueDate} onChange={setDueDate} />
+                    <Label htmlFor="f-due-date">Due Date</Label>
+                    <DatePickerInput id="f-due-date" value={dueDate} onChange={setDueDate} />
                   </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
-                    <Label>Tax Rate (%)</Label>
-                    <Input type="number" min={0} step={0.5} value={taxRate} onChange={(e) => setTaxRate(Number(e.target.value))} />
+                    <Label htmlFor="f-tax-rate">Tax Rate (%)</Label>
+                    <Input id="f-tax-rate" type="number" min={0} step={0.5} value={taxRate} onChange={(e) => setTaxRate(Number(e.target.value))} />
                   </div>
                   <div>
-                    <Label>Currency</Label>
+                    <Label htmlFor="f-currency">Currency</Label>
                     <Select
                       value={currency}
                       onValueChange={(v) => { setUserPickedCurrency(true); setCurrency(v); }}
                     >
-                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectTrigger id="f-currency"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         {enabledCurrencies.map((c) => (
                           <SelectItem key={c} value={c}>{c}{c === baseCurrency ? " (base)" : ""}</SelectItem>
@@ -257,8 +257,8 @@ export default function InvoiceCreate() {
                   </div>
                   {currency !== baseCurrency && (
                     <div>
-                      <Label>Exchange rate to {baseCurrency}</Label>
-                      <Input
+                      <Label htmlFor="f-exchange-rate-to">Exchange rate to {baseCurrency}</Label>
+                      <Input id="f-exchange-rate-to"
                         type="number"
                         min={0}
                         step="0.0001"
@@ -276,8 +276,8 @@ export default function InvoiceCreate() {
                   )}
                 </div>
                 <div>
-                  <Label>Notes</Label>
-                  <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Optional notes" />
+                  <Label htmlFor="f-notes">Notes</Label>
+                  <Textarea id="f-notes" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Optional notes" />
                 </div>
               </CardContent>
             </Card>
@@ -296,25 +296,25 @@ export default function InvoiceCreate() {
                       <TableHead className="w-24">Qty</TableHead>
                       <TableHead className="w-32">Unit Price</TableHead>
                       <TableHead className="w-28 text-right">Total</TableHead>
-                      <TableHead className="w-12" />
+                      <TableHead className="w-12"><span className="sr-only">Remove</span></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {items.map((item, idx) => (
                       <TableRow key={idx}>
                         <TableCell>
-                          <Input value={item.description} onChange={(e) => updateItem(idx, "description", e.target.value)} placeholder="Item description" />
+                          <Input aria-label={`Line ${idx + 1} description`} value={item.description} onChange={(e) => updateItem(idx, "description", e.target.value)} placeholder="Item description" />
                         </TableCell>
                         <TableCell>
-                          <Input type="number" min={1} value={item.quantity} onChange={(e) => updateItem(idx, "quantity", Number(e.target.value))} />
+                          <Input aria-label={`Line ${idx + 1} quantity`} type="number" min={1} value={item.quantity} onChange={(e) => updateItem(idx, "quantity", Number(e.target.value))} />
                         </TableCell>
                         <TableCell>
-                          <Input type="number" min={0} step={0.01} value={item.unit_price} onChange={(e) => updateItem(idx, "unit_price", Number(e.target.value))} />
+                          <Input aria-label={`Line ${idx + 1} unit price`} type="number" min={0} step={0.01} value={item.unit_price} onChange={(e) => updateItem(idx, "unit_price", Number(e.target.value))} />
                         </TableCell>
                         <TableCell className="text-right font-medium">{fmt(item.quantity * item.unit_price, currency)}</TableCell>
                         <TableCell>
                           {items.length > 1 && (
-                            <Button variant="ghost" size="icon" onClick={() => removeItem(idx)}>
+                            <Button variant="ghost" size="icon" aria-label={`Remove line ${idx + 1}`} onClick={() => removeItem(idx)}>
                               <Trash2 className="h-4 w-4 text-destructive" />
                             </Button>
                           )}

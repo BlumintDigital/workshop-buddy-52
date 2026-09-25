@@ -103,7 +103,7 @@ export default function QuoteBuilderDialog({ open, onOpenChange, requestId, requ
                   <TableHead className="w-20">Qty</TableHead>
                   <TableHead className="w-32">Unit price</TableHead>
                   <TableHead className="w-32 text-right">Subtotal</TableHead>
-                  <TableHead className="w-10" />
+                  <TableHead className="w-10"><span className="sr-only">Remove</span></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -158,18 +158,18 @@ export default function QuoteBuilderDialog({ open, onOpenChange, requestId, requ
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label>Currency</Label>
-              <Input value={currency} onChange={(e) => setCurrency(e.target.value.toUpperCase().slice(0, 3))} />
+              <Label htmlFor="f-currency">Currency</Label>
+              <Input id="f-currency" value={currency} onChange={(e) => setCurrency(e.target.value.toUpperCase().slice(0, 3))} />
             </div>
             <div>
-              <Label>Quote expires</Label>
-              <DatePickerInput value={expires} onChange={setExpires} className="mt-1" />
+              <Label htmlFor="f-quote-expires">Quote expires</Label>
+              <DatePickerInput id="f-quote-expires" value={expires} onChange={setExpires} className="mt-1" />
             </div>
           </div>
 
           <div>
-            <Label>Notes for the client</Label>
-            <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3}
+            <Label htmlFor="f-notes-for-the-client">Notes for the client</Label>
+            <Textarea id="f-notes-for-the-client" value={notes} onChange={(e) => setNotes(e.target.value)} rows={3}
               placeholder="Warranty, timing, exclusions…" />
           </div>
 

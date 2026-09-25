@@ -368,8 +368,8 @@ export default function UserProfile() {
     <DashboardLayout>
       <div className="max-w-6xl space-y-6">
         <div>
-          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Profile</h2>
-          <p className="text-muted-foreground">Manage your account information</p>
+          <h1 className="text-2xl font-semibold tracking-tight">Profile</h1>
+          <p className="text-sm text-muted-foreground">Manage your account information</p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
@@ -466,7 +466,7 @@ export default function UserProfile() {
                     <button
                       type="button"
                       onClick={() => setShowPwd((s) => !s)}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      className="absolute right-0.5 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       aria-label={showPwd ? "Hide passwords" : "Show passwords"}
                     >
                       {showPwd ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -705,7 +705,7 @@ export default function UserProfile() {
 
           {/* Sidebar */}
           <aside className="space-y-6 lg:sticky lg:top-6">
-            <Card tone="mist">
+            <Card>
               <CardHeader>
                 <div className="flex items-center gap-2">
                   <BadgeCheck className="h-5 w-5 text-primary" />
@@ -749,7 +749,7 @@ export default function UserProfile() {
               </CardContent>
             </Card>
 
-            <Card tone="sky">
+            <Card>
               <CardHeader>
                 <div className="flex items-center gap-2">
                   <ShieldCheck className="h-5 w-5 text-primary" />
@@ -774,7 +774,7 @@ export default function UserProfile() {
               </CardContent>
             </Card>
 
-            <Card tone="butter">
+            <Card>
               <CardHeader>
                 <div className="flex items-center gap-2">
                   <Lightbulb className="h-5 w-5 text-primary" />

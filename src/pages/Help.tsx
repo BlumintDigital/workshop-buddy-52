@@ -199,8 +199,8 @@ export default function Help() {
       <div className="space-y-6">
         <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Help &amp; User Guide</h1>
-            <p className="text-muted-foreground">
+            <h1 className="text-2xl font-semibold tracking-tight">Help &amp; User Guide</h1>
+            <p className="text-sm text-muted-foreground">
               Everything you need to use Workshop Buddy — for every role.
             </p>
           </div>
@@ -252,9 +252,9 @@ export default function Help() {
               {blocks.map((b, idx) => {
                 if (b.type === "h1")
                   return (
-                    <h1 key={idx} id={b.id} className="mb-4 mt-2 text-3xl font-bold tracking-tight">
+                    <h2 key={idx} id={b.id} className="mb-4 mt-2 text-2xl font-semibold tracking-tight">
                       {b.text}
-                    </h1>
+                    </h2>
                   );
                 if (b.type === "h2")
                   return (

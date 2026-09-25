@@ -76,11 +76,10 @@ export default function AdminAccessReview() {
       <div className="space-y-6">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-2">
-              <ShieldCheck className="h-6 w-6 sm:h-7 sm:w-7" />
+            <h1 className="text-2xl font-semibold tracking-tight flex items-center gap-2">
               Access Review
-            </h2>
-            <p className="text-muted-foreground">Quarterly audit of user accounts and privileges</p>
+            </h1>
+            <p className="text-sm text-muted-foreground">Quarterly audit of user accounts and privileges</p>
           </div>
           <Button variant="outline" size="sm" onClick={handleExport} className="gap-2 shrink-0">
             <Download className="h-4 w-4" />

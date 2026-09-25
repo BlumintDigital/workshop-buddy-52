@@ -8,6 +8,7 @@
 
 @layer base {
   :root {
+    color-scheme: light;
     --background: 80 14% 96%;          /* #F5F6F3 */
     --foreground: 144 9% 11%;          /* #1A1F1C  15.4:1 */
 
@@ -17,9 +18,9 @@
     --popover: 0 0% 100%;
     --popover-foreground: 144 9% 11%;
 
-    --primary: 150 39% 30%;            /* #2E6A4C  6.4:1 with white */
+    --primary: var(--brand-primary, 150 39% 30%);  /* #2E6A4C  6.4:1 with white */
     --primary-foreground: 0 0% 100%;
-    --primary-soft: 142 26% 92%;       /* #E4EFE8  selected / tinted surfaces */
+    --primary-soft: var(--brand-primary-soft, 142 26% 92%);  /* #E4EFE8 selected / tinted surfaces */
 
     --secondary: 90 12% 93%;
     --secondary-foreground: 144 9% 11%;
@@ -27,7 +28,7 @@
     --muted: 90 12% 93%;               /* #EEF0EC */
     --muted-foreground: 142 6% 36%;    /* #56615A  5.95:1 on background */
 
-    --accent: 142 26% 92%;
+    --accent: var(--brand-accent, 142 26% 92%);
     --accent-foreground: 144 9% 11%;
 
     /* Semantic state colours: text colour + soft background, each pair >= 5:1 */
@@ -46,26 +47,19 @@
 
     --border: 108 9% 89%;              /* #E1E5E0 */
     --input: 120 6% 81%;               /* #CBD1CB */
-    --ring: 150 39% 30%;
+    --ring: var(--primary);
 
     --radius: 0.625rem;
 
     --sidebar-background: 0 0% 100%;
     --sidebar-foreground: 142 6% 36%;
-    --sidebar-primary: 150 39% 30%;
+    --sidebar-primary: var(--primary);
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 142 26% 92%;
+    --sidebar-accent: var(--primary-soft);
     --sidebar-accent-foreground: 144 9% 11%;
     --sidebar-border: 108 9% 89%;
     --sidebar-ring: 150 39% 30%;
 
-    /* Effects — panels use a border, only floating layers get a shadow.
-       Gradients are retired; --gradient-sage is kept as a solid fill for legacy usages. */
-    --gradient-surface: none;
-    --gradient-hero: none;
-    --gradient-soft: none;
-    --gradient-sage: linear-gradient(hsl(var(--primary)), hsl(var(--primary)));
-    --shadow-soft: 0 0 #0000;
     --shadow-elevation: 0 8px 24px -8px hsl(150 20% 10% / 0.18);
   }
 
@@ -80,15 +74,16 @@
   }
 
   .dark {
+    color-scheme: dark;
     --background: 150 9% 9%;           /* #141816 */
     --foreground: 105 9% 91%;          /* #E8EBE7 */
     --card: 144 8% 12%;                /* #1B201D */
     --card-foreground: 105 9% 91%;
     --popover: 144 8% 12%;
     --popover-foreground: 105 9% 91%;
-    --primary: 148 38% 63%;            /* #7CC49E */
+    --primary: var(--brand-primary-dark, 148 38% 63%);  /* #7CC49E */
     --primary-foreground: 147 27% 8%;
-    --primary-soft: 147 24% 16%;
+    --primary-soft: var(--brand-primary-soft-dark, 147 24% 16%);
     --secondary: 140 8% 15%;
     --secondary-foreground: 105 9% 91%;
     --muted: 140 8% 15%;
@@ -109,12 +104,12 @@
     --info-soft: 211 30% 14%;
     --border: 137 8% 18%;
     --input: 140 7% 24%;
-    --ring: 148 38% 63%;
+    --ring: var(--primary);
     --sidebar-background: 140 9% 7%;
     --sidebar-foreground: 142 6% 62%;
-    --sidebar-primary: 148 38% 63%;
+    --sidebar-primary: var(--primary);
     --sidebar-primary-foreground: 147 27% 8%;
-    --sidebar-accent: 147 24% 16%;
+    --sidebar-accent: var(--primary-soft);
     --sidebar-accent-foreground: 105 9% 91%;
     --sidebar-border: 137 8% 18%;
     --sidebar-ring: 148 38% 63%;
@@ -134,7 +129,7 @@
 
   body {
     @apply bg-background text-foreground;
-    font-family: 'Geist Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    font-family: 'Archivo Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
@@ -145,7 +140,9 @@
   }
 
   h1, h2, h3, h4 {
-    font-family: 'Geist Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    font-family: 'Archivo Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    /* Slightly narrower headings: an engineered, workshop-drawing feel without losing legibility. */
+    font-stretch: 92%;
     letter-spacing: -0.015em;
   }
   h1 { font-weight: 700; }
@@ -154,17 +151,8 @@
 }
 
 @layer components {
-  .card-elevated {
-    box-shadow: var(--shadow-elevation);
-  }
-  .card-soft {
-    box-shadow: var(--shadow-soft);
-  }
-  .surface-sage {
-    background-image: var(--gradient-surface);
-  }
   .text-display {
-    font-family: 'Geist Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    font-family: 'Archivo Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
     font-weight: 600;
     letter-spacing: -0.025em;
   }
@@ -186,5 +174,32 @@
   button:active:not(:disabled),
   [role="button"]:active:not(:disabled) {
     transform: scale(0.98) translateY(0.5px);
+  }
+
+  /* Reduced motion: drop movement (press nudge, slide/zoom-in panels, pulsing
+     dots) but keep fades and loading spinners, which carry meaning. */
+  @media (prefers-reduced-motion: reduce) {
+    button:active:not(:disabled),
+    [role="button"]:active:not(:disabled) {
+      transform: none;
+    }
+    .animate-in,
+    .animate-out {
+      --tw-enter-translate-x: 0;
+      --tw-enter-translate-y: 0;
+      --tw-enter-scale: 1;
+      --tw-enter-rotate: 0;
+      --tw-exit-translate-x: 0;
+      --tw-exit-translate-y: 0;
+      --tw-exit-scale: 1;
+      --tw-exit-rotate: 0;
+    }
+    .animate-ping,
+    .animate-pulse {
+      animation: none;
+    }
+    * {
+      scroll-behavior: auto !important;
+    }
   }
 }

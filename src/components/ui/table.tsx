@@ -3,11 +3,31 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 
 const Table = React.forwardRef<HTMLTableElement, React.HTMLAttributes<HTMLTableElement>>(
-  ({ className, ...props }, ref) => (
-    <div className="relative w-full overflow-auto">
-      <table ref={ref} className={cn("w-full caption-bottom text-sm", className)} {...props} />
-    </div>
-  ),
+  ({ className, ...props }, ref) => {
+    // When the table is wider than its container, make the scroll box focusable
+    // so keyboard users can scroll it sideways.
+    const wrapper = React.useRef<HTMLDivElement>(null);
+    const [scrolls, setScrolls] = React.useState(false);
+    React.useEffect(() => {
+      const el = wrapper.current;
+      if (!el || typeof ResizeObserver === "undefined") return;
+      const check = () => setScrolls(el.scrollWidth > el.clientWidth + 1);
+      const observer = new ResizeObserver(check);
+      observer.observe(el);
+      if (el.firstElementChild) observer.observe(el.firstElementChild);
+      check();
+      return () => observer.disconnect();
+    }, []);
+    return (
+      <div
+        ref={wrapper}
+        className="relative w-full overflow-auto rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        {...(scrolls ? { tabIndex: 0, role: "region", "aria-label": "Scrollable table" } : {})}
+      >
+        <table ref={ref} className={cn("w-full caption-bottom text-sm", className)} {...props} />
+      </div>
+    );
+  },
 );
 Table.displayName = "Table";
 

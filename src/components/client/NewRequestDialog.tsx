@@ -102,14 +102,14 @@ export default function NewRequestDialog({ open, onOpenChange, onCreated }: Prop
           </div>
 
           <div>
-            <Label>Title <span className="text-destructive">*</span></Label>
-            <Input value={title} onChange={(e) => setTitle(e.target.value.slice(0, 120))} placeholder="e.g. Brake pad replacement" />
+            <Label htmlFor="f-title">Title <span className="text-destructive">*</span></Label>
+            <Input id="f-title" value={title} onChange={(e) => setTitle(e.target.value.slice(0, 120))} placeholder="e.g. Brake pad replacement" />
             <p className="mt-1 text-xs text-muted-foreground text-right">{title.length}/120</p>
           </div>
 
           <div>
-            <Label>Details</Label>
-            <Textarea
+            <Label htmlFor="f-details">Details</Label>
+            <Textarea id="f-details"
               value={description}
               onChange={(e) => setDescription(e.target.value.slice(0, 1000))}
               placeholder="Describe what you need…"
@@ -120,9 +120,9 @@ export default function NewRequestDialog({ open, onOpenChange, onCreated }: Prop
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label>Priority</Label>
+              <Label htmlFor="f-priority">Priority</Label>
               <Select value={priority} onValueChange={setPriority}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger id="f-priority"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="low">Low</SelectItem>
                   <SelectItem value="medium">Medium</SelectItem>
@@ -132,8 +132,8 @@ export default function NewRequestDialog({ open, onOpenChange, onCreated }: Prop
               </Select>
             </div>
             <div>
-              <Label>Preferred date</Label>
-              <DatePickerInput value={preferredDate} onChange={setPreferredDate} className="mt-1" />
+              <Label htmlFor="f-preferred-date">Preferred date</Label>
+              <DatePickerInput id="f-preferred-date" value={preferredDate} onChange={setPreferredDate} className="mt-1" />
             </div>
           </div>
 

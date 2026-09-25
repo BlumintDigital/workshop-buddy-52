@@ -6,7 +6,7 @@ import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ListControls } from "@/components/list/ListControls";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { CheckCircle2, XCircle, Wifi } from "lucide-react";
 import { toast } from "sonner";
@@ -87,8 +87,8 @@ export default function ClientJobs() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">My Jobs</h2>
-            <p className="text-muted-foreground">Track your workshop jobs</p>
+            <h1 className="text-2xl font-semibold tracking-tight">My Jobs</h1>
+            <p className="text-sm text-muted-foreground">Track your workshop jobs</p>
           </div>
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <Wifi className={`h-3.5 w-3.5 ${live ? "text-success" : ""}`} />
@@ -123,14 +123,16 @@ export default function ClientJobs() {
           </Card>
         )}
 
-        <Tabs value={filter} onValueChange={setFilter}>
-          <TabsList className="h-auto flex-wrap gap-1">
-            <TabsTrigger value="all">All</TabsTrigger>
-            <TabsTrigger value="pending">Pending</TabsTrigger>
-            <TabsTrigger value="in_progress">In Progress</TabsTrigger>
-            <TabsTrigger value="completed">Completed</TabsTrigger>
-          </TabsList>
-        </Tabs>
+        <ListControls
+          filters={[
+            { value: "all", label: "All" },
+            { value: "pending", label: "Pending" },
+            { value: "in_progress", label: "In progress" },
+            { value: "completed", label: "Completed" },
+          ]}
+          filter={filter}
+          onFilterChange={setFilter}
+        />
 
         <Card>
           <CardContent className="p-0 overflow-x-auto">

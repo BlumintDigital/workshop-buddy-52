@@ -551,8 +551,8 @@ export default function AdminSettings() {
 
   if (loading || authLoading) return (
     <DashboardLayout>
-      <div className="mx-auto max-w-6xl space-y-4">
-        <Skeleton className="h-9 w-40" />
+      <div className="mx-auto max-w-6xl space-y-4" aria-busy="true">
+        <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
         <div className="grid gap-6 md:grid-cols-[220px_1fr]">
           <Skeleton className="hidden h-72 md:block" />
           <Skeleton className="h-96" />
@@ -595,7 +595,7 @@ export default function AdminSettings() {
                 <Icon className="hidden h-4 w-4 shrink-0 md:block" aria-hidden />
                 <span className="flex flex-col items-start">
                   <span>{label}</span>
-                  <span className="hidden text-xs font-normal opacity-80 md:block">{hint}</span>
+                  <span className="hidden text-xs font-normal md:block">{hint}</span>
                 </span>
               </TabsTrigger>
             ))}
@@ -643,7 +643,7 @@ export default function AdminSettings() {
               </div>
 
               <aside className="space-y-4 lg:sticky lg:top-6">
-                <Card tone="mist">
+                <Card>
                   <CardHeader>
                     <CardTitle className="text-lg">Where this appears</CardTitle>
                     <CardDescription>How general info is used across the app</CardDescription>
@@ -655,7 +655,7 @@ export default function AdminSettings() {
                   </CardContent>
                 </Card>
 
-                <Card tone="butter">
+                <Card>
                   <CardHeader>
                     <CardTitle className="text-lg">Tips</CardTitle>
                   </CardHeader>
@@ -666,7 +666,7 @@ export default function AdminSettings() {
                   </CardContent>
                 </Card>
 
-                <Card tone="sky">
+                <Card>
                   <CardHeader>
                     <CardTitle className="text-lg">Quick links</CardTitle>
                   </CardHeader>
@@ -694,9 +694,9 @@ export default function AdminSettings() {
                   <Input id="default_tax_rate" type="number" min="0" max="100" step="0.1" value={settings.default_tax_rate} onChange={(e) => set("default_tax_rate", e.target.value)} className="mt-1 w-full sm:w-32" />
                 </div>
                 <div>
-                  <Label>Currency</Label>
+                  <Label htmlFor="f-currency">Currency</Label>
                   <Select value={settings.currency} onValueChange={(v) => set("currency", v)}>
-                    <SelectTrigger className="mt-1 w-full sm:w-64"><SelectValue /></SelectTrigger>
+                    <SelectTrigger id="f-currency" className="mt-1 w-full sm:w-64"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       {currencies.map(c => (
                         <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
@@ -1106,8 +1106,8 @@ export default function AdminSettings() {
                         </DialogDescription>
                       </DialogHeader>
                       <div className="space-y-2">
-                        <Label>Type <span className="font-mono font-bold">RESTORE</span> to confirm</Label>
-                        <Input value={restoreConfirmText} onChange={(e) => setRestoreConfirmText(e.target.value)} placeholder="RESTORE" />
+                        <Label htmlFor="f-type-restore-to-confirm">Type <span className="font-mono font-bold">RESTORE</span> to confirm</Label>
+                        <Input id="f-type-restore-to-confirm" value={restoreConfirmText} onChange={(e) => setRestoreConfirmText(e.target.value)} placeholder="RESTORE" />
                       </div>
                       <DialogFooter>
                         <Button variant="outline" onClick={() => { setRestoreDialogOpen(false); setRestoreConfirmText(""); }}>Cancel</Button>
@@ -1170,8 +1170,8 @@ export default function AdminSettings() {
                       </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-2">
-                      <Label>Type <span className="font-mono font-bold">RESET</span> to confirm</Label>
-                      <Input value={resetConfirmText} onChange={(e) => setResetConfirmText(e.target.value)} placeholder="RESET" />
+                      <Label htmlFor="f-type-reset-to-confirm">Type <span className="font-mono font-bold">RESET</span> to confirm</Label>
+                      <Input id="f-type-reset-to-confirm" value={resetConfirmText} onChange={(e) => setResetConfirmText(e.target.value)} placeholder="RESET" />
                     </div>
                     <DialogFooter>
                       <Button variant="outline" onClick={() => { setResetDialogOpen(false); setResetConfirmText(""); }}>Cancel</Button>

@@ -34,8 +34,8 @@ export default defineConfig(({ mode }) => ({
         start_url: "/",
         scope: "/",
         display: "standalone",
-        background_color: "#f2f5f8",
-        theme_color: "#0f172a",
+        background_color: "#f5f6f3",
+        theme_color: "#f5f6f3",
         orientation: "portrait-primary",
         categories: ["business", "productivity"],
         icons: [
@@ -81,7 +81,6 @@ export default defineConfig(({ mode }) => ({
           if (!id.includes("node_modules")) return;
           if (id.includes("@react-pdf")) return "vendor-pdf";
           if (id.includes("remotion") || id.includes("@remotion")) return "vendor-remotion";
-          if (id.includes("recharts")) return "vendor-charts";
           if (id.includes("@supabase")) return "vendor-supabase";
           if (id.includes("@radix-ui")) return "vendor-radix";
           if (id.includes("react-router")) return "vendor-router";

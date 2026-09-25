@@ -82,7 +82,7 @@ export default function NotificationsPanel() {
   };
 
   return (
-    <Card tone="default" className="col-span-2 lg:col-span-12">
+    <Card className="col-span-2 lg:col-span-12">
       <CardContent className="p-5 sm:p-6">
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">

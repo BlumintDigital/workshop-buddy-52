@@ -161,7 +161,8 @@ export default function AppointmentDetail() {
   if (loading) {
     return (
       <DashboardLayout>
-        <div className="space-y-6 max-w-2xl">
+        <div className="space-y-6 max-w-2xl" aria-busy="true">
+          <h1 className="sr-only">Loading appointment…</h1>
           <Skeleton className="h-8 w-28" />
           <div className="space-y-2">
             <Skeleton className="h-9 w-56" />
@@ -185,8 +186,8 @@ export default function AppointmentDetail() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
           <div>
-            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">{appt.title}</h2>
-            <p className="text-muted-foreground capitalize">{appt.type} appointment</p>
+            <h1 className="text-2xl font-semibold tracking-tight">{appt.title}</h1>
+            <p className="text-sm text-muted-foreground capitalize">{appt.type} appointment</p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             {canManage ? (
@@ -319,18 +320,18 @@ export default function AppointmentDetail() {
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label>Job Title</Label>
-              <Input value={jobForm.title} onChange={(e) => setJobForm({ ...jobForm, title: e.target.value })} className="mt-1" />
+              <Label htmlFor="f-job-title">Job Title</Label>
+              <Input id="f-job-title" value={jobForm.title} onChange={(e) => setJobForm({ ...jobForm, title: e.target.value })} className="mt-1" />
             </div>
             <div>
-              <Label>Description</Label>
-              <Textarea value={jobForm.description} onChange={(e) => setJobForm({ ...jobForm, description: e.target.value })} className="mt-1" rows={3} />
+              <Label htmlFor="f-description">Description</Label>
+              <Textarea id="f-description" value={jobForm.description} onChange={(e) => setJobForm({ ...jobForm, description: e.target.value })} className="mt-1" rows={3} />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label>Priority</Label>
+                <Label htmlFor="f-priority">Priority</Label>
                 <Select value={jobForm.priority} onValueChange={(v) => setJobForm({ ...jobForm, priority: v })}>
-                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectTrigger id="f-priority" className="mt-1"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="low">Low</SelectItem>
                     <SelectItem value="medium">Medium</SelectItem>
@@ -340,9 +341,9 @@ export default function AppointmentDetail() {
                 </Select>
               </div>
               <div>
-                <Label>Assign Staff</Label>
+                <Label htmlFor="f-assign-staff">Assign Staff</Label>
                 <Select value={jobForm.assigned_staff_id} onValueChange={(v) => setJobForm({ ...jobForm, assigned_staff_id: v })}>
-                  <SelectTrigger className="mt-1"><SelectValue placeholder="None" /></SelectTrigger>
+                  <SelectTrigger id="f-assign-staff" className="mt-1"><SelectValue placeholder="None" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="">None</SelectItem>
                     {staffUsers.map(u => <SelectItem key={u.id} value={u.id}>{u.full_name}</SelectItem>)}
@@ -351,8 +352,8 @@ export default function AppointmentDetail() {
               </div>
             </div>
             <div>
-              <Label>Due Date</Label>
-              <DatePickerInput value={jobForm.due_date} onChange={(v) => setJobForm({ ...jobForm, due_date: v })} className="mt-1" />
+              <Label htmlFor="f-due-date">Due Date</Label>
+              <DatePickerInput id="f-due-date" value={jobForm.due_date} onChange={(v) => setJobForm({ ...jobForm, due_date: v })} className="mt-1" />
             </div>
             <div className="flex items-center gap-2">
               <Checkbox id="isQuote" checked={jobForm.isQuote} onCheckedChange={(v) => setJobForm({ ...jobForm, isQuote: !!v })} />

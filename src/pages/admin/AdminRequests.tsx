@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ListControls } from "@/components/list/ListControls";
 import { Textarea } from "@/components/ui/textarea";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -177,34 +177,32 @@ export default function AdminRequests() {
     <DashboardLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-display text-3xl">Client Requests</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <h1 className="text-2xl font-semibold tracking-tight">Client Requests</h1>
+          <p className="text-sm text-muted-foreground">
             Review quote and job requests. Send a quote for client approval, or accept a job request directly.
           </p>
         </div>
 
-        <Tabs value={tab} onValueChange={(v) => setTab(v as any)}>
-          <TabsList>
-            <TabsTrigger value="pending">
-              Pending {pendingCount > 0 && <Badge className="ml-2" variant="secondary">{pendingCount}</Badge>}
-            </TabsTrigger>
-            <TabsTrigger value="quoted">Quoted</TabsTrigger>
-            <TabsTrigger value="approved">
-              Approved {approvedCount > 0 && <Badge className="ml-2" variant="secondary">{approvedCount}</Badge>}
-            </TabsTrigger>
-            <TabsTrigger value="all">All</TabsTrigger>
-          </TabsList>
-        </Tabs>
+        <ListControls
+          filters={[
+            { value: "pending", label: "Pending", count: pendingCount },
+            { value: "quoted", label: "Quoted" },
+            { value: "approved", label: "Approved", count: approvedCount },
+            { value: "all", label: "All" },
+          ]}
+          filter={tab}
+          onFilterChange={(v) => setTab(v as any)}
+        />
 
         {loading ? (
           <div className="space-y-3">
             {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-32 rounded-2xl" />)}
           </div>
         ) : filtered.length === 0 ? (
-          <Card tone="cream">
+          <Card>
             <CardContent className="flex flex-col items-center justify-center gap-3 py-14 text-center">
               <Inbox className="h-10 w-10 text-primary/70" />
-              <h3 className="text-display text-xl">Nothing here</h3>
+              <h2 className="text-display text-xl">Nothing here</h2>
               <p className="text-sm text-muted-foreground">No requests in this view.</p>
             </CardContent>
           </Card>
@@ -217,7 +215,7 @@ export default function AdminRequests() {
               return (
                 <Card
                   key={r.id}
-                  tone="default"
+                 
                   ref={(el: HTMLDivElement | null) => { cardRefs.current[r.id] = el; }}
                   className={cn(
                     "transition-all",

@@ -82,6 +82,8 @@ export default function InvoicePdfPreview({
       )}
       <div className="w-full overflow-hidden rounded-md border bg-muted/30">
         <PDFViewer
+          // PDFViewer forwards `title` to its iframe at runtime, but its types omit it.
+          {...({ title: "Invoice preview" } as Record<string, string>)}
           showToolbar={false}
           style={{ width: "100%", height, border: "none" }}
         >

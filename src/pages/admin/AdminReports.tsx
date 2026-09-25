@@ -8,20 +8,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Download } from "lucide-react";
 import { downloadCSV } from "@/lib/csv";
 import { useFeature } from "@/hooks/useFeatureFlags";
+import { ChartFigure, chartTooltipProps, useChartColors } from "@/components/dashboard/ChartFigure";
 import {
   BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from "recharts";
 
-// Series colours are drawn from the semantic palette and each clears 3:1 against the
-// card surface (WCAG 1.4.11 non-text contrast).
-const COLORS = [
-  "#2E6A4C", // primary
-  "#1F5E99", // info
-  "#9A5A00", // warning
-  "#B3261E", // destructive
-  "#5B4B8A", // neutral violet
-];
+// Series colours come from the live design tokens (see useChartColors), so charts
+// follow the workshop's brand colour and theme. Each clears 3:1 against the card.
 
 // Legend text follows the page foreground instead of the series colour, so it stays readable.
 const legendFormatter = (value: string) => (
@@ -37,6 +31,8 @@ interface StaffStat {
 }
 
 export default function AdminReports() {
+  const c = useChartColors();
+  const series = [c.primary, c.info, c.warning, c.destructive, c["muted-foreground"]];
   const appointmentsEnabled = useFeature("appointments");
   const [bookings, setBookings] = useState<{ month: string; count: number }[]>([]);
   const [revenue, setRevenue] = useState<{ month: string; revenue: number }[]>([]);
@@ -92,8 +88,8 @@ export default function AdminReports() {
     <DashboardLayout>
       <div className="space-y-6">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Reports</h2>
-          <p className="text-muted-foreground">Analytics overview of your workshop</p>
+          <h1 className="text-2xl font-semibold tracking-tight">Reports</h1>
+          <p className="text-sm text-muted-foreground">Analytics overview of your workshop</p>
         </div>
 
         <Tabs defaultValue="overview">
@@ -113,15 +109,17 @@ export default function AdminReports() {
                   </Button>
                 </CardHeader>
                 <CardContent>
-                  <ResponsiveContainer width="100%" height={300}>
+                  <ChartFigure label="Bookings per month" valueHeader="Bookings" rows={bookings.map((b) => ({ label: b.month, value: b.count }))}>
+<ResponsiveContainer width="100%" height={300}>
                     <BarChart data={bookings}>
                       <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                       <XAxis dataKey="month" className="text-xs" />
                       <YAxis className="text-xs" />
-                      <Tooltip />
-                      <Bar dataKey="count" fill="#1F5E99" radius={[4, 4, 0, 0]} />
+                      <Tooltip {...chartTooltipProps} />
+                      <Bar dataKey="count" fill={c.info} radius={[4, 4, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
+</ChartFigure>
                 </CardContent>
               </Card>}
 
@@ -134,15 +132,17 @@ export default function AdminReports() {
                   </Button>
                 </CardHeader>
                 <CardContent>
-                  <ResponsiveContainer width="100%" height={300}>
+                  <ChartFigure label="Revenue per month" valueHeader="Revenue" rows={revenue.map((r) => ({ label: r.month, value: r.revenue }))}>
+<ResponsiveContainer width="100%" height={300}>
                     <LineChart data={revenue}>
                       <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                       <XAxis dataKey="month" className="text-xs" />
                       <YAxis className="text-xs" />
-                      <Tooltip />
-                      <Line type="monotone" dataKey="revenue" stroke="#2E6A4C" strokeWidth={2} dot={{ fill: "#2E6A4C", r: 4 }} />
+                      <Tooltip {...chartTooltipProps} />
+                      <Line type="monotone" dataKey="revenue" stroke={c.primary} strokeWidth={2} dot={{ fill: c.primary, r: 4 }} />
                     </LineChart>
                   </ResponsiveContainer>
+</ChartFigure>
                 </CardContent>
               </Card>
 
@@ -155,7 +155,8 @@ export default function AdminReports() {
                   </Button>
                 </CardHeader>
                 <CardContent className="flex justify-center">
-                  <ResponsiveContainer width="100%" height={300}>
+                  <ChartFigure label="Jobs by status" valueHeader="Jobs" rows={jobStats.map((j) => ({ label: j.status.replace(/_/g, " "), value: j.count }))}>
+<ResponsiveContainer width="100%" height={300}>
                     <PieChart>
                       <Pie
                         data={jobStats}
@@ -168,13 +169,14 @@ export default function AdminReports() {
                         label={(props: any) => `${props.status} (${props.count})`}
                       >
                         {jobStats.map((_, idx) => (
-                          <Cell key={idx} fill={COLORS[idx % COLORS.length]} />
+                          <Cell key={idx} fill={series[idx % series.length]} />
                         ))}
                       </Pie>
-                      <Tooltip />
+                      <Tooltip {...chartTooltipProps} />
                       <Legend formatter={legendFormatter} />
                     </PieChart>
                   </ResponsiveContainer>
+</ChartFigure>
                 </CardContent>
               </Card>
             </div>
@@ -212,17 +214,19 @@ export default function AdminReports() {
                       </Button>
                     </CardHeader>
                     <CardContent>
-                      <ResponsiveContainer width="100%" height={300}>
+                      <ChartFigure label="Actual and estimated hours per technician" valueHeader="Actual / estimated hours" rows={staffStats.map((st) => ({ label: st.staff_name, value: `${st.actual_hours} h / ${st.estimated_hours} h` }))}>
+<ResponsiveContainer width="100%" height={300}>
                         <BarChart data={staffStats} layout="vertical" margin={{ left: 20 }}>
                           <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                           <XAxis type="number" className="text-xs" />
                           <YAxis type="category" dataKey="staff_name" width={100} className="text-xs" />
-                          <Tooltip />
+                          <Tooltip {...chartTooltipProps} />
                           <Legend formatter={legendFormatter} />
-                          <Bar dataKey="estimated_hours" name="Estimated (h)" fill="#8DB8E6" radius={[0, 4, 4, 0]} />
-                          <Bar dataKey="actual_hours" name="Actual (h)" fill="#1F5E99" radius={[0, 4, 4, 0]} />
+                          <Bar dataKey="estimated_hours" name="Estimated (h)" fill={c["muted-foreground"]} radius={[0, 4, 4, 0]} />
+                          <Bar dataKey="actual_hours" name="Actual (h)" fill={c.info} radius={[0, 4, 4, 0]} />
                         </BarChart>
                       </ResponsiveContainer>
+</ChartFigure>
                     </CardContent>
                   </Card>
 
@@ -233,15 +237,17 @@ export default function AdminReports() {
                       <p className="text-sm text-muted-foreground">Actual hours ÷ estimated hours × 100. Below 100% = under estimate, above 100% = over estimate.</p>
                     </CardHeader>
                     <CardContent>
-                      <ResponsiveContainer width="100%" height={250}>
+                      <ChartFigure label="Efficiency per technician" valueHeader="Efficiency" rows={staffStats.map((st) => ({ label: st.staff_name, value: `${st.efficiency}%` }))}>
+<ResponsiveContainer width="100%" height={250}>
                         <BarChart data={staffStats} layout="vertical" margin={{ left: 20 }}>
                           <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                           <XAxis type="number" unit="%" className="text-xs" />
                           <YAxis type="category" dataKey="staff_name" width={100} className="text-xs" />
-                          <Tooltip formatter={(v) => `${v}%`} />
-                          <Bar dataKey="efficiency" name="Efficiency %" fill="#5B4B8A" radius={[0, 4, 4, 0]} />
+                          <Tooltip {...chartTooltipProps} formatter={(v) => `${v}%`} />
+                          <Bar dataKey="efficiency" name="Efficiency %" fill={c.primary} radius={[0, 4, 4, 0]} />
                         </BarChart>
                       </ResponsiveContainer>
+</ChartFigure>
                     </CardContent>
                   </Card>
                 </>

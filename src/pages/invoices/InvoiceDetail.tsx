@@ -316,7 +316,8 @@ export default function InvoiceDetail() {
 
   if (!invoice) return (
     <DashboardLayout>
-      <div className="space-y-6 max-w-3xl">
+      <div className="space-y-6 max-w-3xl" aria-busy="true">
+        <h1 className="sr-only">Loading invoice…</h1>
         <Skeleton className="h-8 w-28" />
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-2">
@@ -346,8 +347,8 @@ export default function InvoiceDetail() {
 
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
-            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight break-words">{invoice.invoice_number}</h2>
-            <p className="text-muted-foreground">
+            <h1 className="text-2xl font-semibold tracking-tight break-words">{invoice.invoice_number}</h1>
+            <p className="text-sm text-muted-foreground">
               Client: <span className="font-medium text-foreground">{clientName}</span>
             </p>
           </div>
@@ -467,9 +468,9 @@ export default function InvoiceDetail() {
           <CardContent className="pt-6 space-y-4">
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               <div>
-                <Label className="text-xs text-muted-foreground">Due Date</Label>
+                <Label htmlFor="f-due-date" className="text-xs text-muted-foreground">Due Date</Label>
                 {canEdit ? (
-                  <DatePickerInput
+                  <DatePickerInput id="f-due-date"
                     value={invoice.due_date || ""}
                     onChange={(v) => setInvoice({ ...invoice, due_date: v })}
                     className="mt-1"
@@ -479,9 +480,9 @@ export default function InvoiceDetail() {
                 )}
               </div>
               <div>
-                <Label className="text-xs text-muted-foreground">Tax Rate</Label>
+                <Label htmlFor="f-tax-rate" className="text-xs text-muted-foreground">Tax Rate</Label>
                 {canEdit ? (
-                  <Input
+                  <Input id="f-tax-rate"
                     type="number"
                     min={0}
                     step={0.5}
@@ -535,11 +536,11 @@ export default function InvoiceDetail() {
             {/* Payment link — editable by admin/manager, visible as button to client */}
             {canManage && (
               <div>
-                <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                <Label htmlFor="f-payment-link" className="text-xs text-muted-foreground flex items-center gap-1">
                   <Link2 className="h-3 w-3" />Payment Link
                 </Label>
                 <div className="flex gap-2 mt-1">
-                  <Input
+                  <Input id="f-payment-link"
                     value={invoice.stripe_payment_url || ""}
                     onChange={(e) => setInvoice({ ...invoice, stripe_payment_url: e.target.value })}
                     placeholder="https://buy.stripe.com/… or any payment URL"
@@ -560,8 +561,8 @@ export default function InvoiceDetail() {
             {/* Payment instructions — used when no payment link is available (e.g. bank transfer) */}
             {canManage && (
               <div>
-                <Label className="text-xs text-muted-foreground">Payment Instructions</Label>
-                <Textarea
+                <Label htmlFor="f-payment-instructions" className="text-xs text-muted-foreground">Payment Instructions</Label>
+                <Textarea id="f-payment-instructions"
                   value={invoice.payment_instructions || ""}
                   onChange={(e) => setInvoice({ ...invoice, payment_instructions: e.target.value })}
                   placeholder="e.g. Bank transfer to Acme Ltd, Sort code 12-34-56, Account 12345678. Reference: invoice number."
@@ -615,7 +616,7 @@ export default function InvoiceDetail() {
                   <TableHead className="w-20 text-right">Qty</TableHead>
                   <TableHead className="w-28 text-right">Unit Price</TableHead>
                   <TableHead className="w-28 text-right">Total</TableHead>
-                  {canEdit && <TableHead className="w-10" />}
+                  {canEdit && <TableHead className="w-10"><span className="sr-only">Remove</span></TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -674,9 +675,9 @@ export default function InvoiceDetail() {
         {(canEdit || invoice.notes) && (
           <Card>
             <CardContent className="pt-6">
-              <Label>Notes</Label>
+              <Label htmlFor="f-notes">Notes</Label>
               {canEdit ? (
-                <Textarea
+                <Textarea id="f-notes"
                   value={invoice.notes || ""}
                   onChange={(e) => setInvoice({ ...invoice, notes: e.target.value })}
                   placeholder="Optional notes"

@@ -114,8 +114,8 @@ export default function StaffKanban() {
     <DashboardLayout>
       <div className="space-y-6">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Kanban Board</h2>
-          <p className="text-muted-foreground">Drag tasks between columns to update status — updates in real-time</p>
+          <h1 className="text-2xl font-semibold tracking-tight">Kanban Board</h1>
+          <p className="text-sm text-muted-foreground">Drag tasks between columns to update status — updates in real-time</p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 min-h-[60vh]">
           {columns.map((col) => {
@@ -128,10 +128,10 @@ export default function StaffKanban() {
                 onDrop={(e) => handleDrop(e, col.key)}
               >
                 <div className={`px-4 py-3 rounded-t-lg ${col.color} border-b`}>
-                  <h3 className="font-semibold text-sm flex items-center gap-2">
+                  <h2 className="font-semibold text-sm flex items-center gap-2">
                     {col.label}
                     <Badge variant="outline" className="ml-auto">{colJobs.length}</Badge>
-                  </h3>
+                  </h2>
                 </div>
                 <div className="flex-1 p-3 space-y-3 overflow-y-auto">
                   {colJobs.map((job) => (

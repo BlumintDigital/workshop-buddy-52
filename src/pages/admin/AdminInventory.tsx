@@ -168,15 +168,15 @@ export default function AdminInventory() {
           <DialogContent>
             <DialogHeader><DialogTitle>Add Inventory Item</DialogTitle></DialogHeader>
             <div className="space-y-4">
-              <div><Label>Name</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
+              <div><Label htmlFor="f-name">Name</Label><Input id="f-name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
               <div className="grid grid-cols-2 gap-4">
-                <div><Label>SKU</Label><Input value={form.sku} onChange={(e) => setForm({ ...form, sku: e.target.value })} /></div>
-                <div><Label>Category</Label><Input value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} /></div>
+                <div><Label htmlFor="f-sku">SKU</Label><Input id="f-sku" value={form.sku} onChange={(e) => setForm({ ...form, sku: e.target.value })} /></div>
+                <div><Label htmlFor="f-category">Category</Label><Input id="f-category" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} /></div>
               </div>
               <div className="grid grid-cols-3 gap-4">
-                <div><Label>Quantity</Label><Input type="number" value={form.quantity} onChange={(e) => setForm({ ...form, quantity: e.target.value })} /></div>
-                <div><Label>Min Stock</Label><Input type="number" value={form.min_stock} onChange={(e) => setForm({ ...form, min_stock: e.target.value })} /></div>
-                <div><Label>Unit Cost</Label><Input type="number" value={form.unit_cost} onChange={(e) => setForm({ ...form, unit_cost: e.target.value })} /></div>
+                <div><Label htmlFor="f-quantity">Quantity</Label><Input id="f-quantity" type="number" value={form.quantity} onChange={(e) => setForm({ ...form, quantity: e.target.value })} /></div>
+                <div><Label htmlFor="f-min-stock">Min Stock</Label><Input id="f-min-stock" type="number" value={form.min_stock} onChange={(e) => setForm({ ...form, min_stock: e.target.value })} /></div>
+                <div><Label htmlFor="f-unit-cost">Unit Cost</Label><Input id="f-unit-cost" type="number" value={form.unit_cost} onChange={(e) => setForm({ ...form, unit_cost: e.target.value })} /></div>
               </div>
               <Button onClick={handleCreate} className="w-full">Add Item</Button>
             </div>
@@ -253,9 +253,9 @@ export default function AdminInventory() {
               Current quantity: <span className="font-medium text-foreground">{adjustItem?.quantity} {adjustItem?.unit}</span>
             </div>
             <div>
-              <Label>Transaction Type</Label>
+              <Label htmlFor="f-transaction-type">Transaction Type</Label>
               <Select value={adjustForm.type} onValueChange={(v) => setAdjustForm({ ...adjustForm, type: v })}>
-                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                <SelectTrigger id="f-transaction-type" className="mt-1"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="in">Stock In (add)</SelectItem>
                   <SelectItem value="out">Stock Out (remove)</SelectItem>
@@ -264,10 +264,10 @@ export default function AdminInventory() {
               </Select>
             </div>
             <div>
-              <Label>
+              <Label htmlFor="f-field">
                 {adjustForm.type === "adjustment" ? "New Quantity" : "Quantity"}
               </Label>
-              <Input
+              <Input id="f-field"
                 type="number"
                 min="1"
                 value={adjustForm.quantity}
@@ -276,8 +276,8 @@ export default function AdminInventory() {
               />
             </div>
             <div>
-              <Label>Notes (optional)</Label>
-              <Textarea
+              <Label htmlFor="f-notes-optional">Notes (optional)</Label>
+              <Textarea id="f-notes-optional"
                 value={adjustForm.notes}
                 onChange={(e) => setAdjustForm({ ...adjustForm, notes: e.target.value })}
                 className="mt-1"

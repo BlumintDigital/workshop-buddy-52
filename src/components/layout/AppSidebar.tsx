@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { ChevronDown, ChevronRight, LogOut, User } from "lucide-react";
+import { ChevronDown, ChevronRight, LogOut, Monitor, Moon, Sun, User } from "lucide-react";
+import { useTheme } from "next-themes";
 import { NavLink } from "@/components/NavLink";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -13,7 +14,8 @@ import {
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem,
+  DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { resolveLogoUrl, useDefaultLogoOnError } from "@/lib/branding";
 import { NAV_GROUPS, isItemActive, isItemEnabled, type NavGroup, type NavItem } from "@/lib/navigation";
@@ -76,6 +78,7 @@ export function AppSidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { role, profile, signOut } = useAuth();
+  const { theme, setTheme } = useTheme();
   const { flags } = useFeatureFlags();
   const counts = useNavCounts();
   const [workshopName, setWorkshopName] = useState("Workshop Manager");
@@ -156,6 +159,7 @@ export function AppSidebar() {
       <SidebarSeparator className="bg-sidebar-border" />
 
       <SidebarContent className="[&::-webkit-scrollbar]:hidden [scrollbar-width:none] [-ms-overflow-style:none]">
+        <nav aria-label="Main menu" className="flex flex-col gap-2">
         {groups.map((group, index) => {
           const key = group.label ?? `group-${index}`;
           const items = (
@@ -191,6 +195,7 @@ export function AppSidebar() {
             </SidebarGroup>
           );
         })}
+        </nav>
       </SidebarContent>
 
       <SidebarFooter>
@@ -217,6 +222,23 @@ export function AppSidebar() {
                   <User className="mr-2 h-4 w-4" />
                   Profile
                 </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel className="text-xs font-medium text-muted-foreground">Appearance</DropdownMenuLabel>
+                <DropdownMenuRadioGroup value={theme ?? "system"} onValueChange={setTheme}>
+                  <DropdownMenuRadioItem value="light" className="min-h-[40px]">
+                    <Sun className="mr-2 h-4 w-4" />
+                    Light
+                  </DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="dark" className="min-h-[40px]">
+                    <Moon className="mr-2 h-4 w-4" />
+                    Dark
+                  </DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="system" className="min-h-[40px]">
+                    <Monitor className="mr-2 h-4 w-4" />
+                    Match device
+                  </DropdownMenuRadioItem>
+                </DropdownMenuRadioGroup>
+                <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleSignOut} className="min-h-[44px]">
                   <LogOut className="mr-2 h-4 w-4" />
                   Sign out
