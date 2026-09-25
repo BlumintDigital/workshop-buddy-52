@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Copy, Download, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
+import { copyText } from "@/lib/clipboard";
 
 interface Props {
   open: boolean;
@@ -15,8 +16,8 @@ export default function BackupCodesDialog({ open, codes, onClose }: Props) {
   const [acknowledged, setAcknowledged] = useState(false);
 
   const copyAll = async () => {
-    await navigator.clipboard.writeText(codes.join("\n"));
-    toast.success("Codes copied to clipboard");
+    if (await copyText(codes.join("\n"))) toast.success("Codes copied to clipboard");
+    else toast.error("Couldn't copy. Use Download instead.");
   };
 
   const download = () => {

@@ -10,10 +10,11 @@ import { DatePickerInput } from "@/components/ui/date-picker-input";
 import { Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useCurrency } from "@/hooks/useCurrency";
+import { uid } from "@/lib/id";
 
 interface LineItem { key: string; description: string; quantity: number; unit_price: number; }
 
-const newRow = (description = ""): LineItem => ({ key: crypto.randomUUID(), description, quantity: 1, unit_price: 0 });
+const newRow = (description = ""): LineItem => ({ key: uid(), description, quantity: 1, unit_price: 0 });
 
 interface Props {
   open: boolean;
@@ -42,7 +43,7 @@ export default function QuoteBuilderDialog({ open, onOpenChange, requestId, requ
         .eq("request_id", requestId);
       if (data && data.length) {
         setItems(data.map((d: any) => ({
-          key: crypto.randomUUID(),
+          key: uid(),
           description: d.description,
           quantity: Number(d.quantity),
           unit_price: Number(d.unit_price),

@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
+import { copyText } from "@/lib/clipboard";
 import { User, ShieldCheck, ShieldOff, Copy, Loader2, KeyRound, RefreshCw, Upload, BadgeCheck, CalendarDays, Mail, Smartphone, Lightbulb, Lock, Eye, EyeOff } from "lucide-react";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import BackupCodesDialog from "@/components/mfa/BackupCodesDialog";
@@ -350,11 +351,10 @@ export default function UserProfile() {
     }
   };
 
-  const copySecret = () => {
-    if (secret) {
-      navigator.clipboard.writeText(secret);
-      toast.success("Secret copied to clipboard");
-    }
+  const copySecret = async () => {
+    if (!secret) return;
+    if (await copyText(secret)) toast.success("Secret copied to clipboard");
+    else toast.error("Couldn't copy. Select the secret and copy it by hand.");
   };
 
   const joinedDate = user?.created_at

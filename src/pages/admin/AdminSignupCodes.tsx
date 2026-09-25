@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { DatePickerInput } from "@/components/ui/date-picker-input";
 import { Copy, Plus, Trash2, RefreshCw, KeyRound } from "lucide-react";
 import { toast } from "sonner";
+import { copyText } from "@/lib/clipboard";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -128,8 +129,8 @@ export default function AdminSignupCodes() {
   };
 
   const copyCode = async (code: string) => {
-    await navigator.clipboard.writeText(code);
-    toast.success("Code copied to clipboard");
+    if (await copyText(code)) toast.success("Code copied to clipboard");
+    else toast.error("Couldn't copy. Select the code and copy it by hand.");
   };
 
   const roleBadge = (role: AppRole) => {
