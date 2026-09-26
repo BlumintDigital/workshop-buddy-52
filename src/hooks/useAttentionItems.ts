@@ -121,7 +121,7 @@ export function useAttentionItems() {
             label: "Quote sent",
             title: `${staleQuotes.length} ${staleQuotes.length === 1 ? "quote" : "quotes"} waiting on the client`,
             meta: `Oldest: ${oldest.title}${oldest.quoted_total != null ? ` · ${format(oldest.quoted_total)}` : ""} · ${oldest.days} days`,
-            action: { label: "View requests", to: `${base}/requests` },
+            action: { label: "View projects", to: `${base}/projects?status=quote` },
           });
         }
 

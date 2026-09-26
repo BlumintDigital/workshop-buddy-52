@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import DashboardLayout from "@/components/layout/DashboardLayout";
@@ -15,7 +15,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { DatePickerInput } from "@/components/ui/date-picker-input";
 import {
   ArrowLeft, CalendarDays, Clock, User, Tag, Timer, FileText,
-  Briefcase, ExternalLink,
+  Briefcase,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
@@ -134,7 +134,8 @@ export default function AppointmentDetail() {
       title: jobForm.title,
       description: jobForm.description || null,
       priority: jobForm.priority,
-      status: jobForm.isQuote ? "quote" : "pending",
+      status: jobForm.isQuote ? "evaluation" : "pending",
+      intake_type: jobForm.isQuote ? "quote" : "approved",
       client_id: appt.client_id,
     };
     if (jobForm.assigned_staff_id) jobPayload.assigned_staff_id = jobForm.assigned_staff_id;
@@ -358,12 +359,12 @@ export default function AppointmentDetail() {
             <div className="flex items-center gap-2">
               <Checkbox id="isQuote" checked={jobForm.isQuote} onCheckedChange={(v) => setJobForm({ ...jobForm, isQuote: !!v })} />
               <label htmlFor="isQuote" className="text-sm cursor-pointer">
-                <span className="font-medium">Save as quote</span>
-                <span className="text-muted-foreground ml-1">— client must approve before work begins</span>
+                <span className="font-medium">Needs a quote first</span>
+                <span className="text-muted-foreground ml-1">The client approves a quote before work starts.</span>
               </label>
             </div>
             <Button onClick={handleCreateJob} disabled={creatingJob} className="w-full">
-              {creatingJob ? "Creating…" : jobForm.isQuote ? "Create quote" : "Create project"}
+              {creatingJob ? "Creating…" : "Create project"}
             </Button>
           </div>
         </DialogContent>

@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth, type AppRole } from "@/hooks/useAuth";
 import { useFeatureFlags } from "@/hooks/useFeatureFlags";
 import { projectPath, projectSearchFilter, projectStatusLabel } from "@/lib/projects";
+import { usePermissions } from "@/hooks/usePermissions";
 import { NAV_GROUPS, isItemEnabled } from "@/lib/navigation";
 
 type Result = { id: string; label: string; detail?: string; to: string };
@@ -23,7 +24,7 @@ function likePattern(q: string) {
 async function search(q: string, role: AppRole): Promise<Results> {
   const pattern = likePattern(q);
   const privileged = role === "admin" || role === "manager";
-  const requestsUrl = role === "client" ? "/client/requests" : `/${role}/requests`;
+  const requestsUrl = role === "client" ? "/client/requests" : "/reception?tab=requests";
 
   const [jobs, invoices, requests, clients] = await Promise.all([
     projectSearchFilter(q)
@@ -69,6 +70,7 @@ async function search(q: string, role: AppRole): Promise<Results> {
 export function GlobalSearch() {
   const { role } = useAuth();
   const { flags } = useFeatureFlags();
+  const { has } = usePermissions();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -119,9 +121,9 @@ export function GlobalSearch() {
     const q = query.trim().toLowerCase();
     return NAV_GROUPS[role]
       .flatMap((g) => g.items)
-      .filter((item) => isItemEnabled(item, flags))
+      .filter((item) => isItemEnabled(item, flags, has))
       .filter((item) => !q || item.title.toLowerCase().includes(q));
-  }, [role, flags, query]);
+  }, [role, flags, query, has]);
 
   const go = (to: string) => {
     setOpen(false);

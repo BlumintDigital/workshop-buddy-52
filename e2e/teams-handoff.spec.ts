@@ -1,5 +1,6 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect } from "@playwright/test";
 import { login } from "./helpers/auth";
+import { logProjectAtReception, openProjectAsAdmin } from "./helpers/projects";
 
 // Teams, team-assigned tasks and handoffs, end to end:
 // admin builds a team and a project, the technician picks the task up on My day
@@ -9,13 +10,6 @@ const STAMP = Date.now();
 const TEAM = `E2E Fabrication ${STAMP}`;
 const PROJECT = `E2E team project ${STAMP}`;
 const TASK = `Weld bracket ${STAMP}`;
-
-async function openProject(page: Page) {
-  await page.goto("/admin/projects");
-  await page.getByRole("searchbox", { name: /search by project id or title/i }).fill(PROJECT);
-  await page.getByRole("link", { name: new RegExp(PROJECT) }).first().click();
-  await expect(page.getByRole("heading", { name: PROJECT, level: 1 })).toBeVisible({ timeout: 20_000 });
-}
 
 test.describe.serial("teams and handoffs", () => {
   test("admin creates a team and adds the technician", async ({ page }) => {
@@ -34,14 +28,7 @@ test.describe.serial("teams and handoffs", () => {
 
   test("admin creates a project and gives the team a task", async ({ page }) => {
     await login(page, "ADMIN");
-    await page.goto("/admin/projects");
-    await page.getByRole("button", { name: /new project/i }).first().click();
-    const create = page.getByRole("dialog");
-    await create.getByRole("textbox").first().fill(PROJECT);
-    await create.getByRole("button", { name: "Create project" }).click();
-    await expect(page.getByText(PROJECT).first()).toBeVisible({ timeout: 15_000 });
-
-    await openProject(page);
+    await logProjectAtReception(page, PROJECT);
     await page.getByRole("button", { name: "Add task" }).click();
     const dialog = page.getByRole("dialog");
     await dialog.getByLabel("Task", { exact: true }).fill(TASK);
@@ -77,7 +64,7 @@ test.describe.serial("teams and handoffs", () => {
 
   test("admin sees the handoff and the quality check", async ({ page }) => {
     await login(page, "ADMIN");
-    await openProject(page);
+    await openProjectAsAdmin(page, PROJECT);
     await expect(page.getByText("E2E: bracket welded and ground flush.")).toBeVisible({ timeout: 15_000 });
     await expect(page.getByText(/handed off by demo staff/i)).toBeVisible();
     await expect(page.getByText("Quality check").first()).toBeVisible();

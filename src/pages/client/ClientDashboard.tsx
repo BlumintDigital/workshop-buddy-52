@@ -6,7 +6,7 @@ import DashboardLayout from "@/components/layout/DashboardLayout";
 import NotificationsPanel from "@/components/client/NotificationsPanel";
 import { PageBar } from "@/components/dashboard/PageBar";
 import { Panel } from "@/components/dashboard/Panel";
-import { StatusPill } from "@/components/dashboard/StatusPill";
+import { JobStatusPill, StatusPill } from "@/components/dashboard/StatusPill";
 import { StepTracker } from "@/components/dashboard/StepTracker";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -28,11 +28,15 @@ import { todayIso } from "@/lib/dashboardQueries";
 
 type Quote = {
   id: string;
+  job_id: string;
+  kind: "quote" | "change";
+  number: number;
   title: string;
-  quoted_total: number | null;
-  quoted_currency: string | null;
-  quote_expires_at: string | null;
-  updated_at: string;
+  subtotal: number;
+  currency: string | null;
+  valid_until: string | null;
+  sent_at: string | null;
+  jobs: { ref: string; title: string } | null;
 };
 type Order = { id: string; ref: string; title: string; status: string; due_date: string | null; updated_at: string };
 type Invoice = {
@@ -46,14 +50,8 @@ type Invoice = {
 };
 type Appointment = { id: string; title: string | null; appointment_date: string; appointment_time: string };
 
-const ORDER_STEPS = ["Received", "In production", "Final checks", "Ready"];
-const ORDER_STEP: Record<string, number> = { pending: 0, in_progress: 1, review: 2, completed: 3 };
-const ORDER_LABEL: Record<string, string> = {
-  pending: "Received",
-  in_progress: "In production",
-  review: "Final checks",
-  completed: "Ready",
-};
+const ORDER_STEPS = ["Assessment", "Approved", "In progress", "Checks", "Ready"];
+const ORDER_STEP: Record<string, number> = { received: 0, evaluation: 0, quote: 0, pending: 1, in_progress: 2, review: 3, completed: 4, shipped: 4 };
 
 function shortDate(iso: string) {
   return new Date(iso).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
@@ -106,16 +104,15 @@ export default function ClientDashboard() {
     const recent = new Date(Date.now() - 14 * 86_400_000).toISOString();
     const [quotesRes, ordersRes, invoicesRes, apptsRes] = await Promise.all([
       supabase
-        .from("client_requests")
-        .select("id, title, quoted_total, quoted_currency, quote_expires_at, updated_at")
-        .eq("client_id", user.id)
-        .eq("status", "quoted")
-        .order("updated_at", { ascending: true }),
+        .from("project_quotes")
+        .select("id, job_id, kind, number, title, subtotal, currency, valid_until, sent_at, jobs(ref, title)")
+        .eq("status", "sent")
+        .order("sent_at", { ascending: true }),
       supabase
         .from("jobs")
         .select("id, ref, title, status, due_date, updated_at")
         .eq("client_id", user.id)
-        .or(`status.in.(pending,in_progress,review),and(status.eq.completed,updated_at.gte.${recent})`)
+        .or(`status.in.(received,evaluation,quote,pending,in_progress,review,completed),and(status.eq.shipped,updated_at.gte.${recent})`)
         .order("due_date", { ascending: true, nullsFirst: false }),
       supabase
         .from("invoices")
@@ -151,17 +148,17 @@ export default function ClientDashboard() {
   const decide = async (quote: Quote, approve: boolean, reason?: string) => {
     if (deciding) return;
     setDeciding(quote.id);
-    const { error } = await supabase.rpc("client_decide_quote", {
-      _request_id: quote.id,
-      _approve: approve,
-      _reason: reason ?? (null as any),
+    const { error } = await supabase.rpc("decide_project_quote", {
+      _quote_id: quote.id,
+      _accept: approve,
+      _note: reason,
     });
     setDeciding(null);
     if (error) {
       toast.error(error.message);
       return;
     }
-    toast.success(approve ? "Quote approved. The workshop has been told and will schedule the work." : "Quote declined.");
+    toast.success(approve ? (quote.kind === "quote" ? "Quote accepted. The workshop will plan the work." : "Change accepted.") : "Declined. The workshop has been told.");
     setDeclineFor(null);
     setDeclineReason("");
     load();
@@ -217,30 +214,33 @@ export default function ClientDashboard() {
         ) : (
           <>
             {quotes.map((q) => {
-              const expired = q.quote_expires_at && q.quote_expires_at.slice(0, 10) < today;
+              const expired = !!q.valid_until && q.valid_until < today;
+              const label = `${q.jobs?.ref ?? ""}-${q.kind === "quote" ? "Q" : "CR"}${q.number}`;
               return (
-                <section key={q.id} aria-label={`Quote: ${q.title}`} className="space-y-3 rounded-lg border border-warning/40 bg-card p-4">
-                  <StatusPill tone="warning">Quote ready: your decision</StatusPill>
+                <section key={q.id} aria-label={`${q.kind === "quote" ? "Quote" : "Change"}: ${q.jobs?.title ?? q.title}`} className="space-y-3 rounded-lg border border-warning/40 bg-card p-4">
+                  <StatusPill tone="warning">{q.kind === "quote" ? "Quote ready: your decision" : "Change to approve"}</StatusPill>
                   <div>
-                    <h2 className="font-sans text-lg font-semibold leading-snug">{q.title}</h2>
+                    <p className="font-mono text-xs text-muted-foreground">{label}</p>
+                    <h2 className="font-sans text-lg font-semibold leading-snug">{q.title || q.jobs?.title}</h2>
                     <p className="text-sm text-muted-foreground">
-                      Quoted {shortDate(q.updated_at)}
-                      {q.quote_expires_at && ` · ${expired ? "expired" : "valid until"} ${shortDate(q.quote_expires_at)}`}
+                      {q.jobs?.title}
+                      {q.sent_at && ` · sent ${shortDate(q.sent_at)}`}
+                      {q.valid_until && ` · ${expired ? "expired" : "valid until"} ${shortDate(q.valid_until)}`}
                     </p>
                   </div>
-                  {q.quoted_total != null && (
-                    <p className="text-2xl font-semibold tabular-nums">{format(Number(q.quoted_total), q.quoted_currency || undefined)}</p>
-                  )}
+                  <p className="text-2xl font-semibold tabular-nums">
+                    {format(Number(q.subtotal), q.currency || undefined)} <span className="text-sm font-normal text-muted-foreground">before tax</span>
+                  </p>
                   <div className="grid grid-cols-2 gap-2">
                     <Button variant="outline" className="h-12" disabled={!!deciding} onClick={() => setDeclineFor(q)}>
                       Decline
                     </Button>
                     <Button className="h-12" disabled={!!deciding} onClick={() => decide(q, true)}>
-                      {deciding === q.id ? "Approving…" : "Approve quote"}
+                      {deciding === q.id ? "Accepting…" : q.kind === "quote" ? "Accept quote" : "Accept change"}
                     </Button>
                   </div>
-                  <Link to="/client/requests" className="inline-block text-sm font-medium text-primary hover:underline">
-                    See the full quote
+                  <Link to={`/projects/${q.job_id}`} className="inline-block text-sm font-medium text-primary hover:underline">
+                    See the lines and details
                   </Link>
                 </section>
               );
@@ -254,10 +254,10 @@ export default function ClientDashboard() {
                       <Link to={`/projects/${o.id}`} className="block space-y-2.5 px-4 py-3.5 hover:bg-secondary/60">
                         <div className="flex items-start justify-between gap-3">
                           <span className="min-w-0 text-sm font-semibold"><span className="block font-mono text-xs font-normal text-muted-foreground">{o.ref}</span>{o.title}</span>
-                          <StatusPill tone={o.status === "completed" ? "success" : "info"}>{ORDER_LABEL[o.status] ?? o.status}</StatusPill>
+                          <JobStatusPill status={o.status} />
                         </div>
                         <StepTracker steps={ORDER_STEPS} current={ORDER_STEP[o.status] ?? 0} />
-                        {o.status !== "completed" && o.due_date && (
+                        {!["completed", "shipped"].includes(o.status) && o.due_date && (
                           <p className="text-xs text-muted-foreground">Expected by {shortDate(o.due_date)}</p>
                         )}
                       </Link>
@@ -319,7 +319,7 @@ export default function ClientDashboard() {
           <AlertDialogHeader>
             <AlertDialogTitle>Decline this quote?</AlertDialogTitle>
             <AlertDialogDescription>
-              The workshop will be told you've declined "{declineFor?.title}". Adding a reason helps them send a better quote.
+              The workshop will be told you've declined "{declineFor?.title || declineFor?.jobs?.title}". Adding a reason helps them send a better option.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <Textarea

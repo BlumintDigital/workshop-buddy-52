@@ -28,13 +28,16 @@ import ProjectActivity from "@/components/project/ProjectActivity";
 import ProjectFiles from "@/components/project/ProjectFiles";
 import ClientProjectView from "@/components/project/ClientProjectView";
 import { JobStatusPill } from "@/components/dashboard/StatusPill";
-import { projectPath, projectsListPath, projectStatusLabel } from "@/lib/projects";
+import { PROJECT_STATUSES, projectPath, projectsListPath, projectStatusLabel } from "@/lib/projects";
+import ProjectQuotes from "@/components/project/ProjectQuotes";
+import ProjectStageActions from "@/components/project/ProjectStageActions";
+import IntakeDetails from "@/components/project/IntakeDetails";
 import { useBreadcrumbLabel } from "@/lib/breadcrumbs";
 import { generateJobReport } from "@/lib/jobReportPdf";
 import { useCurrency } from "@/hooks/useCurrency";
 
-// Statuses a team member can set by hand on this page.
-const EDITABLE_STATUSES = ["quote", "pending", "in_progress", "review", "completed", "cancelled"];
+// Admins and managers can override the stage by hand; everyone else moves it with the stage actions.
+const EDITABLE_STATUSES = PROJECT_STATUSES;
 
 interface UserOption { id: string; full_name: string; }
 export default function JobDetail() {
@@ -80,6 +83,9 @@ export default function JobDetail() {
   const canEdit = role === "admin" || role === "manager";
   const { has } = usePermissions();
   const canPlan = canEdit || has("planning");
+  const canQuote = canEdit || has("reception") || has("planning");
+  const canQuality = canEdit || has("quality");
+  const [receivedBy, setReceivedBy] = useState<string | undefined>();
   const canAddUpdate = role === "admin" || role === "manager" || role === "staff";
 
   useEffect(() => {
@@ -89,12 +95,13 @@ export default function JobDetail() {
       if (!jobData) return;
       setJob(jobData);
 
-      const ids = [jobData.assigned_staff_id, jobData.client_id].filter((v): v is string => !!v);
+      const ids = [jobData.assigned_staff_id, jobData.client_id, jobData.received_by].filter((v): v is string => !!v);
       if (ids.length) {
         const { data: profiles } = await supabase.from("profiles").select("id, full_name").in("id", ids);
         profiles?.forEach((p) => {
           if (p.id === jobData.assigned_staff_id) setStaffName(p.full_name || "—");
           if (p.id === jobData.client_id) setClientName(p.full_name || "—");
+          if (p.id === jobData.received_by) setReceivedBy(p.full_name || undefined);
         });
       }
     };
@@ -382,14 +389,12 @@ export default function JobDetail() {
           )}
         </div>
 
-        {job.source_request_id && (role === "admin" || role === "manager") && (
-          <div className="rounded-md border border-border bg-primary-soft px-4 py-2 text-sm flex items-center justify-between gap-3 flex-wrap">
-            <span className="text-foreground/80">This project started as a client request.</span>
-            <Link to={`/admin/requests?focus=${job.source_request_id}`} className="text-primary font-medium hover:underline">
-              View request →
-            </Link>
-          </div>
-        )}
+        <ProjectStageActions
+          project={job}
+          tasks={tasks}
+          can={{ quote: canQuote, plan: canPlan, quality: canQuality }}
+          onChanged={reloadJob}
+        />
 
         {/* ── 2-column grid: left = main content, right = sidebar ── */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
@@ -461,6 +466,8 @@ export default function JobDetail() {
           </CardContent>
         </Card>
 
+        <ProjectQuotes project={job} canQuote={canQuote} onChanged={reloadJob} />
+
         <ProjectTasks
           project={job}
           canPlan={canPlan}
@@ -527,6 +534,8 @@ export default function JobDetail() {
 
         {/* ── Right sidebar ── */}
         <div className="space-y-6">
+
+        <IntakeDetails project={job} receivedBy={receivedBy} />
 
         <ProjectFiles
           jobId={job.id}

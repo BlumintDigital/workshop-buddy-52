@@ -1,94 +1,83 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 import { login } from "./helpers/auth";
+import { openProjectAsAdmin } from "./helpers/projects";
 
-// One shared title threads the request through every stage of the flow.
+// A client request through the whole front of house: the client asks for a
+// quote, reception receives it (the project gets its ID), the workshop sends a
+// quote, the client accepts it, and team notes stay out of the client's view.
 const REQUEST_TITLE = `E2E request ${Date.now()}`;
 
-/** The request card on either the client or admin requests page. */
-const requestCard = (page: import("@playwright/test").Page) =>
-  page.locator("div[class*='rounded']").filter({ hasText: REQUEST_TITLE }).last();
+/** This run's request, on the client's requests page. */
+const requestItem = (page: Page) => page.getByRole("listitem").filter({ hasText: REQUEST_TITLE });
 
-test.describe.serial("client request → quote → approval → project", () => {
+test.describe.serial("client request → reception → quote → approval", () => {
   test("client submits a quote request", async ({ page }) => {
     await login(page, "CLIENT");
     await page.goto("/client/requests");
     await page.getByRole("button", { name: /new request/i }).first().click();
 
-    // "Request a quote" card is preselected; fill title + details.
+    // "Request a quote" is preselected; fill title and details.
     await page.getByPlaceholder("e.g. Brake pad replacement").fill(REQUEST_TITLE);
     await page.getByPlaceholder(/describe what you need/i).fill("E2E test request — safe to delete.");
     await page.getByRole("button", { name: "Submit quote request" }).click();
 
     await expect(page.getByText("Quote request submitted")).toBeVisible();
-    await expect(page.getByText(REQUEST_TITLE)).toBeVisible();
-    // Scope to this run's card — older E2E requests may share status labels.
-    await expect(requestCard(page).getByText("Awaiting review")).toBeVisible();
+    await expect(requestItem(page).getByText("Waiting for the workshop")).toBeVisible({ timeout: 15_000 });
   });
 
-  test("admin builds and sends a quote", async ({ page }) => {
+  test("reception receives the request and logs the project", async ({ page }) => {
     await login(page, "ADMIN");
-    await page.goto("/admin/requests");
-    await expect(page.getByText(REQUEST_TITLE)).toBeVisible({ timeout: 15_000 });
+    await page.goto("/reception?tab=requests");
+    const card = page.getByRole("listitem").filter({ hasText: REQUEST_TITLE });
+    await expect(card).toBeVisible({ timeout: 15_000 });
+    await card.getByRole("button", { name: "Receive item" }).click();
 
-    await requestCard(page).getByRole("button", { name: "Build & send quote" }).click();
+    // The intake form is filled in from the request.
+    await expect(page.getByLabel("What's come in")).toHaveValue(REQUEST_TITLE);
+    await expect(page.getByRole("radio", { name: /^quote/i })).toHaveAttribute("aria-checked", "true");
+    await page.getByLabel("Make and model").fill("E2E Lathe 1800");
+    await page.getByRole("button", { name: "Log project" }).click();
 
-    const dialog = page.getByRole("dialog");
-    // The dialog prefills the first row with the request title asynchronously —
-    // wait for that to land or it will overwrite what we type.
-    const firstDescription = dialog.getByPlaceholder("What's included").first();
-    await expect(firstDescription).toHaveValue(REQUEST_TITLE, { timeout: 10_000 });
-    await firstDescription.fill("E2E line item");
-    // Row inputs: [0] = qty, [1] = unit price.
-    await dialog.locator("input[type='number']").nth(1).fill("100");
-    await dialog.getByRole("button", { name: "Send quote to client" }).click();
-
-    await expect(page.getByText("Quote sent to the client")).toBeVisible();
-  });
-
-  test("client sees the quote and approves it", async ({ page }) => {
-    await login(page, "CLIENT");
-    await page.goto("/client/requests");
-
-    const card = requestCard(page);
-    await expect(card.getByText("Quote ready — your decision")).toBeVisible({ timeout: 15_000 });
-    await expect(card.getByText("E2E line item")).toBeVisible();
-
-    await card.getByRole("button", { name: /approve quote/i }).click();
-    await expect(page.getByText(/quote approved/i)).toBeVisible();
-    await expect(card.getByText("Approved — waiting for the workshop")).toBeVisible();
-  });
-
-  test("admin converts the approved quote to a project", async ({ page }) => {
-    await login(page, "ADMIN");
-    await page.goto("/admin/requests");
-    // The page defaults to Pending; approved requests are under the Approved filter.
-    await page.getByRole("radio", { name: /approved/i }).click();
-    await expect(page.getByText(REQUEST_TITLE)).toBeVisible({ timeout: 15_000 });
-
-    await requestCard(page).getByRole("button", { name: "Convert to project" }).click();
-    // Conversion navigates straight to the new project page.
     await expect(page).toHaveURL(/\/projects\//, { timeout: 20_000 });
-    await expect(page.getByRole("heading", { name: REQUEST_TITLE })).toBeVisible();
+    await expect(page.getByRole("heading", { name: REQUEST_TITLE, level: 1 })).toBeVisible();
+    await expect(page.getByText("Evaluating").first()).toBeVisible();
   });
 
-  test("client can open the converted project", async ({ page }) => {
+  test("the workshop sends a quote", async ({ page }) => {
+    await login(page, "ADMIN");
+    await openProjectAsAdmin(page, REQUEST_TITLE);
+    await page.getByRole("button", { name: "New quote" }).click();
+    const dialog = page.getByRole("dialog");
+    await dialog.getByLabel("Title").fill("E2E spindle rebuild");
+    await dialog.getByLabel("Line 1 description").fill("E2E line item");
+    await dialog.getByLabel("Line 1 price").fill("100");
+    await dialog.getByRole("button", { name: "Save draft" }).click();
+    await page.getByRole("button", { name: "Send to client" }).click();
+    await expect(page.getByText("Waiting for client").first()).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText("Quote sent").first()).toBeVisible();
+  });
+
+  test("client accepts the quote from their dashboard", async ({ page }) => {
+    await login(page, "CLIENT");
+    await page.goto("/client/dashboard");
+    const quote = page.getByRole("region", { name: new RegExp(`Quote: ${REQUEST_TITLE}`) });
+    await expect(quote).toBeVisible({ timeout: 15_000 });
+    await quote.getByRole("button", { name: "Accept quote" }).click();
+    await expect(page.getByText(/quote accepted/i)).toBeVisible();
+  });
+
+  test("the project is approved and the request shows it was received", async ({ page }) => {
     await login(page, "CLIENT");
     await page.goto("/client/requests");
-    await expect(page.getByText(REQUEST_TITLE)).toBeVisible({ timeout: 15_000 });
-
-    await requestCard(page).getByRole("link", { name: /view project/i }).click();
+    await expect(requestItem(page).getByText("Received")).toBeVisible({ timeout: 15_000 });
+    await requestItem(page).getByRole("link", { name: /view project/i }).click();
     await expect(page).toHaveURL(/\/projects\//, { timeout: 15_000 });
-    await expect(page.getByText(REQUEST_TITLE).first()).toBeVisible();
+    await expect(page.getByText("Approved").first()).toBeVisible();
   });
 
   test("admin posts a team note and a client message on the project", async ({ page }) => {
     await login(page, "ADMIN");
-    await page.goto("/admin/requests");
-    // Converted requests are only listed under the All tab.
-    await page.getByRole("radio", { name: /^all/i }).click();
-    await expect(page.getByText(REQUEST_TITLE)).toBeVisible({ timeout: 15_000 });
-    await requestCard(page).getByRole("link", { name: /view project/i }).click();
-    await expect(page).toHaveURL(/\/projects\//, { timeout: 15_000 });
+    await openProjectAsAdmin(page, REQUEST_TITLE);
 
     // Team notes are the default tab.
     await expect(page.getByRole("tab", { name: /team notes/i })).toHaveAttribute("aria-selected", "true");
@@ -106,10 +95,10 @@ test.describe.serial("client request → quote → approval → project", () => 
     await expect(page.getByText("E2E public comment — hello client!")).toBeVisible({ timeout: 15_000 });
   });
 
-  test("client sees the public comment but not the internal note", async ({ page }) => {
+  test("client sees the message but not the team note", async ({ page }) => {
     await login(page, "CLIENT");
     await page.goto("/client/requests");
-    await requestCard(page).getByRole("link", { name: /view project/i }).click();
+    await requestItem(page).getByRole("link", { name: /view project/i }).click();
     await expect(page).toHaveURL(/\/projects\//, { timeout: 15_000 });
 
     await expect(page.getByText("E2E public comment — hello client!")).toBeVisible({ timeout: 15_000 });

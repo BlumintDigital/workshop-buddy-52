@@ -79,20 +79,21 @@ export async function countReviewJobs(): Promise<number> {
 
 export type StaleQuote = { id: string; title: string; quoted_total: number | null; days: number };
 
+/** Quotes and change requests sent to clients and still undecided after a few days. */
 export async function fetchStaleQuotes(now = new Date()): Promise<StaleQuote[]> {
   const cutoff = new Date(now.getTime() - STALE_QUOTE_DAYS * 86_400_000).toISOString();
   const { data, error } = await supabase
-    .from("client_requests")
-    .select("id, title, quoted_total, reviewed_at, updated_at")
-    .eq("status", "quoted")
-    .lt("updated_at", cutoff)
-    .order("updated_at", { ascending: true });
+    .from("project_quotes")
+    .select("id, kind, number, subtotal, sent_at, jobs(ref, title)")
+    .eq("status", "sent")
+    .lt("sent_at", cutoff)
+    .order("sent_at", { ascending: true });
   if (error) throw error;
-  return (data || []).map((row: any) => ({
+  return (data || []).map((row) => ({
     id: row.id,
-    title: row.title,
-    quoted_total: row.quoted_total,
-    days: Math.floor((now.getTime() - new Date(row.reviewed_at || row.updated_at).getTime()) / 86_400_000),
+    title: `${row.jobs?.ref ?? ""}-${row.kind === "quote" ? "Q" : "CR"}${row.number} · ${row.jobs?.title ?? ""}`,
+    quoted_total: row.subtotal,
+    days: Math.floor((now.getTime() - new Date(row.sent_at ?? now).getTime()) / 86_400_000),
   }));
 }
 

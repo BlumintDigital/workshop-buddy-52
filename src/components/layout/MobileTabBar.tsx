@@ -3,6 +3,7 @@ import { Menu } from "lucide-react";
 import { useSidebar } from "@/components/ui/sidebar";
 import { useAuth } from "@/hooks/useAuth";
 import { useFeatureFlags } from "@/hooks/useFeatureFlags";
+import { usePermissions } from "@/hooks/usePermissions";
 import { useNavCounts } from "@/hooks/useNavCounts";
 import { isItemActive, tabBarItems } from "@/lib/navigation";
 import { cn } from "@/lib/utils";
@@ -15,12 +16,13 @@ import { cn } from "@/lib/utils";
 export function MobileTabBar() {
   const { role } = useAuth();
   const { flags } = useFeatureFlags();
+  const { has } = usePermissions();
   const counts = useNavCounts();
   const { setOpenMobile, openMobile } = useSidebar();
   const { pathname } = useLocation();
 
   if (!role) return null;
-  const items = tabBarItems(role, flags);
+  const items = tabBarItems(role, flags, has);
   const anyActive = items.some((item) => isItemActive(item, pathname));
 
   const tabClass = (active: boolean) =>

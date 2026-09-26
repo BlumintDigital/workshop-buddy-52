@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { login } from "./helpers/auth";
+import { logProjectAtReception } from "./helpers/projects";
 
 const JOB_TITLE = `E2E manager job ${Date.now()}`;
 
@@ -20,22 +21,10 @@ test.describe("manager role", () => {
     await expect(page.getByText("Demo Staff")).toBeVisible({ timeout: 15_000 });
   });
 
-  test("manager creates a project for the demo client", async ({ page }) => {
+  test("manager logs a project at reception for the demo client", async ({ page }) => {
     await login(page, "MANAGER");
-    await page.goto("/manager/projects");
-
-    await page.getByRole("button", { name: /new project/i }).first().click();
-    const dialog = page.getByRole("dialog");
-    await expect(dialog.getByRole("heading", { name: "New project" })).toBeVisible();
-
-    // Labels have no htmlFor — fill the first textbox (Title) inside the dialog.
-    await dialog.getByRole("textbox").first().fill(JOB_TITLE);
-    // Assign the demo client (second "None" select is Assign Client).
-    await dialog.getByRole("combobox").filter({ hasText: "None" }).last().click();
-    await page.getByRole("option", { name: "Demo Client" }).click({ timeout: 10_000 }).catch(() => {});
-    await dialog.getByRole("button", { name: "Create project" }).click();
-    // Rendered in both desktop and mobile layouts — assert the first.
-    await expect(page.getByText(JOB_TITLE).first()).toBeVisible({ timeout: 15_000 });
+    await logProjectAtReception(page, JOB_TITLE, { client: "Demo Client" });
+    await expect(page.getByText(/EDL-\d{6}-\d{3}/).first()).toBeVisible();
   });
 
   test("manager cannot open admin-only pages", async ({ page }) => {

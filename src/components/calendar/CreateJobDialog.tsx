@@ -8,7 +8,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DatePickerInput } from "@/components/ui/date-picker-input";
-import { FileText } from "lucide-react";
 import { toast } from "sonner";
 
 interface UserOption {
@@ -52,7 +51,7 @@ export default function CreateJobDialog({ open, onOpenChange, defaultDate, onCre
 
   const handleCreate = async () => {
     if (!form.title.trim()) { toast.error("Title is required"); return; }
-    const payload: any = { title: form.title, description: form.description, priority: form.priority, status: form.isQuote ? "quote" : "pending" };
+    const payload: any = { title: form.title, description: form.description, priority: form.priority, status: form.isQuote ? "evaluation" : "pending", intake_type: form.isQuote ? "quote" : "approved" };
     if (form.assigned_staff_id) payload.assigned_staff_id = form.assigned_staff_id;
     if (form.client_id) payload.client_id = form.client_id;
     if (form.due_date) payload.due_date = form.due_date;
@@ -105,12 +104,12 @@ export default function CreateJobDialog({ open, onOpenChange, defaultDate, onCre
           <div className="flex items-center gap-2 pt-1">
             <Checkbox id="calIsQuote" checked={form.isQuote} onCheckedChange={(v) => setForm({ ...form, isQuote: !!v })} />
             <label htmlFor="calIsQuote" className="text-sm cursor-pointer select-none">
-              <span className="font-medium">Save as quote</span>
-              <span className="text-muted-foreground ml-1">— client must approve before work begins</span>
+              <span className="font-medium">Needs a quote first</span>
+              <span className="text-muted-foreground ml-1">The client approves a quote before work starts.</span>
             </label>
           </div>
           <Button onClick={handleCreate} className="w-full">
-            {form.isQuote ? <><FileText className="mr-2 h-4 w-4" />Create quote</> : "Create project"}
+            Create project
           </Button>
         </div>
       </DialogContent>

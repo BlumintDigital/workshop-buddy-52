@@ -458,11 +458,11 @@ export default function InvoiceDetail() {
         </div>
 
 
-        {canManage && sourceRequestId && (
+        {canManage && sourceRequestId && invoice.job_id && (
           <div className="rounded-lg border border-border bg-primary-soft px-4 py-3 text-sm">
-            Originated from a client request.{" "}
-            <Link to={`/admin/requests?focus=${sourceRequestId}`} className="font-medium text-primary hover:underline">
-              View request →
+            Billed for a project that started as a client request.{" "}
+            <Link to={`/projects/${invoice.job_id}`} className="font-medium text-primary hover:underline">
+              View project →
             </Link>
           </div>
         )}

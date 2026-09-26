@@ -1000,48 +1000,78 @@ export type Database = {
       }
       jobs: {
         Row: {
+          accessories: string | null
           actual_hours: number | null
           assigned_staff_id: string | null
           client_id: string | null
+          condition_notes: string | null
+          contact_email: string | null
+          contact_name: string | null
+          contact_phone: string | null
           created_at: string
           description: string | null
           due_date: string | null
           estimated_hours: number | null
           id: string
+          intake_type: string
+          make_model: string | null
           priority: string
+          received_at: string | null
+          received_by: string | null
           ref: string
+          serial_number: string | null
           source_request_id: string | null
           status: string
           title: string
           updated_at: string
         }
         Insert: {
+          accessories?: string | null
           actual_hours?: number | null
           assigned_staff_id?: string | null
           client_id?: string | null
+          condition_notes?: string | null
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
           created_at?: string
           description?: string | null
           due_date?: string | null
           estimated_hours?: number | null
           id?: string
+          intake_type?: string
+          make_model?: string | null
           priority?: string
+          received_at?: string | null
+          received_by?: string | null
           ref?: string
+          serial_number?: string | null
           source_request_id?: string | null
           status?: string
           title: string
           updated_at?: string
         }
         Update: {
+          accessories?: string | null
           actual_hours?: number | null
           assigned_staff_id?: string | null
           client_id?: string | null
+          condition_notes?: string | null
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
           created_at?: string
           description?: string | null
           due_date?: string | null
           estimated_hours?: number | null
           id?: string
+          intake_type?: string
+          make_model?: string | null
           priority?: string
+          received_at?: string | null
+          received_by?: string | null
           ref?: string
+          serial_number?: string | null
           source_request_id?: string | null
           status?: string
           title?: string
@@ -1298,6 +1328,121 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "project_events_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_quote_items: {
+        Row: {
+          description: string
+          id: string
+          position: number
+          quantity: number
+          quote_id: string
+          unit_price: number
+        }
+        Insert: {
+          description: string
+          id?: string
+          position?: number
+          quantity?: number
+          quote_id: string
+          unit_price?: number
+        }
+        Update: {
+          description?: string
+          id?: string
+          position?: number
+          quantity?: number
+          quote_id?: string
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_quote_items_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "project_quotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_quotes: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string
+          created_by: string | null
+          currency: string | null
+          decided_at: string | null
+          decided_by: string | null
+          decision_note: string | null
+          id: string
+          job_id: string
+          kind: string
+          notes: string | null
+          number: number
+          reason: string | null
+          schedule_impact_days: number | null
+          sent_at: string | null
+          status: string
+          subtotal: number
+          title: string
+          updated_at: string
+          valid_until: string | null
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          currency?: string | null
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_note?: string | null
+          id?: string
+          job_id: string
+          kind: string
+          notes?: string | null
+          number?: number
+          reason?: string | null
+          schedule_impact_days?: number | null
+          sent_at?: string | null
+          status?: string
+          subtotal?: number
+          title?: string
+          updated_at?: string
+          valid_until?: string | null
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          currency?: string | null
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_note?: string | null
+          id?: string
+          job_id?: string
+          kind?: string
+          notes?: string | null
+          number?: number
+          reason?: string | null
+          schedule_impact_days?: number | null
+          sent_at?: string | null
+          status?: string
+          subtotal?: number
+          title?: string
+          updated_at?: string
+          valid_until?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_quotes_job_id_fkey"
             columns: ["job_id"]
             isOneToOne: false
             referencedRelation: "jobs"
@@ -1750,6 +1895,7 @@ export type Database = {
         }
         Returns: Database["public"]["Enums"]["app_role"]
       }
+      can_quote: { Args: { _user_id: string }; Returns: boolean }
       can_run_job: { Args: { _user_id: string }; Returns: boolean }
       can_view_job: {
         Args: { _job_id: string; _user_id: string }
@@ -1765,6 +1911,11 @@ export type Database = {
       }
       client_mark_invoice_paid: {
         Args: { _invoice_id: string }
+        Returns: string
+      }
+      create_project: { Args: { _p: Json }; Returns: string }
+      decide_project_quote: {
+        Args: { _accept: boolean; _note?: string; _quote_id: string }
         Returns: string
       }
       decline_client_request: {
@@ -1842,6 +1993,29 @@ export type Database = {
       }
       permission_holders: { Args: { _permission: string }; Returns: string[] }
       permission_keys: { Args: Record<PropertyKey, never>; Returns: string[] }
+      project_quote_label: {
+        Args: { _job_id: string; _kind: string; _number: number }
+        Returns: string
+      }
+      quality_check: {
+        Args: {
+          _job_id: string
+          _note?: string
+          _pass: boolean
+          _rework_task_ids?: string[]
+        }
+        Returns: string
+      }
+      reception_clients: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          company_name: string
+          email: string
+          full_name: string
+          id: string
+          phone: string
+        }[]
+      }
       redeem_signup_code: {
         Args: { _code: string }
         Returns: {
@@ -1849,6 +2023,11 @@ export type Database = {
           valid: boolean
         }[]
       }
+      review_change_request: {
+        Args: { _approve: boolean; _note?: string; _quote_id: string }
+        Returns: string
+      }
+      send_project_quote: { Args: { _quote_id: string }; Returns: string }
       set_feature_flag: {
         Args: { feature_enabled: boolean; feature_key: string }
         Returns: {
@@ -1876,6 +2055,10 @@ export type Database = {
       }
       touch_profile_login: {
         Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      withdraw_project_quote: {
+        Args: { _quote_id: string }
         Returns: undefined
       }
     }

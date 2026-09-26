@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { ChevronDown, ChevronRight, LogOut, Monitor, Moon, Sun, User } from "lucide-react";
 import { useTheme } from "next-themes";
+import { usePermissions } from "@/hooks/usePermissions";
 import { NavLink } from "@/components/NavLink";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -79,6 +80,7 @@ export function AppSidebar() {
   const navigate = useNavigate();
   const { role, profile, signOut } = useAuth();
   const { theme, setTheme } = useTheme();
+  const { has } = usePermissions();
   const { flags } = useFeatureFlags();
   const counts = useNavCounts();
   const [workshopName, setWorkshopName] = useState("Workshop Manager");
@@ -116,7 +118,7 @@ export function AppSidebar() {
   }, []);
 
   const groups: NavGroup[] = NAV_GROUPS[role || "client"]
-    .map((g) => ({ ...g, items: g.items.filter((item) => isItemEnabled(item, flags)) }))
+    .map((g) => ({ ...g, items: g.items.filter((item) => isItemEnabled(item, flags, has)) }))
     .filter((g) => g.items.length > 0);
 
   const toggleGroup = (label: string, open: boolean) => {

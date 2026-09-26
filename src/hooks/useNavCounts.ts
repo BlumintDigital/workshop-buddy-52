@@ -29,18 +29,16 @@ function useLoadNavCounts(): NavCounts {
         ]);
         Object.assign(next, { reviewJobs: review, overdueInvoices: overdue, lowStock });
       } else if (role === "staff") {
+        // Open tasks assigned to me (the work, not the projects).
         const { count } = await supabase
-          .from("jobs")
+          .from("job_tasks")
           .select("id", { count: "exact", head: true })
-          .eq("assigned_staff_id", user.id)
-          .in("status", ["pending", "in_progress"]);
+          .eq("assigned_to", user.id)
+          .neq("status", "completed");
         next.myOpenJobs = count || 0;
       } else if (role === "client") {
-        const { count } = await supabase
-          .from("client_requests")
-          .select("id", { count: "exact", head: true })
-          .eq("client_id", user.id)
-          .eq("status", "quoted");
+        // Quotes and change requests waiting for this client (RLS limits it to their projects).
+        const { count } = await supabase.from("project_quotes").select("id", { count: "exact", head: true }).eq("status", "sent");
         next.quotesToDecide = count || 0;
       }
       if (!cancelled) setCounts(next);

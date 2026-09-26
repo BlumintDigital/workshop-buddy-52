@@ -219,7 +219,8 @@ export default function AdminAppointments() {
       title: jobForm.title,
       description: jobForm.description || null,
       priority: jobForm.priority,
-      status: jobForm.isQuote ? "quote" : "pending",
+      status: jobForm.isQuote ? "evaluation" : "pending",
+      intake_type: jobForm.isQuote ? "quote" : "approved",
       client_id: jobDialogAppt.client_id,
     };
     if (jobForm.assigned_staff_id) jobPayload.assigned_staff_id = jobForm.assigned_staff_id;
@@ -435,8 +436,8 @@ export default function AdminAppointments() {
                 onCheckedChange={(v) => setJobForm({ ...jobForm, isQuote: !!v })}
               />
               <label htmlFor="jobIsQuote" className="text-sm cursor-pointer select-none">
-                <span className="font-medium">Save as quote</span>
-                <span className="text-muted-foreground ml-1">— client must approve before work begins</span>
+                <span className="font-medium">Needs a quote first</span>
+                <span className="text-muted-foreground ml-1">The client approves a quote before work starts.</span>
               </label>
             </div>
             <Button onClick={handleCreateJob} disabled={creatingJob} className="w-full">

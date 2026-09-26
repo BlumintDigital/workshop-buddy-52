@@ -25,6 +25,7 @@ import {
 import type { AppRole } from "@/hooks/useAuth";
 import type { FeatureKey } from "@/hooks/useFeatureFlags";
 import type { NavCountKey } from "@/hooks/useNavCounts";
+import type { Permission } from "@/lib/permissions";
 
 export type NavItem = {
   title: string;
@@ -37,6 +38,8 @@ export type NavItem = {
   count?: NavCountKey;
   /** Match only the exact path (for home screens), not child routes. */
   exact?: boolean;
+  /** Shown only to people who hold this permission (admins hold every one). */
+  permission?: Permission;
 };
 
 export type NavGroup = {
@@ -64,7 +67,7 @@ export const NAV_GROUPS: Record<AppRole, NavGroup[]> = {
       items: [
         TODAY_ADMIN,
         { title: "Projects", url: "/admin/projects", icon: Briefcase, count: "reviewJobs" },
-        { title: "Requests", url: "/admin/requests", icon: Inbox, count: "requests" },
+        { title: "Reception", url: "/reception", icon: Inbox, count: "requests" },
         { title: "Appointments", short: "Bookings", url: "/admin/appointments", icon: Calendar, features: ["appointments"] },
         { title: "Calendar", url: "/admin/calendar", icon: CalendarDays, features: ["appointments"] },
         { title: "Invoices", url: "/admin/invoices", icon: FileText, count: "overdueInvoices" },
@@ -99,7 +102,7 @@ export const NAV_GROUPS: Record<AppRole, NavGroup[]> = {
       items: [
         TODAY_MANAGER,
         { title: "Projects", url: "/manager/projects", icon: Briefcase, count: "reviewJobs" },
-        { title: "Requests", url: "/manager/requests", icon: Inbox, count: "requests" },
+        { title: "Reception", url: "/reception", icon: Inbox, count: "requests" },
         { title: "Appointments", short: "Bookings", url: "/manager/appointments", icon: Calendar, features: ["appointments"] },
         { title: "Calendar", url: "/manager/calendar", icon: CalendarDays, features: ["appointments"] },
         { title: "Invoices", url: "/manager/invoices", icon: FileText, count: "overdueInvoices" },
@@ -116,6 +119,7 @@ export const NAV_GROUPS: Record<AppRole, NavGroup[]> = {
       items: [
         { title: "My day", url: "/staff/dashboard", icon: Home, exact: true },
         { title: "My projects", short: "Projects", url: "/staff/projects", icon: Briefcase, count: "myOpenJobs" },
+        { title: "Reception", url: "/reception", icon: Inbox, count: "requests", permission: "reception" },
         { title: "Schedule", url: "/staff/schedule", icon: Calendar, features: ["appointments"] },
         { title: "Inventory", short: "Stock", url: "/staff/inventory", icon: Package },
         { title: "Goals", url: "/goals", icon: Target, features: ["goals"] },
@@ -127,8 +131,8 @@ export const NAV_GROUPS: Record<AppRole, NavGroup[]> = {
     {
       items: [
         { title: "Your orders", short: "Orders", url: "/client/dashboard", icon: Home, exact: true, features: ["client_portal"] },
-        { title: "Requests", url: "/client/requests", icon: Inbox, count: "quotesToDecide", features: ["client_portal"] },
-        { title: "Projects", url: "/client/projects", icon: Briefcase, features: ["client_portal"] },
+        { title: "Requests", url: "/client/requests", icon: Inbox, features: ["client_portal"] },
+        { title: "Projects", url: "/client/projects", icon: Briefcase, count: "quotesToDecide", features: ["client_portal"] },
         { title: "Appointments", short: "Bookings", url: "/client/appointments", icon: Calendar, features: ["client_portal", "appointments"] },
         { title: "Invoices", url: "/client/invoices", icon: FileText, features: ["client_portal"] },
       ],
@@ -139,14 +143,14 @@ export const NAV_GROUPS: Record<AppRole, NavGroup[]> = {
 
 /** Up to four destinations for the phone tab bar; "More" (the full menu) is always added after them. */
 export const TAB_BAR_URLS: Record<AppRole, string[]> = {
-  admin: ["/admin/dashboard", "/admin/projects", "/admin/requests", "/admin/invoices"],
-  manager: ["/manager/dashboard", "/manager/projects", "/manager/requests", "/manager/invoices"],
+  admin: ["/admin/dashboard", "/admin/projects", "/reception", "/admin/invoices"],
+  manager: ["/manager/dashboard", "/manager/projects", "/reception", "/manager/invoices"],
   staff: ["/staff/dashboard", "/staff/projects", "/staff/schedule", "/staff/inventory"],
   client: ["/client/dashboard", "/client/requests", "/client/invoices", "/client/appointments"],
 };
 
-export function isItemEnabled(item: NavItem, flags: Partial<Record<FeatureKey, boolean>>): boolean {
-  return !item.features || item.features.every((f) => flags[f]);
+export function isItemEnabled(item: NavItem, flags: Partial<Record<FeatureKey, boolean>>, can: (p: Permission) => boolean = () => true): boolean {
+  return (!item.features || item.features.every((f) => flags[f])) && (!item.permission || can(item.permission));
 }
 
 export function isItemActive(item: NavItem, pathname: string): boolean {
@@ -154,9 +158,9 @@ export function isItemActive(item: NavItem, pathname: string): boolean {
   return !item.exact && pathname.startsWith(`${item.url}/`);
 }
 
-export function tabBarItems(role: AppRole, flags: Partial<Record<FeatureKey, boolean>>): NavItem[] {
+export function tabBarItems(role: AppRole, flags: Partial<Record<FeatureKey, boolean>>, can?: (p: Permission) => boolean): NavItem[] {
   const all = NAV_GROUPS[role].flatMap((g) => g.items);
   return TAB_BAR_URLS[role]
     .map((url) => all.find((i) => i.url === url))
-    .filter((i): i is NavItem => !!i && isItemEnabled(i, flags));
+    .filter((i): i is NavItem => !!i && isItemEnabled(i, flags, can));
 }

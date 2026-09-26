@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { CheckCircle2, Star, XCircle } from "lucide-react";
+import { Star } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -12,12 +12,14 @@ import { JobStatusPill, StatusPill } from "@/components/dashboard/StatusPill";
 import StageTracker from "@/components/project/StageTracker";
 import ProjectFiles from "@/components/project/ProjectFiles";
 import ProjectConversation from "@/components/project/ProjectConversation";
+import ClientQuotes from "@/components/project/ClientQuotes";
+import IntakeDetails, { type IntakeFields } from "@/components/project/IntakeDetails";
 import { CLIENT_STAGES } from "@/lib/projects";
 import { clientFriendlyInvoiceStatus } from "@/lib/invoiceStatus";
 import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
-export interface ClientProject {
+export interface ClientProject extends IntakeFields {
   id: string;
   ref: string;
   title: string;
@@ -66,15 +68,10 @@ export default function ClientProjectView({ project, onStatusChange }: { project
     })();
   }, [project.id, project.created_at, project.status]);
 
-  const decideQuote = async (approve: boolean) => {
-    const next = approve ? "pending" : "cancelled";
-    const { error } = await supabase.from("jobs").update({ status: next }).eq("id", project.id);
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
-    onStatusChange(next);
-    toast.success(approve ? "Quote approved. The workshop will start planning the work." : "Quote declined");
+  // Accepting a quote moves the project on; fetch the new stage for the tracker.
+  const refreshStatus = async () => {
+    const { data } = await supabase.from("jobs").select("status").eq("id", project.id).single();
+    if (data) onStatusChange(data.status);
   };
 
   return (
@@ -98,30 +95,12 @@ export default function ClientProjectView({ project, onStatusChange }: { project
         </CardContent>
       </Card>
 
-      {project.status === "quote" && (
-        <Card className="border-warning/40 bg-warning-soft">
-          <CardContent className="flex flex-wrap items-center justify-between gap-4 pt-5">
-            <div>
-              <p className="font-semibold">Your quote is ready</p>
-              <p className="text-sm text-muted-foreground">Approve it and the workshop starts planning the work.</p>
-            </div>
-            <div className="flex shrink-0 gap-2">
-              <Button variant="outline" onClick={() => void decideQuote(false)}>
-                <XCircle className="mr-1.5 h-4 w-4 text-destructive" aria-hidden />
-                Decline
-              </Button>
-              <Button onClick={() => void decideQuote(true)}>
-                <CheckCircle2 className="mr-1.5 h-4 w-4" aria-hidden />
-                Approve quote
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      <ClientQuotes project={project} onDecided={() => void refreshStatus()} />
 
       <div className="grid items-start gap-6 lg:grid-cols-5">
         <div className="space-y-6 lg:col-span-3">
           <ProjectConversation project={project} />
+          <IntakeDetails project={project} forClient />
         </div>
         <div className="space-y-6 lg:col-span-2">
           {invoices.length > 0 && (
