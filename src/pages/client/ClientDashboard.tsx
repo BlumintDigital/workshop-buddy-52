@@ -34,7 +34,7 @@ type Quote = {
   quote_expires_at: string | null;
   updated_at: string;
 };
-type Order = { id: string; title: string; status: string; due_date: string | null; updated_at: string };
+type Order = { id: string; ref: string; title: string; status: string; due_date: string | null; updated_at: string };
 type Invoice = {
   id: string;
   invoice_number: string | null;
@@ -113,7 +113,7 @@ export default function ClientDashboard() {
         .order("updated_at", { ascending: true }),
       supabase
         .from("jobs")
-        .select("id, title, status, due_date, updated_at")
+        .select("id, ref, title, status, due_date, updated_at")
         .eq("client_id", user.id)
         .or(`status.in.(pending,in_progress,review),and(status.eq.completed,updated_at.gte.${recent})`)
         .order("due_date", { ascending: true, nullsFirst: false }),
@@ -211,7 +211,7 @@ export default function ClientDashboard() {
             <h2 className="mt-2 font-sans text-lg font-semibold">Nothing in progress</h2>
             <p className="mt-1 text-sm text-muted-foreground">Send the workshop a request and you'll see the quote, progress and invoices here.</p>
             <Button asChild className="mt-4">
-              <Link to="/client/requests">Request a quote or job</Link>
+              <Link to="/client/requests">Request a quote or repair</Link>
             </Button>
           </section>
         ) : (
@@ -247,13 +247,13 @@ export default function ClientDashboard() {
             })}
 
             {orders.length > 0 && (
-              <Panel title="In progress" link={{ label: "All jobs", to: "/client/jobs" }}>
+              <Panel title="In progress" link={{ label: "All projects", to: "/client/projects" }}>
                 <ul className="divide-y">
                   {orders.map((o) => (
                     <li key={o.id}>
-                      <Link to={`/jobs/${o.id}`} className="block space-y-2.5 px-4 py-3.5 hover:bg-secondary/60">
+                      <Link to={`/projects/${o.id}`} className="block space-y-2.5 px-4 py-3.5 hover:bg-secondary/60">
                         <div className="flex items-start justify-between gap-3">
-                          <span className="min-w-0 text-sm font-semibold">{o.title}</span>
+                          <span className="min-w-0 text-sm font-semibold"><span className="block font-mono text-xs font-normal text-muted-foreground">{o.ref}</span>{o.title}</span>
                           <StatusPill tone={o.status === "completed" ? "success" : "info"}>{ORDER_LABEL[o.status] ?? o.status}</StatusPill>
                         </div>
                         <StepTracker steps={ORDER_STEPS} current={ORDER_STEP[o.status] ?? 0} />

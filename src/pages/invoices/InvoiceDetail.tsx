@@ -24,6 +24,9 @@ import { sendEmail, invoiceSentEmailHtml } from "@/lib/email";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useCurrency } from "@/hooks/useCurrency";
 import InvoicePdfVersions from "@/components/invoices/InvoicePdfVersions";
+import { DiscountField } from "@/components/invoices/DiscountField";
+import { discountColumns, discountLabel, invoiceTotals, type InvoiceDiscount } from "@/lib/invoiceTotals";
+import { useBreadcrumbLabel } from "@/lib/breadcrumbs";
 import { useWorkshopDetails } from "@/hooks/useWorkshopDetails";
 
 const statusColors: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
@@ -45,6 +48,7 @@ export default function InvoiceDetail() {
   const { workshop } = useWorkshopDetails();
 
   const [invoice, setInvoice] = useState<any>(null);
+  useBreadcrumbLabel(`/invoices/${id}`, invoice?.invoice_number);
   const [clientName, setClientName] = useState("—");
   const [items, setItems] = useState<LineItem[]>([]);
   // Snapshot of last loaded/saved editable fields — used to warn about unsaved edits.
@@ -64,6 +68,9 @@ export default function InvoiceDetail() {
     JSON.stringify({
       due_date: inv?.due_date ?? null,
       tax_rate: inv?.tax_rate ?? 0,
+      discount_type: inv?.discount_type ?? null,
+      discount_value: Number(inv?.discount_value ?? 0),
+      discount_reason: inv?.discount_reason ?? null,
       notes: inv?.notes ?? null,
       stripe_payment_url: inv?.stripe_payment_url ?? null,
       payment_instructions: inv?.payment_instructions ?? null,
@@ -116,9 +123,15 @@ export default function InvoiceDetail() {
     load();
   }, [id]);
 
-  const subtotal = items.reduce((sum, i) => sum + i.quantity * i.unit_price, 0);
-  const taxAmount = subtotal * ((invoice?.tax_rate ?? 0) / 100);
-  const total = subtotal + taxAmount;
+  const discount: InvoiceDiscount = {
+    type: invoice?.discount_type ?? null,
+    value: Number(invoice?.discount_value ?? 0),
+    reason: invoice?.discount_reason ?? "",
+  };
+  const lineTotal = items.reduce((sum, i) => sum + i.quantity * i.unit_price, 0);
+  const { subtotal, discountAmount, taxAmount, total } = invoiceTotals(lineTotal, invoice?.tax_rate ?? 0, discount);
+  const setDiscount = (d: InvoiceDiscount) =>
+    setInvoice({ ...invoice, discount_type: d.type, discount_value: d.type ? d.value : 0, discount_reason: d.reason ?? null });
 
   const addItem = () => setItems([...items, { description: "", quantity: 1, unit_price: 0 }]);
   const removeItem = (idx: number) => setItems(items.filter((_, i) => i !== idx));
@@ -128,12 +141,16 @@ export default function InvoiceDetail() {
   const handleSave = async () => {
     if (!invoice) return;
     if (items.every((i) => !i.description.trim())) { toast.error("Add at least one line item"); return; }
+    if (discount.type === "percent" && discount.value > 100) { toast.error("A percentage discount can't be more than 100%"); return; }
     setSaving(true);
 
+    const discountCols = discountColumns(subtotal, discount);
     const { error: invError } = await supabase.from("invoices").update({
       subtotal,
+      tax_rate: invoice.tax_rate ?? 0,
       tax_amount: taxAmount,
       total,
+      ...discountCols,
       due_date: invoice.due_date || null,
       notes: invoice.notes || null,
       stripe_payment_url: invoice.stripe_payment_url || null,
@@ -162,7 +179,7 @@ export default function InvoiceDetail() {
 
     toast.success("Invoice saved");
     setSaving(false);
-    setInvoice({ ...invoice, subtotal, tax_amount: taxAmount, total });
+    setInvoice({ ...invoice, subtotal, tax_amount: taxAmount, total, ...discountCols });
     setSavedSnapshot(editableSnapshot(invoice, items));
   };
 
@@ -659,7 +676,17 @@ export default function InvoiceDetail() {
         {/* Totals */}
         <Card>
           <CardContent className="pt-6 space-y-2">
+            {canEdit && <DiscountField value={discount} onChange={setDiscount} currency={invoice.currency} />}
             <div className="flex justify-between text-sm"><span>Subtotal</span><span>{fmt(subtotal, invoice.currency)}</span></div>
+            {discountAmount > 0 && (
+              <div className="flex justify-between text-sm text-success">
+                <span>
+                  {discountLabel(discount)}
+                  {discount.reason && !canEdit && <span className="block text-xs text-muted-foreground">{discount.reason}</span>}
+                </span>
+                <span>−{fmt(discountAmount, invoice.currency)}</span>
+              </div>
+            )}
             <div className="flex justify-between text-sm"><span>Tax ({invoice.tax_rate ?? 0}%)</span><span>{fmt(taxAmount, invoice.currency)}</span></div>
             <div className="flex justify-between font-bold text-lg border-t pt-2"><span>Total</span><span>{fmt(total, invoice.currency)}</span></div>
             {invoice.currency && invoice.fx_rate && Number(invoice.fx_rate) !== 1 && (

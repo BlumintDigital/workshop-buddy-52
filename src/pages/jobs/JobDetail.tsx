@@ -15,25 +15,27 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
-  ArrowLeft, CalendarDays, Clock, History, Pencil, Plus, Trash2, CheckSquare,
-  FileUp, FileText, Download, MessageSquare, Paperclip, Package, Star,
-  CheckCircle2, XCircle, Send,
+  ArrowLeft, CalendarDays, Clock, Pencil, Plus, Trash2, CheckSquare,
+  FileUp, FileText, Download, MessageSquare, Paperclip, Package, Send,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DatePickerInput } from "@/components/ui/date-picker-input";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { sendNotifications } from "@/lib/notifications";
-import { notifyJobParticipants, notifyJobStatusChange } from "@/lib/jobNotifications";
-import { sendEmail, jobStatusEmailHtml } from "@/lib/email";
-import { FeatureGate } from "@/hooks/useFeatureFlags";
-import JobComments from "@/components/jobs/JobComments";
+import { notifyJobStatusChange } from "@/lib/jobNotifications";
+import ProjectConversation from "@/components/project/ProjectConversation";
+import ProjectActivity from "@/components/project/ProjectActivity";
+import ProjectFiles from "@/components/project/ProjectFiles";
+import ClientProjectView from "@/components/project/ClientProjectView";
+import { JobStatusPill } from "@/components/dashboard/StatusPill";
+import { projectPath, projectsListPath, projectStatusLabel } from "@/lib/projects";
+import { useBreadcrumbLabel } from "@/lib/breadcrumbs";
 import { generateJobReport } from "@/lib/jobReportPdf";
 import { useCurrency } from "@/hooks/useCurrency";
 
-const statusColors: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
-  quote: "secondary", pending: "outline", in_progress: "secondary", review: "default", completed: "default", cancelled: "destructive",
-};
+// Statuses a team member can set by hand on this page.
+const EDITABLE_STATUSES = ["quote", "pending", "in_progress", "review", "completed", "cancelled"];
 
 const taskStatusColors: Record<string, "default" | "secondary" | "outline"> = {
   pending: "outline", in_progress: "secondary", completed: "default",
@@ -57,7 +59,6 @@ export default function JobDetail() {
   const navigate = useNavigate();
 
   const [job, setJob] = useState<any>(null);
-  const [updates, setUpdates] = useState<any[]>([]);
   const [staffName, setStaffName] = useState("—");
   const [clientName, setClientName] = useState("—");
   const [staffUsers, setStaffUsers] = useState<UserOption[]>([]);
@@ -82,13 +83,10 @@ export default function JobDetail() {
   const [addingNote, setAddingNote] = useState(false);
   const [taskAttachments, setTaskAttachments] = useState<any[]>([]);
 
-  // Job-level attachments
-  const [jobAttachments, setJobAttachments] = useState<any[]>([]);
-  const [uploadingJob, setUploadingJob] = useState(false);
+  // Task attachments
   const [uploadingTask, setUploadingTask] = useState(false);
   const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
   const [generatingReport, setGeneratingReport] = useState(false);
-  const jobFileInputRef = useRef<HTMLInputElement>(null);
   const taskFileInputRef = useRef<HTMLInputElement>(null);
 
   // Materials used
@@ -98,27 +96,15 @@ export default function JobDetail() {
   const [matForm, setMatForm] = useState({ item_id: "", quantity: "1", notes: "" });
   const [addingMat, setAddingMat] = useState(false);
 
-  // Satisfaction rating (clients only)
-  const [existingRating, setExistingRating] = useState<any | null>(null);
-  const [ratingValue, setRatingValue] = useState(0);
-  const [ratingComment, setRatingComment] = useState("");
-  const [submittingRating, setSubmittingRating] = useState(false);
 
   // Edit job
   const [editOpen, setEditOpen] = useState(false);
   const [editForm, setEditForm] = useState<any>({});
 
-  // Add update
-  const [newNote, setNewNote] = useState("");
-  const [newStatus, setNewStatus] = useState("none");
-  const [submitting, setSubmitting] = useState(false);
 
   // Actual hours
   const [actualHoursInput, setActualHoursInput] = useState("");
 
-  // Assignment / progress timeline
-  const [jobLogs, setJobLogs] = useState<any[]>([]);
-  const [staffNameMap, setStaffNameMap] = useState<Record<string, string>>({});
 
   const canEdit = role === "admin" || role === "manager";
   const canAddUpdate = role === "admin" || role === "manager" || role === "staff";
@@ -126,14 +112,10 @@ export default function JobDetail() {
   useEffect(() => {
     if (!id) return;
     const load = async () => {
-      const [{ data: jobData }, { data: upd }] = await Promise.all([
-        supabase.from("jobs").select("*").eq("id", id).single(),
-        supabase.from("job_updates").select("*").eq("job_id", id).order("created_at", { ascending: false }),
-      ]);
+      const { data: jobData } = await supabase.from("jobs").select("*").eq("id", id).single();
       if (!jobData) return;
       setJob(jobData);
       setActualHoursInput(jobData.actual_hours?.toString() ?? "");
-      setUpdates(upd || []);
 
       const ids = [jobData.assigned_staff_id, jobData.client_id].filter((v): v is string => !!v);
       if (ids.length) {
@@ -145,13 +127,13 @@ export default function JobDetail() {
       }
     };
     load();
+    if (role === "client") return;
     fetchTasks();
     fetchUsers();
-    fetchJobAttachments();
     fetchMaterials();
-    if (role === "client") fetchRating();
-    if (role === "admin" || role === "manager") fetchJobLogs();
-  }, [id]);
+  }, [id, role]);
+
+  useBreadcrumbLabel(projectPath(id ?? ""), job?.ref);
 
   // Mark any unread notifications that link to this job as read
   useEffect(() => {
@@ -161,7 +143,7 @@ export default function JobDetail() {
       .update({ read: true })
       .eq("user_id", user.id)
       .eq("read", false)
-      .eq("link", `/jobs/${id}`);
+      .in("link", [`/jobs/${id}`, projectPath(id)]);
   }, [id, user?.id]);
 
   // Real-time job status updates
@@ -199,13 +181,6 @@ export default function JobDetail() {
     setTasks(data.map(t => ({ ...t, assignee_name: t.assigned_to ? nameMap[t.assigned_to] || "Unknown" : null })));
   };
 
-  const fetchJobAttachments = async () => {
-    const { data } = await (supabase.from as any)("job_attachments")
-      .select("*").eq("job_id", id!).is("task_id", null).order("created_at", { ascending: false });
-    const list = data || [];
-    setJobAttachments(list);
-    if (list.length > 0) generateSignedUrls(list);
-  };
 
   const fetchTaskDetails = async (taskId: string) => {
     const [{ data: notes }, { data: files }] = await Promise.all([
@@ -239,41 +214,7 @@ export default function JobDetail() {
     setInventoryItems(data || []);
   };
 
-  const fetchRating = async () => {
-    if (!user) return;
-    const { data } = await (supabase.from as any)("job_ratings").select("*").eq("job_id", id!).eq("client_id", user.id).maybeSingle();
-    if (data) { setExistingRating(data); setRatingValue(data.rating); setRatingComment(data.comment || ""); }
-  };
 
-  const fetchJobLogs = async () => {
-    const { data: logs } = await supabase
-      .from("activity_logs")
-      .select("id, action, created_at, details")
-      .eq("table_name", "jobs")
-      .eq("record_id", id!)
-      .order("created_at", { ascending: true });
-    const logList = logs ?? [];
-    setJobLogs(logList);
-
-    // Resolve staff names from UUIDs stored in staff_assignment log details
-    const staffIds = new Set<string>();
-    for (const log of logList) {
-      const sa = (log.details as any)?.staff_assignment;
-      if (sa?.from) staffIds.add(sa.from);
-      if (sa?.to) staffIds.add(sa.to);
-    }
-    if (staffIds.size > 0) {
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("id, full_name")
-        .in("id", [...staffIds]);
-      if (profiles) {
-        const map: Record<string, string> = {};
-        profiles.forEach(p => { map[p.id] = p.full_name || "Unknown"; });
-        setStaffNameMap(prev => ({ ...prev, ...map }));
-      }
-    }
-  };
 
   // Storage helpers
   const generateSignedUrls = async (attachments: any[]) => {
@@ -289,23 +230,6 @@ export default function JobDetail() {
   const getFileUrl = (path: string) => signedUrls[path] || "";
   const isImage = (type: string) => type.startsWith("image/");
 
-  const handleUploadJobFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploadingJob(true);
-    const ext = file.name.split(".").pop();
-    const path = `${id}/job/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-    const { error: uploadErr } = await supabase.storage.from("job-attachments").upload(path, file);
-    if (uploadErr) { toast.error(uploadErr.message); setUploadingJob(false); return; }
-    await (supabase.from as any)("job_attachments").insert({
-      job_id: id!, task_id: null, uploaded_by: user!.id,
-      file_name: file.name, file_path: path, file_type: file.type, file_size: file.size,
-    });
-    toast.success("File uploaded");
-    setUploadingJob(false);
-    fetchJobAttachments();
-    e.target.value = "";
-  };
 
   const handleUploadTaskFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -329,7 +253,6 @@ export default function JobDetail() {
     await supabase.storage.from("job-attachments").remove([filePath]);
     await (supabase.from as any)("job_attachments").delete().eq("id", attachmentId);
     if (isTaskLevel && viewTask) fetchTaskDetails(viewTask.id);
-    else fetchJobAttachments();
     toast.success("File removed");
   };
 
@@ -367,42 +290,14 @@ export default function JobDetail() {
     fetchInventoryItems();
   };
 
-  const handleSubmitRating = async () => {
-    if (!user || ratingValue === 0) return;
-    setSubmittingRating(true);
-    const { error } = await (supabase.from as any)("job_ratings").insert({
-      job_id: id!, client_id: user.id, rating: ratingValue, comment: ratingComment || null,
-    });
-    setSubmittingRating(false);
-    if (error) { toast.error(error.message); return; }
-    fetchRating();
-    toast.success("Thank you for your feedback!");
-  };
 
-  const handleQuoteAction = async (newJobStatus: "pending" | "cancelled") => {
-    if (!job) return;
-    const { error } = await supabase.from("jobs").update({ status: newJobStatus }).eq("id", job.id);
-    if (error) { toast.error(error.message); return; }
-    setJob({ ...job, status: newJobStatus });
-    toast.success(newJobStatus === "pending" ? "Quote approved — work order is now active" : "Quote declined");
-    if (job.client_id) {
-      sendEmail({
-        to_user_id: job.client_id,
-        subject: `Quote update: ${job.title}`,
-        html: jobStatusEmailHtml(job.title, newJobStatus, `${window.location.origin}/jobs/${job.id}`),
-      }).catch(() => {});
-    }
-  };
-
-  const sendJobNotifications = (jobData: any, message: string) => notifyJobParticipants(jobData, message, user?.id);
 
   const handleStatusChange = async (status: string) => {
     if (!job) return;
     const { error } = await supabase.from("jobs").update({ status }).eq("id", job.id);
     if (error) { toast.error(error.message); return; }
     setJob({ ...job, status });
-    toast.success("Status updated");
-    if (canEdit) fetchJobLogs();
+    toast.success(`Status changed to ${projectStatusLabel(status)}`);
     notifyJobStatusChange(job, status, user?.id);
   };
 
@@ -416,20 +311,6 @@ export default function JobDetail() {
     toast.success("Hours saved");
   };
 
-  const handleAddUpdate = async () => {
-    if (!job || (!newNote.trim() && newStatus === "none")) return;
-    setSubmitting(true);
-    const payload: any = { job_id: job.id, user_id: user!.id };
-    if (newNote.trim()) payload.notes = newNote.trim();
-    if (newStatus !== "none") payload.status = newStatus;
-    const { data, error } = await supabase.from("job_updates").insert(payload).select().single();
-    setSubmitting(false);
-    if (error) { toast.error(error.message); return; }
-    setUpdates([data, ...updates]);
-    setNewNote(""); setNewStatus("none");
-    toast.success("Update added");
-    sendJobNotifications(job, `New update on ${job.title}`);
-  };
 
   const handleOpenEdit = () => {
     if (!job) return;
@@ -461,8 +342,7 @@ export default function JobDetail() {
     };
     const { error } = await supabase.from("jobs").update(payload).eq("id", job.id);
     if (error) { toast.error(error.message); return; }
-    setJob({ ...job, ...payload }); setEditOpen(false); toast.success("Job updated");
-    if (canEdit) fetchJobLogs();
+    setJob({ ...job, ...payload }); setEditOpen(false); toast.success("Project updated");
   };
 
   const handleOpenAddTask = () => { setEditingTask(null); setTaskForm({ ...emptyTaskForm }); setTaskPendingFiles([]); setTaskOpen(true); };
@@ -522,8 +402,8 @@ export default function JobDetail() {
         await sendNotifications([{
           user_id: nextTask.assigned_to,
           title: "Your task is ready to start",
-          message: `"${completedTask?.title}" is done. Your task "${nextTask.title}" on job "${job?.title}" is next.`,
-          link: `/jobs/${id}`,
+          message: `"${completedTask?.title}" is done. Your task "${nextTask.title}" on ${job?.ref} is next.`,
+          link: projectPath(id!),
         }]);
       }
     }
@@ -576,8 +456,8 @@ export default function JobDetail() {
     await sendNotifications([{
       user_id: handoffAssignee,
       title: "Task handed off to you",
-      message: `${user.email?.split("@")[0] ?? "A team member"} completed "${handoffTask.title}" and handed it off on job "${job.title}".`,
-      link: `/jobs/${id}`,
+      message: `${user.email?.split("@")[0] ?? "A team member"} completed "${handoffTask.title}" and handed it off on ${job.ref}.`,
+      link: projectPath(id!),
     }]);
 
     const updatedTask = {
@@ -607,7 +487,7 @@ export default function JobDetail() {
   if (!job) return (
     <DashboardLayout>
       <div className="space-y-6 max-w-6xl" aria-busy="true">
-        <h1 className="sr-only">Loading job…</h1>
+        <h1 className="sr-only">Loading project…</h1>
         <Skeleton className="h-8 w-28" />
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-2">
@@ -623,7 +503,16 @@ export default function JobDetail() {
     </DashboardLayout>
   );
 
-  const backPath = role ? `/${role}/jobs` : "/";
+  if (role === "client") {
+    return (
+      <DashboardLayout>
+        <ClientProjectView project={job} onStatusChange={(status) => setJob({ ...job, status })} />
+      </DashboardLayout>
+    );
+  }
+
+  const backPath = projectsListPath(role);
+  const canUploadIntake = canEdit || job.assigned_staff_id === user?.id;
   const hoursProgress = job.estimated_hours && job.actual_hours
     ? Math.min(100, (parseFloat(job.actual_hours) / parseFloat(job.estimated_hours)) * 100) : null;
   const completedTasks = tasks.filter(t => t.status === "completed").length;
@@ -632,76 +521,21 @@ export default function JobDetail() {
   const taskProgress = tasks.length > 0 ? Math.round((completedTasks / tasks.length) * 100) : null;
   const matTotal = materials.reduce((sum, m) => sum + m.quantity * Number((m as any).inventory_items?.unit_cost || 0), 0);
 
-  const fmtDuration = (ms: number): string => {
-    const totalMins = Math.floor(ms / 60000);
-    if (totalMins < 1) return "<1m";
-    if (totalMins < 60) return `${totalMins}m`;
-    const h = Math.floor(totalMins / 60);
-    const d = Math.floor(h / 24);
-    const rh = h % 24;
-    const rm = totalMins % 60;
-    if (d > 0) return rh > 0 ? `${d}d ${rh}h` : `${d}d`;
-    return rm > 0 ? `${h}h ${rm}m` : `${h}h`;
-  };
-
-  type TLEvent = {
-    key: string;
-    type: "created" | "assigned" | "reassigned" | "unassigned" | "status";
-    at: Date;
-    label: string;
-    sub?: string;
-  };
-
-  const timeline = (() => {
-    const events: TLEvent[] = [];
-    events.push({ key: "created", type: "created", at: new Date(job.created_at), label: "Job created" });
-
-    const hasAssignmentLog = jobLogs.some(l => (l.details as any)?.staff_assignment);
-
-    for (const log of jobLogs) {
-      const det = log.details as any;
-      if (det?.status_change) {
-        const parts = (det.status_change as string).split(" → ");
-        events.push({
-          key: log.id + "-status",
-          type: "status",
-          at: new Date(log.created_at),
-          label: "Status changed",
-          sub: `${parts[0] ?? ""} → ${parts[1] ?? ""}`,
-        });
-      }
-      if (det?.staff_assignment) {
-        const { from, to } = det.staff_assignment as { from: string; to: string };
-        const fromName = from ? (staffNameMap[from] || staffName || "Unknown") : null;
-        const toName = to ? (staffNameMap[to] || staffName || "Unknown") : null;
-        if (!from && to) {
-          events.push({ key: log.id + "-assign", type: "assigned", at: new Date(log.created_at), label: `Assigned to ${toName}` });
-        } else if (from && !to) {
-          events.push({ key: log.id + "-unassign", type: "unassigned", at: new Date(log.created_at), label: "Unassigned", sub: `was ${fromName}` });
-        } else if (from && to) {
-          events.push({ key: log.id + "-reassign", type: "reassigned", at: new Date(log.created_at), label: `Reassigned to ${toName}`, sub: `from ${fromName}` });
-        }
-      }
-    }
-
-    if (!hasAssignmentLog && job.assigned_staff_id) {
-      events.push({ key: "assigned-initial", type: "assigned", at: new Date(job.created_at), label: `Assigned to ${staffName}` });
-    }
-
-    return events.sort((a, b) => a.at.getTime() - b.at.getTime());
-  })();
-
   return (
     <DashboardLayout>
       <div className="space-y-6 max-w-6xl">
         <Button variant="ghost" size="sm" onClick={() => navigate(backPath)}>
-          <ArrowLeft className="mr-2 h-4 w-4" />Back to Jobs
+          <ArrowLeft className="mr-2 h-4 w-4" />Back to projects
         </Button>
 
-        <div className="flex items-start justify-between gap-4">
-          <div>
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0 space-y-1.5">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="rounded bg-primary-soft px-2 py-0.5 font-mono text-sm font-medium text-primary">{job.ref}</span>
+              <JobStatusPill status={job.status} />
+            </div>
             <h1 className="text-2xl font-semibold tracking-tight">{job.title}</h1>
-            <p className="text-sm text-muted-foreground">{job.description || "No description"}</p>
+            <p className="max-w-prose whitespace-pre-line text-sm text-muted-foreground">{job.description || "No description"}</p>
           </div>
           {canEdit && (
             <div className="flex gap-2 shrink-0 flex-wrap">
@@ -710,48 +544,25 @@ export default function JobDetail() {
                 await generateJobReport(job.id);
                 setGeneratingReport(false);
               }}>
-                <Download className="mr-2 h-3 w-3" />{generatingReport ? "Generating..." : "Report"}
+                <Download className="mr-2 h-3 w-3" />{generatingReport ? "Generating…" : "Project report"}
               </Button>
               <Button variant="outline" size="sm" onClick={handleOpenEdit}>
                 <Pencil className="mr-2 h-3 w-3" />Edit
               </Button>
-              <Link to={`/invoices/new?jobId=${job.id}`}>
-                <Button variant="outline" size="sm">Create Invoice</Button>
-              </Link>
+              <Button variant="outline" size="sm" asChild>
+                <Link to={`/invoices/new?jobId=${job.id}`}>Create invoice</Link>
+              </Button>
             </div>
           )}
         </div>
 
         {job.source_request_id && (role === "admin" || role === "manager") && (
           <div className="rounded-md border border-border bg-primary-soft px-4 py-2 text-sm flex items-center justify-between gap-3 flex-wrap">
-            <span className="text-foreground/80">This job was created from an approved client request.</span>
+            <span className="text-foreground/80">This project started as a client request.</span>
             <Link to={`/admin/requests?focus=${job.source_request_id}`} className="text-primary font-medium hover:underline">
               View request →
             </Link>
           </div>
-        )}
-
-
-
-
-        {/* Quote approval banner — clients only */}
-        {role === "client" && job.status === "quote" && (
-          <Card className="border-warning/40 bg-warning-soft">
-            <CardContent className="pt-5 flex items-center justify-between gap-4 flex-wrap">
-              <div>
-                <p className="font-semibold">Quote pending your approval</p>
-                <p className="text-sm text-muted-foreground">Review the details below and approve or decline.</p>
-              </div>
-              <div className="flex gap-2 shrink-0">
-                <Button variant="outline" onClick={() => handleQuoteAction("cancelled")}>
-                  <XCircle className="mr-1.5 h-4 w-4 text-destructive" />Decline
-                </Button>
-                <Button onClick={() => handleQuoteAction("pending")}>
-                  <CheckCircle2 className="mr-1.5 h-4 w-4" />Approve Quote
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
         )}
 
         {/* ── 2-column grid: left = main content, right = sidebar ── */}
@@ -767,13 +578,13 @@ export default function JobDetail() {
                 <Select value={job.status} onValueChange={handleStatusChange}>
                   <SelectTrigger id="f-status" className="mt-1"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {["quote", "pending", "in_progress", "review", "completed", "cancelled"].map((s) => (
-                      <SelectItem key={s} value={s}>{s.replace("_", " ")}</SelectItem>
+                    {EDITABLE_STATUSES.map((s) => (
+                      <SelectItem key={s} value={s}>{projectStatusLabel(s)}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               ) : (
-                <Badge variant={statusColors[job.status]} className="mt-1">{job.status.replace("_", " ")}</Badge>
+                <div className="mt-1"><JobStatusPill status={job.status} /></div>
               )}
             </div>
             <div>
@@ -781,7 +592,7 @@ export default function JobDetail() {
               <p className="capitalize mt-1 text-sm font-medium">{job.priority}</p>
             </div>
             <div>
-              <Label className="text-xs text-muted-foreground">Staff</Label>
+              <Label className="text-xs text-muted-foreground">Lead technician</Label>
               <p className="mt-1 text-sm">{staffName}</p>
             </div>
             <div>
@@ -840,7 +651,7 @@ export default function JobDetail() {
               {tasks.length > 0 && (
                 <p className="text-sm text-muted-foreground mt-0.5">
                   {completedTasks} of {tasks.length} completed{taskProgress !== null && ` · ${taskProgress}%`}
-                  {totalJobValue > 0 && role !== "client" && (
+                  {totalJobValue > 0 && (
                     <span className="ml-2 font-medium text-foreground">{fmt(completedJobValue)} / {fmt(totalJobValue)}</span>
                   )}
                 </p>
@@ -855,7 +666,7 @@ export default function JobDetail() {
           <CardContent>
             {tasks.length === 0 ? (
               <p className="text-sm text-muted-foreground py-2">
-                No tasks yet.{canEdit && " Break this job into specific tasks and assign them to staff."}
+                No tasks yet.{canEdit && " Break the project into tasks and assign them to your team."}
               </p>
             ) : (
               <>
@@ -900,7 +711,7 @@ export default function JobDetail() {
                                 <CalendarDays className="h-3 w-3" />Due {task.due_date}
                               </p>
                             )}
-                            {parseFloat(task.value) > 0 && role !== "client" && (
+                            {parseFloat(task.value) > 0 && (
                               <Badge variant="outline" className="text-xs font-mono">{fmt(parseFloat(task.value))}</Badge>
                             )}
                           </div>
@@ -984,210 +795,40 @@ export default function JobDetail() {
           </CardContent>
         </Card>
 
-        {/* Add Update */}
-        {canAddUpdate && (
-          <Card>
-            <CardHeader><CardTitle className="text-lg">Add Update</CardTitle></CardHeader>
-            <CardContent className="space-y-3">
-              <Textarea aria-label="Progress update" placeholder="Add a note or progress update..." value={newNote}
-                onChange={(e) => setNewNote(e.target.value)} rows={3} />
-              <div className="flex items-center gap-3 flex-wrap">
-                <Select value={newStatus} onValueChange={setNewStatus}>
-                  <SelectTrigger className="w-44" aria-label="Change job status with this update (optional)">
-                    <SelectValue placeholder="Status change (optional)" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">No status change</SelectItem>
-                    {["pending", "in_progress", "review", "completed", "cancelled"].map((s) => (
-                      <SelectItem key={s} value={s}>{s.replace("_", " ")}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Button onClick={handleAddUpdate} disabled={submitting || (!newNote.trim() && newStatus === "none")} size="sm">
-                  {submitting ? "Saving..." : "Add Update"}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Comments — real-time thread for all parties; internal notes hidden from clients */}
-        <FeatureGate feature="job_chat">
-          {id && <JobComments jobId={id} jobTitle={job?.title} />}
-        </FeatureGate>
+        <ProjectConversation
+          project={job}
+          clientName={clientName !== "—" ? clientName : undefined}
+          teamIds={tasks.map((t) => t.assigned_to).filter(Boolean)}
+        />
 
         </div>{/* end left column */}
 
         {/* ── Right sidebar ── */}
         <div className="space-y-6">
 
-        {/* Assignment & Progress Timeline */}
-        {canEdit && (
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <History className="h-4 w-4" />Assignment Timeline
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {timeline.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No history yet.</p>
-              ) : (
-                <div>
-                  {timeline.map((event, idx) => {
-                    const prevAt = idx > 0 ? timeline[idx - 1].at : null;
-                    const duration = prevAt ? event.at.getTime() - prevAt.getTime() : null;
-                    const isLast = idx === timeline.length - 1;
-                    const dotColor =
-                      event.type === "created" ? "border-muted-foreground bg-muted" :
-                      event.type === "status" ? "border-primary bg-primary" :
-                      "border-info bg-info";
-                    return (
-                      <div key={event.key} className="relative flex gap-3">
-                        {!isLast && (
-                          <div className="absolute left-[5px] top-4 bottom-0 w-px bg-border" />
-                        )}
-                        <div className={cn("relative mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full border-2", dotColor)} />
-                        <div className="pb-4 min-w-0 flex-1">
-                          <div className="flex items-start justify-between gap-1">
-                            <span className="text-xs font-medium leading-tight">{event.label}</span>
-                            {duration !== null && (
-                              <span className="text-xs text-muted-foreground shrink-0 mt-0.5">+{fmtDuration(duration)}</span>
-                            )}
-                          </div>
-                          {event.sub && (
-                            <p className="text-xs text-muted-foreground capitalize">{event.sub.replace(/_/g, " ")}</p>
-                          )}
-                          <p className="text-xs text-muted-foreground mt-0.5">
-                            {event.at.toLocaleDateString(undefined, { month: "short", day: "numeric" })} · {event.at.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
-                          </p>
-                        </div>
-                      </div>
-                    );
-                  })}
-                  <div className="mt-1 pt-2 border-t flex justify-between items-center text-xs">
-                    <span className="text-muted-foreground flex items-center gap-1"><Clock className="h-3 w-3" />Total elapsed</span>
-                    <span className="font-semibold">{fmtDuration(Date.now() - new Date(job.created_at).getTime())}</span>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
+        <ProjectFiles
+          jobId={job.id}
+          title="Condition on arrival"
+          description="Photos taken when the machine was received. The client can see these."
+          kinds={["intake"]}
+          uploadKind={canUploadIntake ? "intake" : undefined}
+          photos
+          canDelete={() => role === "admin"}
+          emptyText="No arrival photos yet. Add them when the machine comes in."
+        />
 
-        {/* Update Timeline — notes and status changes posted on the job */}
-        {updates.length > 0 && (
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Clock className="h-4 w-4" />Update Timeline
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {updates.map((u) => (
-                <div key={u.id} className="flex gap-3 text-sm">
-                  <div className="w-2 h-2 mt-1.5 rounded-full bg-primary shrink-0" />
-                  <div className="min-w-0">
-                    {u.status && <Badge variant="outline" className="mr-2">{u.status.replace("_", " ")}</Badge>}
-                    {u.notes && <span className="text-muted-foreground break-words">{u.notes}</span>}
-                    <p className="text-xs text-muted-foreground mt-1">{new Date(u.created_at).toLocaleString()}</p>
-                  </div>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        )}
+        <ProjectFiles
+          jobId={job.id}
+          title="Files"
+          description="Team only unless you share a file with the client."
+          kinds={["work", "shared", "client", "delivery"]}
+          uploadKind="work"
+          canShare={canEdit}
+          canDelete={(a) => canEdit || a.uploaded_by === user?.id}
+          emptyText="No files yet."
+        />
 
-        {/* Job Attachments */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-3">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Paperclip className="h-5 w-5" />Attachments
-            </CardTitle>
-            {canAddUpdate && (
-              <Button size="sm" variant="outline" disabled={uploadingJob} onClick={() => jobFileInputRef.current?.click()}>
-                <FileUp className="mr-2 h-4 w-4" />{uploadingJob ? "Uploading..." : "Upload"}
-              </Button>
-            )}
-          </CardHeader>
-          <CardContent>
-            <input ref={jobFileInputRef} type="file" className="hidden" onChange={handleUploadJobFile} />
-            {jobAttachments.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No attachments yet.</p>
-            ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {jobAttachments.map(a => (
-                  <div key={a.id} className="relative group border rounded-lg overflow-hidden">
-                    {isImage(a.file_type) ? (
-                      <img src={getFileUrl(a.file_path)} alt={a.file_name} className="w-full h-24 object-cover" loading="lazy" />
-                    ) : (
-                      <div className="w-full h-24 flex items-center justify-center bg-muted">
-                        <FileText className="h-8 w-8 text-muted-foreground" />
-                      </div>
-                    )}
-                    <div className="p-2"><p className="text-xs truncate">{a.file_name}</p></div>
-                    <div className="absolute top-1 right-1 flex gap-1 transition-opacity focus-within:opacity-100 sm:opacity-0 sm:group-hover:opacity-100">
-                      <a href={getFileUrl(a.file_path)} target="_blank" rel="noreferrer">
-                        <Button size="icon" variant="secondary" className="h-8 w-8" aria-label={`Download ${a.file_name}`}><Download className="h-4 w-4" /></Button>
-                      </a>
-                      {canEdit && (
-                        <Button size="icon" variant="destructive" className="h-8 w-8" aria-label={`Delete ${a.file_name}`}
-                          onClick={() => handleDeleteAttachment(a.id, a.file_path, false)}>
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Satisfaction Rating — clients only, completed jobs */}
-        {role === "client" && job.status === "completed" && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Star className="h-5 w-5" />Rate This Job
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {existingRating ? (
-                <div>
-                  <div className="flex gap-0.5 text-2xl mb-2">
-                    {[1, 2, 3, 4, 5].map(s => (
-                      <span key={s} className={s <= existingRating.rating ? "text-warning" : "text-muted-foreground"}>★</span>
-                    ))}
-                  </div>
-                  {existingRating.comment && <p className="text-sm text-muted-foreground">{existingRating.comment}</p>}
-                  <p className="text-xs text-muted-foreground mt-1">Submitted {new Date(existingRating.created_at).toLocaleDateString()}</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  <p className="text-sm text-muted-foreground">How was the work on this job?</p>
-                  <div className="flex gap-1 text-3xl">
-                    {[1, 2, 3, 4, 5].map(s => (
-                      <button key={s} onClick={() => setRatingValue(s)}
-                        className={cn("transition-colors leading-none", s <= ratingValue ? "text-warning" : "text-muted-foreground hover:text-warning")}>
-                        ★
-                      </button>
-                    ))}
-                  </div>
-                  {ratingValue > 0 && (
-                    <>
-                      <Textarea aria-label="Your feedback (optional)" placeholder="Tell us about your experience (optional)..."
-                        value={ratingComment} onChange={(e) => setRatingComment(e.target.value)} rows={2} />
-                      <Button size="sm" disabled={submittingRating} onClick={handleSubmitRating}>
-                        {submittingRating ? "Submitting..." : "Submit Rating"}
-                      </Button>
-                    </>
-                  )}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
+        <ProjectActivity jobId={job.id} createdAt={job.created_at} refreshKey={job.status} />
 
         </div>{/* end right column */}
         </div>{/* end grid */}
@@ -1195,7 +836,7 @@ export default function JobDetail() {
         {/* Edit Job Dialog */}
         <Dialog open={editOpen} onOpenChange={setEditOpen}>
           <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-            <DialogHeader><DialogTitle>Edit Job</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle>Edit project</DialogTitle></DialogHeader>
             <div className="space-y-4">
               <div><Label htmlFor="f-title">Title</Label><Input id="f-title" value={editForm.title || ""} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} /></div>
               <div><Label htmlFor="f-description">Description</Label><Textarea id="f-description" value={editForm.description || ""} onChange={(e) => setEditForm({ ...editForm, description: e.target.value })} /></div>

@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatCard } from "@/components/dashboard/StatsCards";
 import { toast } from "sonner";
+import { useBreadcrumbLabel } from "@/lib/breadcrumbs";
 import {
   ArrowLeft, Briefcase, Calendar, UserX, UserCheck,
   CheckCircle2, Clock, DollarSign, Timer, Building2, Phone, MapPin, User, Receipt,
@@ -76,6 +77,7 @@ export default function AdminUserDetail() {
   const { format: fmt } = useCurrency();
   const [isLoading, setIsLoading] = useState(true);
   const [profile, setProfile] = useState<Profile | null>(null);
+  useBreadcrumbLabel(`/admin/users/${userId}`, profile?.full_name || null);
   const [role, setRole] = useState<string>("");
   const [jobs, setJobs] = useState<Job[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -273,7 +275,7 @@ export default function AdminUserDetail() {
         {showStats && (
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
             <StatCard
-              title="Total Jobs"
+              title="Total projects"
               value={jobs.length}
               icon={Briefcase}
             />
@@ -306,7 +308,7 @@ export default function AdminUserDetail() {
                 <StatCard
                   title="Hours Logged"
                   value={hoursLogged.toFixed(1)}
-                  description="actual hours on jobs"
+                  description="actual hours on projects"
                   icon={Timer}
                 />
               </>
@@ -320,7 +322,7 @@ export default function AdminUserDetail() {
             <CardHeader className="pb-3">
               <CardTitle className="text-lg flex items-center gap-2">
                 <Briefcase className="h-5 w-5" />
-                {isClient ? "Jobs" : "Assigned Jobs"}
+                {isClient ? "Projects" : "Assigned projects"}
               </CardTitle>
             </CardHeader>
             <CardContent className="p-0">
@@ -336,9 +338,9 @@ export default function AdminUserDetail() {
                   </TableHeader>
                   <TableBody>
                     {jobs.length === 0 ? (
-                      <TableRow><TableCell colSpan={4} className="text-center py-6 text-muted-foreground">No jobs found</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={4} className="text-center py-6 text-muted-foreground">No projects found</TableCell></TableRow>
                     ) : jobs.map((j) => (
-                      <TableRow key={j.id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/jobs/${j.id}`)}>
+                      <TableRow key={j.id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/projects/${j.id}`)}>
                         <TableCell className="font-medium">{j.title}</TableCell>
                         <TableCell>
                           <Badge variant={jobStatusColor[j.status] || "outline"} className="capitalize">

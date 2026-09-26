@@ -439,14 +439,14 @@ export default function AdminSettings() {
     const notifications = [
       { user_id: clientId, title: "Invoice Ready", message: "Invoice DEMO-002 has been sent. Total due: $200.73.", read: false, link: "/client/invoices" },
       ...(appointmentsEnabled ? [{ user_id: clientId, title: "Appointment Confirmed", message: `Your Annual Vehicle Inspection on ${d(1)} at 9:00 AM is confirmed.`, read: false, link: "/client/appointments" }] : []),
-      { user_id: staffId, title: "New Job Assigned", message: "You have been assigned: Engine Diagnostics. Due tomorrow.", read: false, link: "/staff/jobs" },
-      { user_id: staffId, title: "Job Due Soon", message: "Tire Rotation & Balance is due in 2 days.", read: true, link: "/staff/jobs" },
+      { user_id: staffId, title: "New project assigned", message: "You have been assigned: Engine Diagnostics. Due tomorrow.", read: false, link: "/staff/projects" },
+      { user_id: staffId, title: "Project due soon", message: "Tire Rotation & Balance is due in 2 days.", read: true, link: "/staff/projects" },
       { user_id: managerId, title: "Invoice Overdue", message: "Check pending invoices — DEMO-002 is awaiting client payment.", read: false, link: "/manager/invoices" },
     ];
     await supabase.from("notifications").insert(notifications);
 
     setSettingUpDemo(false);
-    toast.success(`Demo environment ready! Users, roles, jobs, and invoices are set${appointmentsEnabled ? ", including appointments" : ""}. Visit /demo to log in.`, { duration: 8000 });
+    toast.success(`Demo environment ready! Users, roles, projects and invoices are set${appointmentsEnabled ? ", including appointments" : ""}. Visit /demo to log in.`, { duration: 8000 });
   };
 
   const handleBackup = async () => {
@@ -809,8 +809,8 @@ export default function AdminSettings() {
               <CardContent className="space-y-5">
                 <div className="flex items-center justify-between gap-4">
                   <div className="min-w-0">
-                    <p className="text-sm font-medium">Job status changes</p>
-                    <p className="text-xs text-muted-foreground">Notify client and staff when a job status updates</p>
+                    <p className="text-sm font-medium">Project status changes</p>
+                    <p className="text-xs text-muted-foreground">Notify client and staff when a project status changes</p>
                   </div>
                   <Switch checked={settings.notify_job_status} onCheckedChange={(v) => set("notify_job_status", v)} />
                 </div>
@@ -987,7 +987,7 @@ export default function AdminSettings() {
                 <div className="flex items-center justify-between gap-4">
                   <div className="min-w-0">
                     <p className="text-sm font-medium">Enable email notifications</p>
-                    <p className="text-xs text-muted-foreground">Send emails for job updates, quotes, and appointments</p>
+                    <p className="text-xs text-muted-foreground">Send emails for project updates, quotes and appointments</p>
                   </div>
                   <Switch checked={settings.email_notifications_enabled} onCheckedChange={(v) => set("email_notifications_enabled", v)} />
                 </div>
@@ -1069,7 +1069,7 @@ export default function AdminSettings() {
                 <Button onClick={handleBackup} disabled={backing} variant="outline">
                   {backing ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Creating backup...</> : <><Download className="mr-2 h-4 w-4" />Download Backup</>}
                 </Button>
-                <p className="text-xs text-muted-foreground mt-2">Includes all jobs, clients, inventory, invoices, and settings. Rate limited to 5 per hour.</p>
+                <p className="text-xs text-muted-foreground mt-2">Includes all projects, clients, inventory, invoices, and settings. Rate limited to 5 per hour.</p>
               </CardContent>
             </Card>
             <Card>
@@ -1139,7 +1139,7 @@ export default function AdminSettings() {
                   <AlertDialogContent>
                     <AlertDialogHeader>
                       <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                      <AlertDialogDescription>This will permanently delete all jobs, appointments, inventory items, invoices, and notifications. This action cannot be undone.</AlertDialogDescription>
+                      <AlertDialogDescription>This will permanently delete all projects, appointments, inventory items, invoices, and notifications. This action cannot be undone.</AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                       <AlertDialogCancel>Cancel</AlertDialogCancel>

@@ -149,13 +149,13 @@ export default function AdminReports() {
               {/* Job Completion Stats */}
               <Card className="lg:col-span-2">
                 <CardHeader className="flex flex-row items-center justify-between">
-                  <CardTitle>Job Completion Rate</CardTitle>
+                  <CardTitle>Projects by status</CardTitle>
                   <Button variant="outline" size="sm" onClick={() => downloadCSV("job-stats.csv", ["Status", "Count"], jobStats.map((j) => [j.status, j.count]))}>
                     <Download className="mr-2 h-4 w-4" />CSV
                   </Button>
                 </CardHeader>
                 <CardContent className="flex justify-center">
-                  <ChartFigure label="Jobs by status" valueHeader="Jobs" rows={jobStats.map((j) => ({ label: j.status.replace(/_/g, " "), value: j.count }))}>
+                  <ChartFigure label="Projects by status" valueHeader="Projects" rows={jobStats.map((j) => ({ label: j.status.replace(/_/g, " "), value: j.count }))}>
 <ResponsiveContainer width="100%" height={300}>
                     <PieChart>
                       <Pie
@@ -206,7 +206,7 @@ export default function AdminReports() {
                         size="sm"
                         onClick={() => downloadCSV(
                           "staff-efficiency.csv",
-                          ["Staff", "Actual Hours", "Estimated Hours", "Efficiency %", "Jobs Completed"],
+                          ["Staff", "Actual Hours", "Estimated Hours", "Efficiency %", "Projects completed"],
                           staffStats.map(s => [s.staff_name, s.actual_hours, s.estimated_hours, s.efficiency, s.jobs_completed])
                         )}
                       >

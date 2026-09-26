@@ -23,8 +23,8 @@ export const ROLES = [
     label: "Manager",
     icon: Briefcase,
     color: "bg-info-soft text-info border-info/40",
-    description: "Operational access — manage jobs, appointments, inventory, and invoices.",
-    capabilities: ["Create & manage jobs", "Schedule appointments", "Manage inventory", "Create & send invoices", "View staff"],
+    description: "Operational access — manage projects, appointments, inventory and invoices.",
+    capabilities: ["Create and manage projects", "Schedule appointments", "Manage inventory", "Create & send invoices", "View staff"],
   },
   {
     role: "staff",
@@ -33,8 +33,8 @@ export const ROLES = [
     label: "Staff",
     icon: Wrench,
     color: "bg-warning-soft text-warning border-warning/40",
-    description: "View and update assigned jobs. See the schedule and inventory levels.",
-    capabilities: ["View assigned jobs", "Update job status (kanban)", "View schedule", "Check inventory"],
+    description: "View and update assigned projects. See the schedule and inventory levels.",
+    capabilities: ["View assigned projects", "Update project status (board)", "View schedule", "Check inventory"],
   },
   {
     role: "client",
@@ -43,8 +43,8 @@ export const ROLES = [
     label: "Client",
     icon: User,
     color: "bg-success-soft text-success border-success/40",
-    description: "Client portal — track job progress, view appointments, and pay invoices.",
-    capabilities: ["Track job progress", "View appointments", "View & download invoices", "Manage profile"],
+    description: "Client portal — track project progress, view appointments, and pay invoices.",
+    capabilities: ["Track project progress", "View appointments", "View & download invoices", "Manage profile"],
   },
 ];
 

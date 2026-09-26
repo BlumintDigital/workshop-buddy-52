@@ -1,4 +1,5 @@
 import { pdf, Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
+import { projectStatusLabel } from "@/lib/projects";
 import { supabase } from "@/integrations/supabase/client";
 
 const styles = StyleSheet.create({
@@ -41,15 +42,16 @@ function JobReportDocument({ job, workshopName, clientName, staffName, tasks, no
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.workshopName}>{workshopName}</Text>
-          <Text style={styles.reportLabel}>Job Report</Text>
+          <Text style={styles.reportLabel}>Project Report</Text>
         </View>
         <View style={styles.divider} />
 
         {/* Job details */}
-        <Text style={styles.sectionTitle}>Job Details</Text>
+        <Text style={styles.sectionTitle}>Project Details</Text>
+        <View style={styles.row}><Text style={styles.rowLabel}>Project ID</Text><Text style={styles.rowValue}>{job.ref}</Text></View>
         <View style={styles.row}><Text style={styles.rowLabel}>Title</Text><Text style={styles.rowValue}>{job.title}</Text></View>
         {job.description && <View style={styles.row}><Text style={styles.rowLabel}>Description</Text><Text style={styles.rowValue}>{job.description}</Text></View>}
-        <View style={styles.row}><Text style={styles.rowLabel}>Status</Text><Text style={styles.rowValue}>{job.status?.replace(/_/g, " ")}</Text></View>
+        <View style={styles.row}><Text style={styles.rowLabel}>Status</Text><Text style={styles.rowValue}>{projectStatusLabel(job.status)}</Text></View>
         <View style={styles.row}><Text style={styles.rowLabel}>Priority</Text><Text style={styles.rowValue}>{job.priority}</Text></View>
         <View style={styles.row}><Text style={styles.rowLabel}>Client</Text><Text style={styles.rowValue}>{clientName}</Text></View>
         <View style={styles.row}><Text style={styles.rowLabel}>Assigned Staff</Text><Text style={styles.rowValue}>{staffName}</Text></View>
@@ -101,7 +103,7 @@ function JobReportDocument({ job, workshopName, clientName, staffName, tasks, no
         {jobAttachments.length > 0 && (
           <View style={{ marginTop: 14 }}>
             <View style={styles.divider} />
-            <Text style={styles.sectionTitle}>Job Attachments</Text>
+            <Text style={styles.sectionTitle}>Project Attachments</Text>
             {jobAttachments.map(a => (
               <Text key={a.id} style={styles.attachmentEntry}>• {a.file_name}</Text>
             ))}
@@ -178,7 +180,7 @@ export async function generateJobReport(jobId: string): Promise<void> {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `job-report-${job.title.toLowerCase().replace(/\s+/g, "-")}.pdf`;
+  a.download = `${job.ref}-report.pdf`;
   a.click();
   URL.revokeObjectURL(url);
 }

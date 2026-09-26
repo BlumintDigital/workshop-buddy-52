@@ -17,6 +17,7 @@ export type TodayFigures = {
 
 export type OpenJob = {
   id: string;
+  ref: string;
   title: string;
   status: string;
   priority: string | null;
@@ -67,7 +68,7 @@ export function useTodayData({ appointmentsEnabled }: { appointmentsEnabled: boo
       const [jobsRes, revenueRes, unpaidRes, overdue, apptsRes, peopleRes] = await Promise.all([
         supabase
           .from("jobs")
-          .select("id, title, status, priority, due_date, estimated_hours, assigned_staff_id")
+          .select("id, ref, title, status, priority, due_date, estimated_hours, assigned_staff_id")
           .in("status", [...OPEN_JOB_STATUSES])
           .order("due_date", { ascending: true, nullsFirst: false }),
         supabase
@@ -147,6 +148,7 @@ export function useTodayData({ appointmentsEnabled }: { appointmentsEnabled: boo
       setOpenJobs(
         jobs.slice(0, 6).map((j) => ({
           id: j.id,
+          ref: j.ref,
           title: j.title,
           status: j.status,
           priority: j.priority,

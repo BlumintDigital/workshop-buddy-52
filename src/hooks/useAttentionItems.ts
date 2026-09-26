@@ -96,9 +96,9 @@ export function useAttentionItems() {
             id: "review-jobs",
             severity: "warning",
             label: "Review",
-            title: `${reviewCount} ${reviewCount === 1 ? "job" : "jobs"} awaiting your sign-off`,
-            meta: "Finished by the team and ready to approve",
-            action: { label: "Review jobs", to: `${base}/jobs` },
+            title: `${reviewCount} ${reviewCount === 1 ? "project" : "projects"} waiting for quality check`,
+            meta: "Every task is done. Check the work and send it on to shipping.",
+            action: { label: "Open projects", to: `${base}/projects?status=review` },
           });
         }
 

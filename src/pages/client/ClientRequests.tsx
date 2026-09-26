@@ -170,7 +170,7 @@ export default function ClientRequests() {
                         <div className="flex items-center gap-2">
                           {r.request_type === "quote" ? <FileText className="h-4 w-4 text-primary" /> : <Wrench className="h-4 w-4 text-primary" />}
                           <span className="text-xs uppercase tracking-wider text-muted-foreground">
-                            {r.request_type === "quote" ? "Quote request" : "Job request"}
+                            {r.request_type === "quote" ? "Quote request" : "Repair request"}
                           </span>
                           <span className={cn("rounded-full px-2 py-0.5 text-xs", statusTone[r.status])}>
                             {statusLabel[r.status]}
@@ -188,7 +188,7 @@ export default function ClientRequests() {
                       <div className="flex flex-shrink-0 items-center gap-2">
                         {r.converted_job_id && (
                           <Button asChild size="sm" variant="outline">
-                            <Link to={`/jobs/${r.converted_job_id}`}>View job</Link>
+                            <Link to={`/projects/${r.converted_job_id}`}>View project</Link>
                           </Button>
                         )}
                         {r.status === "pending" && (

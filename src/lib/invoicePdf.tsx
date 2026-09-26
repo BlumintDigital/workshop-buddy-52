@@ -1,4 +1,5 @@
 import { pdf, Document, Page, Text, View, StyleSheet, Image } from "@react-pdf/renderer";
+import { discountLabel, invoiceTotals } from "@/lib/invoiceTotals";
 import { supabase } from "@/integrations/supabase/client";
 
 const styles = StyleSheet.create({
@@ -26,7 +27,7 @@ const styles = StyleSheet.create({
   headerText: { fontSize: 9, color: "#666", fontWeight: "bold" },
   totalSection: { marginTop: 16, alignItems: "flex-end" },
   totalRow: { flexDirection: "row", gap: 40, marginBottom: 4 },
-  totalLabel: { color: "#666", width: 80, textAlign: "right" },
+  totalLabel: { color: "#666", width: 120, textAlign: "right" },
   totalValue: { width: 80, textAlign: "right" },
   grandTotalRow: { flexDirection: "row", gap: 40, paddingTop: 6, borderTopWidth: 1, borderTopColor: "#e5e7eb" },
   grandTotalLabel: { fontWeight: "bold", fontSize: 12, width: 80, textAlign: "right" },
@@ -65,10 +66,10 @@ interface InvoicePDFProps {
 }
 
 export function InvoiceDocument({ invoice, clientName, items, workshop, currency = "USD" }: InvoicePDFProps) {
-  const subtotal = items.reduce((sum, i) => sum + (Number(i.quantity) || 0) * (Number(i.unit_price) || 0), 0);
+  const lineTotal = items.reduce((sum, i) => sum + (Number(i.quantity) || 0) * (Number(i.unit_price) || 0), 0);
   const taxRate = Number(invoice?.tax_rate) || 0;
-  const taxAmount = subtotal * (taxRate / 100);
-  const total = subtotal + taxAmount;
+  const discount = { type: invoice?.discount_type ?? null, value: Number(invoice?.discount_value) || 0, reason: invoice?.discount_reason ?? null };
+  const { subtotal, discountAmount, taxAmount, total } = invoiceTotals(lineTotal, taxRate, discount);
   const fmt = (n: number) => {
     try {
       return new Intl.NumberFormat(undefined, { style: "currency", currency, minimumFractionDigits: 2 }).format(n);
@@ -156,6 +157,12 @@ export function InvoiceDocument({ invoice, clientName, items, workshop, currency
             <Text style={styles.totalLabel}>Subtotal</Text>
             <Text style={styles.totalValue}>{fmt(subtotal)}</Text>
           </View>
+          {discountAmount > 0 && (
+            <View style={styles.totalRow}>
+              <Text style={styles.totalLabel}>{discountLabel(discount)}</Text>
+              <Text style={styles.totalValue}>-{fmt(discountAmount)}</Text>
+            </View>
+          )}
           {taxRate > 0 && (
             <View style={styles.totalRow}>
               <Text style={styles.totalLabel}>Tax ({taxRate}%)</Text>

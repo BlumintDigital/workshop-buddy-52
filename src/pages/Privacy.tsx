@@ -28,7 +28,7 @@ export default function Privacy() {
             <h2 className="text-xl font-semibold mb-3">2. Data we collect</h2>
             <ul className="list-disc pl-6 space-y-2 text-muted-foreground">
               <li><strong>Account data:</strong> name, email address, phone number, and password (hashed — never stored in plaintext)</li>
-              <li><strong>Business data:</strong> jobs, invoices, appointments, inventory, and notes you create in the platform</li>
+              <li><strong>Business data:</strong> projects, invoices, appointments, inventory and notes you create in the platform</li>
               <li><strong>Usage data:</strong> login times, IP addresses, and actions performed (stored in an audit log for security purposes)</li>
               <li><strong>Device data:</strong> browser type and operating system, collected when you use multi-factor authentication device trust</li>
             </ul>

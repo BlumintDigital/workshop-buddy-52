@@ -8,7 +8,7 @@ const REQUEST_TITLE = `E2E request ${Date.now()}`;
 const requestCard = (page: import("@playwright/test").Page) =>
   page.locator("div[class*='rounded']").filter({ hasText: REQUEST_TITLE }).last();
 
-test.describe.serial("client request → quote → approval → job", () => {
+test.describe.serial("client request → quote → approval → project", () => {
   test("client submits a quote request", async ({ page }) => {
     await login(page, "CLIENT");
     await page.goto("/client/requests");
@@ -58,64 +58,59 @@ test.describe.serial("client request → quote → approval → job", () => {
     await expect(card.getByText("Approved — waiting for the workshop")).toBeVisible();
   });
 
-  test("admin converts the approved quote to a job", async ({ page }) => {
+  test("admin converts the approved quote to a project", async ({ page }) => {
     await login(page, "ADMIN");
     await page.goto("/admin/requests");
-    // The page defaults to the Pending tab — approved requests live under Approved.
-    await page.getByRole("tab", { name: /approved/i }).click();
+    // The page defaults to Pending; approved requests are under the Approved filter.
+    await page.getByRole("radio", { name: /approved/i }).click();
     await expect(page.getByText(REQUEST_TITLE)).toBeVisible({ timeout: 15_000 });
 
-    await requestCard(page).getByRole("button", { name: "Convert to job" }).click();
-    // Conversion navigates straight to the new job's detail page.
-    await expect(page).toHaveURL(/\/jobs\//, { timeout: 20_000 });
+    await requestCard(page).getByRole("button", { name: "Convert to project" }).click();
+    // Conversion navigates straight to the new project page.
+    await expect(page).toHaveURL(/\/projects\//, { timeout: 20_000 });
     await expect(page.getByRole("heading", { name: REQUEST_TITLE })).toBeVisible();
   });
 
-  test("client can open the converted job", async ({ page }) => {
+  test("client can open the converted project", async ({ page }) => {
     await login(page, "CLIENT");
     await page.goto("/client/requests");
     await expect(page.getByText(REQUEST_TITLE)).toBeVisible({ timeout: 15_000 });
 
-    await requestCard(page).getByRole("link", { name: /view job/i }).click();
-    await expect(page).toHaveURL(/\/jobs\//, { timeout: 15_000 });
+    await requestCard(page).getByRole("link", { name: /view project/i }).click();
+    await expect(page).toHaveURL(/\/projects\//, { timeout: 15_000 });
     await expect(page.getByText(REQUEST_TITLE).first()).toBeVisible();
   });
 
-  test("admin posts a client-visible and an internal comment on the job", async ({ page }) => {
+  test("admin posts a team note and a client message on the project", async ({ page }) => {
     await login(page, "ADMIN");
     await page.goto("/admin/requests");
     // Converted requests are only listed under the All tab.
-    await page.getByRole("tab", { name: /all/i }).click();
+    await page.getByRole("radio", { name: /^all/i }).click();
     await expect(page.getByText(REQUEST_TITLE)).toBeVisible({ timeout: 15_000 });
-    await requestCard(page).getByRole("link", { name: /view job/i }).click();
-    await expect(page).toHaveURL(/\/jobs\//, { timeout: 15_000 });
+    await requestCard(page).getByRole("link", { name: /view project/i }).click();
+    await expect(page).toHaveURL(/\/projects\//, { timeout: 15_000 });
 
-    const composer = page.getByPlaceholder(/write a message/i);
-    await composer.scrollIntoViewIfNeeded();
-    await composer.fill("E2E public comment — hello client!");
-    await page.getByRole("button", { name: /^send$/i }).click();
-    await expect(page.getByText("E2E public comment — hello client!")).toBeVisible({ timeout: 15_000 });
-
-    // Flip the Internal note switch and post a second, internal comment.
-    // The realtime reload from the first comment can race the composer and
-    // swallow input — retype until the Send button actually enables.
-    await page.getByRole("switch").click();
-    const internalBox = page.getByPlaceholder(/internal note/i);
-    await expect(async () => {
-      await internalBox.click();
-      await internalBox.fill("");
-      await internalBox.pressSequentially("E2E internal note, clients must NOT see this");
-      await expect(page.getByRole("button", { name: /^send$/i })).toBeEnabled({ timeout: 3_000 });
-    }).toPass({ timeout: 30_000 });
+    // Team notes are the default tab.
+    await expect(page.getByRole("tab", { name: /team notes/i })).toHaveAttribute("aria-selected", "true");
+    const teamBox = page.getByRole("textbox", { name: "Team note" });
+    await teamBox.scrollIntoViewIfNeeded();
+    await teamBox.fill("E2E internal note, clients must NOT see this");
     await page.getByRole("button", { name: /^send$/i }).click();
     await expect(page.getByText("E2E internal note, clients must NOT see this")).toBeVisible({ timeout: 15_000 });
+
+    // Client messages live in their own tab with their own composer.
+    await page.getByRole("tab", { name: /client messages/i }).click();
+    const clientBox = page.getByRole("textbox", { name: /^message to/i });
+    await clientBox.fill("E2E public comment — hello client!");
+    await page.getByRole("button", { name: /send to client/i }).click();
+    await expect(page.getByText("E2E public comment — hello client!")).toBeVisible({ timeout: 15_000 });
   });
 
   test("client sees the public comment but not the internal note", async ({ page }) => {
     await login(page, "CLIENT");
     await page.goto("/client/requests");
-    await requestCard(page).getByRole("link", { name: /view job/i }).click();
-    await expect(page).toHaveURL(/\/jobs\//, { timeout: 15_000 });
+    await requestCard(page).getByRole("link", { name: /view project/i }).click();
+    await expect(page).toHaveURL(/\/projects\//, { timeout: 15_000 });
 
     await expect(page.getByText("E2E public comment — hello client!")).toBeVisible({ timeout: 15_000 });
     await expect(page.getByText("E2E internal note, clients must NOT see this")).not.toBeVisible();

@@ -119,17 +119,17 @@ export default function AdminRequests() {
     });
     setProcessing(null);
     if (error) { toast.error(error.message); return; }
-    toast.success("Request accepted and job created");
+    toast.success("Request accepted and project created");
 
     // Notify the client (in-app + email). Fire-and-forget — helpers swallow errors.
     if (data && r.client_id) {
-      const jobLink = `${window.location.origin}/jobs/${data}`;
+      const jobLink = `${window.location.origin}/projects/${data}`;
       const kind = r.request_type === "quote" ? "quote" : "job";
       void sendNotification({
         user_id: r.client_id,
         title: "Your request was approved",
-        message: `Your ${kind} request "${r.title}" is now an active job.`,
-        link: `/jobs/${data}`,
+        message: `Your ${kind} request "${r.title}" is now an active project.`,
+        link: `/projects/${data}`,
       });
       void sendEmail({
         to_user_id: r.client_id,
@@ -138,7 +138,7 @@ export default function AdminRequests() {
       });
     }
 
-    if (data) navigate(`/jobs/${data}`);
+    if (data) navigate(`/projects/${data}`);
     else fetchRequests();
   };
 
@@ -179,7 +179,7 @@ export default function AdminRequests() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Client Requests</h1>
           <p className="text-sm text-muted-foreground">
-            Review quote and job requests. Send a quote for client approval, or accept a job request directly.
+            Review quote and repair requests. Send a quote for the client to approve, or accept a repair request straight away.
           </p>
         </div>
 
@@ -228,7 +228,7 @@ export default function AdminRequests() {
                       <div className="flex flex-wrap items-center gap-2">
                         {isQuote ? <FileText className="h-4 w-4 text-primary" /> : <Wrench className="h-4 w-4 text-primary" />}
                         <span className="text-xs uppercase tracking-wider text-muted-foreground">
-                          {isQuote ? "Quote request" : "Job request"}
+                          {isQuote ? "Quote request" : "Repair request"}
                         </span>
                         <span className={cn("rounded-full px-2 py-0.5 text-xs", statusTone[r.status])}>
                           {statusLabel[r.status] || r.status}
@@ -258,8 +258,8 @@ export default function AdminRequests() {
                     <div className="flex flex-wrap items-center gap-2 lg:flex-col lg:items-stretch">
                       {r.converted_job_id && (
                         <Button asChild size="sm" variant="outline">
-                          <Link to={`/jobs/${r.converted_job_id}`}>
-                            <ExternalLink className="h-4 w-4" /> View job
+                          <Link to={`/projects/${r.converted_job_id}`}>
+                            <ExternalLink className="h-4 w-4" /> View project
                           </Link>
                         </Button>
                       )}
@@ -276,7 +276,7 @@ export default function AdminRequests() {
                       {canConvert(r) && (
                         <Button size="sm" disabled={processing === r.id} onClick={() => accept(r)}>
                           <CheckCircle2 className="h-4 w-4" />
-                          {isQuote ? "Convert to job" : "Accept & create job"}
+                          {isQuote ? "Convert to project" : "Accept and create project"}
                         </Button>
                       )}
 

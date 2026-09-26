@@ -33,17 +33,17 @@ test.describe.serial("PDF generation", () => {
     await expect(page.getByRole("button", { name: "Download" }).first()).toBeVisible({ timeout: 15_000 });
   });
 
-  test("job report button triggers a download", async ({ page }) => {
+  test("project report button triggers a download", async ({ page }) => {
     await login(page, "ADMIN");
-    await page.goto("/admin/jobs");
+    await page.goto("/admin/projects");
     // Open the most recent E2E job (created by request-flow or manager spec).
     await page.getByText(/E2E (request|manager job)/).first().click();
-    await expect(page).toHaveURL(/\/jobs\//, { timeout: 15_000 });
+    await expect(page).toHaveURL(/\/projects\//, { timeout: 15_000 });
 
     const [download] = await Promise.all([
       page.waitForEvent("download", { timeout: 60_000 }),
       page.getByRole("button", { name: /report/i }).click(),
     ]);
-    expect(download.suggestedFilename()).toMatch(/^job-report-.*\.pdf$/);
+    expect(download.suggestedFilename()).toMatch(/^[A-Z0-9]+-\d{6}-\d{3,}-report\.pdf$/);
   });
 });

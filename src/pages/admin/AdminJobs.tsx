@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { formatDate } from "@/lib/format";
+import { projectSearchFilter } from "@/lib/projects";
+import ProjectName from "@/components/project/ProjectName";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -40,7 +42,8 @@ export default function AdminJobs() {
     setIsLoading(true);
     let query = supabase.from("jobs").select("*", { count: "exact" }).order("created_at", { ascending: false });
     if (currentFilter !== "all") query = query.eq("status", currentFilter);
-    if (currentSearch.trim()) query = query.ilike("title", `%${currentSearch.trim()}%`);
+    const search = projectSearchFilter(currentSearch);
+    if (search) query = query.or(search);
     query = query.range(currentPage * PAGE_SIZE, currentPage * PAGE_SIZE + PAGE_SIZE - 1);
 
     const { data, count } = await query;
@@ -108,7 +111,7 @@ export default function AdminJobs() {
     if (form.due_date) payload.due_date = form.due_date;
     const { error } = await supabase.from("jobs").insert(payload);
     if (error) { toast.error(error.message); return; }
-    toast.success("Job created");
+    toast.success("Project created");
     setOpen(false);
     setForm({ title: "", description: "", priority: "medium", assigned_staff_id: "", client_id: "", isQuote: false, due_date: "" });
     fetchJobs(page, filter, debouncedSearch);
@@ -126,8 +129,8 @@ export default function AdminJobs() {
   const columns: Column<any>[] = [
     {
       key: "title",
-      header: "Job",
-      cell: (job) => job.title,
+      header: "Project",
+      cell: (job) => <ProjectName refId={job.ref} title={job.title} />,
     },
     { key: "status", header: "Status", cell: (job) => <JobStatusPill status={job.status} /> },
     { key: "priority", header: "Priority", cell: (job) => <PriorityLabel priority={job.priority} />, hideBelow: "md" },
@@ -143,15 +146,15 @@ export default function AdminJobs() {
     <DashboardLayout>
       <div className="min-w-0 max-w-full space-y-4">
         <PageBar
-          title="Jobs"
-          subtitle={isLoading ? "Loading…" : `${totalCount} ${totalCount === 1 ? "job" : "jobs"}${filter !== "all" ? ` · ${filters.find((f) => f.value === filter)?.label}` : ""}`}
+          title="Projects"
+          subtitle={isLoading ? "Loading…" : `${totalCount} ${totalCount === 1 ? "project" : "projects"}${filter !== "all" ? ` · ${filters.find((f) => f.value === filter)?.label}` : ""}`}
           actions={
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
-            <Button onClick={() => fetchUsers()}><Plus />New job</Button>
+            <Button onClick={() => fetchUsers()}><Plus />New project</Button>
           </DialogTrigger>
           <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-            <DialogHeader><DialogTitle>Create New Job</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle>New project</DialogTitle></DialogHeader>
             <div className="space-y-4">
               <div><Label htmlFor="f-title">Title</Label><Input id="f-title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} /></div>
               <div><Label htmlFor="f-description">Description</Label><Textarea id="f-description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></div>
@@ -198,7 +201,7 @@ export default function AdminJobs() {
                 </label>
               </div>
               <Button onClick={handleCreate} className="w-full">
-                {form.isQuote ? <><FileText className="mr-2 h-4 w-4" />Create Quote</> : "Create Job"}
+                {form.isQuote ? <><FileText className="mr-2 h-4 w-4" />Create quote</> : "Create project"}
               </Button>
             </div>
           </DialogContent>
@@ -212,7 +215,7 @@ export default function AdminJobs() {
           onFilterChange={handleFilterChange}
           search={search}
           onSearchChange={setSearch}
-          searchPlaceholder="Search jobs by title"
+          searchPlaceholder="Search by project ID or title"
         />
 
         <DataList
@@ -220,26 +223,26 @@ export default function AdminJobs() {
           columns={columns}
           isLoading={isLoading}
           getRowKey={(job) => job.id}
-          getRowHref={(job) => `/jobs/${job.id}`}
+          getRowHref={(job) => `/projects/${job.id}`}
           mobile={{
-            title: (job) => job.title,
+            title: (job) => <ProjectName refId={job.ref} title={job.title} />,
             trailing: (job) => <JobStatusPill status={job.status} />,
             meta: (job) => [job.client_name !== "—" && job.client_name, job.staff_name !== "—" && `Assigned to ${job.staff_name}`, job.due_date && `Due ${formatDate(job.due_date)}`].filter(Boolean).join(" · "),
           }}
           empty={
             hasQuery ? (
-              <EmptyState title="No jobs match" description="Try another filter or clear the search." />
+              <EmptyState title="No projects match" description="Try another filter or clear the search." />
             ) : (
               <EmptyState
-                title="No jobs yet"
-                description="Create a job, or convert an approved client request into one."
-                action={<Button onClick={() => { fetchUsers(); setOpen(true); }}><Plus />New job</Button>}
+                title="No projects yet"
+                description="Create a project, or accept a client request to turn it into one."
+                action={<Button onClick={() => { fetchUsers(); setOpen(true); }}><Plus />New project</Button>}
               />
             )
           }
         />
 
-        <ListPagination page={page} pageSize={PAGE_SIZE} total={totalCount} onPageChange={setPage} noun="jobs" />
+        <ListPagination page={page} pageSize={PAGE_SIZE} total={totalCount} onPageChange={setPage} noun="projects" />
       </div>
     </DashboardLayout>
   );

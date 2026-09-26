@@ -58,7 +58,7 @@ export default function CreateJobDialog({ open, onOpenChange, defaultDate, onCre
     if (form.due_date) payload.due_date = form.due_date;
     const { error } = await supabase.from("jobs").insert(payload);
     if (error) { toast.error(error.message); return; }
-    toast.success("Job created");
+    toast.success("Project created");
     setForm({ title: "", description: "", priority: "medium", assigned_staff_id: "", client_id: "", isQuote: false, due_date: defaultDate });
     onOpenChange(false);
     onCreated();
@@ -67,7 +67,7 @@ export default function CreateJobDialog({ open, onOpenChange, defaultDate, onCre
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-        <DialogHeader><DialogTitle>Create New Job</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>New project</DialogTitle></DialogHeader>
         <div className="space-y-4">
           <div><Label htmlFor="f-title">Title</Label><Input id="f-title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} /></div>
           <div><Label htmlFor="f-description">Description</Label><Textarea id="f-description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></div>
@@ -110,7 +110,7 @@ export default function CreateJobDialog({ open, onOpenChange, defaultDate, onCre
             </label>
           </div>
           <Button onClick={handleCreate} className="w-full">
-            {form.isQuote ? <><FileText className="mr-2 h-4 w-4" />Create Quote</> : "Create Job"}
+            {form.isQuote ? <><FileText className="mr-2 h-4 w-4" />Create quote</> : "Create project"}
           </Button>
         </div>
       </DialogContent>

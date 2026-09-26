@@ -28,7 +28,7 @@ type ActivityLog = {
 const PAGE_SIZE = 25;
 
 const tableLabels: Record<string, string> = {
-  jobs: "Jobs",
+  jobs: "Projects",
   appointments: "Appointments",
   invoices: "Invoices",
   inventory_items: "Inventory",
@@ -294,7 +294,7 @@ export default function AdminActivityLogs() {
               description={
                 search || filterTable !== "all" || filterAction !== "all"
                   ? "Try another filter or search."
-                  : "Changes to jobs, appointments, invoices, inventory and users are recorded here automatically."
+                  : "Changes to projects, appointments, invoices, inventory and users are recorded here automatically."
               }
             />
           }

@@ -1,3 +1,4 @@
+import { projectStatusLabel } from "@/lib/projects";
 import { supabase } from "@/integrations/supabase/client";
 
 /**
@@ -71,13 +72,13 @@ function wrapEmail(o: WrapperOpts): string {
 }
 
 export function jobStatusEmailHtml(jobTitle: string, status: string, jobLink: string): string {
-  const label = status.replace(/_/g, " ");
+  const label = projectStatusLabel(status);
   return wrapEmail({
-    preheader: `Your job "${jobTitle}" is now ${label}.`,
-    eyebrow: "Job update",
-    headline: "Your job status has been updated",
-    bodyHtml: `Your job <strong>${escapeHtml(jobTitle)}</strong> is now marked as <strong style="color:#3f6b52">${escapeHtml(label)}</strong>. Open the portal to see the latest details and any attached files.`,
-    ctaLabel: "View job in portal",
+    preheader: `Your project "${jobTitle}" is now ${label}.`,
+    eyebrow: "Project update",
+    headline: "Your project status has been updated",
+    bodyHtml: `Your project <strong>${escapeHtml(jobTitle)}</strong> is now marked as <strong style="color:#3f6b52">${escapeHtml(label)}</strong>. Open the portal to see the latest details and any attached files.`,
+    ctaLabel: "View project in portal",
     ctaUrl: jobLink,
   });
 }
@@ -123,11 +124,11 @@ export function invoiceSentEmailHtml(invoiceNumber: string, total: number, curre
 
 export function requestApprovedEmailHtml(requestTitle: string, jobLink: string): string {
   return wrapEmail({
-    preheader: `Approved: "${requestTitle}" — we've opened a job.`,
+    preheader: `Approved: "${requestTitle}" — we've opened a project.`,
     eyebrow: "Request approved",
     headline: "Good news — your request was approved",
-    bodyHtml: `Your request <strong>${escapeHtml(requestTitle)}</strong> has been approved and we've opened a job to track the work. Follow progress, message us, and view related quotes or invoices right from the portal.`,
-    ctaLabel: "View job in portal",
+    bodyHtml: `Your request <strong>${escapeHtml(requestTitle)}</strong> has been approved and we've opened a project to track the work. Follow progress, message us, and view related quotes or invoices right from the portal.`,
+    ctaLabel: "View project in portal",
     ctaUrl: jobLink,
   });
 }

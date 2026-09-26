@@ -16,6 +16,8 @@ import { toast } from "sonner";
 import { useCurrency } from "@/hooks/useCurrency";
 import InvoicePdfPreview from "@/components/invoices/InvoicePdfPreview";
 import { useWorkshopDetails } from "@/hooks/useWorkshopDetails";
+import { DiscountField } from "@/components/invoices/DiscountField";
+import { discountColumns, discountLabel, invoiceTotals, type InvoiceDiscount } from "@/lib/invoiceTotals";
 import { friendlyErrorMessageSync } from "@/lib/friendlyError";
 
 interface LineItem {
@@ -35,6 +37,7 @@ export default function InvoiceCreate() {
   const [clients, setClients] = useState<{ id: string; full_name: string }[]>([]);
   const [notes, setNotes] = useState("");
   const [taxRate, setTaxRate] = useState(0);
+  const [discount, setDiscount] = useState<InvoiceDiscount>({ type: null, value: 0, reason: "" });
   const [dueDate, setDueDate] = useState("");
   const [items, setItems] = useState<LineItem[]>([{ description: "", quantity: 1, unit_price: 0 }]);
   const [saving, setSaving] = useState(false);
@@ -106,9 +109,8 @@ export default function InvoiceCreate() {
     load();
   }, [jobId]);
 
-  const subtotal = items.filter((i) => i.description.trim()).reduce((sum, i) => sum + i.quantity * i.unit_price, 0);
-  const taxAmount = subtotal * (taxRate / 100);
-  const total = subtotal + taxAmount;
+  const lineTotal = items.filter((i) => i.description.trim()).reduce((sum, i) => sum + i.quantity * i.unit_price, 0);
+  const { subtotal, discountAmount, taxAmount, total } = invoiceTotals(lineTotal, taxRate, discount);
 
   const addItem = () => setItems([...items, { description: "", quantity: 1, unit_price: 0 }]);
   const removeItem = (idx: number) => setItems(items.filter((_, i) => i !== idx));
@@ -127,6 +129,10 @@ export default function InvoiceCreate() {
       toast.error(validation.error.issues[0]?.message ?? "Please fix form errors");
       return;
     }
+    if (discount.type === "percent" && discount.value > 100) {
+      toast.error("A percentage discount can't be more than 100%");
+      return;
+    }
 
     setSaving(true);
     const invoiceNumber = `INV-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
@@ -142,6 +148,7 @@ export default function InvoiceCreate() {
         tax_rate: taxRate,
         tax_amount: taxAmount,
         total,
+        ...discountColumns(subtotal, discount),
         due_date: dueDate || null,
         notes: notes || null,
         currency,
@@ -192,6 +199,7 @@ export default function InvoiceCreate() {
     subtotal,
     tax_amount: taxAmount,
     total,
+    ...discountColumns(subtotal, discount),
     created_at: new Date().toISOString(),
   };
 
@@ -200,7 +208,7 @@ export default function InvoiceCreate() {
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Create Invoice</h1>
-          <p className="text-sm text-muted-foreground">New draft invoice{jobId ? " linked to job" : ""}</p>
+          <p className="text-sm text-muted-foreground">New draft invoice{jobId ? " linked to a project" : ""}</p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -279,6 +287,7 @@ export default function InvoiceCreate() {
                   <Label htmlFor="f-notes">Notes</Label>
                   <Textarea id="f-notes" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Optional notes" />
                 </div>
+                <DiscountField value={discount} onChange={setDiscount} currency={currency} />
               </CardContent>
             </Card>
 
@@ -329,6 +338,9 @@ export default function InvoiceCreate() {
             <Card>
               <CardContent className="pt-6 space-y-2">
                 <div className="flex justify-between text-sm"><span>Subtotal</span><span>{fmt(subtotal, currency)}</span></div>
+                {discountAmount > 0 && (
+                  <div className="flex justify-between text-sm text-success"><span>{discountLabel(discount)}</span><span>−{fmt(discountAmount, currency)}</span></div>
+                )}
                 <div className="flex justify-between text-sm"><span>Tax ({taxRate}%)</span><span>{fmt(taxAmount, currency)}</span></div>
                 <div className="flex justify-between font-bold text-lg border-t pt-2"><span>Total</span><span>{fmt(total, currency)}</span></div>
                 {currency !== baseCurrency && (

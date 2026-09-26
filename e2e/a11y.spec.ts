@@ -7,7 +7,7 @@ import { login, type RoleKey } from "./helpers/auth";
 // test output so they can be fixed without blocking a release.
 
 const PAGES: Record<RoleKey, string[]> = {
-  ADMIN: ["/admin/dashboard", "/admin/jobs", "/admin/invoices", "/admin/inventory", "/admin/settings"],
+  ADMIN: ["/admin/dashboard", "/admin/projects", "/admin/invoices", "/admin/inventory", "/admin/settings"],
   MANAGER: ["/manager/dashboard"],
   STAFF: ["/staff/dashboard"],
   CLIENT: ["/client/dashboard"],

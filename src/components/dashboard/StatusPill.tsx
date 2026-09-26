@@ -1,3 +1,4 @@
+import { PROJECT_STATUS_TONE, projectStatusLabel } from "@/lib/projects";
 import { cn } from "@/lib/utils";
 
 const TONE = {
@@ -32,26 +33,9 @@ export function StatusPill({ tone, children, className }: StatusPillProps) {
   );
 }
 
-const JOB_TONE: Record<string, StatusTone> = {
-  quote: "warning",
-  pending: "neutral",
-  in_progress: "info",
-  review: "warning",
-  completed: "success",
-  cancelled: "neutral",
-};
-
-const JOB_LABEL: Record<string, string> = {
-  quote: "Quote",
-  pending: "Pending",
-  in_progress: "In progress",
-  review: "Awaiting review",
-  completed: "Completed",
-  cancelled: "Cancelled",
-};
-
+/** A project's status, labelled the same way everywhere. */
 export function JobStatusPill({ status }: { status: string }) {
-  return <StatusPill tone={JOB_TONE[status] ?? "neutral"}>{JOB_LABEL[status] ?? status.replace(/_/g, " ")}</StatusPill>;
+  return <StatusPill tone={PROJECT_STATUS_TONE[status] ?? "neutral"}>{projectStatusLabel(status)}</StatusPill>;
 }
 
 /** Priority as a pill for urgent and high, plain text otherwise, so only what needs attention stands out. */

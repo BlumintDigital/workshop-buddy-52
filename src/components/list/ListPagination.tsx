@@ -6,11 +6,11 @@ interface ListPaginationProps {
   pageSize: number;
   total: number;
   onPageChange: (page: number) => void;
-  /** Noun for the count line, e.g. "jobs". */
+  /** Noun for the count line, e.g. "projects". */
   noun?: string;
 }
 
-/** "Showing 1–25 of 140 jobs" with previous/next. Renders nothing when everything fits on one page. */
+/** "Showing 1–25 of 140 projects" with previous/next. Renders nothing when everything fits on one page. */
 export function ListPagination({ page, pageSize, total, onPageChange, noun = "results" }: ListPaginationProps) {
   const pages = Math.ceil(total / pageSize);
   if (pages <= 1) return null;

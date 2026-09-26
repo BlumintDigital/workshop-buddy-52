@@ -43,11 +43,11 @@ function EmptyRow({ children }: { children: ReactNode }) {
 
 function JobsCard({ jobs, role }: { jobs: OpenJob[]; role: "admin" | "manager" }) {
   return (
-    <Panel title="Jobs in progress" link={{ label: "View all jobs", to: `/${role}/jobs` }}>
+    <Panel title="Projects in progress" link={{ label: "View all projects", to: `/${role}/projects` }}>
       {jobs.length === 0 ? (
         <EmptyRow>
           No open jobs.{" "}
-          <Link to={`/${role}/jobs`} className="font-medium text-primary hover:underline">
+          <Link to={`/${role}/projects`} className="font-medium text-primary hover:underline">
             Create a job
           </Link>{" "}
           to start tracking work.
@@ -59,10 +59,10 @@ function JobsCard({ jobs, role }: { jobs: OpenJob[]; role: "admin" | "manager" }
             return (
               <li key={job.id}>
                 <Link
-                  to={`/jobs/${job.id}`}
+                  to={`/projects/${job.id}`}
                   className="grid min-h-[56px] grid-cols-[1fr_auto] items-center gap-x-3 gap-y-1 px-4 py-2.5 transition-colors hover:bg-secondary/60 sm:grid-cols-[1fr_140px_auto_120px]"
                 >
-                  <span className="min-w-0 truncate text-sm font-medium">{job.title}</span>
+                  <span className="min-w-0 truncate text-sm font-medium"><span className="mr-1.5 font-mono text-xs font-normal text-muted-foreground">{job.ref}</span>{job.title}</span>
                   <span className="hidden truncate text-sm text-muted-foreground sm:block">{job.assignee ?? "Unassigned"}</span>
                   <JobStatusPill status={job.status} />
                   <span className={cn("col-span-2 text-xs sm:col-span-1 sm:text-right sm:text-sm", due.late ? "font-medium text-destructive" : "text-muted-foreground")}>
@@ -107,7 +107,7 @@ function TeamCard({ team, role }: { team: TeamLoadEntry[]; role: "admin" | "mana
   return (
     <Panel title="Team load" link={{ label: "View team", to: role === "admin" ? "/admin/users" : "/manager/staff" }}>
       {team.length === 0 ? (
-        <EmptyRow>No open jobs are assigned yet. Assign jobs to see who has capacity.</EmptyRow>
+        <EmptyRow>No open projects are assigned yet. Assign projects to see who has capacity.</EmptyRow>
       ) : (
         <ul className="space-y-3 px-4 py-4">
           {team.map((t) => {
@@ -120,7 +120,7 @@ function TeamCard({ team, role }: { team: TeamLoadEntry[]; role: "admin" | "mana
                 </span>
                 <span className="tabular-nums text-muted-foreground">
                   {useHours ? `${t.hours.toFixed(1)} h · ` : ""}
-                  {t.jobs} {t.jobs === 1 ? "job" : "jobs"}
+                  {t.jobs} {t.jobs === 1 ? "project" : "projects"}
                 </span>
               </li>
             );
@@ -192,15 +192,15 @@ export function TodayDashboard({ role }: TodayDashboardProps) {
             label: "In review",
             value: String(figures.inReview),
             detail: figures.inReview > 0 ? "Waiting for sign-off" : "Nothing waiting",
-            to: `/${role}/jobs`,
+            to: `/${role}/projects`,
           },
         ]),
     {
-      label: "Open jobs",
+      label: "Open projects",
       value: String(figures.openJobs),
       detail: figures.dueToday > 0 ? `${figures.dueToday} due today or late` : "None due today",
       detailTone: figures.dueToday > 0 ? "bad" : "default",
-      to: `/${role}/jobs`,
+      to: `/${role}/projects`,
     },
     {
       label: "Awaiting payment",
@@ -217,10 +217,10 @@ export function TodayDashboard({ role }: TodayDashboardProps) {
           to: `/${role}/calendar`,
         }
       : {
-          label: "Open job hours",
+          label: "Open project hours",
           value: `${today.teamLoad.reduce((s, t) => s + t.hours, 0).toFixed(1)} h`,
           detail: "Estimated, across the team",
-          to: `/${role}/jobs`,
+          to: `/${role}/projects`,
         },
   ];
 
@@ -274,7 +274,7 @@ export function TodayDashboard({ role }: TodayDashboardProps) {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
                 <DropdownMenuItem asChild className="min-h-[44px]">
-                  <Link to={`/${role}/jobs`}><Wrench className="mr-2 h-4 w-4" />Job</Link>
+                  <Link to={`/${role}/projects`}><Wrench className="mr-2 h-4 w-4" />Project</Link>
                 </DropdownMenuItem>
                 {appointmentsEnabled && (
                   <DropdownMenuItem asChild className="min-h-[44px]">

@@ -96,7 +96,7 @@ export default function AdminCalendar() {
     const { error } = await supabase.from("jobs").update({ due_date: newDate }).eq("id", eventId);
     if (error) {
       setEvents((prev) => prev.map((ev) => (ev.id === eventId ? { ...ev, date: event.date } : ev)));
-      toast.error("Failed to reschedule job");
+      toast.error("Couldn't reschedule the project. Try again.");
     } else {
       toast.success(`"${event.title}" moved to ${format(targetDate, "MMM d")}`);
     }
@@ -234,13 +234,13 @@ export default function AdminCalendar() {
             {isWeek ? format(day, "EEE, MMM d") : format(day, "d")}
           </span>
           <div className="flex items-center gap-1">
-            {jobCount > 0 && <span className="text-xs bg-secondary text-secondary-foreground rounded-full px-1.5" title={`${jobCount} jobs`}>{jobCount}J</span>}
+            {jobCount > 0 && <span className="text-xs bg-secondary text-secondary-foreground rounded-full px-1.5" title={`${jobCount} projects`}>{jobCount}P</span>}
             {apptCount > 0 && <span className="text-xs bg-primary-soft text-primary rounded-full px-1.5" title={`${apptCount} appointments`}>{apptCount}A</span>}
             <Button
               variant="ghost"
               size="icon"
               onClick={(e) => { e.stopPropagation(); openCreateJob(day); }}
-              aria-label={`Add job on ${format(day, "d MMMM")}`}
+              aria-label={`Add project on ${format(day, "d MMMM")}`}
               className="h-6 w-6 p-0 text-muted-foreground"
             >
               <Plus className="h-3 w-3" />
@@ -271,7 +271,7 @@ export default function AdminCalendar() {
             <Briefcase className="h-4 w-4 sm:h-5 sm:w-5 text-primary shrink-0" />
             <div className="text-center sm:text-left min-w-0">
               <p className="text-xl sm:text-2xl font-bold">{totalJobs}</p>
-              <p className="text-xs text-muted-foreground leading-tight">Jobs this month</p>
+              <p className="text-xs text-muted-foreground leading-tight">Projects due this month</p>
             </div>
           </Card>
           <Card className="p-3 sm:p-4 flex flex-col sm:flex-row items-center gap-1 sm:gap-3">
@@ -285,7 +285,7 @@ export default function AdminCalendar() {
             <AlertTriangle className="h-4 w-4 sm:h-5 sm:w-5 text-destructive shrink-0" />
             <div className="text-center sm:text-left min-w-0">
               <p className="text-xl sm:text-2xl font-bold">{overdueJobs}</p>
-              <p className="text-xs text-muted-foreground leading-tight">Overdue jobs</p>
+              <p className="text-xs text-muted-foreground leading-tight">Overdue projects</p>
             </div>
           </Card>
         </div>
@@ -304,7 +304,7 @@ export default function AdminCalendar() {
               <span className="text-sm font-medium">Show:</span>
               <ToggleGroup type="multiple" value={showTypes} onValueChange={(v) => v.length && setShowTypes(v)} size="sm">
                 <ToggleGroupItem value="appointment" className="text-xs">Appointments</ToggleGroupItem>
-                <ToggleGroupItem value="job" className="text-xs">Jobs</ToggleGroupItem>
+                <ToggleGroupItem value="job" className="text-xs">Projects</ToggleGroupItem>
               </ToggleGroup>
             </div>
             <div className="flex items-center gap-2">
@@ -404,7 +404,7 @@ export default function AdminCalendar() {
                         </div>
                       </div>
                       {ev.type === "job" && (
-                        <Link to="/admin/jobs" className="text-xs text-primary hover:underline mt-2 inline-block">
+                        <Link to="/admin/projects" className="text-xs text-primary hover:underline mt-2 inline-block">
                           View Details →
                         </Link>
                       )}

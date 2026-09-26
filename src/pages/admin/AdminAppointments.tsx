@@ -210,7 +210,7 @@ export default function AdminAppointments() {
   // Create a job from the appointment and mark appointment as confirmed
   const handleCreateJob = async () => {
     if (!jobDialogAppt || !jobForm.title.trim()) {
-      toast.error("Job title is required");
+      toast.error("Give the project a title");
       return;
     }
     setCreatingJob(true);
@@ -234,8 +234,8 @@ export default function AdminAppointments() {
     setCreatingJob(false);
     setJobDialogAppt(null);
     fetchAppointments(page);
-    toast.success(jobForm.isQuote ? "Quote created — appointment marked as confirmed" : "Job created — appointment marked as confirmed");
-    navigate(`/jobs/${newJob.id}`);
+    toast.success(jobForm.isQuote ? "Quote created and appointment confirmed" : "Project created and appointment confirmed");
+    navigate(`/projects/${newJob.id}`);
   };
 
   const handleExportCalendar = () => {
@@ -386,14 +386,14 @@ export default function AdminAppointments() {
       <Dialog open={!!jobDialogAppt} onOpenChange={(v) => { if (!v) setJobDialogAppt(null); }}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Create Job from Appointment</DialogTitle>
+            <DialogTitle>Create a project from this appointment</DialogTitle>
             <DialogDescription>
               A work order will be created for <strong>{jobDialogAppt?.client_name}</strong> and the appointment will be marked as confirmed.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label htmlFor="f-job-title">Job Title</Label>
+              <Label htmlFor="f-job-title">Project title</Label>
               <Input id="f-job-title" value={jobForm.title} onChange={(e) => setJobForm({ ...jobForm, title: e.target.value })} className="mt-1" />
             </div>
             <div>
@@ -442,7 +442,7 @@ export default function AdminAppointments() {
             <Button onClick={handleCreateJob} disabled={creatingJob} className="w-full">
               {jobForm.isQuote
                 ? <><FileText className="mr-2 h-4 w-4" />{creatingJob ? "Creating..." : "Create Quote"}</>
-                : <><Briefcase className="mr-2 h-4 w-4" />{creatingJob ? "Creating..." : "Create Job"}</>}
+                : <><Briefcase className="mr-2 h-4 w-4" />{creatingJob ? "Creating…" : "Create project"}</>}
             </Button>
           </div>
         </DialogContent>

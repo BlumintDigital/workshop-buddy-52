@@ -22,12 +22,13 @@ import { SessionIndicator } from "@/components/SessionIndicator";
 import { GlobalSearch } from "./GlobalSearch";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth, getRoleDashboardPath } from "@/hooks/useAuth";
+import { isIdSegment, useRegisteredLabel } from "@/lib/breadcrumbs";
 
-const ROLE_SCOPED_SEGMENTS = new Set(["invoices", "jobs", "appointments", "inventory", "reports", "users", "clients", "calendar", "activity-logs", "settings", "feedback", "dashboard"]);
+const ROLE_SCOPED_SEGMENTS = new Set(["invoices", "projects", "appointments", "inventory", "reports", "users", "clients", "calendar", "activity-logs", "settings", "feedback", "dashboard"]);
 
 const LABELS: Record<string, string> = {
   dashboard: "Dashboard",
-  jobs: "Jobs",
+  projects: "Projects",
   appointments: "Appointments",
   inventory: "Inventory",
   invoices: "Invoices",
@@ -44,12 +45,14 @@ const HOME_LABEL: Record<string, string> = { admin: "Today", manager: "Today", s
 
 function toLabel(segment: string, role: string | null) {
   if (segment === "dashboard" && role) return HOME_LABEL[role] ?? LABELS.dashboard;
+  if (isIdSegment(segment)) return "Details";
   return LABELS[segment] ?? segment.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 export function AppHeader() {
   const location = useLocation();
   const { role } = useAuth();
+  const pageLabel = useRegisteredLabel(location.pathname);
 
   const rawSegments = location.pathname.split("/").filter(Boolean);
   const hasRolePrefix = rawSegments[0] === "admin" || rawSegments[0] === "manager" || rawSegments[0] === "staff" || rawSegments[0] === "client";
@@ -61,7 +64,8 @@ export function AppHeader() {
     if (!hasRolePrefix && i === 0 && role && ROLE_SCOPED_SEGMENTS.has(seg)) {
       href = `/${role}/${seg}`;
     }
-    return [...acc, { label: toLabel(seg, role), href }];
+    const isLast = i === rawSegments.length - 1;
+    return [...acc, { label: isLast && pageLabel ? pageLabel : toLabel(seg, role), href }];
   }, []);
 
   return (

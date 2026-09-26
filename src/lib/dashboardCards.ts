@@ -29,10 +29,10 @@ export type CardMeta = {
 export const CARDS: CardMeta[] = [
   { id: "attention", title: "Needs attention", description: "Overdue invoices, sign-offs, low stock and more", required: true, defaults: { admin: true, manager: true } },
   { id: "onboarding", title: "Setup checklist", description: "Steps left to finish setting up the workshop", defaults: { admin: true } },
-  { id: "figures", title: "Figures", description: "Revenue, open jobs, money owed, appointments", defaults: { admin: true, manager: true } },
-  { id: "jobs", title: "Jobs in progress", description: "Open jobs, soonest due first", defaults: { admin: true, manager: true } },
+  { id: "figures", title: "Figures", description: "Revenue, open projects, money owed, appointments", defaults: { admin: true, manager: true } },
+  { id: "jobs", title: "Projects in progress", description: "Open projects, soonest due first", defaults: { admin: true, manager: true } },
   { id: "schedule", title: "Today's appointments", description: "Bookings for today", feature: "appointments", defaults: { admin: true, manager: true } },
-  { id: "team", title: "Team load", description: "Open jobs and estimated hours per person", defaults: { admin: true, manager: true } },
+  { id: "team", title: "Team load", description: "Open projects and estimated hours per person", defaults: { admin: true, manager: true } },
   { id: "revenue", title: "Revenue trend", description: "Paid invoices over the last 6 months", defaults: { admin: true, manager: false } },
   { id: "activity", title: "Activity feed", description: "Recent changes across the workshop", defaults: { admin: false } },
 ];

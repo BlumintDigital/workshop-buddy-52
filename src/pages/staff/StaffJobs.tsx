@@ -8,6 +8,7 @@ import { ListControls } from "@/components/list/ListControls";
 import { DataList, type Column } from "@/components/list/DataList";
 import { EmptyState } from "@/components/list/EmptyState";
 import { formatDate } from "@/lib/format";
+import ProjectName from "@/components/project/ProjectName";
 
 export default function StaffJobs() {
   const { user } = useAuth();
@@ -20,7 +21,7 @@ export default function StaffJobs() {
     setIsLoading(true);
     if (!user) { setIsLoading(false); return; }
     const { data } = await supabase.from("jobs")
-      .select("id, title, status, priority, due_date, assigned_staff_id, client_id, created_at")
+      .select("id, ref, title, status, priority, due_date, assigned_staff_id, client_id, created_at")
       .order("created_at", { ascending: false })
       .limit(200);
     setJobs(data || []);
@@ -36,13 +37,13 @@ export default function StaffJobs() {
   const q = search.trim().toLowerCase();
   const filtered = jobs
     .filter((j) => (filter === "mine" ? j.assigned_staff_id === user?.id : filter === "all" ? true : j.status === filter))
-    .filter((j) => !q || j.title?.toLowerCase().includes(q));
+    .filter((j) => !q || j.title?.toLowerCase().includes(q) || j.ref?.toLowerCase().includes(q));
   const openMine = mine.filter((j) => j.status !== "completed" && j.status !== "cancelled").length;
 
   const assignment = (job: any) => (job.assigned_staff_id === user?.id ? "You" : job.assigned_staff_id ? "Another technician" : "Unassigned");
 
   const columns: Column<any>[] = [
-    { key: "title", header: "Job", cell: (job) => job.title },
+    { key: "title", header: "Project", cell: (job) => <ProjectName refId={job.ref} title={job.title} /> },
     { key: "status", header: "Status", cell: (job) => <JobStatusPill status={job.status} /> },
     { key: "priority", header: "Priority", cell: (job) => <PriorityLabel priority={job.priority} />, hideBelow: "md" },
     { key: "assigned", header: "Assigned to", cell: assignment, hideBelow: "lg" },
@@ -53,13 +54,13 @@ export default function StaffJobs() {
     <DashboardLayout>
       <div className="mx-auto min-w-0 max-w-5xl space-y-4">
         <PageBar
-          title="Jobs"
-          subtitle={isLoading ? "Loading…" : `${openMine} open and assigned to you · you can update only your own jobs`}
+          title="Projects"
+          subtitle={isLoading ? "Loading…" : `${openMine} open and assigned to you · you can update only your own projects`}
         />
         <ListControls
           filters={[
             { value: "mine", label: "Assigned to me", count: mine.length },
-            { value: "all", label: "All jobs" },
+            { value: "all", label: "All projects" },
             { value: "pending", label: "Pending" },
             { value: "in_progress", label: "In progress" },
             { value: "review", label: "Awaiting review" },
@@ -69,24 +70,24 @@ export default function StaffJobs() {
           onFilterChange={setFilter}
           search={search}
           onSearchChange={setSearch}
-          searchPlaceholder="Search jobs by title"
+          searchPlaceholder="Search by project ID or title"
         />
         <DataList
           rows={filtered}
           columns={columns}
           isLoading={isLoading}
           getRowKey={(job) => job.id}
-          getRowHref={(job) => `/jobs/${job.id}`}
+          getRowHref={(job) => `/projects/${job.id}`}
           mobile={{
-            title: (job) => job.title,
+            title: (job) => <ProjectName refId={job.ref} title={job.title} />,
             trailing: (job) => <JobStatusPill status={job.status} />,
             meta: (job) => [filter !== "mine" && assignment(job), job.due_date && `Due ${formatDate(job.due_date)}`].filter(Boolean).join(" · "),
           }}
           empty={
             filter === "mine" && !q ? (
-              <EmptyState title="Nothing assigned to you" description="Jobs a manager assigns to you show here. Browse All jobs to see the whole workshop." />
+              <EmptyState title="Nothing assigned to you" description="Projects a manager assigns to you show here. Browse All projects to see the whole workshop." />
             ) : (
-              <EmptyState title="No jobs match" description="Try another filter or clear the search." />
+              <EmptyState title="No projects match" description="Try another filter or clear the search." />
             )
           }
         />

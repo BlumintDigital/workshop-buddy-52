@@ -5,9 +5,11 @@
 import { supabase } from "@/integrations/supabase/client";
 import { sendNotifications } from "@/lib/notifications";
 import { sendEmail, jobStatusEmailHtml, quoteReadyEmailHtml } from "@/lib/email";
+import { projectLabel, projectPath, projectStatusLabel } from "@/lib/projects";
 
 export type NotifiableJob = {
   id: string;
+  ref?: string | null;
   title: string;
   client_id?: string | null;
   assigned_staff_id?: string | null;
@@ -16,9 +18,9 @@ export type NotifiableJob = {
 /** In-app notifications for the job's client and assignee (never the person who made the change). */
 export function notifyJobParticipants(job: NotifiableJob, message: string, actorId?: string | null) {
   const notifs: { user_id: string; title: string; message: string; link: string }[] = [];
-  if (job.client_id) notifs.push({ user_id: job.client_id, title: "Job updated", message, link: `/jobs/${job.id}` });
+  if (job.client_id) notifs.push({ user_id: job.client_id, title: "Project updated", message, link: projectPath(job.id) });
   if (job.assigned_staff_id && job.assigned_staff_id !== actorId) {
-    notifs.push({ user_id: job.assigned_staff_id, title: "Job updated", message, link: `/jobs/${job.id}` });
+    notifs.push({ user_id: job.assigned_staff_id, title: "Project updated", message, link: projectPath(job.id) });
   }
   if (notifs.length > 0) sendNotifications(notifs);
 }
@@ -39,14 +41,14 @@ export async function notifyJobStatusChange(job: NotifiableJob, status: string, 
     target = { ...job, client_id: data?.client_id ?? null, assigned_staff_id: data?.assigned_staff_id ?? null };
   }
 
-  notifyJobParticipants(target, `${target.title} is now ${status.replace(/_/g, " ")}`, actorId);
+  notifyJobParticipants(target, `${projectLabel(target)} is now ${projectStatusLabel(status)}`, actorId);
 
   if (target.client_id) {
-    const link = `${window.location.origin}/jobs/${target.id}`;
+    const link = `${window.location.origin}${projectPath(target.id)}`;
     sendEmail({
       to_user_id: target.client_id,
-      subject: status === "quote" ? `Quote ready: ${target.title}` : `Job update: ${target.title}`,
-      html: status === "quote" ? quoteReadyEmailHtml(target.title, link) : jobStatusEmailHtml(target.title, status, link),
+      subject: status === "quote" ? `Quote ready: ${projectLabel(target)}` : `Project update: ${projectLabel(target)}`,
+      html: status === "quote" ? quoteReadyEmailHtml(projectLabel(target), link) : jobStatusEmailHtml(projectLabel(target), status, link),
     }).catch(() => {});
   }
 }

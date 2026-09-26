@@ -240,7 +240,7 @@ export default function AdminInvoices() {
             ) : (
               <EmptyState
                 title="No invoices yet"
-                description="Create one from scratch, or from a completed job."
+                description="Create one from scratch, or from a completed project."
                 action={
                   <Button asChild>
                     <Link to="/invoices/new">

@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils";
 
 type Job = {
   id: string;
+  ref: string;
   title: string;
   status: string;
   priority: string | null;
@@ -32,7 +33,7 @@ const STEP_INDEX: Record<string, number> = { pending: 0, in_progress: 1, review:
 const STATUS_ORDER: Record<string, number> = { in_progress: 0, pending: 1, review: 2 };
 
 const NEXT_ACTION: Record<string, { label: string; to: string; done: string } | undefined> = {
-  pending: { label: "Start job", to: "in_progress", done: "Job started" },
+  pending: { label: "Start work", to: "in_progress", done: "Work started" },
   in_progress: { label: "Send for review", to: "review", done: "Sent for review" },
 };
 
@@ -70,7 +71,7 @@ export default function StaffDashboard() {
     const [jobsRes, doneRes, apptsRes] = await Promise.all([
       supabase
         .from("jobs")
-        .select("id, title, status, priority, due_date, estimated_hours")
+        .select("id, ref, title, status, priority, due_date, estimated_hours")
         .eq("assigned_staff_id", user.id)
         .in("status", ["pending", "in_progress", "review"]),
       supabase
@@ -90,7 +91,7 @@ export default function StaffDashboard() {
     ]);
 
     if (jobsRes.error) {
-      toast.error("Couldn't load your jobs. Reload the page to try again.");
+      toast.error("Couldn't load your projects. Reload the page to try again.");
     }
     const sorted = ((jobsRes.data || []) as Job[]).sort(
       (a, b) =>
@@ -147,7 +148,7 @@ export default function StaffDashboard() {
         ) : !current ? (
           <section className="rounded-lg border bg-card p-6 text-center">
             <CheckCircle2 className="mx-auto h-8 w-8 text-success" />
-            <h2 className="mt-2 font-sans text-lg font-semibold">No jobs assigned to you</h2>
+            <h2 className="mt-2 font-sans text-lg font-semibold">No projects assigned to you</h2>
             <p className="mt-1 text-sm text-muted-foreground">
               When a manager assigns you a job it will appear here. {doneThisWeek > 0 && `You've finished ${doneThisWeek} this week.`}
             </p>
@@ -159,7 +160,7 @@ export default function StaffDashboard() {
           <>
             <CurrentJobCard job={current} busy={updating === current.id} onAdvance={() => advance(current)} />
 
-            <Panel title="Up next" link={{ label: "All my jobs", to: "/staff/jobs" }}>
+            <Panel title="Up next" link={{ label: "All my projects", to: "/staff/projects" }}>
               {upNext.length === 0 ? (
                 <p className="px-4 py-5 text-sm text-muted-foreground">Nothing else queued. {doneThisWeek > 0 && `${doneThisWeek} done this week.`}</p>
               ) : (
@@ -168,9 +169,10 @@ export default function StaffDashboard() {
                     const due = dueLabel(job.due_date);
                     return (
                       <li key={job.id}>
-                        <Link to={`/jobs/${job.id}`} className="flex min-h-[60px] items-center justify-between gap-3 px-4 py-3 hover:bg-secondary/60">
+                        <Link to={`/projects/${job.id}`} className="flex min-h-[60px] items-center justify-between gap-3 px-4 py-3 hover:bg-secondary/60">
                           <span className="min-w-0">
                             <span className="block truncate text-sm font-medium">{job.title}</span>
+                            <span className="block font-mono text-xs text-muted-foreground">{job.ref}</span>
                             <span className={cn("text-xs", due.late ? "font-medium text-destructive" : "text-muted-foreground")}>{due.text}</span>
                           </span>
                           <span className="flex shrink-0 items-center gap-1.5">
@@ -209,7 +211,7 @@ export default function StaffDashboard() {
 
         {!isLoading && current && (
           <p className="text-center text-sm text-muted-foreground">
-            {doneThisWeek > 0 ? `${doneThisWeek} ${doneThisWeek === 1 ? "job" : "jobs"} finished this week.` : "No jobs finished yet this week."}
+            {doneThisWeek > 0 ? `${doneThisWeek} ${doneThisWeek === 1 ? "project" : "projects"} finished this week.` : "No projects finished yet this week."}
           </p>
         )}
       </div>
@@ -223,13 +225,14 @@ function CurrentJobCard({ job, busy, onAdvance }: { job: Job; busy: boolean; onA
   const heading = job.status === "in_progress" ? "Working on" : job.status === "pending" ? "Up first" : "Waiting for sign-off";
 
   return (
-    <section aria-label="Current job" className="space-y-3 rounded-lg border bg-card p-4">
+    <section aria-label="Current project" className="space-y-3 rounded-lg border bg-card p-4">
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-sm text-muted-foreground">{heading}</span>
         <PriorityPill priority={job.priority} />
         {due.late && <StatusPill tone="danger">Late</StatusPill>}
       </div>
       <div>
+        <p className="font-mono text-xs text-muted-foreground">{job.ref}</p>
         <h2 className="font-sans text-lg font-semibold leading-snug">{job.title}</h2>
         <p className={cn("mt-0.5 text-sm", due.late ? "font-medium text-destructive" : "text-muted-foreground")}>
           {due.text}
@@ -239,7 +242,7 @@ function CurrentJobCard({ job, busy, onAdvance }: { job: Job; busy: boolean; onA
       <StepTracker steps={STEPS} current={STEP_INDEX[job.status] ?? 0} />
       <div className="grid grid-cols-2 gap-2">
         <Button asChild variant="outline" className="h-12">
-          <Link to={`/jobs/${job.id}`}>Open job</Link>
+          <Link to={`/projects/${job.id}`}>Open project</Link>
         </Button>
         {action ? (
           <Button className="h-12" onClick={onAdvance} disabled={busy}>

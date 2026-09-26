@@ -11,6 +11,7 @@ import { ListControls } from "@/components/list/ListControls";
 import { DataList, type Column } from "@/components/list/DataList";
 import { EmptyState } from "@/components/list/EmptyState";
 import { formatDate } from "@/lib/format";
+import ProjectName from "@/components/project/ProjectName";
 import { CheckCircle2, XCircle } from "lucide-react";
 import { toast } from "sonner";
 
@@ -70,13 +71,13 @@ export default function ClientJobs() {
   const quotes = jobs.filter(j => j.status === "quote");
   const q = search.trim().toLowerCase();
   const filtered = (filter === "all" ? jobs.filter((j) => j.status !== "quote") : jobs.filter((j) => j.status === filter)).filter(
-    (j) => !q || j.title?.toLowerCase().includes(q),
+    (j) => !q || j.title?.toLowerCase().includes(q) || j.ref?.toLowerCase().includes(q),
   );
   const countOf = (status: string) => jobs.filter((j) => j.status === status).length;
   const active = jobs.filter((j) => j.status === "pending" || j.status === "in_progress" || j.status === "review").length;
 
   const columns: Column<any>[] = [
-    { key: "title", header: "Job", cell: (job) => job.title },
+    { key: "title", header: "Project", cell: (job) => <ProjectName refId={job.ref} title={job.title} /> },
     { key: "status", header: "Status", cell: (job) => <JobStatusPill status={job.status} /> },
     { key: "priority", header: "Priority", cell: (job) => <PriorityLabel priority={job.priority} />, hideBelow: "md" },
     { key: "due", header: "Due", cell: (job) => formatDate(job.due_date), hideBelow: "lg" },
@@ -87,7 +88,7 @@ export default function ClientJobs() {
     <DashboardLayout>
       <div className="mx-auto min-w-0 max-w-5xl space-y-4">
         <PageBar
-          title="Jobs"
+          title="Projects"
           subtitle={isLoading ? "Loading…" : `${active} in progress · ${jobs.length} in total`}
           actions={
             <span className="flex items-center gap-1.5 text-xs text-muted-foreground" role="status">
@@ -107,7 +108,7 @@ export default function ClientJobs() {
               {quotes.map(q => (
                 <div key={q.id} className="flex items-center justify-between gap-3 flex-wrap">
                   <div>
-                    <Link to={`/jobs/${q.id}`} className="font-medium text-sm hover:underline">{q.title}</Link>
+                    <Link to={`/projects/${q.id}`} className="font-medium text-sm hover:underline">{q.title}</Link>
                     {q.description && <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{q.description}</p>}
                   </div>
                   <div className="flex gap-2 shrink-0">
@@ -136,7 +137,7 @@ export default function ClientJobs() {
           onFilterChange={setFilter}
           search={search}
           onSearchChange={setSearch}
-          searchPlaceholder="Search jobs by title"
+          searchPlaceholder="Search by project ID or title"
         />
 
         <DataList
@@ -144,17 +145,17 @@ export default function ClientJobs() {
           columns={columns}
           isLoading={isLoading}
           getRowKey={(job) => job.id}
-          getRowHref={(job) => `/jobs/${job.id}`}
+          getRowHref={(job) => `/projects/${job.id}`}
           mobile={{
-            title: (job) => job.title,
+            title: (job) => <ProjectName refId={job.ref} title={job.title} />,
             trailing: (job) => <JobStatusPill status={job.status} />,
             meta: (job) => (job.due_date ? `Due ${formatDate(job.due_date)}` : `Created ${formatDate(job.created_at)}`),
           }}
           empty={
             filter !== "all" || q ? (
-              <EmptyState title="No jobs match" description="Try another filter or clear the search." />
+              <EmptyState title="No projects match" description="Try another filter or clear the search." />
             ) : (
-              <EmptyState title="No jobs yet" description="When the workshop starts work for you, the job and its progress show here." />
+              <EmptyState title="No projects yet" description="When the workshop receives your item, the project and its progress show here." />
             )
           }
         />

@@ -12,7 +12,7 @@ const LABELS: Record<FeatureKey, string> = {
   client_portal: "Client portal",
   goals: "Goals",
   reports: "Reports",
-  job_chat: "Job Chat",
+  job_chat: "Client messages",
   backup_restore: "Backup & Restore",
   generate_sample_data: "Sample data generation",
   setup_demo_users: "Demo user setup",

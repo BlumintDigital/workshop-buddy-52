@@ -173,7 +173,7 @@ export default function StaffInventory() {
                 onChange={(e) => setAdjustForm({ ...adjustForm, notes: e.target.value })}
                 className="mt-1"
                 rows={2}
-                placeholder="Which job? Any details..."
+                placeholder="Which project? Any details…"
               />
             </div>
             <Button onClick={handleAdjust} className="w-full">Log</Button>

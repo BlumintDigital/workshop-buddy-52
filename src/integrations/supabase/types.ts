@@ -12,6 +12,7 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.4"
   }
+
   public: {
     Tables: {
       activity_logs: {
@@ -556,6 +557,10 @@ export type Database = {
           client_marked_paid_at: string | null
           created_at: string
           currency: string
+          discount_amount: number
+          discount_reason: string | null
+          discount_type: string | null
+          discount_value: number
           due_date: string | null
           fx_rate: number
           id: string
@@ -573,11 +578,15 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          base_total?: number | null
+          base_total?: never
           client_id: string
           client_marked_paid_at?: string | null
           created_at?: string
           currency?: string
+          discount_amount?: number
+          discount_reason?: string | null
+          discount_type?: string | null
+          discount_value?: number
           due_date?: string | null
           fx_rate?: number
           id?: string
@@ -595,11 +604,15 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          base_total?: number | null
+          base_total?: never
           client_id?: string
           client_marked_paid_at?: string | null
           created_at?: string
           currency?: string
+          discount_amount?: number
+          discount_reason?: string | null
+          discount_type?: string | null
+          discount_value?: number
           due_date?: string | null
           fx_rate?: number
           id?: string
@@ -635,6 +648,7 @@ export type Database = {
           file_type: string
           id: string
           job_id: string
+          kind: string
           task_id: string | null
           uploaded_by: string
         }
@@ -646,6 +660,7 @@ export type Database = {
           file_type?: string
           id?: string
           job_id: string
+          kind?: string
           task_id?: string | null
           uploaded_by: string
         }
@@ -657,6 +672,7 @@ export type Database = {
           file_type?: string
           id?: string
           job_id?: string
+          kind?: string
           task_id?: string | null
           uploaded_by?: string
         }
@@ -684,6 +700,8 @@ export type Database = {
           id: number
           is_internal: boolean
           job_id: string
+          legacy_update_id: string | null
+          source: string
           user_id: string
         }
         Insert: {
@@ -692,6 +710,8 @@ export type Database = {
           id?: never
           is_internal?: boolean
           job_id: string
+          legacy_update_id?: string | null
+          source?: string
           user_id: string
         }
         Update: {
@@ -700,6 +720,8 @@ export type Database = {
           id?: never
           is_internal?: boolean
           job_id?: string
+          legacy_update_id?: string | null
+          source?: string
           user_id?: string
         }
         Relationships: [
@@ -882,6 +904,7 @@ export type Database = {
           estimated_hours: number | null
           id: string
           priority: string
+          ref: string
           source_request_id: string | null
           status: string
           title: string
@@ -897,6 +920,7 @@ export type Database = {
           estimated_hours?: number | null
           id?: string
           priority?: string
+          ref?: string
           source_request_id?: string | null
           status?: string
           title: string
@@ -912,6 +936,7 @@ export type Database = {
           estimated_hours?: number | null
           id?: string
           priority?: string
+          ref?: string
           source_request_id?: string | null
           status?: string
           title?: string
@@ -1116,6 +1141,59 @@ export type Database = {
         }
         Relationships: []
       }
+      project_events: {
+        Row: {
+          actor_id: string | null
+          client_visible: boolean
+          created_at: string
+          data: NonNullable<Json>
+          id: number
+          job_id: string
+          kind: string
+        }
+        Insert: {
+          actor_id?: string | null
+          client_visible?: boolean
+          created_at?: string
+          data?: NonNullable<Json>
+          id?: never
+          job_id: string
+          kind: string
+        }
+        Update: {
+          actor_id?: string | null
+          client_visible?: boolean
+          created_at?: string
+          data?: NonNullable<Json>
+          id?: never
+          job_id?: string
+          kind?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_events_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_ref_counters: {
+        Row: {
+          last_value: number
+          period: string
+        }
+        Insert: {
+          last_value?: number
+          period: string
+        }
+        Update: {
+          last_value?: number
+          period?: string
+        }
+        Relationships: []
+      }
       push_subscriptions: {
         Row: {
           auth: string
@@ -1316,6 +1394,7 @@ export type Database = {
           notify_low_inventory: boolean | null
           notify_new_appointment: boolean | null
           phone: string | null
+          project_ref_prefix: string
           vapid_public_key: string | null
           workshop_name: string | null
         }
@@ -1339,6 +1418,7 @@ export type Database = {
           notify_low_inventory?: boolean | null
           notify_new_appointment?: boolean | null
           phone?: string | null
+          project_ref_prefix?: string
           vapid_public_key?: string | null
           workshop_name?: string | null
         }
@@ -1362,6 +1442,7 @@ export type Database = {
           notify_low_inventory?: boolean | null
           notify_new_appointment?: boolean | null
           phone?: string | null
+          project_ref_prefix?: string
           vapid_public_key?: string | null
           workshop_name?: string | null
         }
@@ -1402,6 +1483,15 @@ export type Database = {
         Args: { _assigned_staff_id?: string; _request_id: string }
         Returns: string
       }
+      add_project_event: {
+        Args: {
+          _client_visible?: boolean
+          _data?: Json
+          _job_id: string
+          _kind: string
+        }
+        Returns: undefined
+      }
       admin_set_user_role: {
         Args: {
           _caller_user_id: string
@@ -1423,28 +1513,28 @@ export type Database = {
         Returns: undefined
       }
       get_job_completion_stats: {
-        Args: never
+        Args: Record<PropertyKey, never>
         Returns: {
           count: number
           status: string
         }[]
       }
       get_monthly_bookings: {
-        Args: never
+        Args: Record<PropertyKey, never>
         Returns: {
           count: number
           month: string
         }[]
       }
       get_monthly_revenue: {
-        Args: never
+        Args: Record<PropertyKey, never>
         Returns: {
           month: string
           revenue: number
         }[]
       }
       get_my_basic_profile: {
-        Args: never
+        Args: Record<PropertyKey, never>
         Returns: {
           address: string
           avatar_url: string
@@ -1466,6 +1556,8 @@ export type Database = {
         Returns: boolean
       }
       is_feature_enabled: { Args: { feature_key: string }; Returns: boolean }
+      job_update_to_note: { Args: { _update_id: string }; Returns: undefined }
+      next_project_ref: { Args: { _at?: string }; Returns: string }
       redeem_signup_code: {
         Args: { _code: string }
         Returns: {
@@ -1498,6 +1590,10 @@ export type Database = {
         }
         Returns: number
       }
+      touch_profile_login: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "admin" | "manager" | "staff" | "client"
@@ -1509,6 +1605,8 @@ export type Database = {
         | "declined"
         | "cancelled"
         | "converted"
+        | "approved"
+        | "declined_by_client"
       client_request_type: "quote" | "job"
     }
     CompositeTypes: {
@@ -1525,12 +1623,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1552,13 +1650,12 @@ export type Tables<
 
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema["Tables"]
-    | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+    keyof DefaultSchema["Tables"] | { schema: keyof DatabaseWithoutInternals },
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1577,13 +1674,12 @@ export type TablesInsert<
 
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema["Tables"]
-    | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+    keyof DefaultSchema["Tables"] | { schema: keyof DatabaseWithoutInternals },
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1602,13 +1698,12 @@ export type TablesUpdate<
 
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
-    | keyof DefaultSchema["Enums"]
-    | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+    keyof DefaultSchema["Enums"] | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1621,11 +1716,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1646,6 +1741,8 @@ export const Constants = {
         "declined",
         "cancelled",
         "converted",
+        "approved",
+        "declined_by_client",
       ],
       client_request_type: ["quote", "job"],
     },

@@ -7,6 +7,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, type AppRole } from "@/hooks/useAuth";
 import { useFeatureFlags } from "@/hooks/useFeatureFlags";
+import { projectPath, projectSearchFilter, projectStatusLabel } from "@/lib/projects";
 import { NAV_GROUPS, isItemEnabled } from "@/lib/navigation";
 
 type Result = { id: string; label: string; detail?: string; to: string };
@@ -25,7 +26,9 @@ async function search(q: string, role: AppRole): Promise<Results> {
   const requestsUrl = role === "client" ? "/client/requests" : `/${role}/requests`;
 
   const [jobs, invoices, requests, clients] = await Promise.all([
-    supabase.from("jobs").select("id, title, status").ilike("title", pattern).limit(5),
+    projectSearchFilter(q)
+      ? supabase.from("jobs").select("id, ref, title, status").or(projectSearchFilter(q)!).order("created_at", { ascending: false }).limit(5)
+      : Promise.resolve({ data: [] as any[] }),
     role === "staff"
       ? Promise.resolve({ data: [] as any[] })
       : supabase.from("invoices").select("id, invoice_number, status").ilike("invoice_number", pattern).limit(5),
@@ -43,7 +46,7 @@ async function search(q: string, role: AppRole): Promise<Results> {
 
   const status = (s: string) => s.replace(/_/g, " ");
   return {
-    jobs: ((jobs.data || []) as any[]).map((j) => ({ id: j.id, label: j.title, detail: status(j.status), to: `/jobs/${j.id}` })),
+    jobs: ((jobs.data || []) as any[]).map((j) => ({ id: j.id, label: `${j.ref} · ${j.title}`, detail: projectStatusLabel(j.status), to: projectPath(j.id) })),
     invoices: ((invoices.data || []) as any[]).map((i) => ({
       id: i.id,
       label: i.invoice_number || "Invoice",
@@ -126,7 +129,7 @@ export function GlobalSearch() {
   };
 
   const groups: { heading: string; icon: typeof Briefcase; items: Result[] }[] = [
-    { heading: "Jobs", icon: Briefcase, items: results.jobs },
+    { heading: "Projects", icon: Briefcase, items: results.jobs },
     { heading: "Invoices", icon: FileText, items: results.invoices },
     { heading: "Requests", icon: Inbox, items: results.requests },
     { heading: "People", icon: UserCheck, items: results.clients },
@@ -150,7 +153,7 @@ export function GlobalSearch() {
         <DialogContent className="top-[15%] translate-y-0 overflow-hidden p-0 sm:max-w-lg">
           <DialogTitle className="sr-only">Search</DialogTitle>
           <Command shouldFilter={false} className="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-input]]:h-12 [&_[cmdk-item]]:min-h-[44px]">
-            <CommandInput value={query} onValueChange={setQuery} placeholder="Search jobs, invoices, requests or pages…" />
+            <CommandInput value={query} onValueChange={setQuery} placeholder="Search projects by ID or title, invoices, requests or pages…" />
             <CommandList className="max-h-[60vh]">
               {!hasResults && (
                 <CommandEmpty>{loading ? "Searching…" : query.trim().length < 2 ? "Type at least 2 letters." : `No matches for "${query.trim()}".`}</CommandEmpty>

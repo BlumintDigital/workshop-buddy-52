@@ -23,7 +23,7 @@ const actionColors: Record<string, string> = {
 };
 
 const tableLabels: Record<string, string> = {
-  jobs: "Jobs",
+  jobs: "Projects",
   appointments: "Appointments",
   invoices: "Invoices",
   inventory_items: "Inventory",

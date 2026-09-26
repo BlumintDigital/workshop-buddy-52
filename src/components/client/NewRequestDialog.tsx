@@ -57,7 +57,7 @@ export default function NewRequestDialog({ open, onOpenChange, onCreated }: Prop
       toast.error(error.message);
       return;
     }
-    toast.success(type === "quote" ? "Quote request submitted" : "Job request submitted");
+    toast.success(type === "quote" ? "Quote request submitted" : "Repair request submitted");
     reset();
     onOpenChange(false);
     onCreated();
@@ -96,7 +96,7 @@ export default function NewRequestDialog({ open, onOpenChange, onCreated }: Prop
               )}
             >
               <Wrench className="h-5 w-5 text-primary" />
-              <p className="mt-2 font-medium">Request a job</p>
+              <p className="mt-2 font-medium">Request a repair</p>
               <p className="text-xs text-muted-foreground">Ask the workshop to take on the work.</p>
             </button>
           </div>
@@ -138,7 +138,7 @@ export default function NewRequestDialog({ open, onOpenChange, onCreated }: Prop
           </div>
 
           <Button onClick={submit} disabled={submitting} className="w-full">
-            {submitting ? "Submitting…" : type === "quote" ? "Submit quote request" : "Submit job request"}
+            {submitting ? "Submitting…" : type === "quote" ? "Submit quote request" : "Submit repair request"}
           </Button>
         </div>
       </DialogContent>

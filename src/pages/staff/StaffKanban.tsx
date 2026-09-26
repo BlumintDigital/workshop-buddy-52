@@ -10,6 +10,7 @@ import { CalendarDays, GripVertical } from "lucide-react";
 
 type Job = {
   id: string;
+  ref: string;
   title: string;
   status: string;
   priority: string;
@@ -41,7 +42,7 @@ export default function StaffKanban() {
     // Initial fetch
     supabase
       .from("jobs")
-      .select("id, title, status, priority, due_date, description")
+      .select("id, ref, title, status, priority, due_date, description")
       .eq("assigned_staff_id", user.id)
       .then(({ data }) => setJobs(data || []));
 
@@ -144,7 +145,7 @@ export default function StaffKanban() {
                       <CardContent className="p-3 space-y-2">
                         <div className="flex items-start gap-2">
                           <GripVertical className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
-                          <span className="font-medium text-sm leading-tight">{job.title}</span>
+                          <span className="font-medium text-sm leading-tight"><span className="block font-mono text-xs font-normal text-muted-foreground">{job.ref}</span>{job.title}</span>
                         </div>
                         {job.description && (
                           <p className="text-xs text-muted-foreground line-clamp-2 pl-6">{job.description}</p>

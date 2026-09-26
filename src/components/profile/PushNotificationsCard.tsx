@@ -26,7 +26,7 @@ export default function PushNotificationsCard() {
   } else if (isSubscribed) {
     statusText = "You're subscribed. We'll send you a notification for important updates.";
   } else {
-    statusText = "Get real-time alerts for invoices, jobs, and appointments.";
+    statusText = "Get real-time alerts for invoices, projects and appointments.";
   }
 
   const canSubscribe = supported && vapidConfigured && permission !== "denied" && !isSubscribed;

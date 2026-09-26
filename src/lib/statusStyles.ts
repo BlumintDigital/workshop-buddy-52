@@ -42,7 +42,7 @@ export const requestStatusLabelClient: Record<string, string> = {
   quoted: "Quote ready — your decision",
   approved: "Approved — waiting for the workshop",
   declined_by_client: "You declined this quote",
-  converted: "Converted to job",
+  converted: "Converted to project",
   declined: "Declined by workshop",
   cancelled: "Cancelled",
 };
@@ -53,7 +53,7 @@ export const requestStatusLabelAdmin: Record<string, string> = {
   quoted: "Quote sent — awaiting client",
   approved: "Client approved",
   declined_by_client: "Client declined quote",
-  converted: "Converted to job",
+  converted: "Converted to project",
   declined: "Declined",
   cancelled: "Cancelled",
 };

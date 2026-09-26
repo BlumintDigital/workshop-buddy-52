@@ -127,7 +127,7 @@ export default function AppointmentDetail() {
   };
 
   const handleCreateJob = async () => {
-    if (!jobForm.title.trim()) { toast.error("Job title is required"); return; }
+    if (!jobForm.title.trim()) { toast.error("Give the project a title"); return; }
     setCreatingJob(true);
 
     const jobPayload: any = {
@@ -148,8 +148,8 @@ export default function AppointmentDetail() {
 
     setCreatingJob(false);
     setJobDialogOpen(false);
-    toast.success(jobForm.isQuote ? "Quote created" : "Job created");
-    navigate(`/jobs/${newJob.id}`);
+    toast.success(jobForm.isQuote ? "Quote created" : "Project created");
+    navigate(`/projects/${newJob.id}`);
   };
 
   const backPath = role === "client"
@@ -313,14 +313,14 @@ export default function AppointmentDetail() {
       <Dialog open={jobDialogOpen} onOpenChange={setJobDialogOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Create Job from Appointment</DialogTitle>
+            <DialogTitle>Create a project from this appointment</DialogTitle>
             <DialogDescription>
               A work order will be created for <strong>{clientName}</strong> and the appointment will be marked as confirmed.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label htmlFor="f-job-title">Job Title</Label>
+              <Label htmlFor="f-job-title">Project title</Label>
               <Input id="f-job-title" value={jobForm.title} onChange={(e) => setJobForm({ ...jobForm, title: e.target.value })} className="mt-1" />
             </div>
             <div>
@@ -363,7 +363,7 @@ export default function AppointmentDetail() {
               </label>
             </div>
             <Button onClick={handleCreateJob} disabled={creatingJob} className="w-full">
-              {creatingJob ? "Creating…" : jobForm.isQuote ? "Create Quote" : "Create Job"}
+              {creatingJob ? "Creating…" : jobForm.isQuote ? "Create quote" : "Create project"}
             </Button>
           </div>
         </DialogContent>

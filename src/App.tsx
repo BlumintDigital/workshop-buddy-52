@@ -1,7 +1,7 @@
 import { lazy, Suspense, type ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider } from "next-themes";
-import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
+import { BrowserRouter, Route, Routes, Navigate, useLocation, useParams } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -110,6 +110,17 @@ function ClientPortalRoute({ children }: { children: ReactNode }) {
   return <FeatureRoute feature="client_portal">{children}</FeatureRoute>;
 }
 
+function LegacyJobRedirect() {
+  const { id } = useParams<{ id: string }>();
+  const { search, hash } = useLocation();
+  return <Navigate to={`/projects/${id}${search}${hash}`} replace />;
+}
+
+function LegacyListRedirect({ to }: { to: string }) {
+  const { search } = useLocation();
+  return <Navigate to={`${to}${search}`} replace />;
+}
+
 function IndexRedirect() {
   const { user, role, loading, mfaCheckPending, needsMfaVerification } = useAuth();
   if (loading || mfaCheckPending) return <LoadingScreen />;
@@ -146,7 +157,7 @@ function AppRoutes() {
       <Route element={<AppShell />}>
         {/* Admin routes */}
         <Route path="/admin/dashboard" element={<ProtectedRoute allowedRoles={["admin"]}><AdminDashboard /></ProtectedRoute>} />
-        <Route path="/admin/jobs" element={<ProtectedRoute allowedRoles={["admin"]}><AdminJobs /></ProtectedRoute>} />
+        <Route path="/admin/projects" element={<ProtectedRoute allowedRoles={["admin"]}><AdminJobs /></ProtectedRoute>} />
         <Route path="/admin/appointments" element={<ProtectedRoute allowedRoles={["admin"]}><FeatureRoute feature="appointments"><AdminAppointments /></FeatureRoute></ProtectedRoute>} />
         <Route path="/admin/inventory" element={<ProtectedRoute allowedRoles={["admin"]}><AdminInventory /></ProtectedRoute>} />
         <Route path="/admin/invoices" element={<ProtectedRoute allowedRoles={["admin"]}><AdminInvoices /></ProtectedRoute>} />
@@ -160,7 +171,7 @@ function AppRoutes() {
 
         {/* Manager routes */}
         <Route path="/manager/dashboard" element={<ProtectedRoute allowedRoles={["manager"]}><ManagerDashboard /></ProtectedRoute>} />
-        <Route path="/manager/jobs" element={<ProtectedRoute allowedRoles={["manager"]}><ManagerJobs /></ProtectedRoute>} />
+        <Route path="/manager/projects" element={<ProtectedRoute allowedRoles={["manager"]}><ManagerJobs /></ProtectedRoute>} />
         <Route path="/manager/appointments" element={<ProtectedRoute allowedRoles={["manager"]}><FeatureRoute feature="appointments"><ManagerAppointments /></FeatureRoute></ProtectedRoute>} />
         <Route path="/manager/inventory" element={<ProtectedRoute allowedRoles={["manager"]}><ManagerInventory /></ProtectedRoute>} />
         <Route path="/manager/invoices" element={<ProtectedRoute allowedRoles={["manager"]}><ManagerInvoices /></ProtectedRoute>} />
@@ -170,14 +181,14 @@ function AppRoutes() {
 
         {/* Staff routes */}
         <Route path="/staff/dashboard" element={<ProtectedRoute allowedRoles={["staff"]}><StaffDashboard /></ProtectedRoute>} />
-        <Route path="/staff/jobs" element={<ProtectedRoute allowedRoles={["staff"]}><StaffJobs /></ProtectedRoute>} />
+        <Route path="/staff/projects" element={<ProtectedRoute allowedRoles={["staff"]}><StaffJobs /></ProtectedRoute>} />
         <Route path="/staff/kanban" element={<ProtectedRoute allowedRoles={["staff"]}><StaffKanban /></ProtectedRoute>} />
         <Route path="/staff/schedule" element={<ProtectedRoute allowedRoles={["staff"]}><FeatureRoute feature="appointments"><StaffSchedule /></FeatureRoute></ProtectedRoute>} />
         <Route path="/staff/inventory" element={<ProtectedRoute allowedRoles={["staff"]}><StaffInventory /></ProtectedRoute>} />
 
         {/* Client routes */}
         <Route path="/client/dashboard" element={<ProtectedRoute allowedRoles={["client"]}><FeatureRoute feature="client_portal"><ClientDashboard /></FeatureRoute></ProtectedRoute>} />
-        <Route path="/client/jobs" element={<ProtectedRoute allowedRoles={["client"]}><FeatureRoute feature="client_portal"><ClientJobs /></FeatureRoute></ProtectedRoute>} />
+        <Route path="/client/projects" element={<ProtectedRoute allowedRoles={["client"]}><FeatureRoute feature="client_portal"><ClientJobs /></FeatureRoute></ProtectedRoute>} />
         <Route path="/client/appointments" element={<ProtectedRoute allowedRoles={["client"]}><FeatureRoute feature="client_portal"><FeatureRoute feature="appointments"><ClientAppointments /></FeatureRoute></FeatureRoute></ProtectedRoute>} />
         <Route path="/client/invoices" element={<ProtectedRoute allowedRoles={["client"]}><FeatureRoute feature="client_portal"><ClientInvoices /></FeatureRoute></ProtectedRoute>} />
         <Route path="/client/requests" element={<ProtectedRoute allowedRoles={["client"]}><FeatureRoute feature="client_portal"><ClientRequests /></FeatureRoute></ProtectedRoute>} />
@@ -186,7 +197,7 @@ function AppRoutes() {
 
 
         {/* Shared routes */}
-        <Route path="/jobs/:id" element={<ProtectedRoute allowedRoles={["admin", "manager", "staff", "client"]}><ClientPortalRoute><JobDetail /></ClientPortalRoute></ProtectedRoute>} />
+        <Route path="/projects/:id" element={<ProtectedRoute allowedRoles={["admin", "manager", "staff", "client"]}><ClientPortalRoute><JobDetail /></ClientPortalRoute></ProtectedRoute>} />
         <Route path="/invoices/new" element={<ProtectedRoute allowedRoles={["admin", "manager"]}><InvoiceCreate /></ProtectedRoute>} />
         <Route path="/invoices/:id" element={<ProtectedRoute allowedRoles={["admin", "manager", "client"]}><ClientPortalRoute><InvoiceDetail /></ClientPortalRoute></ProtectedRoute>} />
         <Route path="/goals" element={<ProtectedRoute allowedRoles={["admin", "manager", "staff"]}><FeatureRoute feature="goals"><GoalsPage /></FeatureRoute></ProtectedRoute>} />
@@ -198,6 +209,12 @@ function AppRoutes() {
         <Route path="/admin/access-review" element={<ProtectedRoute allowedRoles={["admin"]}><AdminAccessReview /></ProtectedRoute>} />
         <Route path="/profile" element={<ProtectedRoute allowedRoles={["admin", "manager", "staff", "client"]}><UserProfile /></ProtectedRoute>} />
       </Route>
+
+      {/* Old job links (emails, bookmarks, stored notifications) now point at projects. */}
+      <Route path="/jobs/:id" element={<LegacyJobRedirect />} />
+      {(["admin", "manager", "staff", "client"] as const).map((r) => (
+        <Route key={r} path={`/${r}/jobs`} element={<LegacyListRedirect to={`/${r}/projects`} />} />
+      ))}
 
       {/* Standalone pages (no app shell) */}
       <Route path="/admin/deploy-guide" element={<ProtectedRoute allowedRoles={["admin"]}><AdminDeployGuide /></ProtectedRoute>} />
