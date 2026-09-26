@@ -1689,6 +1689,92 @@ export type Database = {
           },
         ]
       }
+      shipments: {
+        Row: {
+          carrier: string | null
+          choice_made_at: string | null
+          client_notes: string | null
+          collector_id_number: string | null
+          collector_name: string | null
+          collector_phone: string | null
+          created_at: string
+          currency: string | null
+          delivery_address: string | null
+          id: string
+          job_id: string
+          method: string | null
+          notified_at: string | null
+          preferred_date: string | null
+          shipped_at: string | null
+          shipped_by: string | null
+          shipping_cost: number | null
+          status: string
+          tracking_number: string | null
+          tracking_url: string | null
+          updated_at: string
+          vehicle_make: string | null
+          vehicle_registration: string | null
+        }
+        Insert: {
+          carrier?: string | null
+          choice_made_at?: string | null
+          client_notes?: string | null
+          collector_id_number?: string | null
+          collector_name?: string | null
+          collector_phone?: string | null
+          created_at?: string
+          currency?: string | null
+          delivery_address?: string | null
+          id?: string
+          job_id: string
+          method?: string | null
+          notified_at?: string | null
+          preferred_date?: string | null
+          shipped_at?: string | null
+          shipped_by?: string | null
+          shipping_cost?: number | null
+          status?: string
+          tracking_number?: string | null
+          tracking_url?: string | null
+          updated_at?: string
+          vehicle_make?: string | null
+          vehicle_registration?: string | null
+        }
+        Update: {
+          carrier?: string | null
+          choice_made_at?: string | null
+          client_notes?: string | null
+          collector_id_number?: string | null
+          collector_name?: string | null
+          collector_phone?: string | null
+          created_at?: string
+          currency?: string | null
+          delivery_address?: string | null
+          id?: string
+          job_id?: string
+          method?: string | null
+          notified_at?: string | null
+          preferred_date?: string | null
+          shipped_at?: string | null
+          shipped_by?: string | null
+          shipping_cost?: number | null
+          status?: string
+          tracking_number?: string | null
+          tracking_url?: string | null
+          updated_at?: string
+          vehicle_make?: string | null
+          vehicle_registration?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shipments_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: true
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       signup_codes: {
         Row: {
           active: boolean
@@ -2203,6 +2289,16 @@ export type Database = {
         Args: { _folder: string; _user_id: string }
         Returns: boolean
       }
+      choose_handover: {
+        Args: {
+          _address?: string
+          _job_id: string
+          _method: string
+          _notes?: string
+          _preferred_date?: string
+        }
+        Returns: undefined
+      }
       client_decide_quote: {
         Args: { _approve: boolean; _reason?: string; _request_id: string }
         Returns: string
@@ -2291,8 +2387,13 @@ export type Database = {
         Args: { _expected?: string; _po_id: string }
         Returns: undefined
       }
+      mark_shipped: { Args: { _d: Json; _job_id: string }; Returns: undefined }
       my_permissions: { Args: Record<PropertyKey, never>; Returns: string[] }
       next_project_ref: { Args: { _at?: string }; Returns: string }
+      notify_ready_to_ship: {
+        Args: { _job_id: string; _message?: string }
+        Returns: undefined
+      }
       notify_users: {
         Args: {
           _link: string

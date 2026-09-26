@@ -23,6 +23,7 @@ import { notifyJobStatusChange } from "@/lib/jobNotifications";
 import ProjectConversation from "@/components/project/ProjectConversation";
 import ProjectTasks from "@/components/project/ProjectTasks";
 import ProjectParts from "@/components/project/ProjectParts";
+import ShipmentPanel from "@/components/shipping/ShipmentPanel";
 import { usePermissions } from "@/hooks/usePermissions";
 import ProjectActivity from "@/components/project/ProjectActivity";
 import ProjectFiles from "@/components/project/ProjectFiles";
@@ -437,6 +438,8 @@ export default function JobDetail() {
 
         {/* ── Right sidebar ── */}
         <div className="space-y-6">
+
+        <ShipmentPanel project={job} canShip={has("shipping")} onChanged={reloadJob} />
 
         <IntakeDetails project={job} receivedBy={receivedBy} />
 

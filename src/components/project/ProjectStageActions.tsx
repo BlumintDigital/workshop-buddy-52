@@ -81,6 +81,8 @@ export default function ProjectStageActions({ project, tasks, can, onChanged }: 
         </Button>
       </>
     );
+  } else if (stage === "completed") {
+    content = <p className="text-sm">Passed the quality check. The shipping team tells the client and arranges collection or delivery.</p>;
   } else if (stage === "review") {
     content = can.quality ? (
       <>

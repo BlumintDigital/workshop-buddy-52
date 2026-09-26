@@ -13,6 +13,7 @@ import StageTracker from "@/components/project/StageTracker";
 import ProjectFiles from "@/components/project/ProjectFiles";
 import ProjectConversation from "@/components/project/ProjectConversation";
 import ClientQuotes from "@/components/project/ClientQuotes";
+import ShipmentPanel from "@/components/shipping/ShipmentPanel";
 import IntakeDetails, { type IntakeFields } from "@/components/project/IntakeDetails";
 import { CLIENT_STAGES } from "@/lib/projects";
 import { clientFriendlyInvoiceStatus } from "@/lib/invoiceStatus";
@@ -96,6 +97,7 @@ export default function ClientProjectView({ project, onStatusChange }: { project
       </Card>
 
       <ClientQuotes project={project} onDecided={() => void refreshStatus()} />
+      <ShipmentPanel project={project} forClient />
 
       <div className="grid items-start gap-6 lg:grid-cols-5">
         <div className="space-y-6 lg:col-span-3">

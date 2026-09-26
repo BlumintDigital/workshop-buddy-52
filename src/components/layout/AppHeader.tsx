@@ -41,6 +41,7 @@ const LABELS: Record<string, string> = {
   feedback: "Feedback",
   usage: "Usage by project",
   reception: "Reception",
+  shipping: "Shipping",
   teams: "Teams and access",
 };
 

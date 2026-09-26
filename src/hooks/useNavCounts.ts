@@ -5,7 +5,7 @@ import { usePendingRequestCount } from "@/hooks/usePendingRequestCount";
 import { countReviewJobs, fetchLowStockItems, fetchOverdueInvoices } from "@/lib/dashboardQueries";
 
 /** Keys a nav item can show a live count for. */
-export type NavCountKey = "requests" | "reviewJobs" | "overdueInvoices" | "lowStock" | "quotesToDecide" | "myOpenJobs";
+export type NavCountKey = "requests" | "reviewJobs" | "overdueInvoices" | "lowStock" | "quotesToDecide" | "myOpenJobs" | "toShip";
 
 export type NavCounts = Partial<Record<NavCountKey, number>>;
 
@@ -40,6 +40,11 @@ function useLoadNavCounts(): NavCounts {
         // Quotes and change requests waiting for this client (RLS limits it to their projects).
         const { count } = await supabase.from("project_quotes").select("id", { count: "exact", head: true }).eq("status", "sent");
         next.quotesToDecide = count || 0;
+      }
+      if (role !== "client") {
+        // Shipments that need shipping's next move (RLS limits this to people who can see them).
+        const { count } = await supabase.from("shipments").select("id", { count: "exact", head: true }).in("status", ["ready", "scheduled"]);
+        next.toShip = count || 0;
       }
       if (!cancelled) setCounts(next);
     };

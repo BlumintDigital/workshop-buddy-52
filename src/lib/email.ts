@@ -95,6 +95,17 @@ export function quoteReadyEmailHtml(jobTitle: string, jobLink: string): string {
   });
 }
 
+export function readyToShipEmailHtml(projectLabel: string, link: string, message?: string): string {
+  return wrapEmail({
+    preheader: `${projectLabel} is ready.`,
+    eyebrow: "Ready for you",
+    headline: "Your item is ready",
+    bodyHtml: `<strong>${escapeHtml(projectLabel)}</strong> has passed its final checks. Tell us whether you'll collect it or want it delivered.${message ? `<br><br>${escapeHtml(message)}` : ""}`,
+    ctaLabel: "Choose collection or delivery",
+    ctaUrl: link,
+  });
+}
+
 export function appointmentConfirmedEmailHtml(title: string, date: string, time: string): string {
   return wrapEmail({
     preheader: `Confirmed: ${title} on ${date} at ${time}.`,

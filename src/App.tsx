@@ -69,6 +69,7 @@ const ClientInvoices = lazy(() => import("@/pages/client/ClientInvoices"));
 const ClientRequests = lazy(() => import("@/pages/client/ClientRequests"));
 const Reception = lazy(() => import("@/pages/reception/Reception"));
 const InventoryPortal = lazy(() => import("@/pages/inventory/InventoryPortal"));
+const ShippingPortal = lazy(() => import("@/pages/shipping/ShippingPortal"));
 
 // Shared pages
 const JobDetail = lazy(() => import("@/pages/jobs/JobDetail"));
@@ -190,6 +191,7 @@ function AppRoutes() {
         <Route path="/client/invoices" element={<ProtectedRoute allowedRoles={["client"]}><FeatureRoute feature="client_portal"><ClientInvoices /></FeatureRoute></ProtectedRoute>} />
         <Route path="/client/requests" element={<ProtectedRoute allowedRoles={["client"]}><FeatureRoute feature="client_portal"><ClientRequests /></FeatureRoute></ProtectedRoute>} />
         <Route path="/reception" element={<ProtectedRoute allowedRoles={["admin", "manager", "staff"]}><Reception /></ProtectedRoute>} />
+        <Route path="/shipping" element={<ProtectedRoute allowedRoles={["admin", "manager", "staff"]}><ShippingPortal /></ProtectedRoute>} />
         <Route path="/inventory/*" element={<ProtectedRoute allowedRoles={["admin", "manager", "staff"]}><InventoryPortal /></ProtectedRoute>} />
         {/* Each role had its own stock page; they're all the inventory portal now. */}
         <Route path="/admin/inventory" element={<Navigate to="/inventory/stock" replace />} />
