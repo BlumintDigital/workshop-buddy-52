@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { jobEditSchema } from "@/lib/schemas/job";
 import { useAuth } from "@/hooks/useAuth";
 import DashboardLayout from "@/components/layout/DashboardLayout";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -12,10 +12,9 @@ import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
-  ArrowLeft, CalendarDays, Clock, Pencil, Plus, Trash2,
-  FileUp, FileText, Download, MessageSquare, Paperclip, Package,
+  ArrowLeft, CalendarDays, Clock, Pencil, Trash2,
+  FileUp, FileText, Download, MessageSquare, Paperclip,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DatePickerInput } from "@/components/ui/date-picker-input";
@@ -23,6 +22,7 @@ import { toast } from "sonner";
 import { notifyJobStatusChange } from "@/lib/jobNotifications";
 import ProjectConversation from "@/components/project/ProjectConversation";
 import ProjectTasks from "@/components/project/ProjectTasks";
+import ProjectParts from "@/components/project/ProjectParts";
 import { usePermissions } from "@/hooks/usePermissions";
 import ProjectActivity from "@/components/project/ProjectActivity";
 import ProjectFiles from "@/components/project/ProjectFiles";
@@ -34,7 +34,6 @@ import ProjectStageActions from "@/components/project/ProjectStageActions";
 import IntakeDetails from "@/components/project/IntakeDetails";
 import { useBreadcrumbLabel } from "@/lib/breadcrumbs";
 import { generateJobReport } from "@/lib/jobReportPdf";
-import { useCurrency } from "@/hooks/useCurrency";
 
 // Admins and managers can override the stage by hand; everyone else moves it with the stage actions.
 const EDITABLE_STATUSES = PROJECT_STATUSES;
@@ -43,7 +42,6 @@ interface UserOption { id: string; full_name: string; }
 export default function JobDetail() {
   const { id } = useParams<{ id: string }>();
   const { role, user } = useAuth();
-  const { format: fmt } = useCurrency();
   const navigate = useNavigate();
 
   const [job, setJob] = useState<any>(null);
@@ -67,13 +65,6 @@ export default function JobDetail() {
   const [generatingReport, setGeneratingReport] = useState(false);
   const taskFileInputRef = useRef<HTMLInputElement>(null);
 
-  // Materials used
-  const [materials, setMaterials] = useState<any[]>([]);
-  const [matOpen, setMatOpen] = useState(false);
-  const [inventoryItems, setInventoryItems] = useState<any[]>([]);
-  const [matForm, setMatForm] = useState({ item_id: "", quantity: "1", notes: "" });
-  const [addingMat, setAddingMat] = useState(false);
-
 
   // Edit job
   const [editOpen, setEditOpen] = useState(false);
@@ -85,6 +76,7 @@ export default function JobDetail() {
   const canPlan = canEdit || has("planning");
   const canQuote = canEdit || has("reception") || has("planning");
   const canQuality = canEdit || has("quality");
+  const isStores = has("inventory");
   const [receivedBy, setReceivedBy] = useState<string | undefined>();
   const canAddUpdate = role === "admin" || role === "manager" || role === "staff";
 
@@ -109,7 +101,6 @@ export default function JobDetail() {
     if (role === "client") return;
     fetchTasks();
     fetchUsers();
-    fetchMaterials();
   }, [id, role]);
 
   useBreadcrumbLabel(projectPath(id ?? ""), job?.ref);
@@ -187,22 +178,6 @@ export default function JobDetail() {
     if (fileList.length > 0) generateSignedUrls(fileList);
   };
 
-  const fetchMaterials = async () => {
-    const { data } = await supabase
-      .from("inventory_transactions")
-      .select("*, inventory_items(name, unit, unit_cost)")
-      .eq("job_id", id!)
-      .order("created_at");
-    setMaterials(data || []);
-  };
-
-  const fetchInventoryItems = async () => {
-    const { data } = await supabase.from("inventory_items").select("id, name, unit, unit_cost, quantity").order("name");
-    setInventoryItems(data || []);
-  };
-
-
-
   // Storage helpers
   const generateSignedUrls = async (attachments: any[]) => {
     const newUrls: Record<string, string> = {};
@@ -254,30 +229,6 @@ export default function JobDetail() {
     setNewTaskNote("");
     fetchTaskDetails(viewTask.id);
   };
-
-  const handleAddMaterial = async () => {
-    if (!matForm.item_id) { toast.error("Select an item"); return; }
-    const qty = parseInt(matForm.quantity);
-    if (!qty || qty <= 0) { toast.error("Enter a valid quantity"); return; }
-    setAddingMat(true);
-    const item = inventoryItems.find(i => i.id === matForm.item_id);
-    const { error } = await supabase.from("inventory_transactions").insert({
-      item_id: matForm.item_id, job_id: id!, user_id: user!.id,
-      type: "out", quantity: qty, notes: matForm.notes || null,
-    });
-    if (error) { toast.error(error.message); setAddingMat(false); return; }
-    if (item) {
-      await supabase.from("inventory_items").update({ quantity: Math.max(0, item.quantity - qty) }).eq("id", item.id);
-    }
-    toast.success("Material logged");
-    setAddingMat(false);
-    setMatOpen(false);
-    setMatForm({ item_id: "", quantity: "1", notes: "" });
-    fetchMaterials();
-    fetchInventoryItems();
-  };
-
-
 
   const handleStatusChange = async (status: string) => {
     if (!job) return;
@@ -352,7 +303,6 @@ export default function JobDetail() {
   const canUploadIntake = canEdit || job.assigned_staff_id === user?.id;
   const hoursProgress = job.estimated_hours && job.actual_hours
     ? Math.min(100, (parseFloat(job.actual_hours) / parseFloat(job.estimated_hours)) * 100) : null;
-  const matTotal = materials.reduce((sum, m) => sum + m.quantity * Number((m as any).inventory_items?.unit_cost || 0), 0);
 
   return (
     <DashboardLayout>
@@ -475,54 +425,7 @@ export default function JobDetail() {
           onOpenTask={(task) => { setViewTask(task); setNewTaskNote(""); fetchTaskDetails(task.id); }}
         />
 
-        {/* Materials Used */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-3">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Package className="h-5 w-5" />Materials Used
-            </CardTitle>
-            {canAddUpdate && (
-              <Button size="sm" variant="outline" onClick={() => { setMatOpen(true); if (inventoryItems.length === 0) fetchInventoryItems(); }}>
-                <Plus className="mr-2 h-4 w-4" />Add
-              </Button>
-            )}
-          </CardHeader>
-          <CardContent>
-            {materials.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No materials logged yet.</p>
-            ) : (
-              <>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Item</TableHead>
-                      <TableHead>Qty</TableHead>
-                      <TableHead className="hidden sm:table-cell">Unit cost</TableHead>
-                      <TableHead>Total</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {materials.map(m => {
-                      const item = (m as any).inventory_items;
-                      const lineTotal = m.quantity * Number(item?.unit_cost || 0);
-                      return (
-                        <TableRow key={m.id}>
-                          <TableCell className="font-medium">{item?.name || "—"}</TableCell>
-                          <TableCell>{m.quantity} {item?.unit || ""}</TableCell>
-                          <TableCell className="hidden sm:table-cell">{fmt(Number(item?.unit_cost || 0))}</TableCell>
-                          <TableCell>{fmt(lineTotal)}</TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-                <p className="text-sm font-semibold text-right mt-2">
-                  Materials total: {fmt(matTotal)}
-                </p>
-              </>
-            )}
-          </CardContent>
-        </Card>
+        <ProjectParts project={job} isStores={isStores} onChanged={reloadJob} />
 
         <ProjectConversation
           project={job}
@@ -608,40 +511,6 @@ export default function JobDetail() {
                 </Select>
               </div>
               <Button onClick={handleSaveEdit} className="w-full">Save Changes</Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-
-        {/* Add Material Dialog */}
-        <Dialog open={matOpen} onOpenChange={setMatOpen}>
-          <DialogContent className="max-w-sm">
-            <DialogHeader><DialogTitle>Log Material Usage</DialogTitle></DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="f-item">Item</Label>
-                <Select value={matForm.item_id} onValueChange={(v) => setMatForm({ ...matForm, item_id: v })}>
-                  <SelectTrigger id="f-item" className="mt-1"><SelectValue placeholder="Select inventory item" /></SelectTrigger>
-                  <SelectContent>
-                    {inventoryItems.map(i => (
-                      <SelectItem key={i.id} value={i.id}>
-                        {i.name} — {i.quantity} {i.unit} in stock
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label htmlFor="f-quantity-used">Quantity Used</Label>
-                <Input id="f-quantity-used" type="number" min="1" value={matForm.quantity}
-                  onChange={(e) => setMatForm({ ...matForm, quantity: e.target.value })} className="mt-1" />
-              </div>
-              <div>
-                <Label htmlFor="f-notes-optional">Notes <span className="text-muted-foreground text-xs">(optional)</span></Label>
-                <Input id="f-notes-optional" value={matForm.notes} onChange={(e) => setMatForm({ ...matForm, notes: e.target.value })} className="mt-1" />
-              </div>
-              <Button onClick={handleAddMaterial} disabled={addingMat} className="w-full">
-                {addingMat ? "Saving..." : "Log Usage"}
-              </Button>
             </div>
           </DialogContent>
         </Dialog>

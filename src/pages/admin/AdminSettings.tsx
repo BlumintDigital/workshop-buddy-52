@@ -40,6 +40,8 @@ const defaultSettings = {
   address: "",
   default_tax_rate: "0",
   monthly_goal: "",
+  project_ref_prefix: "EDL",
+  purchase_manager_limit: "1000",
   currency: "USD",
   enabled_currencies: ["USD"] as string[],
   notify_job_status: true,
@@ -110,6 +112,8 @@ export default function AdminSettings() {
           phone: data.phone ?? "",
           address: data.address ?? "",
           default_tax_rate: data.default_tax_rate?.toString() ?? "0",
+          project_ref_prefix: data.project_ref_prefix ?? "EDL",
+          purchase_manager_limit: data.purchase_manager_limit?.toString() ?? "1000",
           monthly_goal: (data as any).monthly_goal?.toString() ?? "",
           currency: data.currency ?? "USD",
           enabled_currencies: Array.isArray((data as any).enabled_currencies) && (data as any).enabled_currencies.length > 0
@@ -193,6 +197,8 @@ export default function AdminSettings() {
 
   const handleSave = async () => {
     if (!isAdmin) { toast.error("Only administrators can update workshop settings."); return; }
+    const prefix = settings.project_ref_prefix.trim().toUpperCase();
+    if (!/^[A-Z0-9]{2,6}$/.test(prefix)) { toast.error("The project ID prefix must be 2 to 6 letters or numbers, like EDL."); return; }
     setSaving(true);
     const { error } = await (supabase.from("workshop_settings") as any).upsert({
       id: 1,
@@ -202,6 +208,8 @@ export default function AdminSettings() {
       address: settings.address || null,
       default_tax_rate: parseFloat(settings.default_tax_rate) || 0,
       monthly_goal: parseFloat(settings.monthly_goal) || null,
+      project_ref_prefix: prefix,
+      purchase_manager_limit: Math.max(0, parseFloat(settings.purchase_manager_limit) || 0),
       currency: settings.currency || "USD",
       enabled_currencies: settings.enabled_currencies?.includes(settings.currency)
         ? settings.enabled_currencies
@@ -692,6 +700,16 @@ export default function AdminSettings() {
                 <div>
                   <Label htmlFor="default_tax_rate">Default Tax Rate (%)</Label>
                   <Input id="default_tax_rate" type="number" min="0" max="100" step="0.1" value={settings.default_tax_rate} onChange={(e) => set("default_tax_rate", e.target.value)} className="mt-1 w-full sm:w-32" />
+                </div>
+                <div>
+                  <Label htmlFor="project_ref_prefix">Project ID prefix</Label>
+                  <Input id="project_ref_prefix" value={settings.project_ref_prefix} maxLength={6} onChange={(e) => set("project_ref_prefix", e.target.value.toUpperCase())} className="mt-1 w-full font-mono sm:w-32" />
+                  <p className="mt-1 text-xs text-muted-foreground">New projects get IDs like {settings.project_ref_prefix || "EDL"}-{new Date().toISOString().slice(0, 7).replace("-", "")}-001. Existing IDs never change.</p>
+                </div>
+                <div>
+                  <Label htmlFor="purchase_manager_limit">Managers can approve purchases up to</Label>
+                  <Input id="purchase_manager_limit" type="number" min="0" step="50" value={settings.purchase_manager_limit} onChange={(e) => set("purchase_manager_limit", e.target.value)} className="mt-1 w-full sm:w-40" />
+                  <p className="mt-1 text-xs text-muted-foreground">Purchase orders above this need an admin to approve them.</p>
                 </div>
                 <div>
                   <Label htmlFor="f-currency">Currency</Label>
