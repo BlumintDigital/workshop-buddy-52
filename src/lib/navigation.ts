@@ -71,7 +71,7 @@ export const NAV_GROUPS: Record<AppRole, NavGroup[]> = {
         { title: "Appointments", short: "Bookings", url: "/admin/appointments", icon: Calendar, features: ["appointments"] },
         { title: "Calendar", url: "/admin/calendar", icon: CalendarDays, features: ["appointments"] },
         { title: "Invoices", url: "/admin/invoices", icon: FileText, count: "overdueInvoices" },
-        { title: "Inventory", short: "Stock", url: "/admin/inventory", icon: Package, count: "lowStock" },
+        { title: "Inventory", short: "Stock", url: "/inventory", icon: Package, count: "lowStock" },
         { title: "Reports", url: "/admin/reports", icon: BarChart3, features: ["reports"] },
         { title: "Goals", url: "/goals", icon: Target, features: ["goals"] },
       ],
@@ -106,7 +106,7 @@ export const NAV_GROUPS: Record<AppRole, NavGroup[]> = {
         { title: "Appointments", short: "Bookings", url: "/manager/appointments", icon: Calendar, features: ["appointments"] },
         { title: "Calendar", url: "/manager/calendar", icon: CalendarDays, features: ["appointments"] },
         { title: "Invoices", url: "/manager/invoices", icon: FileText, count: "overdueInvoices" },
-        { title: "Inventory", short: "Stock", url: "/manager/inventory", icon: Package, count: "lowStock" },
+        { title: "Inventory", short: "Stock", url: "/inventory", icon: Package, count: "lowStock" },
         { title: "Goals", url: "/goals", icon: Target, features: ["goals"] },
       ],
     },
@@ -121,7 +121,7 @@ export const NAV_GROUPS: Record<AppRole, NavGroup[]> = {
         { title: "My projects", short: "Projects", url: "/staff/projects", icon: Briefcase, count: "myOpenJobs" },
         { title: "Reception", url: "/reception", icon: Inbox, count: "requests", permission: "reception" },
         { title: "Schedule", url: "/staff/schedule", icon: Calendar, features: ["appointments"] },
-        { title: "Inventory", short: "Stock", url: "/staff/inventory", icon: Package },
+        { title: "Inventory", short: "Stock", url: "/inventory", icon: Package },
         { title: "Goals", url: "/goals", icon: Target, features: ["goals"] },
       ],
     },
@@ -145,7 +145,7 @@ export const NAV_GROUPS: Record<AppRole, NavGroup[]> = {
 export const TAB_BAR_URLS: Record<AppRole, string[]> = {
   admin: ["/admin/dashboard", "/admin/projects", "/reception", "/admin/invoices"],
   manager: ["/manager/dashboard", "/manager/projects", "/reception", "/manager/invoices"],
-  staff: ["/staff/dashboard", "/staff/projects", "/staff/schedule", "/staff/inventory"],
+  staff: ["/staff/dashboard", "/staff/projects", "/staff/schedule", "/inventory"],
   client: ["/client/dashboard", "/client/requests", "/client/invoices", "/client/appointments"],
 };
 

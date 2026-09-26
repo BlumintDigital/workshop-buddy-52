@@ -109,7 +109,7 @@ export function useAttentionItems() {
             label: "Low stock",
             title: `${lowStock.length} ${lowStock.length === 1 ? "item" : "items"} at or below reorder level`,
             meta: listPreview(lowStock.map((i) => `${i.name} (${i.quantity}${i.unit ? ` ${i.unit}` : ""} left)`)),
-            action: { label: "View inventory", to: `${base}/inventory` },
+            action: { label: "View stock", to: "/inventory/stock" },
           });
         }
 

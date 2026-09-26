@@ -32,7 +32,6 @@ const AdminDashboard = lazy(() => import("@/pages/admin/AdminDashboard"));
 const AdminJobs = lazy(() => import("@/pages/admin/AdminJobs"));
 const AdminTeams = lazy(() => import("@/pages/admin/AdminTeams"));
 const AdminAppointments = lazy(() => import("@/pages/admin/AdminAppointments"));
-const AdminInventory = lazy(() => import("@/pages/admin/AdminInventory"));
 const AdminInvoices = lazy(() => import("@/pages/admin/AdminInvoices"));
 const AdminReports = lazy(() => import("@/pages/admin/AdminReports"));
 const AdminUsers = lazy(() => import("@/pages/admin/AdminUsers"));
@@ -52,7 +51,6 @@ const Terms = lazy(() => import("@/pages/Terms"));
 const ManagerDashboard = lazy(() => import("@/pages/manager/ManagerDashboard"));
 const ManagerJobs = lazy(() => import("@/pages/manager/ManagerJobs"));
 const ManagerAppointments = lazy(() => import("@/pages/manager/ManagerAppointments"));
-const ManagerInventory = lazy(() => import("@/pages/manager/ManagerInventory"));
 const ManagerInvoices = lazy(() => import("@/pages/manager/ManagerInvoices"));
 const ManagerStaff = lazy(() => import("@/pages/manager/ManagerStaff"));
 const ManagerUserDetail = lazy(() => import("@/pages/manager/ManagerUserDetail"));
@@ -62,7 +60,6 @@ const ManagerCalendar = lazy(() => import("@/pages/manager/ManagerCalendar"));
 const StaffDashboard = lazy(() => import("@/pages/staff/StaffDashboard"));
 const StaffJobs = lazy(() => import("@/pages/staff/StaffJobs"));
 const StaffSchedule = lazy(() => import("@/pages/staff/StaffSchedule"));
-const StaffInventory = lazy(() => import("@/pages/staff/StaffInventory"));
 
 // Client pages
 const ClientDashboard = lazy(() => import("@/pages/client/ClientDashboard"));
@@ -71,6 +68,7 @@ const ClientAppointments = lazy(() => import("@/pages/client/ClientAppointments"
 const ClientInvoices = lazy(() => import("@/pages/client/ClientInvoices"));
 const ClientRequests = lazy(() => import("@/pages/client/ClientRequests"));
 const Reception = lazy(() => import("@/pages/reception/Reception"));
+const InventoryPortal = lazy(() => import("@/pages/inventory/InventoryPortal"));
 
 // Shared pages
 const JobDetail = lazy(() => import("@/pages/jobs/JobDetail"));
@@ -159,7 +157,6 @@ function AppRoutes() {
         <Route path="/admin/dashboard" element={<ProtectedRoute allowedRoles={["admin"]}><AdminDashboard /></ProtectedRoute>} />
         <Route path="/admin/projects" element={<ProtectedRoute allowedRoles={["admin"]}><AdminJobs /></ProtectedRoute>} />
         <Route path="/admin/appointments" element={<ProtectedRoute allowedRoles={["admin"]}><FeatureRoute feature="appointments"><AdminAppointments /></FeatureRoute></ProtectedRoute>} />
-        <Route path="/admin/inventory" element={<ProtectedRoute allowedRoles={["admin"]}><AdminInventory /></ProtectedRoute>} />
         <Route path="/admin/invoices" element={<ProtectedRoute allowedRoles={["admin"]}><AdminInvoices /></ProtectedRoute>} />
         <Route path="/admin/reports" element={<ProtectedRoute allowedRoles={["admin"]}><FeatureRoute feature="reports"><AdminReports /></FeatureRoute></ProtectedRoute>} />
         <Route path="/admin/users" element={<ProtectedRoute allowedRoles={["admin"]}><AdminUsers /></ProtectedRoute>} />
@@ -174,7 +171,6 @@ function AppRoutes() {
         <Route path="/manager/dashboard" element={<ProtectedRoute allowedRoles={["manager"]}><ManagerDashboard /></ProtectedRoute>} />
         <Route path="/manager/projects" element={<ProtectedRoute allowedRoles={["manager"]}><ManagerJobs /></ProtectedRoute>} />
         <Route path="/manager/appointments" element={<ProtectedRoute allowedRoles={["manager"]}><FeatureRoute feature="appointments"><ManagerAppointments /></FeatureRoute></ProtectedRoute>} />
-        <Route path="/manager/inventory" element={<ProtectedRoute allowedRoles={["manager"]}><ManagerInventory /></ProtectedRoute>} />
         <Route path="/manager/invoices" element={<ProtectedRoute allowedRoles={["manager"]}><ManagerInvoices /></ProtectedRoute>} />
         <Route path="/manager/staff" element={<ProtectedRoute allowedRoles={["manager"]}><ManagerStaff /></ProtectedRoute>} />
         <Route path="/manager/staff/:userId" element={<ProtectedRoute allowedRoles={["manager"]}><ManagerUserDetail /></ProtectedRoute>} />
@@ -186,7 +182,6 @@ function AppRoutes() {
         {/* The board moved whole projects between statuses; work now flows through task handoffs. */}
         <Route path="/staff/kanban" element={<Navigate to="/staff/dashboard" replace />} />
         <Route path="/staff/schedule" element={<ProtectedRoute allowedRoles={["staff"]}><FeatureRoute feature="appointments"><StaffSchedule /></FeatureRoute></ProtectedRoute>} />
-        <Route path="/staff/inventory" element={<ProtectedRoute allowedRoles={["staff"]}><StaffInventory /></ProtectedRoute>} />
 
         {/* Client routes */}
         <Route path="/client/dashboard" element={<ProtectedRoute allowedRoles={["client"]}><FeatureRoute feature="client_portal"><ClientDashboard /></FeatureRoute></ProtectedRoute>} />
@@ -195,6 +190,11 @@ function AppRoutes() {
         <Route path="/client/invoices" element={<ProtectedRoute allowedRoles={["client"]}><FeatureRoute feature="client_portal"><ClientInvoices /></FeatureRoute></ProtectedRoute>} />
         <Route path="/client/requests" element={<ProtectedRoute allowedRoles={["client"]}><FeatureRoute feature="client_portal"><ClientRequests /></FeatureRoute></ProtectedRoute>} />
         <Route path="/reception" element={<ProtectedRoute allowedRoles={["admin", "manager", "staff"]}><Reception /></ProtectedRoute>} />
+        <Route path="/inventory/*" element={<ProtectedRoute allowedRoles={["admin", "manager", "staff"]}><InventoryPortal /></ProtectedRoute>} />
+        {/* Each role had its own stock page; they're all the inventory portal now. */}
+        <Route path="/admin/inventory" element={<Navigate to="/inventory/stock" replace />} />
+        <Route path="/manager/inventory" element={<Navigate to="/inventory/stock" replace />} />
+        <Route path="/staff/inventory" element={<Navigate to="/inventory/stock" replace />} />
         {/* The old request pages are now the reception queue. */}
         <Route path="/admin/requests" element={<Navigate to="/reception?tab=requests" replace />} />
         <Route path="/manager/requests" element={<Navigate to="/reception?tab=requests" replace />} />

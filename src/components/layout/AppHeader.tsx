@@ -24,7 +24,7 @@ import { Link, useLocation } from "react-router-dom";
 import { useAuth, getRoleDashboardPath } from "@/hooks/useAuth";
 import { isIdSegment, useRegisteredLabel } from "@/lib/breadcrumbs";
 
-const ROLE_SCOPED_SEGMENTS = new Set(["invoices", "projects", "appointments", "inventory", "reports", "users", "clients", "calendar", "activity-logs", "settings", "feedback", "dashboard"]);
+const ROLE_SCOPED_SEGMENTS = new Set(["invoices", "projects", "appointments", "reports", "users", "clients", "calendar", "activity-logs", "settings", "feedback", "dashboard"]);
 
 const LABELS: Record<string, string> = {
   dashboard: "Dashboard",
@@ -39,6 +39,8 @@ const LABELS: Record<string, string> = {
   "activity-logs": "Activity Logs",
   settings: "Settings",
   feedback: "Feedback",
+  usage: "Usage by project",
+  reception: "Reception",
   teams: "Teams and access",
 };
 
