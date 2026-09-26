@@ -311,6 +311,82 @@ export type Database = {
         }
         Relationships: []
       }
+      department_members: {
+        Row: {
+          created_at: string
+          department_id: string
+          is_lead: boolean
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          department_id: string
+          is_lead?: boolean
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          department_id?: string
+          is_lead?: boolean
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "department_members_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      department_permissions: {
+        Row: {
+          department_id: string
+          permission: string
+        }
+        Insert: {
+          department_id: string
+          permission: string
+        }
+        Update: {
+          department_id?: string
+          permission?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "department_permissions_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      departments: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       dismissed_broadcasts: {
         Row: {
           broadcast_id: string
@@ -804,12 +880,17 @@ export type Database = {
       job_tasks: {
         Row: {
           assigned_to: string | null
+          completed_at: string | null
+          completed_by: string | null
           created_at: string
+          department_id: string | null
           description: string | null
           due_date: string | null
+          estimated_hours: number | null
           id: string
           job_id: string
           order_index: number | null
+          rework_of: string | null
           status: string
           title: string
           updated_at: string
@@ -817,12 +898,17 @@ export type Database = {
         }
         Insert: {
           assigned_to?: string | null
+          completed_at?: string | null
+          completed_by?: string | null
           created_at?: string
+          department_id?: string | null
           description?: string | null
           due_date?: string | null
+          estimated_hours?: number | null
           id?: string
           job_id: string
           order_index?: number | null
+          rework_of?: string | null
           status?: string
           title: string
           updated_at?: string
@@ -830,12 +916,17 @@ export type Database = {
         }
         Update: {
           assigned_to?: string | null
+          completed_at?: string | null
+          completed_by?: string | null
           created_at?: string
+          department_id?: string | null
           description?: string | null
           due_date?: string | null
+          estimated_hours?: number | null
           id?: string
           job_id?: string
           order_index?: number | null
+          rework_of?: string | null
           status?: string
           title?: string
           updated_at?: string
@@ -850,10 +941,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "job_tasks_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "job_tasks_job_id_fkey"
             columns: ["job_id"]
             isOneToOne: false
             referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_tasks_rework_of_fkey"
+            columns: ["rework_of"]
+            isOneToOne: false
+            referencedRelation: "job_tasks"
             referencedColumns: ["id"]
           },
         ]
@@ -951,6 +1056,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      labour_rates: {
+        Row: {
+          hourly_cost: number
+          updated_at: string
+          updated_by: string | null
+          user_id: string
+        }
+        Insert: {
+          hourly_cost: number
+          updated_at?: string
+          updated_by?: string | null
+          user_id: string
+        }
+        Update: {
+          hourly_cost?: number
+          updated_at?: string
+          updated_by?: string | null
+          user_id?: string
+        }
+        Relationships: []
       }
       mfa_backup_codes: {
         Row: {
@@ -1334,6 +1460,130 @@ export type Database = {
         }
         Relationships: []
       }
+      task_handoffs: {
+        Row: {
+          created_at: string
+          from_user: string
+          hours: number | null
+          id: string
+          job_id: string
+          next_task_id: string | null
+          note: string
+          task_id: string
+        }
+        Insert: {
+          created_at?: string
+          from_user: string
+          hours?: number | null
+          id?: string
+          job_id: string
+          next_task_id?: string | null
+          note: string
+          task_id: string
+        }
+        Update: {
+          created_at?: string
+          from_user?: string
+          hours?: number | null
+          id?: string
+          job_id?: string
+          next_task_id?: string | null
+          note?: string
+          task_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_handoffs_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_handoffs_next_task_id_fkey"
+            columns: ["next_task_id"]
+            isOneToOne: false
+            referencedRelation: "job_tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_handoffs_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "job_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      time_entries: {
+        Row: {
+          created_at: string
+          hours: number
+          id: string
+          job_id: string
+          note: string | null
+          task_id: string | null
+          user_id: string
+          work_date: string
+        }
+        Insert: {
+          created_at?: string
+          hours: number
+          id?: string
+          job_id: string
+          note?: string | null
+          task_id?: string | null
+          user_id: string
+          work_date?: string
+        }
+        Update: {
+          created_at?: string
+          hours?: number
+          id?: string
+          job_id?: string
+          note?: string | null
+          task_id?: string | null
+          user_id?: string
+          work_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "time_entries_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "time_entries_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "job_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_permissions: {
+        Row: {
+          created_at: string
+          granted_by: string | null
+          permission: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          granted_by?: string | null
+          permission: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          granted_by?: string | null
+          permission?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string
@@ -1500,6 +1750,15 @@ export type Database = {
         }
         Returns: Database["public"]["Enums"]["app_role"]
       }
+      can_run_job: { Args: { _user_id: string }; Returns: boolean }
+      can_view_job: {
+        Args: { _job_id: string; _user_id: string }
+        Returns: boolean
+      }
+      can_view_job_path: {
+        Args: { _folder: string; _user_id: string }
+        Returns: boolean
+      }
       client_decide_quote: {
         Args: { _approve: boolean; _reason?: string; _request_id: string }
         Returns: string
@@ -1548,6 +1807,19 @@ export type Database = {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
       }
+      handoff_task: {
+        Args: {
+          _hours?: number
+          _next_task_id?: string
+          _note: string
+          _task_id: string
+        }
+        Returns: string
+      }
+      has_permission: {
+        Args: { _permission: string; _user_id: string }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1557,7 +1829,19 @@ export type Database = {
       }
       is_feature_enabled: { Args: { feature_key: string }; Returns: boolean }
       job_update_to_note: { Args: { _update_id: string }; Returns: undefined }
+      my_permissions: { Args: Record<PropertyKey, never>; Returns: string[] }
       next_project_ref: { Args: { _at?: string }; Returns: string }
+      notify_users: {
+        Args: {
+          _link: string
+          _message: string
+          _title: string
+          _users: string[]
+        }
+        Returns: undefined
+      }
+      permission_holders: { Args: { _permission: string }; Returns: string[] }
+      permission_keys: { Args: Record<PropertyKey, never>; Returns: string[] }
       redeem_signup_code: {
         Args: { _code: string }
         Returns: {

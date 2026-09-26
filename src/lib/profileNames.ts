@@ -1,12 +1,15 @@
 import { supabase } from "@/integrations/supabase/client";
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 /**
  * Display names for a set of user IDs. Tables such as job_comments reference
  * auth.users rather than profiles, so PostgREST can't embed the name; this
  * resolves them in one query. Unknown IDs fall back to `fallback`.
  */
 export async function fetchProfileNames(ids: (string | null | undefined)[], fallback = "Team member"): Promise<Record<string, string>> {
-  const unique = [...new Set(ids.filter((id): id is string => !!id))];
+  // Only real user IDs: one malformed value would make the whole lookup fail.
+  const unique = [...new Set(ids.filter((id): id is string => !!id && UUID.test(id)))];
   if (unique.length === 0) return {};
   const { data } = await supabase.from("profiles").select("id, full_name").in("id", unique);
   const names: Record<string, string> = {};

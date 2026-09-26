@@ -19,7 +19,7 @@ const str = (v: unknown) => (typeof v === "string" && v ? v : null);
 /** One line per event. Unknown kinds still render, so new event types never break the page. */
 function describe(e: EventRow, names: Record<string, string>): { label: string; sub?: string; tone: "status" | "people" | "neutral" | "good" | "warn" } {
   const d = e.data ?? {};
-  const who = (id: unknown) => (str(id) ? names[id as string] ?? "someone" : null);
+  const who = (id: unknown) => (str(id) ? names[id as string] || "someone" : null);
   switch (e.kind) {
     case "created":
       return { label: "Project received", tone: "neutral" };
@@ -100,7 +100,7 @@ export default function ProjectActivity({ jobId, createdAt, refreshKey }: { jobI
         .order("id", { ascending: true });
       const rows = (data ?? []) as EventRow[];
       const ids = rows.flatMap((r) => [r.actor_id, str(r.data?.to), str(r.data?.from)]);
-      const n = await fetchProfileNames(ids, "someone");
+      const n = await fetchProfileNames(ids, "");
       if (!cancelled) {
         setEvents(rows);
         setNames(n);

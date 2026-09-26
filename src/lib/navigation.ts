@@ -8,12 +8,12 @@ import {
   Briefcase,
   Calendar,
   CalendarDays,
-  Columns3,
   FileText,
   Home,
   Inbox,
   KeyRound,
   MessageSquare,
+  Network,
   Package,
   Settings,
   ShieldCheck,
@@ -77,6 +77,7 @@ export const NAV_GROUPS: Record<AppRole, NavGroup[]> = {
       label: "People",
       items: [
         { title: "Users", url: "/admin/users", icon: Users },
+        { title: "Teams and access", short: "Teams", url: "/admin/teams", icon: Network },
         { title: "Clients", url: "/admin/clients", icon: UserCheck, features: ["client_portal"] },
       ],
     },
@@ -115,7 +116,6 @@ export const NAV_GROUPS: Record<AppRole, NavGroup[]> = {
       items: [
         { title: "My day", url: "/staff/dashboard", icon: Home, exact: true },
         { title: "My projects", short: "Projects", url: "/staff/projects", icon: Briefcase, count: "myOpenJobs" },
-        { title: "Board", url: "/staff/kanban", icon: Columns3 },
         { title: "Schedule", url: "/staff/schedule", icon: Calendar, features: ["appointments"] },
         { title: "Inventory", short: "Stock", url: "/staff/inventory", icon: Package },
         { title: "Goals", url: "/goals", icon: Target, features: ["goals"] },
@@ -141,7 +141,7 @@ export const NAV_GROUPS: Record<AppRole, NavGroup[]> = {
 export const TAB_BAR_URLS: Record<AppRole, string[]> = {
   admin: ["/admin/dashboard", "/admin/projects", "/admin/requests", "/admin/invoices"],
   manager: ["/manager/dashboard", "/manager/projects", "/manager/requests", "/manager/invoices"],
-  staff: ["/staff/dashboard", "/staff/projects", "/staff/kanban", "/staff/inventory"],
+  staff: ["/staff/dashboard", "/staff/projects", "/staff/schedule", "/staff/inventory"],
   client: ["/client/dashboard", "/client/requests", "/client/invoices", "/client/appointments"],
 };
 

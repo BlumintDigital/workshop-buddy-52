@@ -39,6 +39,7 @@ const LABELS: Record<string, string> = {
   "activity-logs": "Activity Logs",
   settings: "Settings",
   feedback: "Feedback",
+  teams: "Teams and access",
 };
 
 const HOME_LABEL: Record<string, string> = { admin: "Today", manager: "Today", staff: "My day", client: "Your orders" };

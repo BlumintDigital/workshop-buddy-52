@@ -5,7 +5,6 @@ import { jobEditSchema } from "@/lib/schemas/job";
 import { useAuth } from "@/hooks/useAuth";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -15,16 +14,16 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
-  ArrowLeft, CalendarDays, Clock, Pencil, Plus, Trash2, CheckSquare,
-  FileUp, FileText, Download, MessageSquare, Paperclip, Package, Send,
+  ArrowLeft, CalendarDays, Clock, Pencil, Plus, Trash2,
+  FileUp, FileText, Download, MessageSquare, Paperclip, Package,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DatePickerInput } from "@/components/ui/date-picker-input";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
-import { sendNotifications } from "@/lib/notifications";
 import { notifyJobStatusChange } from "@/lib/jobNotifications";
 import ProjectConversation from "@/components/project/ProjectConversation";
+import ProjectTasks from "@/components/project/ProjectTasks";
+import { usePermissions } from "@/hooks/usePermissions";
 import ProjectActivity from "@/components/project/ProjectActivity";
 import ProjectFiles from "@/components/project/ProjectFiles";
 import ClientProjectView from "@/components/project/ClientProjectView";
@@ -37,21 +36,7 @@ import { useCurrency } from "@/hooks/useCurrency";
 // Statuses a team member can set by hand on this page.
 const EDITABLE_STATUSES = ["quote", "pending", "in_progress", "review", "completed", "cancelled"];
 
-const taskStatusColors: Record<string, "default" | "secondary" | "outline"> = {
-  pending: "outline", in_progress: "secondary", completed: "default",
-};
-
 interface UserOption { id: string; full_name: string; }
-interface TaskItem {
-  id: string;
-  title: string;
-  status: string;
-  assigned_to: string | null;
-  assignee_name?: string | null;
-}
-
-const emptyTaskForm = { title: "", description: "", assigned_to: "", status: "pending", due_date: "", value: "" };
-
 export default function JobDetail() {
   const { id } = useParams<{ id: string }>();
   const { role, user } = useAuth();
@@ -66,16 +51,6 @@ export default function JobDetail() {
 
   // Tasks
   const [tasks, setTasks] = useState<any[]>([]);
-  const [taskOpen, setTaskOpen] = useState(false);
-  const [editingTask, setEditingTask] = useState<any | null>(null);
-  const [taskForm, setTaskForm] = useState({ ...emptyTaskForm });
-  const [taskPendingFiles, setTaskPendingFiles] = useState<File[]>([]);
-  const taskCreateFileRef = useRef<HTMLInputElement>(null);
-  const [handoffTask, setHandoffTask] = useState<TaskItem | null>(null);
-  const [handoffAssignee, setHandoffAssignee] = useState("");
-  const [handoffNote, setHandoffNote] = useState("");
-  const [handingOff, setHandingOff] = useState(false);
-
   // Task detail (notes + files)
   const [viewTask, setViewTask] = useState<any | null>(null);
   const [taskNotes, setTaskNotes] = useState<any[]>([]);
@@ -102,11 +77,9 @@ export default function JobDetail() {
   const [editForm, setEditForm] = useState<any>({});
 
 
-  // Actual hours
-  const [actualHoursInput, setActualHoursInput] = useState("");
-
-
   const canEdit = role === "admin" || role === "manager";
+  const { has } = usePermissions();
+  const canPlan = canEdit || has("planning");
   const canAddUpdate = role === "admin" || role === "manager" || role === "staff";
 
   useEffect(() => {
@@ -115,7 +88,6 @@ export default function JobDetail() {
       const { data: jobData } = await supabase.from("jobs").select("*").eq("id", id).single();
       if (!jobData) return;
       setJob(jobData);
-      setActualHoursInput(jobData.actual_hours?.toString() ?? "");
 
       const ids = [jobData.assigned_staff_id, jobData.client_id].filter((v): v is string => !!v);
       if (ids.length) {
@@ -167,6 +139,14 @@ export default function JobDetail() {
     const profileMap = new Map(profiles.map(p => [p.id, p.full_name || "Unknown"]));
     setStaffUsers(roles.filter(r => r.role === "staff").map(r => ({ id: r.user_id, full_name: profileMap.get(r.user_id) || "Unknown" })));
     setClientUsers(roles.filter(r => r.role === "client").map(r => ({ id: r.user_id, full_name: profileMap.get(r.user_id) || "Unknown" })));
+  };
+
+  // Status and logged hours change when tasks are handed off or time is logged.
+  const reloadJob = async () => {
+    if (!id) return;
+    const { data } = await supabase.from("jobs").select("*").eq("id", id).single();
+    if (data) setJob(data);
+    fetchTasks();
   };
 
   const fetchTasks = async () => {
@@ -301,17 +281,6 @@ export default function JobDetail() {
     notifyJobStatusChange(job, status, user?.id);
   };
 
-  const handleActualHoursBlur = async () => {
-    if (!job) return;
-    const val = actualHoursInput === "" ? null : parseFloat(actualHoursInput);
-    if (val === job.actual_hours) return;
-    const { error } = await supabase.from("jobs").update({ actual_hours: val }).eq("id", job.id);
-    if (error) { toast.error(error.message); return; }
-    setJob({ ...job, actual_hours: val });
-    toast.success("Hours saved");
-  };
-
-
   const handleOpenEdit = () => {
     if (!job) return;
     setEditForm({
@@ -345,145 +314,6 @@ export default function JobDetail() {
     setJob({ ...job, ...payload }); setEditOpen(false); toast.success("Project updated");
   };
 
-  const handleOpenAddTask = () => { setEditingTask(null); setTaskForm({ ...emptyTaskForm }); setTaskPendingFiles([]); setTaskOpen(true); };
-  const handleOpenEditTask = (task: any) => {
-    setEditingTask(task);
-    setTaskForm({ title: task.title, description: task.description || "", assigned_to: task.assigned_to || "", status: task.status, due_date: task.due_date || "", value: task.value?.toString() || "" });
-    setTaskOpen(true);
-  };
-
-  const handleSaveTask = async () => {
-    if (!taskForm.title.trim()) { toast.error("Task title is required"); return; }
-    const payload: any = { job_id: id!, title: taskForm.title.trim(), description: taskForm.description || null, assigned_to: taskForm.assigned_to || null, status: taskForm.status, due_date: taskForm.due_date || null, value: parseFloat(taskForm.value) || 0 };
-    let newTaskId: string | null = null;
-    if (editingTask) {
-      const { error } = await supabase.from("job_tasks").update(payload).eq("id", editingTask.id);
-      if (error) { toast.error(error.message); return; }
-      newTaskId = editingTask.id;
-      toast.success("Task updated");
-    } else {
-      const { data, error } = await supabase.from("job_tasks").insert(payload).select("id").single();
-      if (error) { toast.error(error.message); return; }
-      newTaskId = data.id;
-      toast.success("Task added");
-    }
-    // Upload pending files for new task
-    if (newTaskId && taskPendingFiles.length > 0) {
-      for (const file of taskPendingFiles) {
-        const ext = file.name.split(".").pop();
-        const path = `${id}/${newTaskId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-        const { error: uploadErr } = await supabase.storage.from("job-attachments").upload(path, file);
-        if (uploadErr) { toast.error(`Failed to upload ${file.name}`); continue; }
-        await (supabase.from as any)("job_attachments").insert({
-          job_id: id!, task_id: newTaskId, uploaded_by: user!.id,
-          file_name: file.name, file_path: path, file_type: file.type, file_size: file.size,
-        });
-      }
-      if (taskPendingFiles.length > 0) toast.success(`${taskPendingFiles.length} file(s) attached`);
-    }
-    setTaskPendingFiles([]);
-    setTaskOpen(false); setEditingTask(null); fetchTasks();
-  };
-
-  const handleTaskStatusChange = async (taskId: string, status: string) => {
-    const { error } = await supabase.from("job_tasks").update({ status }).eq("id", taskId);
-    if (error) { toast.error(error.message); return; }
-    const updatedTasks = tasks.map(t => t.id === taskId ? { ...t, status } : t);
-    setTasks(updatedTasks);
-
-    // When a task is completed, notify the next incomplete task's assignee
-    if (status === "completed") {
-      const completedTask = tasks.find(t => t.id === taskId);
-      const nextTask = updatedTasks
-        .filter(t => t.id !== taskId && t.status !== "completed")
-        .sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0) || new Date(a.created_at).getTime() - new Date(b.created_at).getTime())[0];
-
-      if (nextTask?.assigned_to && nextTask.assigned_to !== user?.id) {
-        await sendNotifications([{
-          user_id: nextTask.assigned_to,
-          title: "Your task is ready to start",
-          message: `"${completedTask?.title}" is done. Your task "${nextTask.title}" on ${job?.ref} is next.`,
-          link: projectPath(id!),
-        }]);
-      }
-    }
-  };
-
-  const openHandoffDialog = (task: TaskItem) => {
-    setHandoffTask(task);
-    setHandoffAssignee("");
-    setHandoffNote("");
-  };
-
-  const closeHandoffDialog = () => {
-    if (handingOff) return;
-    setHandoffTask(null);
-    setHandoffAssignee("");
-    setHandoffNote("");
-  };
-
-  const handleCompleteAndHandoff = async () => {
-    if (!handoffTask || !user || !job) return;
-    if (!handoffAssignee) { toast.error("Choose who to hand this task to"); return; }
-    if (!handoffNote.trim()) { toast.error("Add a handoff note"); return; }
-
-    const nextAssignee = staffUsers.find((staff) => staff.id === handoffAssignee);
-    if (!nextAssignee) { toast.error("Selected staff member was not found"); return; }
-
-    setHandingOff(true);
-    const { error: taskError } = await supabase
-      .from("job_tasks")
-      .update({ status: "completed", assigned_to: handoffAssignee })
-      .eq("id", handoffTask.id);
-
-    if (taskError) {
-      setHandingOff(false);
-      toast.error(taskError.message);
-      return;
-    }
-
-    const noteText = `Handoff to ${nextAssignee.full_name}: ${handoffNote.trim()}`;
-    const { error: noteError } = await supabase.from("job_task_notes").insert({
-      task_id: handoffTask.id,
-      user_id: user.id,
-      note: noteText,
-    });
-
-    if (noteError) {
-      toast.error(`Task handed off, but note could not be saved: ${noteError.message}`);
-    }
-
-    await sendNotifications([{
-      user_id: handoffAssignee,
-      title: "Task handed off to you",
-      message: `${user.email?.split("@")[0] ?? "A team member"} completed "${handoffTask.title}" and handed it off on ${job.ref}.`,
-      link: projectPath(id!),
-    }]);
-
-    const updatedTask = {
-      ...handoffTask,
-      status: "completed",
-      assigned_to: handoffAssignee,
-      assignee_name: nextAssignee.full_name,
-    };
-    setTasks((prev) => prev.map((task) => task.id === handoffTask.id ? updatedTask : task));
-    if (viewTask?.id === handoffTask.id) {
-      setViewTask(updatedTask);
-      fetchTaskDetails(handoffTask.id);
-    }
-    setHandingOff(false);
-    setHandoffTask(null);
-    setHandoffAssignee("");
-    setHandoffNote("");
-    toast.success(`Task completed and handed off to ${nextAssignee.full_name}`);
-  };
-
-  const handleDeleteTask = async (taskId: string) => {
-    const { error } = await supabase.from("job_tasks").delete().eq("id", taskId);
-    if (error) { toast.error(error.message); return; }
-    setTasks(prev => prev.filter(t => t.id !== taskId)); toast.success("Task removed");
-  };
-
   if (!job) return (
     <DashboardLayout>
       <div className="space-y-6 max-w-6xl" aria-busy="true">
@@ -515,10 +345,6 @@ export default function JobDetail() {
   const canUploadIntake = canEdit || job.assigned_staff_id === user?.id;
   const hoursProgress = job.estimated_hours && job.actual_hours
     ? Math.min(100, (parseFloat(job.actual_hours) / parseFloat(job.estimated_hours)) * 100) : null;
-  const completedTasks = tasks.filter(t => t.status === "completed").length;
-  const totalJobValue = tasks.reduce((sum, t) => sum + (parseFloat(t.value) || 0), 0);
-  const completedJobValue = tasks.filter(t => t.status === "completed").reduce((sum, t) => sum + (parseFloat(t.value) || 0), 0);
-  const taskProgress = tasks.length > 0 ? Math.round((completedTasks / tasks.length) * 100) : null;
   const matTotal = materials.reduce((sum, m) => sum + m.quantity * Number((m as any).inventory_items?.unit_cost || 0), 0);
 
   return (
@@ -622,14 +448,8 @@ export default function JobDetail() {
             <div className="flex items-start gap-2">
               <Clock className="h-4 w-4 text-muted-foreground mt-5" />
               <div className="flex-1">
-                <Label htmlFor="f-actual" className="text-xs text-muted-foreground">Actual</Label>
-                {canAddUpdate ? (
-                  <Input id="f-actual" type="number" min="0" step="0.5" value={actualHoursInput}
-                    onChange={(e) => setActualHoursInput(e.target.value)}
-                    onBlur={handleActualHoursBlur} className="mt-1 h-7 w-24 text-sm" placeholder="0" />
-                ) : (
-                  <p className="text-sm mt-1">{job.actual_hours ? `${job.actual_hours}h` : "—"}</p>
-                )}
+                <Label className="text-xs text-muted-foreground">Logged</Label>
+                <p className="text-sm mt-1 tabular-nums">{job.actual_hours ? `${job.actual_hours} h` : "—"}</p>
                 {hoursProgress !== null && (
                   <div className="mt-2">
                     <Progress value={hoursProgress} aria-label="Hours used against estimate" className="h-1.5 w-24" />
@@ -641,110 +461,12 @@ export default function JobDetail() {
           </CardContent>
         </Card>
 
-        {/* Tasks */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-3">
-            <div>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <CheckSquare className="h-5 w-5" />Tasks
-              </CardTitle>
-              {tasks.length > 0 && (
-                <p className="text-sm text-muted-foreground mt-0.5">
-                  {completedTasks} of {tasks.length} completed{taskProgress !== null && ` · ${taskProgress}%`}
-                  {totalJobValue > 0 && (
-                    <span className="ml-2 font-medium text-foreground">{fmt(completedJobValue)} / {fmt(totalJobValue)}</span>
-                  )}
-                </p>
-              )}
-            </div>
-            {canEdit && (
-              <Button size="sm" variant="outline" onClick={handleOpenAddTask}>
-                <Plus className="mr-2 h-4 w-4" />Add Task
-              </Button>
-            )}
-          </CardHeader>
-          <CardContent>
-            {tasks.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-2">
-                No tasks yet.{canEdit && " Break the project into tasks and assign them to your team."}
-              </p>
-            ) : (
-              <>
-                {tasks.length > 1 && <Progress value={taskProgress ?? 0} aria-label="Tasks completed" className="h-1 mb-4" />}
-                <div className="divide-y divide-border">
-                  {tasks.map(task => {
-                    const canChangeStatus = canEdit || task.assigned_to === user?.id;
-                    const canHandOff = role === "staff" && task.assigned_to === user?.id && task.status !== "completed";
-                    return (
-                      <div key={task.id} className="flex items-start gap-3 py-3">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <button
-                              className={cn("text-sm font-medium text-left hover:underline",
-                                task.status === "completed" && "line-through text-muted-foreground")}
-                              onClick={() => { setViewTask(task); setNewTaskNote(""); fetchTaskDetails(task.id); }}
-                            >
-                              {task.title}
-                            </button>
-                            {canChangeStatus ? (
-                              <Select value={task.status} onValueChange={(v) => handleTaskStatusChange(task.id, v)}>
-                                <SelectTrigger className="h-8 w-[120px] text-xs px-2" aria-label={`Status of task ${task.title}`}><SelectValue /></SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="pending">Pending</SelectItem>
-                                  <SelectItem value="in_progress">In progress</SelectItem>
-                                  <SelectItem value="completed">Completed</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            ) : (
-                              <Badge variant={taskStatusColors[task.status]} className="text-xs">
-                                {task.status.replace("_", " ")}
-                              </Badge>
-                            )}
-                          </div>
-                          {task.description && <p className="text-xs text-muted-foreground mt-0.5">{task.description}</p>}
-                          <div className="flex items-center gap-3 mt-0.5 flex-wrap">
-                            <p className="text-xs text-muted-foreground">
-                              {task.assignee_name ? `Assigned to ${task.assignee_name}` : "Unassigned"}
-                            </p>
-                            {task.due_date && (
-                              <p className="text-xs text-muted-foreground flex items-center gap-1">
-                                <CalendarDays className="h-3 w-3" />Due {task.due_date}
-                              </p>
-                            )}
-                            {parseFloat(task.value) > 0 && (
-                              <Badge variant="outline" className="text-xs font-mono">{fmt(parseFloat(task.value))}</Badge>
-                            )}
-                          </div>
-                        </div>
-                        {(canHandOff || canEdit) && (
-                          <div className="flex gap-1 shrink-0">
-                            {canHandOff && (
-                              <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => openHandoffDialog(task)}>
-                                <Send className="mr-1 h-3 w-3" />
-                                Hand off
-                              </Button>
-                            )}
-                            {canEdit && (
-                              <>
-                                <Button variant="ghost" size="icon" className="h-8 w-8" aria-label={`Edit task ${task.title}`} onClick={() => handleOpenEditTask(task)}>
-                                  <Pencil className="h-3 w-3" />
-                                </Button>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" aria-label={`Delete task ${task.title}`}
-                                  onClick={() => handleDeleteTask(task.id)}>
-                                  <Trash2 className="h-3 w-3" />
-                                </Button>
-                              </>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </>
-            )}
-          </CardContent>
-        </Card>
+        <ProjectTasks
+          project={job}
+          canPlan={canPlan}
+          onChanged={reloadJob}
+          onOpenTask={(task) => { setViewTask(task); setNewTaskNote(""); fetchTaskDetails(task.id); }}
+        />
 
         {/* Materials Used */}
         <Card>
@@ -877,135 +599,6 @@ export default function JobDetail() {
                 </Select>
               </div>
               <Button onClick={handleSaveEdit} className="w-full">Save Changes</Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-
-        {/* Complete & Hand Off Dialog */}
-        <Dialog open={!!handoffTask} onOpenChange={(open) => { if (!open) closeHandoffDialog(); }}>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle>Complete & hand off</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <Label>Task</Label>
-                <p className="mt-1 text-sm font-medium">{handoffTask?.title}</p>
-              </div>
-              <div>
-                <Label htmlFor="f-hand-off-to">Hand off to</Label>
-                <Select value={handoffAssignee} onValueChange={setHandoffAssignee} disabled={handingOff}>
-                  <SelectTrigger id="f-hand-off-to" className="mt-1">
-                    <SelectValue placeholder="Select staff member" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {staffUsers.filter((staff) => staff.id !== user?.id).map((staff) => (
-                      <SelectItem key={staff.id} value={staff.id}>{staff.full_name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {staffUsers.filter((staff) => staff.id !== user?.id).length === 0 && (
-                  <p className="mt-1 text-xs text-muted-foreground">No other staff members are available.</p>
-                )}
-              </div>
-              <div>
-                <Label htmlFor="f-handoff-note">Handoff note</Label>
-                <Textarea id="f-handoff-note"
-                  value={handoffNote}
-                  onChange={(e) => setHandoffNote(e.target.value)}
-                  placeholder="Completed fabrication, passing to paint."
-                  rows={3}
-                  className="mt-1"
-                  disabled={handingOff}
-                />
-              </div>
-              <div className="flex justify-end gap-2">
-                <Button type="button" variant="outline" onClick={closeHandoffDialog} disabled={handingOff}>
-                  Cancel
-                </Button>
-                <Button
-                  type="button"
-                  onClick={handleCompleteAndHandoff}
-                  disabled={handingOff || !handoffAssignee || !handoffNote.trim()}
-                >
-                  <Send className="mr-2 h-4 w-4" />
-                  {handingOff ? "Handing off..." : "Complete & hand off"}
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
-
-        {/* Add / Edit Task Dialog */}
-        <Dialog open={taskOpen} onOpenChange={(v) => { setTaskOpen(v); if (!v) setEditingTask(null); }}>
-          <DialogContent className="max-w-md">
-            <DialogHeader><DialogTitle>{editingTask ? "Edit Task" : "Add Task"}</DialogTitle></DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="f-title-2">Title</Label>
-                <Input id="f-title-2" value={taskForm.title} onChange={(e) => setTaskForm({ ...taskForm, title: e.target.value })} placeholder="e.g. Change engine oil" className="mt-1" />
-              </div>
-              <div>
-                <Label htmlFor="f-description-optional">Description <span className="text-muted-foreground text-xs">(optional)</span></Label>
-                <Textarea id="f-description-optional" value={taskForm.description} onChange={(e) => setTaskForm({ ...taskForm, description: e.target.value })} className="mt-1" rows={2} />
-              </div>
-              <div>
-                <Label htmlFor="f-assign-to">Assign To</Label>
-                <Select value={taskForm.assigned_to || "__none__"} onValueChange={(v) => setTaskForm({ ...taskForm, assigned_to: v === "__none__" ? "" : v })}>
-                  <SelectTrigger id="f-assign-to" className="mt-1"><SelectValue placeholder="Unassigned" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__none__">Unassigned</SelectItem>
-                    {staffUsers.map(u => <SelectItem key={u.id} value={u.id}>{u.full_name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label htmlFor="f-status-2">Status</Label>
-                <Select value={taskForm.status} onValueChange={(v) => setTaskForm({ ...taskForm, status: v })}>
-                  <SelectTrigger id="f-status-2" className="mt-1"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="pending">Pending</SelectItem>
-                    <SelectItem value="in_progress">In Progress</SelectItem>
-                    <SelectItem value="completed">Completed</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label htmlFor="f-due-date-optional">Due Date <span className="text-muted-foreground text-xs">(optional)</span></Label>
-                <DatePickerInput id="f-due-date-optional" value={taskForm.due_date} onChange={(v) => setTaskForm({ ...taskForm, due_date: v })} className="mt-1" />
-              </div>
-              {canEdit && (
-                <div>
-                  <Label htmlFor="f-task-value-optional">Task Value ($) <span className="text-muted-foreground text-xs">(optional)</span></Label>
-                  <Input id="f-task-value-optional" type="number" min="0" step="0.01" value={taskForm.value} onChange={(e) => setTaskForm({ ...taskForm, value: e.target.value })} className="mt-1 w-32" placeholder="0.00" />
-                  <p className="text-xs text-muted-foreground mt-1">Counts toward the monthly company goal when completed.</p>
-                </div>
-              )}
-              {!editingTask && (
-                <div>
-                  <Label>Attachments <span className="text-muted-foreground text-xs">(optional)</span></Label>
-                  <input ref={taskCreateFileRef} type="file" multiple className="hidden" onChange={(e) => {
-                    if (e.target.files) setTaskPendingFiles(prev => [...prev, ...Array.from(e.target.files!)]);
-                    e.target.value = "";
-                  }} />
-                  <Button type="button" variant="outline" size="sm" className="mt-1 w-full" onClick={() => taskCreateFileRef.current?.click()}>
-                    <FileUp className="mr-2 h-4 w-4" />Add Files
-                  </Button>
-                  {taskPendingFiles.length > 0 && (
-                    <div className="mt-2 space-y-1">
-                      {taskPendingFiles.map((f, i) => (
-                        <div key={i} className="flex items-center justify-between text-xs border rounded px-2 py-1">
-                          <span className="truncate">{f.name}</span>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" aria-label={`Remove ${f.name}`} onClick={() => setTaskPendingFiles(prev => prev.filter((_, idx) => idx !== i))}>
-                            <Trash2 className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-              <Button onClick={handleSaveTask} className="w-full">{editingTask ? "Save Changes" : "Add Task"}</Button>
             </div>
           </DialogContent>
         </Dialog>

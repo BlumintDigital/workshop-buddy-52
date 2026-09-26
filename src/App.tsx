@@ -30,6 +30,7 @@ import NotFound from "./pages/NotFound.tsx";
 // Admin pages
 const AdminDashboard = lazy(() => import("@/pages/admin/AdminDashboard"));
 const AdminJobs = lazy(() => import("@/pages/admin/AdminJobs"));
+const AdminTeams = lazy(() => import("@/pages/admin/AdminTeams"));
 const AdminAppointments = lazy(() => import("@/pages/admin/AdminAppointments"));
 const AdminInventory = lazy(() => import("@/pages/admin/AdminInventory"));
 const AdminInvoices = lazy(() => import("@/pages/admin/AdminInvoices"));
@@ -60,7 +61,6 @@ const ManagerCalendar = lazy(() => import("@/pages/manager/ManagerCalendar"));
 // Staff pages
 const StaffDashboard = lazy(() => import("@/pages/staff/StaffDashboard"));
 const StaffJobs = lazy(() => import("@/pages/staff/StaffJobs"));
-const StaffKanban = lazy(() => import("@/pages/staff/StaffKanban"));
 const StaffSchedule = lazy(() => import("@/pages/staff/StaffSchedule"));
 const StaffInventory = lazy(() => import("@/pages/staff/StaffInventory"));
 
@@ -163,6 +163,7 @@ function AppRoutes() {
         <Route path="/admin/invoices" element={<ProtectedRoute allowedRoles={["admin"]}><AdminInvoices /></ProtectedRoute>} />
         <Route path="/admin/reports" element={<ProtectedRoute allowedRoles={["admin"]}><FeatureRoute feature="reports"><AdminReports /></FeatureRoute></ProtectedRoute>} />
         <Route path="/admin/users" element={<ProtectedRoute allowedRoles={["admin"]}><AdminUsers /></ProtectedRoute>} />
+        <Route path="/admin/teams" element={<ProtectedRoute allowedRoles={["admin"]}><AdminTeams /></ProtectedRoute>} />
         <Route path="/admin/users/:userId" element={<ProtectedRoute allowedRoles={["admin"]}><AdminUserDetail /></ProtectedRoute>} />
         <Route path="/admin/clients" element={<ProtectedRoute allowedRoles={["admin"]}><FeatureRoute feature="client_portal"><AdminClients /></FeatureRoute></ProtectedRoute>} />
         <Route path="/admin/calendar" element={<ProtectedRoute allowedRoles={["admin"]}><FeatureRoute feature="appointments"><AdminCalendar /></FeatureRoute></ProtectedRoute>} />
@@ -182,7 +183,8 @@ function AppRoutes() {
         {/* Staff routes */}
         <Route path="/staff/dashboard" element={<ProtectedRoute allowedRoles={["staff"]}><StaffDashboard /></ProtectedRoute>} />
         <Route path="/staff/projects" element={<ProtectedRoute allowedRoles={["staff"]}><StaffJobs /></ProtectedRoute>} />
-        <Route path="/staff/kanban" element={<ProtectedRoute allowedRoles={["staff"]}><StaffKanban /></ProtectedRoute>} />
+        {/* The board moved whole projects between statuses; work now flows through task handoffs. */}
+        <Route path="/staff/kanban" element={<Navigate to="/staff/dashboard" replace />} />
         <Route path="/staff/schedule" element={<ProtectedRoute allowedRoles={["staff"]}><FeatureRoute feature="appointments"><StaffSchedule /></FeatureRoute></ProtectedRoute>} />
         <Route path="/staff/inventory" element={<ProtectedRoute allowedRoles={["staff"]}><StaffInventory /></ProtectedRoute>} />
 
