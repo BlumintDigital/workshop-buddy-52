@@ -2249,6 +2249,12 @@ export type Database = {
       }
     }
     Functions: {
+      _assert_references_intact: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      _insertable_columns: { Args: { _table: string }; Returns: string }
+      _sync_identity: { Args: { _table: string }; Returns: undefined }
       accept_client_request: {
         Args: { _assigned_staff_id?: string; _request_id: string }
         Returns: string
@@ -2315,6 +2321,7 @@ export type Database = {
         Args: { _reason: string; _request_id: string }
         Returns: undefined
       }
+      export_workshop_data: { Args: Record<PropertyKey, never>; Returns: Json }
       get_job_completion_stats: {
         Args: Record<PropertyKey, never>
         Returns: {
@@ -2394,6 +2401,10 @@ export type Database = {
       mark_shipped: { Args: { _d: Json; _job_id: string }; Returns: undefined }
       my_permissions: { Args: Record<PropertyKey, never>; Returns: string[] }
       next_project_ref: { Args: { _at?: string }; Returns: string }
+      note_unpaid_handover: {
+        Args: { _job_id: string; _reason: string }
+        Returns: undefined
+      }
       notify_ready_to_ship: {
         Args: { _job_id: string; _message?: string }
         Returns: undefined
@@ -2409,6 +2420,18 @@ export type Database = {
       }
       permission_holders: { Args: { _permission: string }; Returns: string[] }
       permission_keys: { Args: Record<PropertyKey, never>; Returns: string[] }
+      project_billing_status: {
+        Args: { _job_ids: string[] }
+        Returns: {
+          client_marked_paid: boolean
+          currency: string
+          invoice_id: string
+          invoice_number: string
+          job_id: string
+          status: string
+          total: number
+        }[]
+      }
       project_financials: {
         Args: { _from?: string; _to?: string }
         Returns: {
@@ -2490,6 +2513,14 @@ export type Database = {
         }
         Returns: string
       }
+      reset_workshop_data: {
+        Args: { _full: boolean; _keep_user: string }
+        Returns: Json
+      }
+      restore_workshop_data: {
+        Args: { _caller: string; _data: Json }
+        Returns: Json
+      }
       return_parts: {
         Args: {
           _item_id: string
@@ -2550,6 +2581,14 @@ export type Database = {
       withdraw_project_quote: {
         Args: { _quote_id: string }
         Returns: undefined
+      }
+      workshop_data_tables: {
+        Args: Record<PropertyKey, never>
+        Returns: string[]
+      }
+      workshop_setup_tables: {
+        Args: Record<PropertyKey, never>
+        Returns: string[]
       }
     }
     Enums: {

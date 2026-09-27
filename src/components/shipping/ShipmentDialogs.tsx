@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Paperclip } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -13,6 +13,7 @@ import { DatePickerInput } from "@/components/ui/date-picker-input";
 import { sendEmail, readyToShipEmailHtml } from "@/lib/email";
 import { projectPath } from "@/lib/projects";
 import { cn } from "@/lib/utils";
+import { billingState, fetchBillingStatus, type BillingStatus } from "@/lib/billing";
 
 export type Shipment = {
   id: string;
@@ -174,15 +175,25 @@ export function ShipDialog({ project, shipment, onClose, onDone }: { project: Pr
   const [saving, setSaving] = useState(false);
   const input = useRef<HTMLInputElement>(null);
   const set = (k: keyof typeof f, v: string) => setF((x) => ({ ...x, [k]: v }));
+  // Payment check: a machine leaving unpaid needs a reason on record.
+  const [billing, setBilling] = useState<BillingStatus | undefined | null>(null);
+  const [unpaidReason, setUnpaidReason] = useState("");
+  useEffect(() => {
+    void fetchBillingStatus([project.id]).then((m) => setBilling(m[project.id]));
+  }, [project.id]);
+  const pay = billing === null ? null : billingState(billing, !project.client_id);
+  const needsReason = pay !== null && !pay.paid;
 
   const save = async () => {
     if (method === "courier" && f.tracking_url && !/^https?:\/\//i.test(f.tracking_url)) return toast.error("The tracking link must start with https://");
+    if (needsReason && !unpaidReason.trim()) return toast.error("Say why it's leaving before it's paid for");
     setSaving(true);
     const { error } = await supabase.rpc("mark_shipped", { _job_id: project.id, _d: { method, ...f, currency } });
     if (error) {
       setSaving(false);
       return toast.error(error.message);
     }
+    if (needsReason) await supabase.rpc("note_unpaid_handover", { _job_id: project.id, _reason: unpaidReason.trim() });
     let failed = 0;
     for (const file of files) {
       const ext = file.name.includes(".") ? file.name.split(".").pop() : "pdf";
@@ -216,6 +227,16 @@ export function ShipDialog({ project, shipment, onClose, onDone }: { project: Pr
           <DialogDescription>{shipment.method ? `The client chose ${shipment.method === "pickup" ? "to collect it" : "courier delivery"}.` : "Record how the item left the workshop."}</DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
+          {pay && !pay.paid && (
+            <div role="alert" className="space-y-2 rounded-lg border border-warning/30 bg-warning-soft p-3">
+              <p className="text-sm font-medium text-foreground">
+                {pay.label}
+                {billing?.invoice_number ? ` · ${billing.invoice_number}` : ""}. It hasn't been paid for yet.
+              </p>
+              <Label htmlFor="f-unpaid-reason" className="text-sm">Why is it leaving before payment?</Label>
+              <Textarea id="f-unpaid-reason" value={unpaidReason} onChange={(e) => setUnpaidReason(e.target.value)} rows={2} placeholder="e.g. Account customer, pays monthly. Agreed by the owner." />
+            </div>
+          )}
           <div role="radiogroup" aria-label="Handover" className="grid grid-cols-2 gap-2">
             {(["pickup", "courier"] as const).map((m) => (
               <button
@@ -286,7 +307,7 @@ export function ShipDialog({ project, shipment, onClose, onDone }: { project: Pr
           <Button variant="outline" onClick={onClose} disabled={saving}>
             Cancel
           </Button>
-          <Button onClick={() => void save()} disabled={saving}>
+          <Button onClick={() => void save()} disabled={saving || (needsReason && !unpaidReason.trim())}>
             {saving ? "Saving…" : method === "pickup" ? "Mark as collected" : "Mark as shipped"}
           </Button>
         </DialogFooter>

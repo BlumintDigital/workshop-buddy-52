@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { MoreHorizontal, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -64,7 +64,9 @@ export default function AdminInvoices() {
   const [isLoading, setIsLoading] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
   const [clientNames, setClientNames] = useState<Record<string, string>>({});
-  const [filter, setFilter] = useState("all");
+  const [searchParams] = useSearchParams();
+  // Links such as the Today "drafts to send" alert open the list already filtered.
+  const [filter, setFilter] = useState(() => searchParams.get("status") ?? "all");
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [deleting, setDeleting] = useState<Invoice | null>(null);

@@ -56,6 +56,8 @@ function describe(e: EventRow, names: Record<string, string>): { label: string; 
       return { label: `Client chose ${d.method === "courier" ? "courier delivery" : "pickup"}`, tone: "neutral" };
     case "shipped":
       return { label: d.method === "courier" ? "Shipped by courier" : "Collected by client", sub: str(d.detail) ?? undefined, tone: "good" };
+    case "unpaid_handover":
+      return { label: "Handed over before payment", sub: str(d.reason) ?? undefined, tone: "warn" };
     default:
       return { label: e.kind.replace(/_/g, " "), tone: "neutral" };
   }

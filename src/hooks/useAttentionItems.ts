@@ -6,6 +6,10 @@ import {
   countReviewJobs,
   fetchLowStockItems,
   fetchOverdueInvoices,
+  fetchDraftInvoices,
+  fetchUninvoicedProjects,
+  type DraftInvoice,
+  type UninvoicedProject,
   fetchStaleQuotes,
   todayIso,
   type LowStockItem,
@@ -64,12 +68,14 @@ export function useAttentionItems() {
       const base = `/${currentRole}`;
 
       if (privileged) {
-        const [overdue, reviewCount, lowStock, staleQuotes, invites] = await Promise.all([
+        const [overdue, reviewCount, lowStock, staleQuotes, invites, drafts, uninvoiced] = await Promise.all([
           fetchOverdueInvoices().catch((): OverdueInvoice[] => []),
           countReviewJobs().catch(() => 0),
           fetchLowStockItems().catch((): LowStockItem[] => []),
           fetchStaleQuotes().catch((): StaleQuote[] => []),
           currentRole === "admin" ? countPendingInvites().catch(() => 0) : Promise.resolve(0),
+          fetchDraftInvoices().catch((): DraftInvoice[] => []),
+          fetchUninvoicedProjects().catch((): UninvoicedProject[] => []),
         ]);
 
         if (overdue.length > 0) {
@@ -88,6 +94,28 @@ export function useAttentionItems() {
               ),
             ),
             action: { label: "View invoices", to: `${base}/invoices` },
+          });
+        }
+
+        if (uninvoiced.length > 0) {
+          next.push({
+            id: "uninvoiced-projects",
+            severity: "warning",
+            label: "To invoice",
+            title: `${uninvoiced.length} finished ${uninvoiced.length === 1 ? "project has" : "projects have"} no invoice`,
+            meta: listPreview(uninvoiced.map((p) => (p.ref ? `${p.ref} ${p.title}` : p.title) + (p.client_id ? "" : " (walk-in, bill outside the portal)"))),
+            action: { label: "Open the first", to: `/projects/${uninvoiced[0].id}` },
+          });
+        }
+
+        if (drafts.length > 0) {
+          next.push({
+            id: "draft-invoices",
+            severity: "info",
+            label: "Drafts",
+            title: `${drafts.length} draft ${drafts.length === 1 ? "invoice" : "invoices"} to send · ${format(drafts.reduce((s, d) => s + d.total, 0))}`,
+            meta: listPreview(drafts.map((d) => d.invoice_number)),
+            action: { label: "View invoices", to: `${base}/invoices?status=draft` },
           });
         }
 

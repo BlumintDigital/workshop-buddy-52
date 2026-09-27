@@ -76,8 +76,11 @@ test.describe.serial("shipping", () => {
     await page.getByRole("radio", { name: /arranged/i }).click();
     const card = page.getByRole("listitem").filter({ hasText: PROJECT });
     await expect(card.getByText('"E2E driver Sam"')).toBeVisible({ timeout: 15_000 });
+    // Passing QC drafted an invoice that hasn't been paid, and Shipping can see that.
+    await expect(card.getByText("Invoice not sent")).toBeVisible();
     await card.getByRole("button", { name: "Hand over" }).click();
     const dialog = page.getByRole("dialog");
+    await dialog.getByLabel("Why is it leaving before payment?").fill("E2E: account customer, pays monthly");
     await dialog.getByLabel("Collected by").fill("E2E driver Sam");
     await dialog.getByLabel("Registration").fill("e2e 123");
     await dialog.getByRole("button", { name: "Mark as collected" }).click();
@@ -87,6 +90,7 @@ test.describe.serial("shipping", () => {
     await openProjectAsAdmin(page, PROJECT);
     await expect(page.getByText("Shipped").first()).toBeVisible();
     await expect(page.getByText(/E2E driver Sam · .*E2E 123/)).toBeVisible();
+    await expect(page.getByText("Handed over before payment").first()).toBeVisible();
   });
 
   test("the client sees it was collected", async ({ page }) => {

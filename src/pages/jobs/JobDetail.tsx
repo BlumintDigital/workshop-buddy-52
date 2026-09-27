@@ -353,6 +353,11 @@ export default function JobDetail() {
               </Button>
             </div>
           )}
+          {!canEdit && has("billing") && job.client_id && (
+            <Button variant="outline" size="sm" asChild className="shrink-0">
+              <Link to={`/invoices/new?jobId=${job.id}`}>Create invoice</Link>
+            </Button>
+          )}
         </div>
 
         <ProjectStageActions

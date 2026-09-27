@@ -6,6 +6,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/hooks/useAuth";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import { BillingGate } from "@/components/BillingGate";
 import { AppShell } from "@/components/layout/DashboardLayout";
 import { PwaStatus } from "@/components/PwaStatus";
 import { BrandColorProvider } from "@/components/BrandColorProvider";
@@ -204,8 +205,9 @@ function AppRoutes() {
 
         {/* Shared routes */}
         <Route path="/projects/:id" element={<ProtectedRoute allowedRoles={["admin", "manager", "staff", "client"]}><ClientPortalRoute><JobDetail /></ClientPortalRoute></ProtectedRoute>} />
-        <Route path="/invoices/new" element={<ProtectedRoute allowedRoles={["admin", "manager"]}><InvoiceCreate /></ProtectedRoute>} />
-        <Route path="/invoices/:id" element={<ProtectedRoute allowedRoles={["admin", "manager", "client"]}><ClientPortalRoute><InvoiceDetail /></ClientPortalRoute></ProtectedRoute>} />
+        <Route path="/invoices" element={<ProtectedRoute allowedRoles={["admin", "manager", "staff"]}><BillingGate><AdminInvoices /></BillingGate></ProtectedRoute>} />
+        <Route path="/invoices/new" element={<ProtectedRoute allowedRoles={["admin", "manager", "staff"]}><BillingGate><InvoiceCreate /></BillingGate></ProtectedRoute>} />
+        <Route path="/invoices/:id" element={<ProtectedRoute allowedRoles={["admin", "manager", "staff", "client"]}><ClientPortalRoute><BillingGate><InvoiceDetail /></BillingGate></ClientPortalRoute></ProtectedRoute>} />
         <Route path="/goals" element={<ProtectedRoute allowedRoles={["admin", "manager", "staff"]}><FeatureRoute feature="goals"><GoalsPage /></FeatureRoute></ProtectedRoute>} />
         <Route path="/appointments/:id" element={<ProtectedRoute allowedRoles={["admin", "manager", "staff", "client"]}><ClientPortalRoute><FeatureRoute feature="appointments"><AppointmentDetail /></FeatureRoute></ClientPortalRoute></ProtectedRoute>} />
         <Route path="/report-issue" element={<ProtectedRoute allowedRoles={["admin", "manager", "staff", "client"]}><ReportIssue /></ProtectedRoute>} />

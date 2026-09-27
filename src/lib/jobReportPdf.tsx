@@ -27,13 +27,14 @@ interface ReportData {
   workshopName: string;
   clientName: string;
   staffName: string;
+  hoursLogged: number;
   tasks: any[];
   notesByTask: Record<string, any[]>;
   attachmentsByTask: Record<string, any[]>;
   jobAttachments: any[];
 }
 
-function JobReportDocument({ job, workshopName, clientName, staffName, tasks, notesByTask, attachmentsByTask, jobAttachments }: ReportData) {
+function JobReportDocument({ job, workshopName, clientName, staffName, hoursLogged, tasks, notesByTask, attachmentsByTask, jobAttachments }: ReportData) {
   const completedTasks = tasks.filter(t => t.status === "completed").length;
 
   return (
@@ -54,10 +55,10 @@ function JobReportDocument({ job, workshopName, clientName, staffName, tasks, no
         <View style={styles.row}><Text style={styles.rowLabel}>Status</Text><Text style={styles.rowValue}>{projectStatusLabel(job.status)}</Text></View>
         <View style={styles.row}><Text style={styles.rowLabel}>Priority</Text><Text style={styles.rowValue}>{job.priority}</Text></View>
         <View style={styles.row}><Text style={styles.rowLabel}>Client</Text><Text style={styles.rowValue}>{clientName}</Text></View>
-        <View style={styles.row}><Text style={styles.rowLabel}>Assigned Staff</Text><Text style={styles.rowValue}>{staffName}</Text></View>
+        <View style={styles.row}><Text style={styles.rowLabel}>Worked on by</Text><Text style={styles.rowValue}>{staffName}</Text></View>
         {job.due_date && <View style={styles.row}><Text style={styles.rowLabel}>Due Date</Text><Text style={styles.rowValue}>{job.due_date}</Text></View>}
         {job.estimated_hours != null && <View style={styles.row}><Text style={styles.rowLabel}>Estimated Hours</Text><Text style={styles.rowValue}>{job.estimated_hours}h</Text></View>}
-        {job.actual_hours != null && <View style={styles.row}><Text style={styles.rowLabel}>Actual Hours</Text><Text style={styles.rowValue}>{job.actual_hours}h</Text></View>}
+        {hoursLogged > 0 && <View style={styles.row}><Text style={styles.rowLabel}>Hours Logged</Text><Text style={styles.rowValue}>{hoursLogged}h</Text></View>}
         <View style={styles.row}><Text style={styles.rowLabel}>Created</Text><Text style={styles.rowValue}>{new Date(job.created_at).toLocaleDateString()}</Text></View>
 
         {/* Tasks */}
@@ -117,15 +118,19 @@ function JobReportDocument({ job, workshopName, clientName, staffName, tasks, no
 }
 
 export async function generateJobReport(jobId: string): Promise<void> {
-  const [{ data: job }, { data: tasks }, { data: allNotes }, { data: allAttachments }, { data: settings }] = await Promise.all([
+  const [{ data: job }, { data: tasks }, { data: allAttachments }, { data: settings }, { data: entries }] = await Promise.all([
     supabase.from("jobs").select("*").eq("id", jobId).single(),
     supabase.from("job_tasks").select("*").eq("job_id", jobId).order("created_at"),
-    (supabase.from as any)("job_task_notes").select("*").order("created_at"),
     (supabase.from as any)("job_attachments").select("*").eq("job_id", jobId).order("created_at"),
     supabase.from("workshop_settings").select("workshop_name").eq("id", 1).maybeSingle(),
+    supabase.from("time_entries").select("user_id, hours").eq("job_id", jobId),
   ]);
 
   if (!job) return;
+  // Only this project's task notes.
+  const { data: allNotes } = tasks?.length
+    ? await (supabase.from as any)("job_task_notes").select("*").in("task_id", tasks.map((t) => t.id)).order("created_at")
+    : { data: [] };
 
   const workshopName = settings?.workshop_name || "Workshop";
   const taskList = tasks || [];
@@ -137,6 +142,7 @@ export async function generateJobReport(jobId: string): Promise<void> {
   if (job.assigned_staff_id) profileIds.add(job.assigned_staff_id);
   if (job.client_id) profileIds.add(job.client_id);
   taskList.forEach(t => { if (t.assigned_to) profileIds.add(t.assigned_to); });
+  (entries ?? []).forEach((e) => profileIds.add(e.user_id));
   noteList.forEach(n => profileIds.add(n.user_id));
 
   const { data: profiles } = profileIds.size > 0
@@ -144,7 +150,10 @@ export async function generateJobReport(jobId: string): Promise<void> {
     : { data: [] };
   const nameMap = new Map((profiles || []).map(p => [p.id, p.full_name || "Unknown"]));
 
-  const staffName = job.assigned_staff_id ? nameMap.get(job.assigned_staff_id) || "—" : "—";
+  // Everyone who worked on it: the lead, task assignees and anyone who logged time.
+  const workers = [...new Set([job.assigned_staff_id, ...taskList.map((t) => t.assigned_to), ...(entries ?? []).map((e) => e.user_id)].filter((v): v is string => !!v))];
+  const staffName = workers.length ? workers.map((id) => nameMap.get(id) || "Unknown").join(", ") : "—";
+  const hoursLogged = Math.round((entries ?? []).reduce((sum, e) => sum + Number(e.hours ?? 0), 0) * 10) / 10;
   const clientName = job.client_id ? nameMap.get(job.client_id) || "—" : "—";
   const enrichedTasks = taskList.map(t => ({ ...t, assignee_name: t.assigned_to ? nameMap.get(t.assigned_to) || "Unknown" : null }));
 
@@ -170,6 +179,7 @@ export async function generateJobReport(jobId: string): Promise<void> {
       workshopName={workshopName}
       clientName={clientName}
       staffName={staffName}
+      hoursLogged={hoursLogged}
       tasks={enrichedTasks}
       notesByTask={notesByTask}
       attachmentsByTask={attachmentsByTask}

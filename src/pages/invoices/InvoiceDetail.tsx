@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { usePermissions } from "@/hooks/usePermissions";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -60,8 +61,10 @@ export default function InvoiceDetail() {
   const [sending, setSending] = useState(false);
   const [sourceRequestId, setSourceRequestId] = useState<string | null>(null);
 
-  const canEdit = (role === "admin" || role === "manager") && invoice?.status === "draft";
-  const canManage = role === "admin" || role === "manager";
+  const { has } = usePermissions();
+  // Admins, managers and staff with the Billing permission run invoices.
+  const canManage = role === "admin" || role === "manager" || (role === "staff" && has("billing"));
+  const canEdit = canManage && invoice?.status === "draft";
   const isClient = role === "client";
 
   const editableSnapshot = (inv: any, lineItems: LineItem[]) =>
@@ -194,7 +197,7 @@ export default function InvoiceDetail() {
       return;
     }
     toast.success("Invoice deleted");
-    const path = role === "client" ? "/client/invoices" : role === "manager" ? "/manager/invoices" : "/admin/invoices";
+    const path = role === "client" ? "/client/invoices" : role === "manager" ? "/manager/invoices" : role === "staff" ? "/invoices" : "/admin/invoices";
     navigate(path);
   };
 
@@ -353,7 +356,7 @@ export default function InvoiceDetail() {
     </DashboardLayout>
   );
 
-  const backPath = role === "client" ? "/client/invoices" : role === "manager" ? "/manager/invoices" : "/admin/invoices";
+  const backPath = role === "client" ? "/client/invoices" : role === "manager" ? "/manager/invoices" : role === "staff" ? "/invoices" : "/admin/invoices";
 
   return (
     <DashboardLayout>

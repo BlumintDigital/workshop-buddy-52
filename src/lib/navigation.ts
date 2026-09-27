@@ -127,6 +127,7 @@ export const NAV_GROUPS: Record<AppRole, NavGroup[]> = {
         { title: "Schedule", url: "/staff/schedule", icon: Calendar, features: ["appointments"] },
         { title: "Inventory", short: "Stock", url: "/inventory", icon: Package },
         { title: "Shipping", url: "/shipping", icon: Truck, count: "toShip", permission: "shipping" },
+        { title: "Invoices", url: "/invoices", icon: FileText, permission: "billing" },
         { title: "Reports", url: "/reports", icon: BarChart3, features: ["reports"], permission: "reports" },
         { title: "Goals", url: "/goals", icon: Target, features: ["goals"] },
       ],

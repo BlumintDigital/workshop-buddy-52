@@ -106,3 +106,32 @@ export async function countPendingInvites(): Promise<number> {
   if (error) throw error;
   return count || 0;
 }
+
+export type DraftInvoice = { id: string; invoice_number: string; job_id: string | null; total: number };
+
+/** Invoices drafted (by hand or at quality-check pass) and not sent yet. */
+export async function fetchDraftInvoices(): Promise<DraftInvoice[]> {
+  const { data, error } = await supabase
+    .from("invoices")
+    .select("id, invoice_number, job_id, total, base_total")
+    .eq("status", "draft")
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  return (data || []).map((row) => ({ id: row.id, invoice_number: row.invoice_number, job_id: row.job_id, total: Number(row.base_total ?? row.total) || 0 }));
+}
+
+export type UninvoicedProject = { id: string; ref: string | null; title: string; client_id: string | null };
+
+/** Projects that passed their quality check (or shipped) with no invoice at all. */
+export async function fetchUninvoicedProjects(): Promise<UninvoicedProject[]> {
+  const { data, error } = await supabase
+    .from("jobs")
+    .select("id, ref, title, client_id, updated_at, invoices(id, status)")
+    .in("status", ["completed", "shipped"])
+    .order("updated_at", { ascending: true })
+    .limit(200);
+  if (error) throw error;
+  return (data || [])
+    .filter((j) => !(j.invoices ?? []).some((i) => i.status !== "cancelled"))
+    .map((j) => ({ id: j.id, ref: j.ref, title: j.title, client_id: j.client_id }));
+}

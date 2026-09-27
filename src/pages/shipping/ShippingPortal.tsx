@@ -13,6 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ChoiceDialog, NotifyDialog, SHIPMENT_STATE, ShipDialog, type Shipment } from "@/components/shipping/ShipmentDialogs";
 import { formatDate } from "@/lib/format";
 import { projectPath } from "@/lib/projects";
+import { billingState, fetchBillingStatus, type BillingStatus } from "@/lib/billing";
 
 type Row = Shipment & { jobs: { id: string; ref: string; title: string; client_id: string | null; contact_name: string | null; contact_phone: string | null; updated_at: string } | null };
 
@@ -35,6 +36,7 @@ export default function ShippingPortal() {
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState("ready");
   const [action, setAction] = useState<{ kind: "notify" | "choice" | "ship"; row: Row } | null>(null);
+  const [billing, setBilling] = useState<Record<string, BillingStatus>>({});
 
   const load = useCallback(async () => {
     const { data } = await supabase
@@ -42,7 +44,10 @@ export default function ShippingPortal() {
       .select("*, jobs(id, ref, title, client_id, contact_name, contact_phone, updated_at)")
       .order("created_at", { ascending: true })
       .limit(300);
-    setRows((data ?? []) as unknown as Row[]);
+    const loaded = (data ?? []) as unknown as Row[];
+    setRows(loaded);
+    // Payment status for everything still waiting to leave.
+    setBilling(await fetchBillingStatus(loaded.filter((r) => r.status !== "shipped").map((r) => r.job_id)));
     setLoading(false);
   }, []);
   useEffect(() => {
@@ -120,6 +125,10 @@ export default function ShippingPortal() {
                     </div>
                     <div className="flex flex-col items-end gap-2">
                       <StatusPill tone={TONE[r.status]}>{SHIPMENT_STATE[r.status]}</StatusPill>
+                      {r.status !== "shipped" && (() => {
+                        const pay = billingState(billing[r.job_id], walkIn);
+                        return <StatusPill tone={pay.tone}>{pay.label}</StatusPill>;
+                      })()}
                       {r.status !== "shipped" && (
                         <div className="flex flex-wrap justify-end gap-2">
                           {(r.status === "ready" || r.status === "awaiting_client") && (

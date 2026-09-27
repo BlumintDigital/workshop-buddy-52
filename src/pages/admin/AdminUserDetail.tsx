@@ -83,6 +83,7 @@ export default function AdminUserDetail() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [toggling, setToggling] = useState(false);
+  const [hoursLogged, setHoursLogged] = useState(0);
 
   useEffect(() => {
     if (!userId) return;
@@ -127,14 +128,24 @@ export default function AdminUserDetail() {
             .then(({ data }) => setInvoices(data || [])),
         );
       } else if (resolvedRole === "staff" || resolvedRole === "manager") {
+        // Work comes through team tasks (and the project lead field); hours come from time entries.
         fetches.push(
-          supabase
-            .from("jobs")
-            .select("id, title, status, priority, due_date, actual_hours")
-            .eq("assigned_staff_id", userId)
-            .order("created_at", { ascending: false })
-            .limit(50)
-            .then(({ data }) => setJobs(data || [])),
+          (async () => {
+            const [{ data: tasks }, { data: entries }] = await Promise.all([
+              supabase.from("job_tasks").select("job_id").or(`assigned_to.eq.${userId},completed_by.eq.${userId}`),
+              supabase.from("time_entries").select("hours").eq("user_id", userId),
+            ]);
+            setHoursLogged((entries ?? []).reduce((sum, e) => sum + Number(e.hours ?? 0), 0));
+            const ids = [...new Set((tasks ?? []).map((t) => t.job_id))];
+            const filter = ids.length ? `assigned_staff_id.eq.${userId},id.in.(${ids.join(",")})` : `assigned_staff_id.eq.${userId}`;
+            const { data } = await supabase
+              .from("jobs")
+              .select("id, title, status, priority, due_date, actual_hours")
+              .or(filter)
+              .order("created_at", { ascending: false })
+              .limit(50);
+            setJobs(data || []);
+          })(),
         );
       }
 
@@ -161,11 +172,10 @@ export default function AdminUserDetail() {
     toast.success(`User ${newState ? "activated" : "deactivated"}`);
   };
 
-  const completedJobs = jobs.filter((j) => j.status === "completed").length;
+  const completedJobs = jobs.filter((j) => j.status === "completed" || j.status === "shipped").length;
   const activeJobs = jobs.filter((j) => ["pending", "in_progress", "review"].includes(j.status)).length;
   const totalBilled = invoices.reduce((sum, i) => sum + i.total, 0);
   const unpaidCount = invoices.filter((i) => i.status !== "paid").length;
-  const hoursLogged = jobs.reduce((sum, j) => sum + (j.actual_hours ?? 0), 0);
 
   const isClient = role === "client";
   const isStaffOrManager = role === "staff" || role === "manager";

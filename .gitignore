@@ -41,3 +41,4 @@ supabase-test/supabase/migrations/*
 
 # graphify knowledge-graph outputs and caches
 graphify-out/
+supabase-test/supabase/tests/
