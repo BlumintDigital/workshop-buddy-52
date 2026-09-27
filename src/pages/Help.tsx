@@ -4,10 +4,10 @@ import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth, type AppRole } from "@/hooks/useAuth";
-import pdfAsset from "../../public/docs/user-guide.pdf.asset.json";
 import guideMarkdown from "../../docs/user-guide.md?raw";
 
-const PDF_URL = pdfAsset.url;
+// Built from docs/user-guide.md by `npm run docs:guide-pdf`; rebuild it when the guide changes.
+const PDF_URL = "/docs/user-guide.pdf";
 
 // Which roles can see each top-level ## section (keyed by leading digit(s) before the dot).
 const SECTION_ACCESS: Record<string, AppRole[]> = {
