@@ -42,6 +42,7 @@ const defaultSettings = {
   monthly_goal: "",
   project_ref_prefix: "EDL",
   purchase_manager_limit: "1000",
+  overhead_percent: "15",
   currency: "USD",
   enabled_currencies: ["USD"] as string[],
   notify_job_status: true,
@@ -114,6 +115,7 @@ export default function AdminSettings() {
           default_tax_rate: data.default_tax_rate?.toString() ?? "0",
           project_ref_prefix: data.project_ref_prefix ?? "EDL",
           purchase_manager_limit: data.purchase_manager_limit?.toString() ?? "1000",
+          overhead_percent: data.overhead_percent?.toString() ?? "15",
           monthly_goal: (data as any).monthly_goal?.toString() ?? "",
           currency: data.currency ?? "USD",
           enabled_currencies: Array.isArray((data as any).enabled_currencies) && (data as any).enabled_currencies.length > 0
@@ -210,6 +212,7 @@ export default function AdminSettings() {
       monthly_goal: parseFloat(settings.monthly_goal) || null,
       project_ref_prefix: prefix,
       purchase_manager_limit: Math.max(0, parseFloat(settings.purchase_manager_limit) || 0),
+      overhead_percent: Math.min(100, Math.max(0, parseFloat(settings.overhead_percent) || 0)),
       currency: settings.currency || "USD",
       enabled_currencies: settings.enabled_currencies?.includes(settings.currency)
         ? settings.enabled_currencies
@@ -710,6 +713,11 @@ export default function AdminSettings() {
                   <Label htmlFor="purchase_manager_limit">Managers can approve purchases up to</Label>
                   <Input id="purchase_manager_limit" type="number" min="0" step="50" value={settings.purchase_manager_limit} onChange={(e) => set("purchase_manager_limit", e.target.value)} className="mt-1 w-full sm:w-40" />
                   <p className="mt-1 text-xs text-muted-foreground">Purchase orders above this need an admin to approve them.</p>
+                </div>
+                <div>
+                  <Label htmlFor="overhead_percent">Overhead on project costs (%)</Label>
+                  <Input id="overhead_percent" type="number" min="0" max="100" step="0.5" value={settings.overhead_percent} onChange={(e) => set("overhead_percent", e.target.value)} className="mt-1 w-full sm:w-40" />
+                  <p className="mt-1 text-xs text-muted-foreground">Added on top of materials, labour and shipping in profit and loss reports, to cover rent, power and tools.</p>
                 </div>
                 <div>
                   <Label htmlFor="f-currency">Currency</Label>

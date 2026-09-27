@@ -33,7 +33,7 @@ const AdminJobs = lazy(() => import("@/pages/admin/AdminJobs"));
 const AdminTeams = lazy(() => import("@/pages/admin/AdminTeams"));
 const AdminAppointments = lazy(() => import("@/pages/admin/AdminAppointments"));
 const AdminInvoices = lazy(() => import("@/pages/admin/AdminInvoices"));
-const AdminReports = lazy(() => import("@/pages/admin/AdminReports"));
+const ReportsPage = lazy(() => import("@/pages/reports/ReportsPage"));
 const AdminUsers = lazy(() => import("@/pages/admin/AdminUsers"));
 const AdminUserDetail = lazy(() => import("@/pages/admin/AdminUserDetail"));
 const AdminClients = lazy(() => import("@/pages/admin/AdminClients"));
@@ -159,7 +159,8 @@ function AppRoutes() {
         <Route path="/admin/projects" element={<ProtectedRoute allowedRoles={["admin"]}><AdminJobs /></ProtectedRoute>} />
         <Route path="/admin/appointments" element={<ProtectedRoute allowedRoles={["admin"]}><FeatureRoute feature="appointments"><AdminAppointments /></FeatureRoute></ProtectedRoute>} />
         <Route path="/admin/invoices" element={<ProtectedRoute allowedRoles={["admin"]}><AdminInvoices /></ProtectedRoute>} />
-        <Route path="/admin/reports" element={<ProtectedRoute allowedRoles={["admin"]}><FeatureRoute feature="reports"><AdminReports /></FeatureRoute></ProtectedRoute>} />
+        <Route path="/reports" element={<ProtectedRoute allowedRoles={["admin", "manager", "staff"]}><FeatureRoute feature="reports"><ReportsPage /></FeatureRoute></ProtectedRoute>} />
+        <Route path="/admin/reports" element={<LegacyListRedirect to="/reports" />} />
         <Route path="/admin/users" element={<ProtectedRoute allowedRoles={["admin"]}><AdminUsers /></ProtectedRoute>} />
         <Route path="/admin/teams" element={<ProtectedRoute allowedRoles={["admin"]}><AdminTeams /></ProtectedRoute>} />
         <Route path="/admin/users/:userId" element={<ProtectedRoute allowedRoles={["admin"]}><AdminUserDetail /></ProtectedRoute>} />

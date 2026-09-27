@@ -1689,6 +1689,33 @@ export type Database = {
           },
         ]
       }
+      saved_reports: {
+        Row: {
+          config: NonNullable<Json>
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          config?: NonNullable<Json>
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          config?: NonNullable<Json>
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       shipments: {
         Row: {
           carrier: string | null
@@ -2165,6 +2192,7 @@ export type Database = {
           notify_job_status: boolean | null
           notify_low_inventory: boolean | null
           notify_new_appointment: boolean | null
+          overhead_percent: number
           phone: string | null
           project_ref_prefix: string
           purchase_manager_limit: number
@@ -2190,6 +2218,7 @@ export type Database = {
           notify_job_status?: boolean | null
           notify_low_inventory?: boolean | null
           notify_new_appointment?: boolean | null
+          overhead_percent?: number
           phone?: string | null
           project_ref_prefix?: string
           purchase_manager_limit?: number
@@ -2215,6 +2244,7 @@ export type Database = {
           notify_job_status?: boolean | null
           notify_low_inventory?: boolean | null
           notify_new_appointment?: boolean | null
+          overhead_percent?: number
           phone?: string | null
           project_ref_prefix?: string
           purchase_manager_limit?: number
@@ -2356,6 +2386,16 @@ export type Database = {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
       }
+      goal_summary: {
+        Args: { _from: string; _to: string }
+        Returns: {
+          delivered_value: number
+          handoffs: number
+          hours_logged: number
+          projects_finished: number
+          projects_shipped: number
+        }[]
+      }
       handoff_task: {
         Args: {
           _hours?: number
@@ -2405,6 +2445,39 @@ export type Database = {
       }
       permission_holders: { Args: { _permission: string }; Returns: string[] }
       permission_keys: { Args: Record<PropertyKey, never>; Returns: string[] }
+      project_financials: {
+        Args: { _from?: string; _to?: string }
+        Returns: {
+          assignees: string[]
+          charged: number
+          client_name: string
+          due_date: string
+          estimated_hours: number
+          finished_at: string
+          forecast_cost: number
+          forecast_profit: number
+          id: string
+          intake_type: string
+          invoiced: number
+          labour_cost: number
+          labour_hours: number
+          margin_pct: number
+          materials_needed_qty: number
+          materials_needed_value: number
+          materials_used_cost: number
+          outcome: string
+          overhead: number
+          paid: number
+          profit: number
+          quoted_pending: number
+          received_at: string
+          ref: string
+          shipping_cost: number
+          status: string
+          title: string
+          total_cost: number
+        }[]
+      }
       project_quote_label: {
         Args: { _job_id: string; _kind: string; _number: number }
         Returns: string
@@ -2492,6 +2565,19 @@ export type Database = {
           _request_id: string
         }
         Returns: number
+      }
+      team_performance: {
+        Args: { _from: string; _to: string }
+        Returns: {
+          full_name: string
+          handoffs: number
+          hours: number
+          labour_cost: number
+          projects: number
+          role: string
+          task_value: number
+          user_id: string
+        }[]
       }
       touch_profile_login: {
         Args: Record<PropertyKey, never>

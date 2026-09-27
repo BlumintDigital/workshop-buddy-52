@@ -135,7 +135,7 @@ function RevenueCard({ series, format }: { series: RevenuePoint[]; format: (n: n
   const max = Math.max(1, ...series.map((p) => p.value));
   const last = series.length - 1;
   return (
-    <Panel title="Revenue trend" link={{ label: "View reports", to: "/admin/reports" }}>
+    <Panel title="Revenue trend" link={{ label: "View reports", to: "/reports" }}>
       <p className="px-4 pt-3 text-xs text-muted-foreground">Paid invoices by month paid</p>
       <ol className="grid h-44 grid-cols-6 items-end gap-2 px-4 pb-3 pt-2" aria-label="Paid revenue for the last 6 months">
         {series.map((p, i) => (
@@ -184,7 +184,7 @@ export function TodayDashboard({ role }: TodayDashboardProps) {
                 ? "Nothing paid last month to compare"
                 : `${figures.revenueDelta >= 0 ? "Up" : "Down"} ${Math.abs(figures.revenueDelta)}% on last month`,
             detailTone: figures.revenueDelta === null ? ("default" as const) : figures.revenueDelta >= 0 ? ("good" as const) : ("bad" as const),
-            to: "/admin/reports",
+            to: "/reports",
           },
         ]
       : [
