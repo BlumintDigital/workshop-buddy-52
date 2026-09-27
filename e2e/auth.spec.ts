@@ -15,7 +15,7 @@ test.describe("authentication", () => {
   test("client signs in without MFA and lands on the client dashboard", async ({ page }) => {
     await login(page, "CLIENT");
     await expect(page).toHaveURL(/\/client\/dashboard/);
-    await expect(page.getByText(/welcome/i).first()).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   });
 
   test("staff signs in and lands on the staff dashboard", async ({ page }) => {

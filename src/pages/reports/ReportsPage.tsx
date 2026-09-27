@@ -431,13 +431,14 @@ function TeamReport() {
 
   useEffect(() => {
     setPeople(null);
-    supabase.rpc("team_performance", { _from: `${from}T00:00:00`, _to: `${to}T23:59:59` }).then(({ data }) =>
+    supabase.rpc("team_performance", { _from: `${from}T00:00:00`, _to: `${to}T23:59:59` }).then(({ data, error }) => {
+      if (error) toast.error(error.message);
       setPeople(
         ((data ?? []) as Person[])
           .map((p) => ({ ...p, hours: Number(p.hours), handoffs: Number(p.handoffs), task_value: Number(p.task_value), projects: Number(p.projects), labour_cost: p.labour_cost == null ? null : Number(p.labour_cost) }))
           .sort((a, b) => b.hours - a.hours),
-      ),
-    );
+      );
+    }, () => setPeople([]));
   }, [from, to]);
 
   const exportCsv = () =>

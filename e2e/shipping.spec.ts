@@ -52,7 +52,8 @@ test.describe.serial("shipping", () => {
     await dialog.getByLabel("Collected by").fill("E2E driver Sam");
     await dialog.getByLabel("Registration").fill("e2e 123");
     await dialog.getByRole("button", { name: "Mark as collected" }).click();
-    await expect(page.getByText(/collected$/i).first()).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText(/^[A-Z]+-\d{6}-\d{3} collected$/)).toBeVisible({ timeout: 15_000 });
+    await expect(dialog).toBeHidden();
 
     await openProjectAsAdmin(page, PROJECT);
     await expect(page.getByText("Shipped").first()).toBeVisible();
