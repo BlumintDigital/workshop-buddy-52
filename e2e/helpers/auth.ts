@@ -2,6 +2,7 @@ import { Page, expect } from "@playwright/test";
 import { readFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { totp } from "./totp";
+import { mfaSecretsFile } from "./env";
 
 export type RoleKey = "ADMIN" | "MANAGER" | "STAFF" | "CLIENT";
 
@@ -14,7 +15,7 @@ export function account(roleKey: RoleKey) {
   return { email, password };
 }
 
-const SECRETS_FILE = resolve(process.cwd(), "e2e/.state/mfa-secrets.json");
+const SECRETS_FILE = mfaSecretsFile();
 
 export function mfaSecretFor(email: string): string | null {
   if (!existsSync(SECRETS_FILE)) return null;

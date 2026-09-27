@@ -32,5 +32,12 @@ e2e/.state/
 e2e/.results/
 e2e/.report/
 
+# Local test database: copied in by scripts/test-db.mjs, not source
+supabase-test/supabase/functions/
+supabase-test/supabase/.temp/
+supabase-test/supabase/.branches/
+supabase-test/supabase/migrations/*
+!supabase-test/supabase/migrations/2026010100000*_*.sql
+
 # graphify knowledge-graph outputs and caches
 graphify-out/

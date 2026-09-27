@@ -51,6 +51,8 @@ export default function ProjectConversation({ project, clientName, teamIds = [] 
   const chatEnabled = useFeature("job_chat");
   const isClient = role === "client";
   const [notes, setNotes] = useState<Note[]>([]);
+  // Bumped after posting, so your own message shows even if the live feed is down.
+  const [version, setVersion] = useState(0);
   const [tab, setTab] = useState<Channel>(isClient ? "client" : "team");
 
   useEffect(() => {
@@ -76,7 +78,7 @@ export default function ProjectConversation({ project, clientName, teamIds = [] 
       cancelled = true;
       void supabase.removeChannel(channel);
     };
-  }, [project.id, isClient]);
+  }, [project.id, isClient, version]);
 
   const team = notes.filter((n) => n.is_internal);
   const client = notes.filter((n) => !n.is_internal);
@@ -86,6 +88,7 @@ export default function ProjectConversation({ project, clientName, teamIds = [] 
     const internal = channel === "team";
     const { error } = await supabase.from("job_comments").insert({ job_id: project.id, user_id: user.id, body, is_internal: internal });
     if (error) return error.message;
+    setVersion((v) => v + 1);
 
     const recipients = new Set<string>(internal ? [project.assigned_staff_id, ...teamIds].filter((v): v is string => !!v) : []);
     if (!internal) {

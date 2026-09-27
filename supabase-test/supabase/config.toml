@@ -1,0 +1,147 @@
+# Local test database for end-to-end tests. Separate from production (the
+# linked project in ../supabase) and from any other local stack: its own
+# project id and ports. Managed by scripts/test-db.mjs; see supabase-test/README.md.
+project_id = "shoplane_test"
+
+[api]
+enabled = true
+port = 55321
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 55322
+shadow_port = 55320
+major_version = 17
+
+[db.pooler]
+enabled = false
+port = 55329
+
+[db.migrations]
+enabled = true
+
+[db.seed]
+enabled = true
+sql_paths = ["./seed.sql"]
+
+[realtime]
+enabled = true
+
+[studio]
+enabled = true
+port = 55323
+api_url = "http://127.0.0.1"
+
+# Emails the app sends locally land here instead of real inboxes.
+[inbucket]
+enabled = true
+port = 55324
+
+[storage]
+enabled = true
+file_size_limit = "50MiB"
+
+[analytics]
+enabled = false
+
+[edge_runtime]
+enabled = true
+policy = "per_worker"
+
+[auth]
+enabled = true
+site_url = "http://localhost:8081"
+additional_redirect_urls = ["http://localhost:8081", "http://127.0.0.1:8081"]
+jwt_expiry = 3600
+enable_refresh_token_rotation = true
+refresh_token_reuse_interval = 10
+enable_signup = true
+enable_anonymous_sign_ins = false
+minimum_password_length = 6
+
+# The suite signs in dozens of times in a few minutes.
+[auth.rate_limit]
+email_sent = 100
+sms_sent = 100
+anonymous_users = 100
+token_refresh = 1000
+sign_in_sign_ups = 1000
+token_verifications = 1000
+
+[auth.email]
+enable_signup = true
+double_confirm_changes = false
+enable_confirmations = false
+secure_password_change = false
+max_frequency = "1s"
+
+# Admins and managers use two-step sign-in, as on production.
+[auth.mfa]
+max_enrolled_factors = 10
+
+[auth.mfa.totp]
+enroll_enabled = true
+verify_enabled = true
+
+# Every function checks the caller itself, as deployed on production.
+[functions.admin-access-review]
+verify_jwt = false
+
+[functions.admin-api]
+verify_jwt = false
+
+[functions.admin-create-user]
+verify_jwt = false
+
+[functions.admin-delete-user]
+verify_jwt = false
+
+[functions.admin-resend-invite]
+verify_jwt = false
+
+[functions.admin-set-user-role]
+verify_jwt = false
+
+[functions.admin-toggle-user]
+verify_jwt = false
+
+[functions.backup-data]
+verify_jwt = false
+
+[functions.create-client]
+verify_jwt = false
+
+[functions.delete-data]
+verify_jwt = false
+
+[functions.mfa-backup-generate]
+verify_jwt = false
+
+[functions.mfa-backup-verify]
+verify_jwt = false
+
+[functions.mfa-check-device]
+verify_jwt = false
+
+[functions.mfa-trust-device]
+verify_jwt = false
+
+[functions.restore-data]
+verify_jwt = false
+
+[functions.seed-data]
+verify_jwt = false
+
+[functions.send-email]
+verify_jwt = false
+
+[functions.send-push]
+verify_jwt = false
+
+[functions.setup-demo]
+verify_jwt = false
+
+[functions.validate-signup-code]
+verify_jwt = false

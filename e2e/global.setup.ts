@@ -3,11 +3,12 @@ import { createClient } from "@supabase/supabase-js";
 import { mkdirSync, writeFileSync, readFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { totp } from "./helpers/totp";
+import { mfaSecretsFile } from "./helpers/env";
 
 /**
  * Provisions MFA for the admin/manager test accounts entirely through the
  * Supabase SDK — no authenticator app needed. Enrolls a TOTP factor, verifies
- * it, and saves the secret to e2e/.state/mfa-secrets.json (gitignored) so the
+ * it, and saves the secret under e2e/.state/ (gitignored, one file per database) so the
  * login helper can generate codes during tests.
  *
  * Also sanity-checks that every configured account can sign in at all, so a
@@ -15,7 +16,7 @@ import { totp } from "./helpers/totp";
  */
 
 const STATE_DIR = resolve(process.cwd(), "e2e/.state");
-const SECRETS_FILE = resolve(STATE_DIR, "mfa-secrets.json");
+const SECRETS_FILE = mfaSecretsFile();
 
 const MFA_ROLES = ["ADMIN", "MANAGER"] as const;
 const ALL_ROLES = ["ADMIN", "MANAGER", "STAFF", "CLIENT"] as const;

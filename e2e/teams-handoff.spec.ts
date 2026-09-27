@@ -15,7 +15,8 @@ test.describe.serial("teams and handoffs", () => {
   test("admin creates a team and adds the technician", async ({ page }) => {
     await login(page, "ADMIN");
     await page.goto("/admin/teams");
-    await page.getByRole("button", { name: "New team" }).click();
+    // An empty Teams page shows a second "New team" button in its empty state.
+    await page.getByRole("button", { name: "New team" }).first().click();
     const dialog = page.getByRole("dialog");
     await dialog.getByLabel("Name").fill(TEAM);
     await dialog.getByRole("button", { name: "Create team" }).click();
