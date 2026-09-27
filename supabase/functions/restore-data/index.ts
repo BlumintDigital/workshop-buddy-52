@@ -4,53 +4,14 @@ import { buildCorsHeaders, sha256Hex } from "../_shared/mfa-cors.ts";
 import { checkRateLimit } from "../_shared/rate-limit.ts";
 import { captureEdgeError } from "../_shared/sentry.ts";
 
-// Delete order is reverse of insert order (children before parents).
-// Intentionally excludes profiles/user_roles/auth.users — the calling admin
-// must stay authenticated, and auth users cannot be restored anyway.
-const DELETE_ORDER = [
-  "bug_reports",
-  "notifications",
-  "invoice_items",
-  "invoices",
-  "inventory_transactions",
-  "appointments",
-  "job_task_notes",
-  "job_ratings",
-  "job_comments",
-  "job_attachments",
-  "job_tasks",
-  "jobs",
-  "inventory_items",
-  "system_notices",
-  "broadcasts",
-  "signup_codes",
-];
-
-// Insert order: parents before children.
-const INSERT_ORDER = [
-  "profiles",
-  "user_roles",
-  "workshop_settings",
-  "feature_flags",
-  "signup_codes",
-  "broadcasts",
-  "system_notices",
-  "inventory_items",
-  "jobs",
-  "job_tasks",
-  "job_comments",
-  "job_attachments",
-  "job_ratings",
-  "job_task_notes",
-  "appointments",
-  "inventory_transactions",
-  "invoices",
-  "invoice_items",
-  "notifications",
-  "bug_reports",
-];
-
-const BATCH_SIZE = 500;
+// The restore itself runs in the database (restore_workshop_data) as one
+// transaction: every table is replaced with triggers paused, every link between
+// tables is checked, and anything that doesn't fit rolls the whole thing back.
+// Accounts can't be restored, so people are only updated if they still exist,
+// and the admin running the restore keeps their role.
+// Version 1 backups (before teams, quotes, purchasing and shipping) still load;
+// teams and access that aren't in the file are kept.
+const SUPPORTED_VERSIONS = [1, 2];
 
 serve(async (req) => {
   const cors = buildCorsHeaders(req);
@@ -140,7 +101,7 @@ serve(async (req) => {
       });
     }
 
-    if (body.manifest.version !== 1) {
+    if (!SUPPORTED_VERSIONS.includes(body.manifest.version)) {
       return new Response(JSON.stringify({ error: `Unsupported backup version: ${body.manifest.version}` }), {
         status: 400,
         headers: { ...cors, "Content-Type": "application/json" },
@@ -156,47 +117,17 @@ serve(async (req) => {
       });
     }
 
-    // Delete operational data in reverse dependency order
-    for (const table of DELETE_ORDER) {
-      const { error } = await adminClient
-        .from(table)
-        .delete()
-        .neq("id", "00000000-0000-0000-0000-000000000000");
-      if (error) {
-        return new Response(JSON.stringify({ error: `Failed to clear ${table}: ${error.message}` }), {
-          status: 500,
-          headers: { ...cors, "Content-Type": "application/json" },
-        });
-      }
+    const { data: counts, error: restoreError } = await adminClient.rpc("restore_workshop_data", {
+      _data: body.data,
+      _caller: callerId,
+    });
+    if (restoreError) {
+      return new Response(JSON.stringify({ error: `Nothing was changed. ${restoreError.message}` }), {
+        status: 500,
+        headers: { ...cors, "Content-Type": "application/json" },
+      });
     }
-
-    // Insert restored data in dependency order
-    const restored: Record<string, number> = {};
-
-    for (const table of INSERT_ORDER) {
-      const rows = body.data[table];
-      if (!rows || rows.length === 0) {
-        restored[table] = 0;
-        continue;
-      }
-
-      // Insert in batches
-      let inserted = 0;
-      for (let i = 0; i < rows.length; i += BATCH_SIZE) {
-        const batch = rows.slice(i, i + BATCH_SIZE);
-        const { error } = await adminClient
-          .from(table)
-          .upsert(batch as Record<string, unknown>[], { onConflict: "id", ignoreDuplicates: false });
-        if (error) {
-          return new Response(
-            JSON.stringify({ error: `Failed to restore ${table} (batch ${i / BATCH_SIZE + 1}): ${error.message}` }),
-            { status: 500, headers: { ...cors, "Content-Type": "application/json" } }
-          );
-        }
-        inserted += batch.length;
-      }
-      restored[table] = inserted;
-    }
+    const restored = counts as Record<string, number>;
 
     const totalRestored = Object.values(restored).reduce((a, b) => a + b, 0);
 

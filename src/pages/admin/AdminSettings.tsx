@@ -27,6 +27,7 @@ import { PageBar } from "@/components/dashboard/PageBar";
 import { useSidebar } from "@/components/ui/sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { friendlyErrorMessage } from "@/lib/friendlyError";
 
 
 import { CURRENCIES } from "@/lib/currencies";
@@ -465,7 +466,7 @@ export default function AdminSettings() {
     const { data, error } = await supabase.functions.invoke("backup-data");
     setBacking(false);
     if (error || (data as { error?: string })?.error) {
-      toast.error((data as { error?: string })?.error ?? error?.message ?? "Backup failed");
+      toast.error((data as { error?: string })?.error ?? (await friendlyErrorMessage(error, "Backup failed")));
       return;
     }
     const totalRows = Object.values((data as { manifest?: { row_counts?: Record<string, number> } })?.manifest?.row_counts ?? {}).reduce((a: number, b) => a + (b as number), 0);
@@ -495,7 +496,7 @@ export default function AdminSettings() {
       const parsed = JSON.parse(text);
       const { data, error } = await supabase.functions.invoke("restore-data", { body: parsed });
       if (error || (data as { error?: string })?.error) {
-        toast.error((data as { error?: string })?.error ?? error?.message ?? "Restore failed");
+        toast.error((data as { error?: string })?.error ?? (await friendlyErrorMessage(error, "Restore failed")), { duration: 12000 });
         return;
       }
       const totalRestored = Object.values((data as { restored?: Record<string, number> })?.restored ?? {}).reduce((a: number, b) => a + (b as number), 0);
@@ -513,7 +514,7 @@ export default function AdminSettings() {
     setDeleting(true);
     const { data, error } = await supabase.functions.invoke("delete-data");
     setDeleting(false);
-    if (error || data?.error) { toast.error(data?.error || error?.message || "Failed to delete data"); return; }
+    if (error || data?.error) { toast.error(data?.error || (await friendlyErrorMessage(error, "Failed to delete data"))); return; }
     const deleted = data?.deleted || {};
     const total = Object.values(deleted).reduce((a: number, b: any) => a + (b as number), 0);
     toast.success(`Deleted ${total} records across ${Object.keys(deleted).length} tables`);
@@ -528,7 +529,7 @@ export default function AdminSettings() {
     setResetDialogOpen(false);
     setResetConfirmText("");
     if (error || data?.error) {
-      toast.error(data?.error || error?.message || "Factory reset failed");
+      toast.error(data?.error || (await friendlyErrorMessage(error, "Factory reset failed")));
       return;
     }
     toast.success("Factory reset complete. Signing out...");
@@ -1095,13 +1096,13 @@ export default function AdminSettings() {
                 <Button onClick={handleBackup} disabled={backing} variant="outline">
                   {backing ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Creating backup...</> : <><Download className="mr-2 h-4 w-4" />Download Backup</>}
                 </Button>
-                <p className="text-xs text-muted-foreground mt-2">Includes all projects, clients, inventory, invoices, and settings. Rate limited to 5 per hour.</p>
+                <p className="text-xs text-muted-foreground mt-2">Includes projects, requests, quotes, tasks, time, stock, purchasing, shipping, invoices, teams and access, and settings. Rate limited to 5 per hour.</p>
               </CardContent>
             </Card>
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2"><Upload className="h-5 w-5" />Restore from Backup</CardTitle>
-                <CardDescription>Overwrite current data with a previously downloaded backup file. This cannot be undone.</CardDescription>
+                <CardDescription>Overwrite current data with a previously downloaded backup file. It is all or nothing: if the file doesn't fit this workshop, nothing changes.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
                 <input
@@ -1153,7 +1154,7 @@ export default function AdminSettings() {
             <Card className="border-destructive/50">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-destructive"><Trash2 className="h-5 w-5" />Delete All Data</CardTitle>
-                <CardDescription>Remove all business data. User accounts, roles, and settings are preserved.</CardDescription>
+                <CardDescription>Remove all projects, stock and billing data. User accounts, teams and access, and settings are kept.</CardDescription>
               </CardHeader>
               <CardContent>
                 <AlertDialog>
@@ -1165,7 +1166,7 @@ export default function AdminSettings() {
                   <AlertDialogContent>
                     <AlertDialogHeader>
                       <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                      <AlertDialogDescription>This will permanently delete all projects, appointments, inventory items, invoices, and notifications. This action cannot be undone.</AlertDialogDescription>
+                      <AlertDialogDescription>This will permanently delete all projects and requests with their quotes, tasks, time and shipments; stock items, suppliers and purchase orders; invoices; appointments; and notifications. Project IDs start again from 001. This action cannot be undone.</AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                       <AlertDialogCancel>Cancel</AlertDialogCancel>
@@ -1192,7 +1193,7 @@ export default function AdminSettings() {
                     <DialogHeader>
                       <DialogTitle className="text-destructive">⚠️ Factory Reset</DialogTitle>
                       <DialogDescription>
-                        This will permanently delete <strong>all business data</strong>, <strong>all user accounts</strong> (except yours), <strong>all activity logs</strong>, and <strong>reset all settings to defaults</strong>. This action cannot be undone.
+                        This will permanently delete <strong>all business data</strong>, <strong>all user accounts</strong> (except yours), <strong>all activity logs</strong>, <strong>all teams and access</strong>, and <strong>reset all settings to defaults</strong>. This action cannot be undone.
                       </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-2">

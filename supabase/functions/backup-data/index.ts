@@ -4,31 +4,10 @@ import { buildCorsHeaders, sha256Hex } from "../_shared/mfa-cors.ts";
 import { checkRateLimit } from "../_shared/rate-limit.ts";
 import { captureEdgeError } from "../_shared/sentry.ts";
 
-// Tables exported in FK-safe order (children after parents).
-// Skips activity_logs (large read-only history), push_subscriptions (transient),
-// and mfa_* tables (device-bound security data).
-const EXPORT_TABLES = [
-  "profiles",
-  "user_roles",
-  "workshop_settings",
-  "feature_flags",
-  "signup_codes",
-  "broadcasts",
-  "system_notices",
-  "inventory_items",
-  "jobs",
-  "job_tasks",
-  "job_comments",
-  "job_attachments",
-  "job_ratings",
-  "job_task_notes",
-  "appointments",
-  "inventory_transactions",
-  "invoices",
-  "invoice_items",
-  "notifications",
-  "bug_reports",
-];
+// The table list lives in the database (export_workshop_data), next to the
+// restore that reads it back, so the two can't drift apart. It leaves out
+// activity history, push subscriptions, MFA secrets and per-person preferences.
+const BACKUP_VERSION = 2;
 
 serve(async (req) => {
   const cors = buildCorsHeaders(req);
@@ -93,21 +72,18 @@ serve(async (req) => {
       );
     }
 
-    // Export all tables
-    const data: Record<string, unknown[]> = {};
-    const rowCounts: Record<string, number> = {};
-
-    for (const table of EXPORT_TABLES) {
-      const { data: rows, error } = await adminClient.from(table).select("*");
-      if (error) {
-        return new Response(JSON.stringify({ error: `Failed to export ${table}: ${error.message}` }), {
-          status: 500,
-          headers: { ...cors, "Content-Type": "application/json" },
-        });
-      }
-      data[table] = rows ?? [];
-      rowCounts[table] = (rows ?? []).length;
+    // One consistent snapshot of every table, with no row limit.
+    const { data: exported, error: exportError } = await adminClient.rpc("export_workshop_data");
+    if (exportError || !exported) {
+      return new Response(JSON.stringify({ error: `Backup failed: ${exportError?.message ?? "no data returned"}` }), {
+        status: 500,
+        headers: { ...cors, "Content-Type": "application/json" },
+      });
     }
+    const data = exported as Record<string, unknown[]>;
+    const rowCounts: Record<string, number> = Object.fromEntries(
+      Object.entries(data).map(([table, rows]) => [table, rows.length]),
+    );
 
     const dataJson = JSON.stringify(data);
     const checksum = await sha256Hex(dataJson);
@@ -116,7 +92,7 @@ serve(async (req) => {
 
     const backup = {
       manifest: {
-        version: 1,
+        version: BACKUP_VERSION,
         app: "workshop-buddy",
         created_at: createdAt,
         row_counts: rowCounts,

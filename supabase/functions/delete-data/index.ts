@@ -62,34 +62,20 @@ serve(async (req) => {
       // No body or invalid JSON — default to false
     }
 
-    // Delete in reverse dependency order
-    const tables = [
-      "inventory_transactions",
-      "invoice_items",
-      "invoices",
-      "job_task_notes",
-      "job_attachments",
-      "job_ratings",
-      "job_tasks",
-      "jobs",
-      "appointments",
-      "inventory_items",
-      "notifications",
-      "bug_reports",
-    ];
-
-    const deleted: Record<string, number> = {};
-
-    for (const table of tables) {
-      const { data: rows } = await adminClient.from(table).select("id");
-      const count = rows?.length || 0;
-
-      if (count > 0) {
-        await adminClient.from(table).delete().neq("id", "00000000-0000-0000-0000-000000000000");
-      }
-
-      deleted[table] = count;
+    // Projects, stock, billing and appointments go in one transaction, so a
+    // failure leaves everything as it was. A full reset also clears teams,
+    // access, rates, goals and saved reports.
+    const { data: counts, error: resetError } = await adminClient.rpc("reset_workshop_data", {
+      _full: resetUsers,
+      _keep_user: callerId,
+    });
+    if (resetError) {
+      return new Response(JSON.stringify({ error: `Reset failed: ${resetError.message}` }), {
+        status: 500,
+        headers: { ...cors, "Content-Type": "application/json" },
+      });
     }
+    const deleted: Record<string, number> = { ...(counts as Record<string, number>) };
 
     // If factory reset requested, also delete users, roles, profiles, activity logs, and reset settings
     if (resetUsers) {
@@ -149,6 +135,9 @@ serve(async (req) => {
         default_tax_rate: 0,
         monthly_goal: null,
         currency: "USD",
+        project_ref_prefix: "EDL",
+        purchase_manager_limit: 1000,
+        overhead_percent: 15,
         notify_job_status: true,
         notify_new_appointment: true,
         notify_low_inventory: true,
