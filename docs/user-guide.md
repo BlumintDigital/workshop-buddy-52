@@ -6,12 +6,12 @@ A complete reference for Admins, Managers, Staff, and Clients.
 
 ## 1. Welcome
 
-Workshop Buddy is a workshop management platform that helps your team run jobs, appointments, inventory, and invoicing from a single shared workspace. Every account on the platform belongs to one of four roles, each with a tailored experience:
+Workshop Buddy is a workshop management platform that takes every project from reception to shipping — quotes, team tasks, parts, quality check, handover and invoicing — in one shared workspace. Every account on the platform belongs to one of four roles, each with a tailored experience:
 
-- **Admin** — full control of the workspace: users, settings, reports, billing, and security.
-- **Manager** — runs day-to-day operations: jobs, appointments, inventory, invoicing, and staff.
-- **Staff** — works on assigned jobs through a streamlined kanban and schedule view.
-- **Client** — tracks their own jobs, appointments, and invoices through a self-service portal.
+- **Admin** — full control of the workspace: users, teams and access, settings, reports, billing and security.
+- **Manager** — runs day-to-day operations: projects, quotes, quality check, inventory, shipping, invoicing and staff.
+- **Staff** — works on tasks for their teams, hands work on to the next team, and — depending on their teams — runs reception, inventory or shipping.
+- **Client** — follows their projects, accepts quotes, chooses collection or delivery and pays invoices through a self-service portal.
 
 The guide is organised so you can jump straight to your role, or read across roles to understand how work flows through the system.
 
@@ -57,8 +57,8 @@ You can regenerate backup codes or revoke trusted devices any time from **Profil
 
 Every signed-in page shares the same shell:
 
-- **Sidebar (left)** — primary navigation. Collapses to icons on smaller screens. The trigger in the header expands or collapses it.
-- **Header (top)** — breadcrumbs, notification bell, and broadcast banner area.
+- **Sidebar (left)** — primary navigation. Collapses to icons on smaller screens. The trigger in the header expands or collapses it. Links to Reception, Inventory, Shipping and Reports appear when your role or teams allow them.
+- **Header (top)** — breadcrumbs, search, notification bell, and broadcast banner area.
 - **Notification bell** — shows unread in-app notifications. Click to view recent activity and mark them as read.
 - **Broadcast banner** — system-wide notices from your administrator appear here. Use the X to dismiss.
 - **Profile menu (sidebar footer)** — access your profile, security settings, and sign out.
@@ -70,26 +70,37 @@ Every signed-in page shares the same shell:
 
 Admins have full access to every feature. Use this role for workshop owners and IT leads.
 
-### 4.1 Dashboard
+### 4.1 Today
 
-The admin dashboard summarises jobs in progress, upcoming appointments, outstanding invoices, low-stock items, and recent activity. Each tile links to its detailed view.
+The admin **Today** page summarises projects by stage, requests waiting at reception, overdue invoices, low stock, projects ready to ship and recent activity. Each tile links to its detailed view.
 
 ### 4.2 Users
 
-**Admin → Users** lists every account in the workspace.
+**Users** lists every account in the workspace.
 
 - **Create user** — add a new staff member or manager directly without an invite code.
-- **Change role** — promote or demote between staff, manager, and admin.
+- **Change role** — promote or demote between staff, manager and admin.
 - **Disable / enable** — block sign-in without deleting history.
-- **View detail** — see the user's activity, assigned jobs, and trusted devices.
+- **View detail** — see the user's activity, assigned tasks and trusted devices.
 
-### 4.3 Clients
+### 4.3 Teams and access
 
-**Admin → Clients** manages client companies. Each client can have one or more linked user accounts and is the parent of jobs, appointments, and invoices.
+**Teams and access** is where you organise people and decide what they can do.
 
-### 4.4 Signup Codes
+- **Teams** — create departments such as Machining, Electrical, Quality, Inventory, Shipping or a Management team. Add people to each team and pick a team lead. Tasks are assigned to a team first, then to a person in it, so a colleague can pick up work when someone is away.
+- **Team permissions** — tick what a team's members may do: Reception, Planning, Quality check, Inventory, Approve purchases, Shipping, Reports and costs, Billing. Everyone in the team gets them.
+- **Individual permissions** — give or take away a permission for one person, on top of their teams.
+- **Labour rates** — set each person's hourly cost. It is used for project profit and loss and on the Goals page. People without a rate show no labour cost.
 
-**Admin → Signup Codes** controls who can create accounts.
+Admins always hold every permission. Clients never hold any.
+
+### 4.4 Clients
+
+**Clients** manages client companies. Each client can have one or more linked user accounts and owns their projects, quotes and invoices.
+
+### 4.5 Signup Codes
+
+**Signup Codes** controls who can create accounts.
 
 1. Click **Generate code**. Name the code (e.g. "Spring hire batch") and optionally set a max number of uses and an expiry date.
 2. Share the code with the intended recipient.
@@ -97,109 +108,109 @@ The admin dashboard summarises jobs in progress, upcoming appointments, outstand
 
 Codes apply to public sign-ups only — admin-created users skip the code requirement.
 
-### 4.5 Settings
+### 4.6 Settings
 
-**Admin → Settings** is organised into tabs:
+**Settings** is organised into tabs:
 
 - **General** — workshop name, logo, login screen image, currency, time zone.
-- **Branding** — primary color and theme tokens; changes apply live across the app.
-- **Features** — toggle Appointments, Reports, Client Portal, and Goals modules on or off.
+- **Billing** — tax and invoice terms, the **Project ID prefix** (EDL gives IDs like EDL-202609-001), the amount **managers can approve purchases up to**, the **overhead %** added to project costs in reports, and the monthly goal.
+- **Branding** — primary colour and theme tokens; changes apply live across the app.
+- **Features** — toggle Appointments, Reports, Client Portal and Goals on or off.
 - **Email** — configure the from-address and contact email used in notifications.
 - **Data** — destructive actions: Factory Reset, Setup Demo Users, seed data.
 
-### 4.6 Activity Logs
+### 4.7 Reports {roles: admin,manager,staff}
 
-**Admin → Activity Logs** is an immutable audit trail of important events (sign-ins, role changes, deletions, settings updates). Filter by user, action, or date range. Export to CSV.
+**Reports** needs the **Reports and costs** permission. Admins and managers have it.
 
-### 4.7 Issue Reports
+- **Profit and loss** — every project, with what was charged (the accepted quote after discount) against materials at cost, labour at each person's hourly cost, shipping and overhead. Pick the dates, filter by stage or outcome (Profit, Loss, At risk, On track, Not priced), group by client, stage, outcome, month or person, and choose the columns. **Save report** keeps the view for everyone with Reports access, and **CSV** exports it. Loss-making projects are highlighted.
+- **Team** — hours, tasks completed, handoffs and labour cost per person for any period.
+- **Trends** — revenue, bookings and projects by status, month by month.
 
-**Admin → Issue Reports** collects bug reports submitted by users via the **Report Issue** link. Each report includes the user, page, browser info, and message.
+### 4.8 Activity Logs, Issue Reports and Access Review
 
-### 4.8 Access Review
-
-**Admin → Access Review** lists users by role with their last sign-in date so you can periodically remove dormant access.
-
-### 4.9 Deploy Guide
-
-**Admin → Deploy Guide** is the technical handbook for spinning up a new Workshop Buddy instance (Supabase project, migrations, edge functions, secrets).
+- **Activity Logs** — an immutable audit trail of important events (sign-ins, role changes, deletions, settings updates). Filter and export to CSV.
+- **Issue Reports** — bug reports submitted through **Report Issue**, with the user, page and browser details.
+- **Access Review** — users by role with their last sign-in date, so you can remove dormant access.
 
 ---
 
 ## 5. Manager Guide
 
-Managers run the workshop floor.
+Managers run the workshop floor. They hold every permission, but can't change workspace settings or users.
 
-### 5.1 Dashboard
+### 5.1 Today
 
-Operational KPIs: open jobs by status, today's appointments, overdue invoices, and recent activity.
+Open projects by stage, today's appointments, quotes waiting for the client, projects in quality check, overdue invoices and recent activity.
 
-### 5.2 Jobs
+### 5.2 Projects
 
-**Manager → Jobs** lists every job. Use filters for status, priority, assigned staff, and client.
+**Projects** lists every project with its permanent ID, for example EDL-202609-001. Filter by stage, search by ID, title or client, and open a row to see the project page. It is the one place for everything about a project: stage, intake details and photos, quotes and change requests, team tasks, parts, time, files, the conversation with the client, internal notes, shipping and activity.
 
-- **New Job** — create a job with title, description, client, priority, due date, and assigned staff.
-- **Click a row** to open the job detail page (timeline, comments, attachments, parts used, status updates).
-- **Bulk status change** — select multiple jobs and update status from the toolbar.
+### 5.3 Quotes and change requests
 
-### 5.3 Appointments
+- From a project in **Evaluation**, build a quote with line items and an optional discount (percent or fixed, before tax), then send it. Evaluation is free.
+- The client accepts or declines in their portal. Accepting moves the project to **Approved**.
+- If the work changes after it has started, add a **change request**. An admin signs it off, then the client accepts it, and the agreed total updates.
 
-**Manager → Appointments** is the list view. **Manager → Calendar** is the drag-and-drop scheduling view.
+### 5.4 Planning, teams and quality check
 
-- Drag a job onto a calendar slot to schedule it.
-- Drag an appointment to reschedule.
-- Click an appointment to view details, change attendees, or cancel.
+- On an approved project, add **tasks** for each team (for example Machining, then Electrical). A task goes to the team first; the team lead or a member then takes it or gives it to a person.
+- When a task is done, the person **hands it off** to the next team with a note. Handoffs show in the project activity and on the Goals page.
+- When all the work is done the project moves to **Quality check**. Someone with the Quality check permission — usually the Management team — passes it, and it becomes **Ready to ship** and shipping is told. Or they send it back with a reason.
 
-### 5.4 Inventory
+### 5.5 Inventory
 
-**Manager → Inventory** tracks parts and consumables.
+**Inventory** has its own portal:
 
-- **Add item** — name, SKU, quantity, unit, low-stock threshold, cost.
-- **Adjust stock** — increment or decrement with a reason note (auto-logged).
-- **Low-stock alerts** appear on the dashboard and as in-app notifications.
+- **Stock** — items, quantities, low-stock levels and weighted cost.
+- **Requests** — parts requested by project teams. The inventory team issues them to the project (stock goes down and the cost counts against the project) and records returns.
+- **Purchases** — purchase orders to suppliers. Orders up to the manager limit in Settings can be approved by a manager; larger ones need an admin. Once approved, mark it ordered, then receive it to add the stock.
+- **Suppliers** and **Usage** — supplier details, and parts used by project and period.
 
-### 5.5 Invoices
+### 5.6 Shipping
 
-**Manager → Invoices** lists all invoices. Drafts are auto-created when a job is marked complete.
+**Shipping** lists projects that have passed quality check.
 
-- **New Invoice** — pick a client, add line items, set tax, choose a due date.
-- **Send** — generates a public Stripe-compatible payment URL.
-- **Mark paid / partially paid** — record payments manually if collected outside Stripe.
-- **PDF** — download a branded invoice PDF.
+1. **Tell the client** it's ready. They get an email and an in-app notice.
+2. The client chooses **collection** (and who's collecting) or **delivery** (and the address) in their portal.
+3. Shipping records the handover — who collected it and the vehicle registration, or the carrier, tracking number and cost for a delivery. The project becomes **Shipped**.
 
-### 5.6 Staff
+### 5.7 Invoices
 
-**Manager → Staff** lists staff members and lets you view each one's workload and recent activity.
+**Invoices** lists all invoices. Create one from an accepted quote, apply any discount, send it and record payments. If you use an accounting package, issue the final invoice there; a QuickBooks connection is planned.
+
+### 5.8 Staff and Goals
+
+**Staff** shows each person's workload and activity. **Goals** shows the work delivered this month against the monthly goal, plus each person's hours and handoffs. People with Reports and costs also see labour cost. **Show on a screen** turns it into a wall display that refreshes itself.
 
 ---
 
 ## 6. Staff Guide
 
-Staff focus on the work assigned to them.
+Staff focus on the tasks given to them and their teams.
 
-### 6.1 Dashboard
+### 6.1 My day
 
-Shows jobs assigned to you, today's schedule, and any low-stock items relevant to your jobs.
+Your open tasks, tasks waiting for your team, today's schedule and anything handed to you recently.
 
-### 6.2 My Jobs
+### 6.2 My projects
 
-**Staff → My Jobs** is your job queue. Click a job to:
+**My projects** lists projects where you or your team have tasks. On a project you can:
 
-- Update status (Not Started → In Progress → On Hold → Completed).
-- Add comments and attachments.
-- Log parts used from inventory (deducts stock automatically).
+- Start and finish your task, then **hand it off** to the next team with a note.
+- **Request parts** from inventory for the project.
 - Log time worked.
+- Add internal notes, which only staff see, and reply to the client in the conversation.
+- Add photos and files.
 
-### 6.3 Kanban
+### 6.3 Team portals {roles: admin,manager,staff}
 
-**Staff → Kanban** shows your jobs as cards across status columns. Drag a card to a new column to change its status — fastest way to update during a busy shift.
+Depending on your teams you may also see **Reception** (log incoming machines and client requests), **Inventory** (issue parts and handle purchases), **Shipping** (tell clients and record handovers) or **Reports**. If a link is missing, ask an admin to add you to the right team in **Teams and access**.
 
 ### 6.4 Schedule
 
-**Staff → Schedule** shows your upcoming appointments in day, week, or list view. Click an appointment for details.
-
-### 6.5 Inventory
-
-**Staff → Inventory** is read-only. Use it to check stock levels before starting a job.
+**Schedule** shows your upcoming appointments in day, week or list view.
 
 ---
 
@@ -209,62 +220,73 @@ The client portal is a self-service window for your customers.
 
 ### 7.1 Dashboard
 
-Summary of your open jobs, upcoming appointments, and outstanding invoices.
+Your open projects, quotes waiting for your decision, appointments and outstanding invoices.
 
-### 7.2 My Jobs
+### 7.2 My projects
 
-**Client → My Jobs** lists every job the workshop is doing for you. Click a job to view progress, photos, comments from the team, and parts used.
+**Projects** lists every project the workshop is doing for you. Open one to see:
 
-### 7.3 My Appointments
+- Where it is: Received, Evaluation, Quote, In progress, Quality check, Ready, Shipped.
+- The photos taken when your machine arrived.
+- Quotes and change requests to **accept or decline**.
+- The conversation with the workshop, where you can send messages and files.
+- When it's ready, **Choose collection or delivery**.
 
-**Client → Appointments** shows confirmed appointments and lets you book a new 30-minute slot from available windows. Cancel or reschedule from the same screen.
+### 7.3 Requests
 
-### 7.4 My Invoices
+Send a new request — a repair, an evaluation or a question — from **Requests**. It goes to the workshop's reception, who turn it into a project and keep you updated.
 
-**Client → Invoices** lists all your invoices.
+### 7.4 Appointments and invoices
 
-- **Pay** — opens a secure Stripe payment page.
-- **Download PDF** — for your records.
-- **History** — past invoices remain visible after payment.
+**Appointments** shows confirmed appointments and lets you book a slot. **Invoices** lists your invoices to view, pay online or download as PDF.
 
 ---
 
 ## 8. Core Workflows
 
-### 8.1 Job lifecycle {roles: admin,manager,staff}
+### 8.1 Project lifecycle {roles: admin,manager,staff}
 
 ```text
-Create job (Manager)
-    ↓ assign staff and due date
-Staff begins work (Staff)
-    ↓ status: In Progress
-Log parts and time (Staff)
-    ↓ inventory deducts automatically
-Mark complete (Staff or Manager)
-    ↓ draft invoice auto-created
-Send invoice (Manager)
-    ↓ Stripe link emailed to client
-Client pays (Client)
-    ↓ status: Paid
+Received        Reception logs the machine, client, photos and condition
+   ↓
+Evaluation      Technicians assess the work (free)
+   ↓
+Quote           Quote sent; the client accepts or declines in the portal
+   ↓
+Approved        Tasks planned for each team
+   ↓
+In progress     Teams work and hand off; parts issued from inventory; time logged
+   ↓
+Quality check   The Management team passes it or sends it back
+   ↓
+Ready to ship   Shipping tells the client; the client picks collection or delivery
+   ↓
+Shipped         Handover recorded
 ```
 
-### 8.2 Appointment scheduling {roles: admin,manager}
+Every step is recorded in the project's activity, with who did it and when.
 
-- **Manual scheduling** — drag a job from the side panel onto a calendar slot.
-- **Fixed appointments** — create directly from the calendar (no job required), e.g. a consultation.
-- **Client self-booking** — clients pick from 30-minute slots you've made available.
+### 8.2 Your project {roles: client}
 
-### 8.3 Invoice lifecycle {roles: admin,manager}
+You'll be told when a quote is ready, when work starts, when it passes quality check and when it's ready. Accept the quote, follow progress and choose collection or delivery from the project page.
 
-Draft → Sent → Viewed → Paid (or Overdue). Each transition is logged. You can resend, void, or refund from the invoice detail page.
+### 8.3 Parts and purchasing {roles: admin,manager,staff}
 
-### 8.4 Your invoices {roles: client}
+A team requests parts → inventory issues them, or raises a purchase order if they're out of stock → the order is approved within the limits in Settings → received into stock → issued to the project. Every movement records who, when and for which project, and its cost counts towards the project's profit and loss.
 
-When work on your job is finished, you'll receive an invoice by email. Open it from **Invoices** in the sidebar to view the breakdown, pay securely online, or download a PDF receipt once it's marked paid.
+### 8.4 Appointment scheduling {roles: admin,manager}
 
-### 8.5 Inventory adjustments {roles: admin,manager,staff}
+- **Manual scheduling** — drag a project onto a calendar slot.
+- **Fixed appointments** — create directly from the calendar, e.g. a consultation.
+- **Client self-booking** — clients pick from slots you've made available.
 
-Every stock change records who, when, and why. Reports show consumption per job and per period.
+### 8.5 Invoice lifecycle {roles: admin,manager}
+
+Draft → Sent → Viewed → Paid (or Overdue). Each transition is logged.
+
+### 8.6 Your invoices {roles: client}
+
+When work on your project is finished you'll receive an invoice by email. Open it from **Invoices** to view the breakdown, pay securely online, or download a PDF.
 
 ---
 
@@ -274,7 +296,7 @@ Workshop Buddy delivers notifications through three channels:
 
 - **In-app bell** — every signed-in user. Click the bell to read, mark as read, or jump to the source.
 - **Web push** — opt in from **Profile → Notifications** to receive browser/mobile push even when the app is closed. Requires permission on first opt-in.
-- **Email** — sent for key events such as account confirmation, password reset, invoice sent, and issue report acknowledgements.
+- **Email** — sent for key events such as account confirmation, password reset, quotes, a project being ready, invoices, and issue report acknowledgements.
 
 Push and email can be disabled per user.
 
@@ -309,7 +331,13 @@ Every role has a **Report Issue** link in the sidebar. Describe what you were do
 ## 11. FAQ & Troubleshooting
 
 **My currency still shows dollars after I changed it.**
-Refresh the page. The new currency applies to invoices, jobs, and reports automatically. {roles: admin,manager}
+Refresh the page. The new currency applies to invoices, projects and reports automatically. {roles: admin,manager}
+
+**I can't see Reception, Inventory, Shipping or Reports.**
+These follow your teams. Ask an admin to add you to the right team in **Teams and access**. {roles: staff}
+
+**A project shows "Not priced" in profit and loss.**
+It has no accepted quote yet, so there's nothing to set its costs against. {roles: admin,manager}
 
 **MFA keeps prompting me even after I selected "Trust this device for 30 days".**
 Your browser may be blocking cookies for the site, or you may be in a private/incognito window. Sign in on a non-private window and retry the trust action.
@@ -333,12 +361,18 @@ Contact your admin. They can reset MFA on your account from **Admin → Users**.
 
 ## 12. Glossary
 
-- **Admin** — top-level role with full access to settings, users, and security. {roles: admin,manager}
+- **Admin** — top-level role with full access to settings, users, teams and security. {roles: admin,manager}
 - **Manager** — runs operations; cannot manage workspace settings or users. {roles: admin,manager}
-- **Staff** — works on assigned jobs only. {roles: admin,manager,staff}
-- **Client** — external customer with portal access to their own jobs and invoices.
-- **Job** — a unit of work, with status, assigned staff, parts, time, and comments. {roles: admin,manager,staff}
-- **Appointment** — a scheduled calendar slot, optionally linked to a job.
+- **Staff** — works on tasks for their teams. {roles: admin,manager,staff}
+- **Client** — external customer with portal access to their own projects, quotes and invoices.
+- **Project** — one piece of work for a client, from reception to shipping, with a permanent ID such as EDL-202609-001.
+- **Quote** — the price for a project, which the client accepts or declines. A **change request** adjusts it after work has started.
+- **Team** — a department such as Machining or Shipping. Tasks go to a team first, then to a person. {roles: admin,manager,staff}
+- **Handoff** — passing a finished task to the next team with a note. {roles: admin,manager,staff}
+- **Quality check** — the sign-off a project needs before it can ship. {roles: admin,manager,staff}
+- **Permission** — something a person may do beyond their role, such as Reception or Approve purchases, given by their teams or individually. {roles: admin,manager,staff}
+- **Overhead %** — a share added to project costs in profit and loss to cover rent, power and tools. {roles: admin,manager}
+- **Appointment** — a scheduled calendar slot, optionally linked to a project.
 - **Invoice** — billing document, can be Draft, Sent, Viewed, Paid, Overdue, Void.
 - **Invite code** — token required for public sign-up; managed by admins. {roles: admin,manager}
 - **Trusted device** — a browser you've marked to skip MFA for 30 days.
@@ -348,4 +382,4 @@ Contact your admin. They can reset MFA on your account from **Admin → Users**.
 
 ---
 
-*Workshop Buddy — last updated June 2026.*
+*Workshop Buddy — last updated September 2026.*
