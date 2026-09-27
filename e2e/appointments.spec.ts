@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { login } from "./helpers/auth";
+import { pickCalendarDay } from "./helpers/calendar";
 
 const CLIENT_APPT = `E2E appointment ${Date.now()}`;
 const ADMIN_APPT = `E2E admin appt ${Date.now()}`;
@@ -17,13 +18,7 @@ test.describe.serial("appointments", () => {
     await dialog.getByRole("button", { name: /pick a date/i }).click();
     const target = new Date();
     target.setDate(target.getDate() + 7);
-    const dayName = target.toLocaleDateString("en-US", { weekday: "long" });
-    const monthName = target.toLocaleDateString("en-US", { month: "long" });
-    await page
-      .getByRole("gridcell", { name: new RegExp(`${dayName}, ${monthName} ${target.getDate()}`) })
-      .or(page.getByRole("gridcell", { name: String(target.getDate()), exact: true }))
-      .first()
-      .click();
+    await pickCalendarDay(page, target);
 
     // The calendar popover stays open after picking a day and covers the time
     // slots — Escape closes just the popover (topmost Radix layer).
@@ -74,14 +69,8 @@ test.describe.serial("appointments", () => {
     // "Select date" icon button and closes itself after picking a day.
     const target = new Date();
     target.setDate(target.getDate() + 8);
-    const dayName = target.toLocaleDateString("en-US", { weekday: "long" });
-    const monthName = target.toLocaleDateString("en-US", { month: "long" });
     await dialog.getByRole("button", { name: "Select date" }).click();
-    await page
-      .getByRole("gridcell", { name: new RegExp(`${dayName}, ${monthName} ${target.getDate()}`) })
-      .or(page.getByRole("gridcell", { name: String(target.getDate()), exact: true }))
-      .first()
-      .click();
+    await pickCalendarDay(page, target);
 
     await dialog.locator("input[type='time']").fill("10:30");
     await dialog.getByRole("button", { name: "Create Appointment" }).click();
