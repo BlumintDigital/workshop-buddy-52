@@ -127,28 +127,7 @@ serve(async (req) => {
     const { data: insertedTasks } = await adminClient.from("job_tasks").insert(jobTasks).select("id");
     counts.job_tasks = insertedTasks?.length || 0;
 
-    // 4. Job updates
-    const jobUpdates: any[] = [];
-    for (const job of insertedJobs || []) {
-      jobUpdates.push({
-        job_id: job.id,
-        user_id: job.assigned_staff_id || callerId,
-        status: "pending",
-        notes: "Job created and assigned",
-      });
-      if (job.status !== "pending" && job.status !== "quoted") {
-        jobUpdates.push({
-          job_id: job.id,
-          user_id: job.assigned_staff_id || callerId,
-          status: job.status,
-          notes: `Status updated to ${job.status}`,
-        });
-      }
-    }
-    const { data: insertedUpdates } = await adminClient.from("job_updates").insert(jobUpdates).select("id");
-    counts.job_updates = insertedUpdates?.length || 0;
-
-    // 5. Appointments
+    // 4. Appointments
     const appointmentsData = [
       { title: "Vehicle Inspection", client_id: pickClient(), appointment_date: fmtDate(new Date(today.getTime() + 1 * dayMs)), appointment_time: "09:00", duration_minutes: 60, type: "inspection", status: "confirmed", description: "Annual vehicle inspection" },
       { title: "Oil Change Appointment", client_id: pickClient(), appointment_date: fmtDate(new Date(today.getTime() + 2 * dayMs)), appointment_time: "10:30", duration_minutes: 30, type: "service", status: "pending", description: "Quick oil change" },
@@ -170,7 +149,7 @@ serve(async (req) => {
       counts.appointments = 0;
     }
 
-    // 6. Invoices (for completed jobs)
+    // 5. Invoices (for completed jobs)
     const completedJobs = (insertedJobs || []).filter((j) => j.status === "completed");
     const invoicesData = completedJobs.map((job, idx) => ({
       invoice_number: `INV-SAMPLE-${String(idx + 1).padStart(3, "0")}`,
@@ -214,7 +193,7 @@ serve(async (req) => {
     const { data: insertedInvoices } = await adminClient.from("invoices").insert(invoicesData).select("id");
     counts.invoices = insertedInvoices?.length || 0;
 
-    // 7. Invoice items
+    // 6. Invoice items
     const invoiceItemsData: any[] = [];
     for (const inv of insertedInvoices || []) {
       invoiceItemsData.push(
@@ -226,7 +205,7 @@ serve(async (req) => {
     const { data: insertedInvItems } = await adminClient.from("invoice_items").insert(invoiceItemsData).select("id");
     counts.invoice_items = insertedInvItems?.length || 0;
 
-    // 8. Inventory transactions
+    // 7. Inventory transactions
     const invTxns: any[] = [];
     for (let i = 0; i < Math.min(5, itemIds.length); i++) {
       invTxns.push({
@@ -248,7 +227,7 @@ serve(async (req) => {
     const { data: insertedTxns } = await adminClient.from("inventory_transactions").insert(invTxns).select("id");
     counts.inventory_transactions = insertedTxns?.length || 0;
 
-    // 9. Notifications
+    // 8. Notifications
     const notifTargets = [...clientIds.slice(0, 2), ...staffIds.slice(0, 1), callerId];
     const notifs = notifTargets.map((uid) => ({
       user_id: uid,

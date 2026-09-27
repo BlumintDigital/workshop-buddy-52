@@ -70,7 +70,6 @@ serve(async (req) => {
       "job_task_notes",
       "job_attachments",
       "job_ratings",
-      "job_updates",
       "job_tasks",
       "jobs",
       "appointments",

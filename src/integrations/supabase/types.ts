@@ -980,41 +980,6 @@ export type Database = {
           },
         ]
       }
-      job_updates: {
-        Row: {
-          created_at: string
-          id: string
-          job_id: string
-          notes: string | null
-          status: string | null
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          job_id: string
-          notes?: string | null
-          status?: string | null
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          job_id?: string
-          notes?: string | null
-          status?: string | null
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "job_updates_job_id_fkey"
-            columns: ["job_id"]
-            isOneToOne: false
-            referencedRelation: "jobs"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       jobs: {
         Row: {
           accessories: string | null
@@ -2422,7 +2387,6 @@ export type Database = {
         Args: { _item_id?: string; _quantity: number; _request_item_id: string }
         Returns: undefined
       }
-      job_update_to_note: { Args: { _update_id: string }; Returns: undefined }
       mark_purchase_ordered: {
         Args: { _expected?: string; _po_id: string }
         Returns: undefined

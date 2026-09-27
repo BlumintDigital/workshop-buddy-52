@@ -18,7 +18,6 @@ const EXPORT_TABLES = [
   "inventory_items",
   "jobs",
   "job_tasks",
-  "job_updates",
   "job_comments",
   "job_attachments",
   "job_ratings",

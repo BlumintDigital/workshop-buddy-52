@@ -184,8 +184,18 @@ serve(async (req) => {
   </table>
 </body></html>`;
   } else {
-    // All other emails: admin or manager only, and respect the notification toggle.
-    if (!roleRow || !["admin", "manager"].includes(roleRow.role)) {
+    // All other emails: admins and managers, and respect the notification toggle.
+    // Staff with the shipping permission may also email a client (by user id only,
+    // never a typed address), so "ready to collect" reaches the client.
+    let allowed = !!roleRow && ["admin", "manager"].includes(roleRow.role);
+    if (!allowed && roleRow?.role === "staff" && !to && to_user_id) {
+      const [{ data: canShip }, { data: target }] = await Promise.all([
+        supabase.rpc("has_permission", { _user_id: user.id, _permission: "shipping" }),
+        supabase.from("user_roles").select("role").eq("user_id", to_user_id).maybeSingle(),
+      ]);
+      allowed = canShip === true && target?.role === "client";
+    }
+    if (!allowed) {
       return new Response(JSON.stringify({ error: "Forbidden" }), {
         status: 403,
         headers: { ...cors, "Content-Type": "application/json" },

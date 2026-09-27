@@ -749,7 +749,7 @@ Deno.serve(async (req) => {
         const tables = [
           "jobs", "invoices", "appointments", "inventory_items",
           "profiles", "user_roles", "activity_logs", "notifications",
-          "job_tasks", "job_attachments", "job_ratings", "job_updates",
+          "job_tasks", "job_attachments", "job_ratings",
           "job_task_notes", "inventory_transactions", "invoice_items",
           "workshop_settings",
         ];
