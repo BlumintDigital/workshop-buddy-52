@@ -3,3 +3,68 @@
 #   supabase db push --project-ref <new-customer-project-ref>
 #   supabase functions deploy --project-ref <new-customer-project-ref>
 project_id = "zhlqarwjzhqzstqrnkwu"
+
+# Every function checks who is calling it itself (and some, like signup-code
+# validation and the 2FA device check, are called before sign-in), so the
+# platform's own JWT check stays off. Deploys read this; without it a CLI
+# update could switch the check on and break sign-up and sign-in.
+# src/test/functionsConfig.test.ts fails if a function is missing here.
+[functions.admin-access-review]
+verify_jwt = false
+
+[functions.admin-api]
+verify_jwt = false
+
+[functions.admin-create-user]
+verify_jwt = false
+
+[functions.admin-delete-user]
+verify_jwt = false
+
+[functions.admin-resend-invite]
+verify_jwt = false
+
+[functions.admin-set-user-role]
+verify_jwt = false
+
+[functions.admin-toggle-user]
+verify_jwt = false
+
+[functions.backup-data]
+verify_jwt = false
+
+[functions.create-client]
+verify_jwt = false
+
+[functions.delete-data]
+verify_jwt = false
+
+[functions.mfa-backup-generate]
+verify_jwt = false
+
+[functions.mfa-backup-verify]
+verify_jwt = false
+
+[functions.mfa-check-device]
+verify_jwt = false
+
+[functions.mfa-trust-device]
+verify_jwt = false
+
+[functions.restore-data]
+verify_jwt = false
+
+[functions.seed-data]
+verify_jwt = false
+
+[functions.send-email]
+verify_jwt = false
+
+[functions.send-push]
+verify_jwt = false
+
+[functions.setup-demo]
+verify_jwt = false
+
+[functions.validate-signup-code]
+verify_jwt = false

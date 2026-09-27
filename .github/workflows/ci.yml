@@ -59,21 +59,51 @@ jobs:
           VITE_SUPABASE_PUBLISHABLE_KEY: ci-build-placeholder
           VITE_SUPABASE_PROJECT_ID: ci-build
 
-  rls-tests:
-    name: RLS (pgTAP)
+  test-database:
+    name: Database and end-to-end tests
     runs-on: ubuntu-latest
-    # Non-blocking until the suite is fully fleshed out; flips to required
-    # in Sprint 3 once every user-facing table has coverage.
-    continue-on-error: true
+    timeout-minutes: 30
+    env:
+      # The CLI is installed below; the scripts use it instead of npx.
+      SUPABASE_CLI: supabase
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
       - uses: supabase/setup-cli@v1
         with:
           version: latest
-      - name: Start Supabase
-        run: supabase start
-      - name: Apply migrations
-        run: supabase db reset --no-seed
-      - name: Run database tests
-        run: supabase test db
 
+      # Throwaway accounts for a throwaway database: made up per run, no secrets needed.
+      - name: Make test accounts
+        run: |
+          pw="Ci-$(openssl rand -hex 12)"
+          {
+            echo "E2E_BASE_URL=http://localhost:8081"
+            for r in ADMIN MANAGER STAFF CLIENT; do
+              echo "E2E_${r}_EMAIL=$(echo "$r" | tr 'A-Z' 'a-z')@ci.example.test"
+              echo "E2E_${r}_PASSWORD=$pw"
+            done
+          } > .env.e2e
+
+      - name: Build the test database
+        run: node scripts/test-db.mjs reset
+
+      - name: Database security tests
+        run: node scripts/test-db.mjs rls
+
+      - name: End-to-end tests
+        run: npx playwright test -c e2e/playwright.config.ts
+
+      - name: Keep the test report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-report
+          path: |
+            e2e/.report
+            e2e/.results
+          retention-days: 7

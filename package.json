@@ -17,6 +17,7 @@
     "test:e2e:prod": "node scripts/e2e-prod.mjs",
     "test-db:start": "node scripts/test-db.mjs start",
     "test-db:reset": "node scripts/test-db.mjs reset",
+    "test-db:rls": "node scripts/test-db.mjs rls",
     "test-db:stop": "node scripts/test-db.mjs stop",
     "db:push": "supabase db push",
     "db:status": "supabase migration list",

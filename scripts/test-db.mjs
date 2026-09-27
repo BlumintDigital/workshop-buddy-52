@@ -5,6 +5,7 @@
 //   node scripts/test-db.mjs reset   wipe it, rebuild the schema and add the test people
 //   node scripts/test-db.mjs stop    stop it
 //   node scripts/test-db.mjs status  show its URLs
+//   node scripts/test-db.mjs rls     run the database security tests (supabase/tests)
 //
 // The schema is production's (supabase-test/supabase/migrations/2026010100000*),
 // plus every migration in supabase/migrations newer than that baseline. Test
@@ -19,6 +20,9 @@ const WORKDIR = join(ROOT, "supabase-test");
 const TEST_SUPABASE = join(WORKDIR, "supabase");
 const ENV_FILE = join(ROOT, ".env.testdb.local");
 const MFA_STATE = join(ROOT, "e2e", ".state", "mfa-secrets.local.json");
+const DB_CONTAINER = "supabase_db_shoplane_test";
+// CI installs the CLI directly; locally npx fetches it.
+const SUPABASE_CLI = process.env.SUPABASE_CLI ?? "npx supabase";
 
 // The newest migration already in the production dump. Everything after it is
 // applied on top at reset. Bump it when the baseline is re-dumped.
@@ -32,7 +36,7 @@ const PEOPLE = [
 ];
 
 function supabase(args, { capture = false } = {}) {
-  const r = spawnSync(`npx supabase ${args.join(" ")} --workdir "${WORKDIR}"`, {
+  const r = spawnSync(`${SUPABASE_CLI} ${args.join(" ")} --workdir "${WORKDIR}"`, {
     cwd: ROOT,
     shell: true,
     stdio: capture ? ["ignore", "pipe", "pipe"] : "inherit",
@@ -130,6 +134,47 @@ async function seedPeople(s) {
   }
 }
 
+/** Every .sql file under a folder, sorted, for a stable test order. */
+function sqlFiles(dir) {
+  return readdirSync(dir, { withFileTypes: true })
+    .flatMap((e) => (e.isDirectory() ? sqlFiles(join(dir, e.name)) : e.name.endsWith(".sql") ? [join(dir, e.name)] : []))
+    .sort();
+}
+
+/**
+ * Runs the pgTAP files in supabase/tests straight through psql in the database
+ * container. (`supabase test db` can't see the files through Docker on Windows.)
+ * Each file rolls itself back, so the database is left as it was.
+ */
+function runDatabaseTests() {
+  const psql = (input) =>
+    spawnSync("docker", ["exec", "-i", DB_CONTAINER, "psql", "-U", "postgres", "-d", "postgres", "-X", "-q", "-t", "-v", "ON_ERROR_STOP=1"], {
+      input,
+      encoding: "utf8",
+    });
+  const setup = psql("create extension if not exists pgtap with schema extensions;");
+  if (setup.status !== 0) throw new Error(`Could not reach the test database: ${setup.stderr}`);
+
+  let failed = 0;
+  let passed = 0;
+  for (const file of sqlFiles(join(ROOT, "supabase", "tests"))) {
+    const r = psql(readFileSync(file, "utf8"));
+    const lines = `${r.stdout}\n${r.stderr}`.split(/\r?\n/).map((l) => l.trim().replace(/\s*\+$/, ""));
+    const bad = lines.filter((l) => /^not ok/.test(l) || /^ERROR:/.test(l) || /^# Looks like/.test(l));
+    passed += lines.filter((l) => /^ok /.test(l)).length;
+    const name = file.slice(ROOT.length + 1);
+    if (r.status !== 0 || bad.length) {
+      failed++;
+      console.log(`FAIL ${name}`);
+      for (const l of lines.filter((l) => /^(not ok|ERROR:|#)/.test(l))) console.log(`     ${l}`);
+    } else {
+      console.log(`ok   ${name}`);
+    }
+  }
+  console.log(`\n${passed} checks passed${failed ? `, ${failed} file(s) failed` : ""}.`);
+  if (failed) process.exit(1);
+}
+
 const command = process.argv[2] ?? "status";
 
 if (command === "start") {
@@ -149,13 +194,15 @@ if (command === "start") {
   console.log("Adding test people:");
   await seedPeople(s);
   console.log("\nTest database reset.");
+} else if (command === "rls") {
+  runDatabaseTests();
 } else if (command === "stop") {
   supabase(["stop"]);
 } else if (command === "status") {
   const s = status();
   console.log(`API: ${s.API_URL}\nStudio: ${s.STUDIO_URL}`);
 } else {
-  console.error(`Unknown command "${command}". Use start, reset, stop or status.`);
+  console.error(`Unknown command "${command}". Use start, reset, rls, stop or status.`);
   process.exit(1);
 }
 

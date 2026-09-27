@@ -1,14 +1,17 @@
 # Supabase database tests
 
-These tests run against a local Supabase stack with `supabase test db`.
+These tests run against the local test database (see `supabase-test/README.md`).
 
 ## Run locally
 
 ```bash
-supabase start          # boots Postgres + Auth + Storage
-supabase db reset       # applies all migrations into the test DB
-supabase test db        # runs every *.sql file under supabase/tests/
+npm run test-db:start   # once: start the test database
+npm run test-db:reset   # rebuild it from the production schema
+npm run test-db:rls     # run every *.sql file under supabase/tests/
 ```
+
+Each file creates the people it needs inside its transaction and rolls back,
+so it leaves nothing behind. CI runs the same command on every push.
 
 ## Layout
 
