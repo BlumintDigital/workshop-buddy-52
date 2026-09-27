@@ -19,6 +19,9 @@ import { useWorkshopDetails } from "@/hooks/useWorkshopDetails";
 import { DiscountField } from "@/components/invoices/DiscountField";
 import { discountColumns, discountLabel, invoiceTotals, type InvoiceDiscount } from "@/lib/invoiceTotals";
 import { friendlyErrorMessageSync } from "@/lib/friendlyError";
+import { Link } from "react-router-dom";
+import { loadQuotes } from "@/components/project/ProjectQuotes";
+import { linesFromAgreedQuotes, type InvoiceDraftLines } from "@/lib/invoiceFromQuotes";
 
 interface LineItem {
   description: string;
@@ -45,6 +48,9 @@ export default function InvoiceCreate() {
   const [fxRate, setFxRate] = useState<number>(1);
   const [fxLoading, setFxLoading] = useState(false);
   const [fxFetchedAt, setFxFetchedAt] = useState<string | null>(null);
+  // What the client agreed (accepted quote + changes), and invoices the project already has.
+  const [agreed, setAgreed] = useState<InvoiceDraftLines | null>(null);
+  const [existing, setExisting] = useState<{ id: string; invoice_number: string; status: string }[]>([]);
 
   // Keep currency aligned with the workshop's base until the user picks one
   const [userPickedCurrency, setUserPickedCurrency] = useState(false);
@@ -102,15 +108,33 @@ export default function InvoiceCreate() {
             const { data: profile } = await supabase.from("profiles").select("full_name").eq("id", job.client_id).single();
             setClientName(profile?.full_name || "");
           }
-          setItems([{ description: job.title, quantity: 1, unit_price: 0 }]);
+          // Start from what the client agreed, so prices aren't typed twice.
+          const [fromQuotes, { data: invoices }] = await Promise.all([
+            loadQuotes(jobId).then(linesFromAgreedQuotes),
+            supabase.from("invoices").select("id, invoice_number, status").eq("job_id", jobId).neq("status", "cancelled"),
+          ]);
+          setExisting(invoices ?? []);
+          setAgreed(fromQuotes);
+          if (fromQuotes) {
+            setItems(fromQuotes.lines);
+            if (fromQuotes.currency && enabledCurrencies.includes(fromQuotes.currency)) {
+              setUserPickedCurrency(true);
+              setCurrency(fromQuotes.currency);
+            }
+          } else {
+            setItems([{ description: job.title, quantity: 1, unit_price: 0 }]);
+          }
         }
       }
     };
     load();
+    // enabledCurrencies only guards the quote's currency; don't reload when it arrives.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [jobId]);
 
   const lineTotal = items.filter((i) => i.description.trim()).reduce((sum, i) => sum + i.quantity * i.unit_price, 0);
   const { subtotal, discountAmount, taxAmount, total } = invoiceTotals(lineTotal, taxRate, discount);
+  const variance = agreed ? Math.round((lineTotal - agreed.agreed) * 100) / 100 : 0;
 
   const addItem = () => setItems([...items, { description: "", quantity: 1, unit_price: 0 }]);
   const removeItem = (idx: number) => setItems(items.filter((_, i) => i !== idx));
@@ -210,6 +234,27 @@ export default function InvoiceCreate() {
           <h1 className="text-2xl font-semibold tracking-tight">Create Invoice</h1>
           <p className="text-sm text-muted-foreground">New draft invoice{jobId ? " linked to a project" : ""}</p>
         </div>
+
+        {jobId && existing.length > 0 && (
+          <div role="alert" className="rounded-lg border border-warning/30 bg-warning-soft px-4 py-3 text-sm text-foreground">
+            This project already has {existing.length === 1 ? "an invoice" : `${existing.length} invoices`}:{" "}
+            {existing.map((inv, i) => (
+              <span key={inv.id}>
+                {i > 0 && ", "}
+                <Link to={`/invoices/${inv.id}`} className="font-medium underline underline-offset-2">{inv.invoice_number}</Link> ({inv.status})
+              </span>
+            ))}
+            . Only continue if this is a separate bill, such as a deposit or a final balance.
+          </div>
+        )}
+        {jobId && agreed && (
+          <p className="rounded-lg border border-info/25 bg-info-soft px-4 py-3 text-sm text-foreground">
+            Filled from the accepted quote{agreed.changeCount ? ` and ${agreed.changeCount} approved change${agreed.changeCount > 1 ? "s" : ""}` : ""}: {fmt(agreed.agreed, currency)} agreed before any discount and tax.
+          </p>
+        )}
+        {jobId && !agreed && (
+          <p className="rounded-lg border px-4 py-3 text-sm text-muted-foreground">This project has no accepted quote yet, so add the lines yourself.</p>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Form column */}
@@ -343,6 +388,13 @@ export default function InvoiceCreate() {
                 )}
                 <div className="flex justify-between text-sm"><span>Tax ({taxRate}%)</span><span>{fmt(taxAmount, currency)}</span></div>
                 <div className="flex justify-between font-bold text-lg border-t pt-2"><span>Total</span><span>{fmt(total, currency)}</span></div>
+                {agreed && (
+                  <p className={variance === 0 ? "text-xs text-success" : "text-xs font-medium text-warning"}>
+                    {variance === 0
+                      ? "Lines match the agreed price."
+                      : `Lines are ${fmt(Math.abs(variance), currency)} ${variance > 0 ? "more" : "less"} than the agreed ${fmt(agreed.agreed, currency)}. Check before sending.`}
+                  </p>
+                )}
                 {currency !== baseCurrency && (
                   <div className="flex justify-between text-xs text-muted-foreground pt-1">
                     <span>Equivalent in {baseCurrency}</span>

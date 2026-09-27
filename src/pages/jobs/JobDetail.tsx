@@ -29,7 +29,7 @@ import ProjectActivity from "@/components/project/ProjectActivity";
 import ProjectFiles from "@/components/project/ProjectFiles";
 import ClientProjectView from "@/components/project/ClientProjectView";
 import { JobStatusPill } from "@/components/dashboard/StatusPill";
-import { PROJECT_STATUSES, projectPath, projectsListPath, projectStatusLabel } from "@/lib/projects";
+import { manualStatusOptions, projectPath, projectsListPath, projectStatusLabel } from "@/lib/projects";
 import ProjectQuotes from "@/components/project/ProjectQuotes";
 import ProjectStageActions from "@/components/project/ProjectStageActions";
 import IntakeDetails from "@/components/project/IntakeDetails";
@@ -37,7 +37,6 @@ import { useBreadcrumbLabel } from "@/lib/breadcrumbs";
 import { generateJobReport } from "@/lib/jobReportPdf";
 
 // Admins and managers can override the stage by hand; everyone else moves it with the stage actions.
-const EDITABLE_STATUSES = PROJECT_STATUSES;
 
 interface UserOption { id: string; full_name: string; }
 export default function JobDetail() {
@@ -231,13 +230,29 @@ export default function JobDetail() {
     fetchTaskDetails(viewTask.id);
   };
 
-  const handleStatusChange = async (status: string) => {
-    if (!job) return;
-    const { error } = await supabase.from("jobs").update({ status }).eq("id", job.id);
-    if (error) { toast.error(error.message); return; }
-    setJob({ ...job, status });
-    toast.success(`Status changed to ${projectStatusLabel(status)}`);
-    notifyJobStatusChange(job, status, user?.id);
+  // Moving a project back or cancelling it by hand needs a reason, kept as a team note.
+  const [statusMove, setStatusMove] = useState<string | null>(null);
+  const [statusReason, setStatusReason] = useState("");
+  const [movingStatus, setMovingStatus] = useState(false);
+
+  const handleStatusChange = async () => {
+    if (!job || !statusMove || !statusReason.trim()) return;
+    setMovingStatus(true);
+    const from = job.status;
+    const { error } = await supabase.from("jobs").update({ status: statusMove }).eq("id", job.id);
+    if (error) { setMovingStatus(false); toast.error(error.message); return; }
+    await supabase.from("job_comments").insert({
+      job_id: job.id,
+      user_id: user!.id,
+      is_internal: true,
+      body: `${statusMove === "cancelled" ? "Cancelled" : `Moved back from ${projectStatusLabel(from)} to ${projectStatusLabel(statusMove)}`}: ${statusReason.trim()}`,
+    });
+    setMovingStatus(false);
+    setJob({ ...job, status: statusMove });
+    toast.success(statusMove === "cancelled" ? "Project cancelled" : `Moved back to ${projectStatusLabel(statusMove)}`);
+    notifyJobStatusChange(job, statusMove, user?.id);
+    setStatusMove(null);
+    setStatusReason("");
   };
 
   const handleOpenEdit = () => {
@@ -357,11 +372,11 @@ export default function JobDetail() {
             <div>
               <Label htmlFor="f-status" className="text-xs text-muted-foreground">Status</Label>
               {canEdit ? (
-                <Select value={job.status} onValueChange={handleStatusChange}>
-                  <SelectTrigger id="f-status" className="mt-1"><SelectValue /></SelectTrigger>
+                <Select value={job.status} onValueChange={(v) => v !== job.status && setStatusMove(v)} disabled={job.status === "shipped"}>
+                  <SelectTrigger id="f-status" className="mt-1" title="Move back a stage or cancel. Use the stage buttons to move forward."><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {EDITABLE_STATUSES.map((s) => (
-                      <SelectItem key={s} value={s}>{projectStatusLabel(s)}</SelectItem>
+                    {manualStatusOptions(job.status).map((s) => (
+                      <SelectItem key={s} value={s}>{s === job.status ? projectStatusLabel(s) : s === "cancelled" ? "Cancel project" : `Back to ${projectStatusLabel(s)}`}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -594,6 +609,24 @@ export default function JobDetail() {
           </DialogContent>
         </Dialog>
       </div>
+      <Dialog open={!!statusMove} onOpenChange={(open) => { if (!open) { setStatusMove(null); setStatusReason(""); } }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{statusMove === "cancelled" ? "Cancel this project?" : `Move back to ${statusMove ? projectStatusLabel(statusMove) : ""}?`}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="f-status-reason">Reason</Label>
+            <Textarea id="f-status-reason" value={statusReason} onChange={(e) => setStatusReason(e.target.value)} placeholder={statusMove === "cancelled" ? "e.g. The client withdrew the machine" : "e.g. Quote needs revising after stripping the gearbox"} autoFocus />
+            <p className="text-xs text-muted-foreground">Saved as a team note on the project. To move forward, use the buttons in the stage panel.</p>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => { setStatusMove(null); setStatusReason(""); }}>Keep as is</Button>
+            <Button variant={statusMove === "cancelled" ? "destructive" : "default"} disabled={!statusReason.trim() || movingStatus} onClick={() => void handleStatusChange()}>
+              {movingStatus ? "Saving…" : statusMove === "cancelled" ? "Cancel project" : "Move back"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 }

@@ -132,6 +132,17 @@ async function seedPeople(s) {
     if (error) throw new Error(`Could not create the ${p.role} test account: ${error.message}`);
     console.log(`  ${p.role}: ${p.full_name}`);
   }
+
+  // Tasks go to people through their teams, so the technician needs one.
+  const staffEmail = e2e.E2E_STAFF_EMAIL;
+  if (staffEmail) {
+    const { data: users } = await admin.auth.admin.listUsers();
+    const staff = users?.users.find((u) => u.email === staffEmail);
+    const { data: team, error } = await admin.from("departments").insert({ name: "Workshop floor", description: "General repairs" }).select("id").single();
+    if (error) throw new Error(`Could not create the test team: ${error.message}`);
+    if (staff) await admin.from("department_members").insert({ department_id: team.id, user_id: staff.id });
+    console.log("  team: Workshop floor (Demo Staff)");
+  }
 }
 
 /** Every .sql file under a folder, sorted, for a stable test order. */

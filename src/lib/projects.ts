@@ -56,6 +56,21 @@ export function projectStatusLabel(status: string | null | undefined): string {
 /** Statuses where work is still ahead of the workshop (used by dashboards and counts). */
 export const OPEN_PROJECT_STATUSES = ["received", "evaluation", "quote", "pending", "in_progress", "review"] as const;
 
+/**
+ * Where the Status menu may move a project by hand: back to an earlier stage or
+ * to Cancelled, never forward. Forward moves go through the stage buttons, so a
+ * project can't reach Approved without a decision, Ready to ship without a
+ * quality check, or Shipped without a handover record. Shipped is final;
+ * a cancelled project can be reopened at Received.
+ */
+export function manualStatusOptions(current: string): string[] {
+  if (current === "shipped") return ["shipped"];
+  if (current === "cancelled") return ["cancelled", "received"];
+  const order: string[] = PROJECT_STATUSES.filter((s) => s !== "cancelled" && s !== "shipped");
+  const at = order.indexOf(current);
+  return [...(at < 0 ? [current] : order.slice(0, at + 1)), "cancelled"];
+}
+
 /** "EDL-202609-001 · Lathe spindle rebuild" */
 export function projectLabel(p: { ref?: string | null; title: string }): string {
   return p.ref ? `${p.ref} · ${p.title}` : p.title;
