@@ -1,59 +1,65 @@
 import { useTheme } from "next-themes";
+import { CircleAlert, CircleCheck, Info, Loader2, TriangleAlert } from "lucide-react";
 import { Toaster as Sonner, toast } from "sonner";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 type ToasterProps = React.ComponentProps<typeof Sonner>;
 
+// Errors usually need reading (and sometimes acting on), so they stay longer
+// than confirmations. Every call site imports toast from "sonner", so the
+// default is set once here rather than at each call.
+const ERROR_DURATION = 8000;
+const showError = toast.error;
+toast.error = ((message, data) => showError(message, { duration: ERROR_DURATION, ...data })) as typeof toast.error;
+
 /**
- * Workshop Buddy branded toasts.
- * "Sage bordered card" direction — cream surface, sage leading accent,
- * branded icon chip, asymmetric radii. Positioned top-right.
+ * Pop-up messages: a quiet card with a coloured icon for the kind of message,
+ * bottom-right on a computer and at the top on a phone (clear of the tab bar).
  */
 const Toaster = ({ ...props }: ToasterProps) => {
   const { theme = "system" } = useTheme();
+  const isMobile = useIsMobile();
 
   return (
     <Sonner
       theme={theme as ToasterProps["theme"]}
       className="toaster group"
-      position="top-right"
-      offset={20}
-      gap={12}
+      position={isMobile ? "top-center" : "bottom-right"}
+      offset={isMobile ? 12 : 24}
+      gap={10}
+      visibleToasts={4}
+      closeButton
+      icons={{
+        success: <CircleCheck className="h-5 w-5" aria-hidden />,
+        error: <CircleAlert className="h-5 w-5" aria-hidden />,
+        warning: <TriangleAlert className="h-5 w-5" aria-hidden />,
+        info: <Info className="h-5 w-5" aria-hidden />,
+        loading: <Loader2 className="h-5 w-5 animate-spin" aria-hidden />,
+      }}
       toastOptions={{
-        unstyled: false,
+        duration: 5000,
         classNames: {
           toast: [
-            "group toast wb-toast",
-            "flex items-center gap-3 py-3.5 pl-4 pr-5",
-            "bg-card text-foreground",
-            "border border-border/70 ring-1 ring-black/[0.03]",
-            "border-l-[3px] border-l-primary",
-            "rounded-l-md rounded-r-2xl",
-            "shadow-[0_10px_30px_-12px_hsl(var(--primary)/0.25),0_4px_10px_-4px_rgb(0_0_0/0.08)]",
-            "backdrop-blur-sm",
+            "group toast flex w-full items-start gap-3 p-4 pr-10",
+            "rounded-xl border border-border bg-popover text-popover-foreground",
+            "shadow-lg shadow-foreground/5",
           ].join(" "),
-          title: "text-sm font-semibold tracking-tight text-foreground",
-          description: "text-xs text-muted-foreground mt-0.5",
-          icon: [
-            "wb-toast-icon",
-            "flex-shrink-0 grid place-items-center",
-            "w-9 h-9 rounded-full",
-            "bg-primary/10 border border-primary/20 text-primary",
-          ].join(" "),
+          content: "flex min-w-0 flex-col gap-0.5",
+          title: "text-sm font-semibold leading-5 text-foreground",
+          description: "text-sm leading-5 text-muted-foreground",
+          icon: "!m-0 mt-0.5 grid h-5 w-5 shrink-0 place-items-center text-muted-foreground",
+          success: "[&_[data-icon]]:text-success",
+          error: "[&_[data-icon]]:text-destructive",
+          warning: "[&_[data-icon]]:text-warning",
+          info: "[&_[data-icon]]:text-info",
           closeButton: [
-            "!left-auto !right-2 !top-1/2 !-translate-y-1/2",
-            "!bg-transparent !border-0 !text-muted-foreground hover:!text-foreground",
-            "!h-6 !w-6",
+            "!left-auto !right-2 !top-2 !translate-x-0 !translate-y-0",
+            "!h-7 !w-7 !rounded-md !border-0 !bg-transparent !text-muted-foreground",
+            "hover:!bg-muted hover:!text-foreground",
           ].join(" "),
-          success: "border-l-primary [&_.wb-toast-icon]:bg-primary/10 [&_.wb-toast-icon]:text-primary [&_.wb-toast-icon]:border-primary/20",
-          error:
-            "!border-l-destructive [&_.wb-toast-icon]:!bg-destructive/10 [&_.wb-toast-icon]:!text-destructive [&_.wb-toast-icon]:!border-destructive/20",
-          warning:
-            "!border-l-amber-500 [&_.wb-toast-icon]:!bg-amber-500/10 [&_.wb-toast-icon]:!text-amber-600 [&_.wb-toast-icon]:!border-amber-500/20",
-          info: "!border-l-accent [&_.wb-toast-icon]:!bg-accent/20 [&_.wb-toast-icon]:!text-accent-foreground [&_.wb-toast-icon]:!border-accent/30",
           actionButton:
-            "group-[.toast]:bg-primary group-[.toast]:text-primary-foreground group-[.toast]:rounded-full group-[.toast]:px-3 group-[.toast]:h-7 group-[.toast]:text-xs",
-          cancelButton:
-            "group-[.toast]:bg-muted group-[.toast]:text-muted-foreground group-[.toast]:rounded-full group-[.toast]:px-3 group-[.toast]:h-7 group-[.toast]:text-xs",
+            "!h-8 !rounded-md !bg-primary !px-3 !text-xs !font-medium !text-primary-foreground hover:!bg-primary/90",
+          cancelButton: "!h-8 !rounded-md !bg-muted !px-3 !text-xs !font-medium !text-muted-foreground",
         },
       }}
       {...props}

@@ -11,7 +11,6 @@ const SRC = join(__dirname, "..");
 /** Folders and files allowed to break the rules, with the reason. */
 const EXEMPT = [
   `components${sep}ui${sep}`, // shadcn base kit, themed through tokens
-  `pages${sep}goals${sep}GoalsPage.tsx`, // dark "live" display panel with its own palette
   `test${sep}`,
 ];
 

@@ -1,11 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
-import { Info, AlertTriangle, AlertOctagon, X } from "lucide-react";
+import { NoticeBanner, type NoticeTone } from "@/components/NoticeBanner";
 
 type Severity = "info" | "warning" | "critical";
 
@@ -25,24 +22,7 @@ const MAX_VISIBLE = 3;
 
 const severityRank: Record<Severity, number> = { critical: 0, warning: 1, info: 2 };
 
-const severityConfig: Record<Severity, { variant: "default" | "destructive"; className: string; Icon: typeof Info }> = {
-  info: {
-    variant: "default",
-    className: "border-primary/30 bg-primary/5 [&>svg]:text-primary",
-    Icon: Info,
-  },
-  warning: {
-    variant: "default",
-    className:
-      "border-warning/40 bg-warning-soft text-warning [&>svg]:text-warning",
-    Icon: AlertTriangle,
-  },
-  critical: {
-    variant: "destructive",
-    className: "bg-destructive/5",
-    Icon: AlertOctagon,
-  },
-};
+const severityTone: Record<Severity, NoticeTone> = { info: "info", warning: "warning", critical: "danger" };
 
 function isActive(b: Broadcast): boolean {
   if (!b.active) return false;
@@ -129,42 +109,18 @@ export function BroadcastBanner() {
   if (!user || visible.length === 0) return null;
 
   return (
-    <div className="flex flex-col gap-2 px-3 sm:px-6 pt-3">
-      {visible.map((b) => {
-        const cfg = severityConfig[b.severity];
-        const Icon = cfg.Icon;
-        const isExternal = b.link_url && /^https?:\/\//i.test(b.link_url);
-        return (
-          <Alert key={b.id} variant={cfg.variant} className={`${cfg.className} pr-12`}>
-            <Icon className="h-4 w-4" />
-            <AlertTitle>{b.title}</AlertTitle>
-            {b.message && <AlertDescription>{b.message}</AlertDescription>}
-            {b.link_url && b.link_label && (
-              <div className="mt-3">
-                {isExternal ? (
-                  <a href={b.link_url} target="_blank" rel="noopener noreferrer">
-                    <Button size="sm" variant="outline">{b.link_label}</Button>
-                  </a>
-                ) : (
-                  <Link to={b.link_url}>
-                    <Button size="sm" variant="outline">{b.link_label}</Button>
-                  </Link>
-                )}
-              </div>
-            )}
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              aria-label="Dismiss broadcast"
-              onClick={() => dismiss(b.id)}
-              className="absolute right-2 top-2 h-9 w-9 opacity-90 hover:opacity-100"
-            >
-              <X className="h-4 w-4 sm:h-5 sm:w-5 text-current" />
-            </Button>
-          </Alert>
-        );
-      })}
+    <div className="flex flex-col gap-2 px-3 pt-3 sm:px-6">
+      {visible.map((b) => (
+        <NoticeBanner
+          key={b.id}
+          tone={severityTone[b.severity]}
+          title={b.title}
+          message={b.message}
+          action={b.link_url && b.link_label ? { label: b.link_label, href: b.link_url } : undefined}
+          onDismiss={() => void dismiss(b.id)}
+          dismissLabel="Dismiss announcement"
+        />
+      ))}
     </div>
   );
 }

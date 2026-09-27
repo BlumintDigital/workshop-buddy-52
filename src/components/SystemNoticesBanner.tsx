@@ -2,9 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
-import { Bell, X } from "lucide-react";
+import { Bell } from "lucide-react";
+import { NoticeBanner } from "@/components/NoticeBanner";
 
 interface SystemNotice {
   id: string;
@@ -100,53 +99,19 @@ export function SystemNoticesBanner() {
   if (!user || visible.length === 0) return null;
 
   return (
-    <div className="flex flex-col gap-2 px-3 sm:px-6 pt-3">
-      {visible.map((n) => {
-        const isExternal = n.url && /^https?:\/\//i.test(n.url);
-        return (
-          <Alert
-            key={n.id}
-            className="border-primary/30 bg-primary/5 [&>svg]:text-primary pr-12"
-          >
-            <Bell className="h-4 w-4" />
-            <AlertTitle>{n.title}</AlertTitle>
-            {(n.message || n.url) && (
-              <AlertDescription>
-                {n.message}
-                {n.url && (
-                  <>
-                    {n.message ? " " : ""}
-                    {isExternal ? (
-                      <a
-                        href={n.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="underline font-medium"
-                      >
-                        Open
-                      </a>
-                    ) : (
-                      <a href={n.url} className="underline font-medium">
-                        Open
-                      </a>
-                    )}
-                  </>
-                )}
-              </AlertDescription>
-            )}
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              aria-label="Dismiss notice"
-              onClick={() => dismiss(n.id)}
-              className="absolute right-2 top-2 h-9 w-9 opacity-90 hover:opacity-100"
-            >
-              <X className="h-4 w-4 sm:h-5 sm:w-5 text-current" />
-            </Button>
-          </Alert>
-        );
-      })}
+    <div className="flex flex-col gap-2 px-3 pt-3 sm:px-6">
+      {visible.map((n) => (
+        <NoticeBanner
+          key={n.id}
+          tone="info"
+          icon={Bell}
+          title={n.title}
+          message={n.message}
+          action={n.url ? { label: "Open", href: n.url } : undefined}
+          onDismiss={() => void dismiss(n.id)}
+          dismissLabel="Dismiss notice"
+        />
+      ))}
     </div>
   );
 }

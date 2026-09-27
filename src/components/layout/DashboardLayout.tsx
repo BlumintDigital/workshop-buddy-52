@@ -1,5 +1,5 @@
 import { createContext, Suspense, useContext, useState, type ReactNode } from "react";
-import { Link, Outlet } from "react-router-dom";
+import { Link, Outlet, useLocation } from "react-router-dom";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "./AppSidebar";
 import { AppHeader } from "./AppHeader";
@@ -8,6 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { NavCountsProvider } from "@/hooks/useNavCounts";
 import { BroadcastBanner } from "@/components/BroadcastBanner";
 import { SystemNoticesBanner } from "@/components/SystemNoticesBanner";
+import { PageErrorBoundary } from "@/components/PageErrorBoundary";
 import { Button } from "@/components/ui/button";
 import { ShieldAlert } from "lucide-react";
 
@@ -59,6 +60,16 @@ function MfaReminder() {
   );
 }
 
+/** A crash on one page leaves the sidebar working; moving to another page clears it. */
+function PageBoundary({ children }: { children: ReactNode }) {
+  const { pathname } = useLocation();
+  return (
+    <PageErrorBoundary key={pathname} variant="page">
+      {children}
+    </PageErrorBoundary>
+  );
+}
+
 function ShellFrame({ children }: { children: ReactNode }) {
   return (
     <ShellContext.Provider value={true}>
@@ -79,7 +90,7 @@ function ShellFrame({ children }: { children: ReactNode }) {
               <MfaReminder />
               {/* SidebarInset is already the <main> landmark; this is its content region. */}
               <div id="main-content" tabIndex={-1} className="flex-1 min-w-0 max-w-full overflow-x-hidden p-3 outline-none sm:p-6">
-                {children}
+                <PageBoundary>{children}</PageBoundary>
               </div>
               <footer className="border-t px-3 pb-24 pt-3 text-center text-xs text-muted-foreground sm:px-6 md:pb-3">
                 Shoplane is powered by Blumint Workspace · © {new Date().getFullYear()} Blumint Digital Limited · Registered in England and Wales · Company No. 15709531

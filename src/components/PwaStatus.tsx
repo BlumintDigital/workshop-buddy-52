@@ -36,10 +36,10 @@ export function PwaStatus() {
   return (
     <div
       role="status"
-      className="fixed bottom-4 left-1/2 z-[100] flex -translate-x-1/2 items-center gap-2 rounded-full bg-foreground px-4 py-2 text-sm font-medium text-white shadow-lg"
+      className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] left-1/2 z-[100] flex -translate-x-1/2 items-center gap-2 whitespace-nowrap rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background shadow-lg animate-in fade-in slide-in-from-bottom-2 md:bottom-6"
     >
-      <WifiOff className="h-4 w-4" />
-      Offline — workshop data is unavailable
+      <WifiOff className="h-4 w-4" aria-hidden />
+      You're offline. Changes won't save until you reconnect.
     </div>
   );
 }
