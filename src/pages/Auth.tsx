@@ -10,7 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import {
   ShieldCheck, KeyRound, Briefcase, Building2, Eye, EyeOff, Loader2, ArrowLeft, MailCheck,
-  Lock, Users, History, AlertTriangle,
+  AlertTriangle,
 } from "lucide-react";
 import LoadingScreen from "@/components/LoadingScreen";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
@@ -591,7 +591,7 @@ export default function Auth() {
             <div className="rounded-xl bg-white/95 p-1.5 shadow-sm">{logo("h-9 w-9")}</div>
             <span className="text-base font-semibold tracking-tight">{workshopName}</span>
           </div>
-          <div className="max-w-md space-y-8">
+          <div className="max-w-md">
             <div className="space-y-3">
               <h2 className="text-3xl font-semibold leading-tight tracking-tight text-balance xl:text-4xl">
                 Every project, from reception to delivery.
@@ -600,11 +600,6 @@ export default function Auth() {
                 Quotes, the workshop floor, quality checks, invoicing and handover in one place, for your team and your clients.
               </p>
             </div>
-            <ul className="grid gap-3 text-sm text-white/85">
-              <li className="flex items-center gap-3"><Lock className="h-4 w-4 shrink-0 text-white/60" /> Two-factor sign-in for admins and managers</li>
-              <li className="flex items-center gap-3"><Users className="h-4 w-4 shrink-0 text-white/60" /> Access by role: admin, manager, staff and client</li>
-              <li className="flex items-center gap-3"><History className="h-4 w-4 shrink-0 text-white/60" /> Every change recorded in the activity log</li>
-            </ul>
           </div>
         </div>
       </aside>
