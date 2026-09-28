@@ -12,6 +12,11 @@ SET xmloption = content;
 SET client_min_messages = warning;
 SET row_security = off;
 
+-- Production's functions carry only the grants listed in this dump. A fresh
+-- local database would also hand every new function to anon and authenticated,
+-- so hold that back while the baseline loads (the end of this file restores it).
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" REVOKE ALL ON FUNCTIONS FROM "anon", "authenticated", PUBLIC;
+
 
 CREATE SCHEMA IF NOT EXISTS "public";
 

@@ -164,11 +164,14 @@ async function seedPeople(s) {
       console.log(`  skipped ${p.key.toLowerCase()}: no E2E_${p.key}_EMAIL / _PASSWORD in .env.e2e`);
       continue;
     }
+    // Announce the account and its role; the database only trusts roles announced by the service role.
+    const { error: provisionError } = await admin.rpc("provision_account", { _email: email, _role: p.role });
+    if (provisionError) throw new Error(`Could not prepare the ${p.role} test account: ${provisionError.message}`);
     const { error } = await admin.auth.admin.createUser({
       email,
       password,
       email_confirm: true,
-      user_metadata: { full_name: p.full_name, role: p.role, company_name: p.company_name },
+      user_metadata: { full_name: p.full_name, company_name: p.company_name },
     });
     if (error) throw new Error(`Could not create the ${p.role} test account: ${error.message}`);
     console.log(`  ${p.role}: ${p.full_name}`);

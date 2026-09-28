@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import webpush from "npm:web-push@3";
+import { safeEqual } from "../_shared/session.ts";
 
 function corsHeadersFor(req: Request) {
   const requestOrigin = req.headers.get("Origin") ?? "*";
@@ -181,10 +182,16 @@ Deno.serve(async (req) => {
       return err("Rate limit exceeded. Try again later.", 429);
     }
 
+    // Only the operator's own machines, when ADMIN_API_ALLOWED_IPS is set (comma-separated).
+    const allowedIps = (Deno.env.get("ADMIN_API_ALLOWED_IPS") ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+    if (allowedIps.length && !allowedIps.includes(clientIp)) {
+      return err("Unauthorized", 401);
+    }
+
     const authHeader = req.headers.get("Authorization");
     const secret = Deno.env.get("GLOBAL_ADMIN_SECRET");
-    if (!secret) return err("Server misconfigured: missing admin secret", 500);
-    if (!authHeader || authHeader !== `Bearer ${secret}`) {
+    if (!secret || secret.length < 32) return err("Server misconfigured: GLOBAL_ADMIN_SECRET must be at least 32 characters", 500);
+    if (!authHeader || !safeEqual(authHeader, `Bearer ${secret}`)) {
       return err("Unauthorized", 401);
     }
 
@@ -219,6 +226,12 @@ Deno.serve(async (req) => {
 
       if (existing) {
         userId = existing.id;
+        // Only an existing super admin can be refreshed here. Anyone else's
+        // account (a client, a technician) is never promoted or given a new password.
+        const { data: prof } = await supabase.from("profiles").select("is_super_admin").eq("id", userId).maybeSingle();
+        if (!prof?.is_super_admin) {
+          throw new Error("That email belongs to an existing account that isn't a super admin. Use a different email.");
+        }
         if (validPassword) {
           const { error: updateErr } = await supabase.auth.admin.updateUserById(userId, { password });
           if (updateErr) throw updateErr;
@@ -230,6 +243,7 @@ Deno.serve(async (req) => {
           user_metadata: { full_name: displayName },
         };
         if (validPassword) createOpts.password = password;
+        await supabase.rpc("provision_account", { _email: normalizedEmail, _role: "admin" });
         const { data: newUser, error: createErr } = await supabase.auth.admin.createUser(createOpts);
         if (createErr) throw createErr;
         if (!newUser.user?.id) throw new Error("User creation returned no user id");
@@ -257,6 +271,7 @@ Deno.serve(async (req) => {
       if (roleFetchErr) throw roleFetchErr;
 
       if (!existingRole) {
+        await supabase.from("user_roles").delete().eq("user_id", userId);
         const { error: roleErr } = await supabase
           .from("user_roles")
           .insert({ user_id: userId, role: "admin" });
@@ -634,6 +649,8 @@ Deno.serve(async (req) => {
         if (!full_name || typeof full_name !== "string" || full_name.trim().length === 0)
           return err("Full name is required");
 
+        const newRole = ["admin", "manager", "staff", "client"].includes(role) ? role : "client";
+        await supabase.rpc("provision_account", { _email: email, _role: newRole });
         const { data: newUser, error: createError } = await supabase.auth.admin.createUser({
           email,
           email_confirm: true,
@@ -653,9 +670,6 @@ Deno.serve(async (req) => {
             await supabase.from("profiles").update(profileUpdate).eq("id", newUser.user.id);
           }
 
-          if (role && ["admin", "manager", "staff", "client"].includes(role)) {
-            await supabase.from("user_roles").update({ role }).eq("user_id", newUser.user.id);
-          }
         }
 
         await supabase.from("activity_logs").insert({
@@ -686,24 +700,14 @@ Deno.serve(async (req) => {
         const { data: adminRoles } = await supabase
           .from("user_roles").select("user_id").eq("role", "admin").limit(1);
         if (!adminRoles?.length) return err("No admin user found in this instance", 500);
-        const adminId = adminRoles[0].user_id;
-        const { data: adminUser } = await supabase.auth.admin.getUserById(adminId);
-        if (!adminUser?.user?.email) return err("Admin user has no email", 500);
-        const { data: linkData, error: linkErr } = await supabase.auth.admin.generateLink({
-          type: "magiclink", email: adminUser.user.email,
-        });
-        if (linkErr || !linkData) return err("Failed to generate admin token: " + (linkErr?.message || "unknown"), 500);
-        const { data: sessionData, error: sessionErr } = await supabase.auth.verifyOtp({
-          token_hash: linkData.properties?.hashed_token!, type: "magiclink",
-        });
-        if (sessionErr || !sessionData?.session) return err("Failed to create admin session: " + (sessionErr?.message || "unknown"), 500);
-        const seedUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/seed-data`;
-        const resp = await fetch(seedUrl, {
+        // The function trusts the service key and records the named admin as the actor.
+        const resp = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/seed-data`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${sessionData.session.access_token}`,
+            Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
             apikey: Deno.env.get("SUPABASE_ANON_KEY")!,
+            "x-acting-user": adminRoles[0].user_id,
           },
         });
         const result = await resp.json();
@@ -716,24 +720,14 @@ Deno.serve(async (req) => {
         const { data: adminRoles2 } = await supabase
           .from("user_roles").select("user_id").eq("role", "admin").limit(1);
         if (!adminRoles2?.length) return err("No admin user found in this instance", 500);
-        const adminId2 = adminRoles2[0].user_id;
-        const { data: adminUser2 } = await supabase.auth.admin.getUserById(adminId2);
-        if (!adminUser2?.user?.email) return err("Admin user has no email", 500);
-        const { data: linkData2, error: linkErr2 } = await supabase.auth.admin.generateLink({
-          type: "magiclink", email: adminUser2.user.email,
-        });
-        if (linkErr2 || !linkData2) return err("Failed to generate admin token", 500);
-        const { data: sessionData2, error: sessionErr2 } = await supabase.auth.verifyOtp({
-          token_hash: linkData2.properties?.hashed_token!, type: "magiclink",
-        });
-        if (sessionErr2 || !sessionData2?.session) return err("Failed to create admin session", 500);
-        const deleteUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/delete-data`;
-        const resp = await fetch(deleteUrl, {
+        // The function trusts the service key and records the named admin as the actor.
+        const resp = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/delete-data`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${sessionData2.session.access_token}`,
+            Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
             apikey: Deno.env.get("SUPABASE_ANON_KEY")!,
+            "x-acting-user": adminRoles2[0].user_id,
           },
         });
         const result = await resp.json();
@@ -906,12 +900,16 @@ Deno.serve(async (req) => {
         if (!email || typeof email !== "string" || !email.includes("@"))
           return err("Valid email is required");
 
-        let adminUser;
-        try {
-          adminUser = await ensureAdminUser(email);
-        } catch (e: any) {
-          return err(e?.message ?? "Failed to ensure admin user", 500);
-        }
+        // Only for an existing super admin; it never creates or promotes anyone.
+        const normalized = email.trim().toLowerCase();
+        const { data: allUsers, error: listErr } = await supabase.auth.admin.listUsers();
+        if (listErr) return err(listErr.message, 500);
+        const found = allUsers?.users?.find((u) => u.email?.toLowerCase() === normalized);
+        const { data: prof } = found
+          ? await supabase.from("profiles").select("is_super_admin").eq("id", found.id).maybeSingle()
+          : { data: null };
+        if (!found || !prof?.is_super_admin) return err("No super admin with that email", 404);
+        const adminUser = { email: normalized, userId: found.id, created: false };
 
         const { data: linkData, error: linkErr } = await supabase.auth.admin.generateLink({
           type: "magiclink",

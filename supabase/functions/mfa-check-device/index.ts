@@ -28,9 +28,21 @@ serve(async (req) => {
     // The browser keeps its token and sends it as a header. (It used to be a
     // cross-site cookie, which browsers block, so no browser holds a working one.)
     const deviceToken = req.headers.get("X-Device-Token");
-    if (!deviceToken || !sessionId) return json({ trusted: false });
+    if (!sessionId) return json({ trusted: false });
 
     const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+
+    // Already vouched for (a trusted browser earlier, or a backup code), e.g. after a reload.
+    const { data: existing } = await admin
+      .from("mfa_trusted_sessions")
+      .select("expires_at")
+      .eq("session_id", sessionId)
+      .eq("user_id", userId)
+      .gt("expires_at", new Date().toISOString())
+      .maybeSingle();
+    if (existing) return json({ trusted: true, expires_at: existing.expires_at });
+
+    if (!deviceToken) return json({ trusted: false });
     const { data: device, error: qErr } = await admin
       .from("mfa_trusted_devices")
       .select("id, expires_at")

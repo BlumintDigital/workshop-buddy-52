@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { buildCorsHeaders } from "../_shared/mfa-cors.ts";
+import { MFA_REQUIRED, sessionVerified } from "../_shared/session.ts";
 
 
 // These intentionally match the credentials used by src/pages/Demo.tsx.
@@ -15,6 +16,15 @@ serve(async (req) => {
   const cors = buildCorsHeaders(req);
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: cors });
+  }
+
+  // Demo accounts have published passwords, including an admin. They must never
+  // exist on a real workshop's database, so this only runs where DEMO_MODE=true.
+  if (Deno.env.get("DEMO_MODE") !== "true") {
+    return new Response(JSON.stringify({ error: "Demo accounts are switched off on this deployment." }), {
+      status: 403,
+      headers: { ...cors, "Content-Type": "application/json" },
+    });
   }
 
   try {
@@ -51,6 +61,12 @@ serve(async (req) => {
         headers: { ...cors, "Content-Type": "application/json" },
       });
     }
+    if (!(await sessionVerified(authHeader))) {
+      return new Response(JSON.stringify({ error: MFA_REQUIRED }), {
+        status: 403,
+        headers: { ...cors, "Content-Type": "application/json" },
+      });
+    }
 
     const adminClient = createClient(
       Deno.env.get("SUPABASE_URL")!,
@@ -78,6 +94,7 @@ serve(async (req) => {
           continue;
         }
       } else {
+        await adminClient.rpc("provision_account", { _email: demo.email, _role: demo.role });
         const { data: newUser, error: createError } = await adminClient.auth.admin.createUser({
           email: demo.email,
           password: demo.password,

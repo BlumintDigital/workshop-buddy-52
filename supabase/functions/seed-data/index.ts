@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { buildCorsHeaders } from "../_shared/mfa-cors.ts";
+import { isServiceCall, MFA_REQUIRED, sessionVerified } from "../_shared/session.ts";
 
 
 serve(async (req) => {
@@ -10,7 +11,6 @@ serve(async (req) => {
   }
 
   try {
-    // Verify caller is admin
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
@@ -19,29 +19,44 @@ serve(async (req) => {
       });
     }
 
-    const anonClient = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_ANON_KEY")!,
-      { global: { headers: { Authorization: authHeader } } }
-    );
-
-    const token = authHeader.replace("Bearer ", "");
-    const { data: claimsData, error: claimsError } = await anonClient.auth.getClaims(token);
-    if (claimsError || !claimsData?.claims) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...cors, "Content-Type": "application/json" },
-      });
-    }
-
-    const callerId = claimsData.claims.sub as string;
-
     const adminClient = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Check caller is admin
+    // admin-api (the operator's command centre) calls with the service key and
+    // names the admin it acts for; everyone else is a signed-in admin.
+    let callerId: string;
+    if (isServiceCall(authHeader)) {
+      callerId = req.headers.get("x-acting-user") ?? "";
+      if (!/^[0-9a-f-]{36}$/i.test(callerId)) {
+        return new Response(JSON.stringify({ error: "x-acting-user must name an admin" }), {
+          status: 400,
+          headers: { ...cors, "Content-Type": "application/json" },
+        });
+      }
+    } else {
+      const anonClient = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_ANON_KEY")!,
+        { global: { headers: { Authorization: authHeader } } }
+      );
+      const { data: claimsData, error: claimsError } = await anonClient.auth.getClaims(authHeader.replace("Bearer ", ""));
+      if (claimsError || !claimsData?.claims) {
+        return new Response(JSON.stringify({ error: "Unauthorized" }), {
+          status: 401,
+          headers: { ...cors, "Content-Type": "application/json" },
+        });
+      }
+      callerId = claimsData.claims.sub as string;
+      if (!(await sessionVerified(authHeader))) {
+        return new Response(JSON.stringify({ error: MFA_REQUIRED }), {
+          status: 403,
+          headers: { ...cors, "Content-Type": "application/json" },
+        });
+      }
+    }
+
     const { data: roleData } = await adminClient
       .from("user_roles")
       .select("role")

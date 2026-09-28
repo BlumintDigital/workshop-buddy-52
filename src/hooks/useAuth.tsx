@@ -38,7 +38,7 @@ interface AuthContextType {
   mfaEnabled: boolean;
   sessionTimeLeft: number;
   signIn: (email: string, password: string) => Promise<{ role: AppRole | null; needsMfa: boolean; factorId?: string }>;
-  signUp: (email: string, password: string, fullName: string, role?: AppRole, companyName?: string) => Promise<void>;
+  signUp: (email: string, password: string, fullName: string, inviteCode: string, role?: AppRole, companyName?: string) => Promise<void>;
   signOut: () => Promise<void>;
   clearMfaFlag: () => void;
   extendSession: () => void;
@@ -309,13 +309,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const signUp = async (email: string, password: string, fullName: string, role: AppRole = "client", companyName?: string) => {
+  const signUp = async (email: string, password: string, fullName: string, inviteCode: string, role: AppRole = "client", companyName?: string) => {
     const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         data: {
           full_name: fullName,
+          // The database redeems the code and takes the role from it; this is
+          // only the person's pick when the code allows either client or staff.
+          signup_code: inviteCode,
           role,
           company_name: companyName ?? null,
           // For client accounts the person signing up is the company contact.
@@ -324,7 +327,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         emailRedirectTo: window.location.origin,
       },
     });
-    if (error) throw error;
+    if (error) {
+      // The database refuses a sign-up whose invite code isn't valid any more.
+      if (/database error saving new user/i.test(error.message)) {
+        throw new Error("That invite code can't be used. It may have expired or been used up; ask your workshop for a new one.");
+      }
+      throw error;
+    }
   };
 
   const signOut = async () => {

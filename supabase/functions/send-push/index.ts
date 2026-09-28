@@ -2,6 +2,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import webpush from "npm:web-push@3";
 import { checkRateLimit } from "../_shared/rate-limit.ts";
 import { captureEdgeError } from "../_shared/sentry.ts";
+import { MFA_REQUIRED, sessionVerified } from "../_shared/session.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -54,6 +55,7 @@ Deno.serve(async (req) => {
       .limit(1)
       .maybeSingle();
     if (!roleRow) return err("Forbidden — admin or manager role required", 403);
+    if (!(await sessionVerified(authHeader))) return err(MFA_REQUIRED, 403);
 
     // Per-user rate limit: 30 pushes per hour, 15-min lockout on overflow.
     const rl = await checkRateLimit(callerId, "send_push", {

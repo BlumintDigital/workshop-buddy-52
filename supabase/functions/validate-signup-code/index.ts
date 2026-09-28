@@ -1,6 +1,8 @@
+// Tells the sign-up form whether an invite code is good, without using it up.
+// The code is redeemed by the database when the account is actually created
+// (public.handle_new_user), so this is only early feedback.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { captureEdgeError } from "../_shared/sentry.ts";
-
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -16,30 +18,42 @@ function json(data: unknown, status = 200) {
   });
 }
 
+// Anyone can call this before they have an account, so cap guesses per address
+// (per warm instance; the database-side redemption is the real gate).
+const MAX_PER_10_MIN = 10;
+const hits = new Map<string, number[]>();
+function tooMany(ip: string): boolean {
+  const now = Date.now();
+  const recent = (hits.get(ip) ?? []).filter((t) => now - t < 10 * 60_000);
+  recent.push(now);
+  hits.set(ip, recent);
+  return recent.length > MAX_PER_10_MIN;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "POST required" }, 405);
 
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  if (tooMany(ip)) return json({ valid: false, error: "Too many attempts. Wait a few minutes and try again." }, 429);
+
   try {
     const body = await req.json().catch(() => null);
     const code = (body?.code ?? "").toString().trim();
-    if (!code) return json({ valid: false, error: "Invite code required" }, 400);
+    if (!code || code.length > 64) return json({ valid: false, error: "Invite code required" }, 400);
 
     const admin = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
+    const { data, error } = await admin.rpc("peek_signup_code", { _code: code });
+    if (error) throw error;
 
-    // redeem_signup_code now returns a table row: { valid, role }
-    const { data, error } = await admin.rpc("redeem_signup_code", { _code: code });
-    if (error) return json({ valid: false, error: error.message }, 500);
-
-    // data is an array of rows (RETURNS TABLE); grab the first row.
     const row = Array.isArray(data) ? data[0] : data;
     if (!row?.valid) return json({ valid: false });
     return json({ valid: true, role: row.role });
   } catch (e) {
     await captureEdgeError(e, "validate-signup-code");
-    return json({ valid: false, error: (e as Error).message }, 500);
+    return json({ valid: false, error: "Couldn't check the code. Try again." }, 500);
   }
 });

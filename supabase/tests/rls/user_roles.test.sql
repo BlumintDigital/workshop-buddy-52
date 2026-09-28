@@ -6,6 +6,8 @@ begin;
 select plan(4);
 
 -- Real people to test with (signup trigger creates their profile and role).
+-- Server code announces each account and its role before creating it.
+select public.provision_account('rls-manager@example.test', 'manager'), public.provision_account('rls-staff@example.test', 'staff');
 insert into auth.users (id, instance_id, aud, role, email, encrypted_password, email_confirmed_at, raw_user_meta_data, raw_app_meta_data, created_at, updated_at)
 values
   ('00000000-0000-0000-0000-0000000000b1', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'rls-manager@example.test', 'x', now(), '{"role":"manager","full_name":"RLS Manager"}', '{}', now(), now()),

@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { buildCorsHeaders } from "../_shared/mfa-cors.ts";
+import { MFA_REQUIRED, sessionVerified } from "../_shared/session.ts";
 
 const COOLDOWN_SECONDS = 60;
 
@@ -43,6 +44,7 @@ serve(async (req) => {
     if (!callerRole || !["admin", "manager"].includes(callerRole.role)) {
       return json({ error: "Forbidden: admin or manager role required" }, 403);
     }
+    if (!(await sessionVerified(authHeader))) return json({ error: MFA_REQUIRED }, 403);
 
     const body = await req.json().catch(() => ({}));
     const userId = String(body.user_id ?? "").trim();

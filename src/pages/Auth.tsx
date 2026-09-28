@@ -389,7 +389,7 @@ export default function Auth() {
         return;
       }
       const fullName = `${signupFirstName.trim()} ${signupLastName.trim()}`;
-      await signUp(signupEmail.trim(), signupPassword, fullName, signupRole, signupCompanyName.trim() || undefined);
+      await signUp(signupEmail.trim(), signupPassword, fullName, signupInviteCode.trim(), signupRole, signupCompanyName.trim() || undefined);
       setConfirmationEmail(signupEmail.trim());
       setEmailConfirmationSent(true);
     } catch (err: unknown) {

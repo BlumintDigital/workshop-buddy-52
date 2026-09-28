@@ -1,9 +1,12 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { buildCorsHeaders } from "../_shared/mfa-cors.ts";
+import { MFA_REQUIRED, sessionVerified } from "../_shared/session.ts";
 
 serve(async (req) => {
   const cors = buildCorsHeaders(req);
+  const json = (body: unknown, status = 200) =>
+    new Response(JSON.stringify(body), { status, headers: { ...cors, "Content-Type": "application/json" } });
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
 
   try {
@@ -34,6 +37,7 @@ serve(async (req) => {
     if (roleRow?.role !== "admin") {
       return json({ error: "Forbidden: admin role required" }, 403);
     }
+    if (!(await sessionVerified(authHeader))) return json({ error: MFA_REQUIRED }, 403);
 
     // Parse and validate request body
     if (req.method !== "POST") return json({ error: "POST required" }, 405);
@@ -87,10 +91,3 @@ serve(async (req) => {
     return json({ error: "Internal server error" }, 500);
   }
 });
-
-function json(body: unknown, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...cors, "Content-Type": "application/json" },
-  });
-}

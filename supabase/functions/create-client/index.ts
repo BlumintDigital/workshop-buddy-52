@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { buildCorsHeaders } from "../_shared/mfa-cors.ts";
+import { MFA_REQUIRED, sessionVerified } from "../_shared/session.ts";
 
 
 serve(async (req) => {
@@ -52,6 +53,12 @@ serve(async (req) => {
         headers: { ...cors, "Content-Type": "application/json" },
       });
     }
+    if (!(await sessionVerified(authHeader))) {
+      return new Response(JSON.stringify({ error: MFA_REQUIRED }), {
+        status: 403,
+        headers: { ...cors, "Content-Type": "application/json" },
+      });
+    }
 
     const body = await req.json();
     const { email, full_name, phone, company_name, contact_person, address } = body;
@@ -69,6 +76,7 @@ serve(async (req) => {
       });
     }
 
+    await adminClient.rpc("provision_account", { _email: email, _role: "client" });
     const { data: newUser, error: createError } = await adminClient.auth.admin.createUser({
       email,
       email_confirm: true,

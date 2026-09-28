@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { buildCorsHeaders, sha256Hex } from "../_shared/mfa-cors.ts";
+import { MFA_REQUIRED, sessionVerified } from "../_shared/session.ts";
 import { checkRateLimit } from "../_shared/rate-limit.ts";
 import { captureEdgeError } from "../_shared/sentry.ts";
 
@@ -58,6 +59,12 @@ serve(async (req) => {
 
     if (!roleData || roleData.role !== "admin") {
       return new Response(JSON.stringify({ error: "Forbidden: admin role required" }), {
+        status: 403,
+        headers: { ...cors, "Content-Type": "application/json" },
+      });
+    }
+    if (!(await sessionVerified(authHeader))) {
+      return new Response(JSON.stringify({ error: MFA_REQUIRED }), {
         status: 403,
         headers: { ...cors, "Content-Type": "application/json" },
       });

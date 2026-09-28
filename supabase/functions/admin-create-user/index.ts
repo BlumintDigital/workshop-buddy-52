@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { buildCorsHeaders } from "../_shared/mfa-cors.ts";
 import { captureEdgeError } from "../_shared/sentry.ts";
+import { MFA_REQUIRED, sessionVerified } from "../_shared/session.ts";
 
 const VALID_ROLES = ["admin", "manager", "staff", "client"] as const;
 type Role = (typeof VALID_ROLES)[number];
@@ -66,6 +67,7 @@ serve(async (req) => {
     if (!callerRole || callerRole.role !== "admin") {
       return json({ error: "Forbidden: admin role required" }, 403);
     }
+    if (!(await sessionVerified(authHeader))) return json({ error: MFA_REQUIRED }, 403);
 
     const body = await req.json().catch(() => ({}));
     const email = String(body.email ?? "").trim().toLowerCase();
@@ -92,6 +94,9 @@ serve(async (req) => {
     const isPreview = /lovableproject\.com|lovable\.app|localhost/i.test(origin);
     const base = publicSite || (origin && !isPreview ? origin : "") || origin;
     const redirectTo = base ? `${base}/reset-password` : undefined;
+    // The database only gives a new account a role that server code announced.
+    const { error: provisionError } = await adminClient.rpc("provision_account", { _email: email, _role: role });
+    if (provisionError) return json({ error: provisionError.message }, 500);
     const { data: newUser, error: createError } =
       await adminClient.auth.admin.inviteUserByEmail(email, {
         data: { full_name, role },

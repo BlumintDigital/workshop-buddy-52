@@ -17,6 +17,8 @@ function generateCode(): string {
 
 serve(async (req) => {
   const cors = buildCorsHeaders(req);
+  const json = (body: unknown, status = 200) =>
+    new Response(JSON.stringify(body), { status, headers: { ...cors, "Content-Type": "application/json" } });
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
 
   try {
@@ -33,6 +35,11 @@ serve(async (req) => {
     if (claimsErr || !claims?.claims) return json({ error: "Unauthorized" }, 401);
 
     const userId = claims.claims.sub as string;
+    // New codes replace the old ones, so only a session that has just entered a
+    // 2FA code may ask for them.
+    if ((claims.claims as Record<string, unknown>).aal !== "aal2") {
+      return json({ error: "Enter your 2FA code before creating backup codes." }, 403);
+    }
 
     const rl = await checkRateLimit(userId, "backup_generate", LIMIT);
     if (!rl.allowed) {
@@ -69,10 +76,3 @@ serve(async (req) => {
     return json({ error: (err as Error).message }, 500);
   }
 });
-
-function json(body: unknown, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...cors, "Content-Type": "application/json" },
-  });
-}

@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { buildCorsHeaders } from "../_shared/mfa-cors.ts";
+import { MFA_REQUIRED, sessionVerified } from "../_shared/session.ts";
 
 const VALID_ROLES = ["admin", "manager", "staff", "client"] as const;
 type Role = (typeof VALID_ROLES)[number];
@@ -45,6 +46,7 @@ serve(async (req) => {
     const { data: claimsData, error: claimsError } = await anonClient.auth.getClaims(token);
     if (claimsError || !claimsData?.claims?.sub) return json({ error: "Unauthorized" }, 401);
     const callerId = claimsData.claims.sub as string;
+    if (!(await sessionVerified(authHeader))) return json({ error: MFA_REQUIRED }, 403);
 
     const body = await req.json().catch(() => ({}));
     const userId = String(body.user_id ?? "").trim();

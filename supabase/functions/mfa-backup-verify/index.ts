@@ -4,9 +4,13 @@ import { buildCorsHeaders, sha256Hex } from "../_shared/mfa-cors.ts";
 import { checkRateLimit, recordFailure, resetRateLimit } from "../_shared/rate-limit.ts";
 
 const LIMIT = { limit: 5, windowSec: 15 * 60, lockoutSec: 15 * 60 };
+// How long a backup code vouches for the session it was entered in.
+const SESSION_HOURS = 12;
 
 serve(async (req) => {
   const cors = buildCorsHeaders(req);
+  const json = (body: unknown, status = 200) =>
+    new Response(JSON.stringify(body), { status, headers: { ...cors, "Content-Type": "application/json" } });
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
 
   try {
@@ -23,6 +27,8 @@ serve(async (req) => {
     if (claimsErr || !claims?.claims) return json({ error: "Unauthorized" }, 401);
 
     const userId = claims.claims.sub as string;
+    const sessionId = (claims.claims as Record<string, unknown>).session_id as string | undefined;
+    if (!sessionId) return json({ error: "Unauthorized" }, 401);
 
     // Pre-check lockout without consuming a slot
     const pre = await checkRateLimit(userId, "backup_verify", LIMIT, false);
@@ -92,10 +98,24 @@ serve(async (req) => {
       );
     }
 
-    await admin
+    // Claim the code only if nobody else just did, so it works exactly once.
+    const { data: claimed } = await admin
       .from("mfa_backup_codes")
       .update({ used_at: new Date().toISOString() })
-      .eq("id", data.id);
+      .eq("id", data.id)
+      .is("used_at", null)
+      .select("id");
+    if (!claimed?.length) return json({ error: "This backup code has already been used" }, 400);
+
+    // The database treats this session as having passed 2FA (public.mfa_satisfied).
+    const { error: sErr } = await admin.from("mfa_trusted_sessions").upsert({
+      session_id: sessionId,
+      user_id: userId,
+      device_id: null,
+      via: "backup_code",
+      expires_at: new Date(Date.now() + SESSION_HOURS * 60 * 60 * 1000).toISOString(),
+    });
+    if (sErr) throw sErr;
 
     await resetRateLimit(userId, "backup_verify");
 
@@ -104,10 +124,3 @@ serve(async (req) => {
     return json({ error: (err as Error).message }, 500);
   }
 });
-
-function json(body: unknown, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...cors, "Content-Type": "application/json" },
-  });
-}

@@ -135,3 +135,14 @@ test.describe("trusted browser", () => {
     expect((await res.json()).length, "admin sees the team's roles").toBeGreaterThan(1);
   });
 });
+
+test.describe("sign-up can't choose its role", () => {
+  test("a direct sign-up asking for admin, without an invite code, is refused", async ({ request }) => {
+    const email = `intruder-${Date.now()}@example.test`;
+    const res = await request.post(`${process.env.VITE_SUPABASE_URL}/auth/v1/signup`, {
+      headers: { apikey: process.env.VITE_SUPABASE_PUBLISHABLE_KEY!, "Content-Type": "application/json" },
+      data: { email, password: "Intruder-Pass-2026!", data: { role: "admin", full_name: "Intruder" } },
+    });
+    expect(res.ok(), "the sign-up should be refused").toBe(false);
+  });
+});

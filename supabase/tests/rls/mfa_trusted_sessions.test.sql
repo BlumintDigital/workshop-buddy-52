@@ -5,6 +5,8 @@
 begin;
 select plan(7);
 
+-- Server code announces each account and its role before creating it.
+select public.provision_account('trust-a@example.test', 'client'), public.provision_account('trust-b@example.test', 'client');
 insert into auth.users (id, email, aud, role)
 values ('00000000-0000-0000-0000-0000000000e1', 'trust-a@example.test', 'authenticated', 'authenticated'),
        ('00000000-0000-0000-0000-0000000000e2', 'trust-b@example.test', 'authenticated', 'authenticated');
