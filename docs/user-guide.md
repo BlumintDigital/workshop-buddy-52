@@ -88,7 +88,7 @@ The admin **Today** page summarises projects by stage, requests waiting at recep
 **Teams and access** is where you organise people and decide what they can do.
 
 - **Teams** — create departments such as Machining, Electrical, Quality, Inventory, Shipping or a Management team. Add people to each team and pick a team lead. Tasks are assigned to a team first, then to a person in it, so a colleague can pick up work when someone is away.
-- **Team permissions** — tick what a team's members may do: Reception, Planning, Quality check, Inventory, Approve purchases, Shipping, Reports and costs, Billing. Everyone in the team gets them.
+- **Team permissions** — tick what a team's members may do: Reception, Planning, Quality check, Inventory, Approve purchases, Shipping, Reports and costs, Billing. Everyone in the team gets them. Billing lets staff create, send and confirm invoices, the same as a manager.
 - **Individual permissions** — give or take away a permission for one person, on top of their teams.
 - **Labour rates** — set each person's hourly cost. It is used for project profit and loss and on the Goals page. People without a rate show no labour cost.
 
@@ -147,6 +147,10 @@ Open projects by stage, today's appointments, quotes waiting for the client, pro
 
 **Projects** lists every project with its permanent ID, for example EDL-202609-001. Filter by stage, search by ID, title or client, and open a row to see the project page. It is the one place for everything about a project: stage, intake details and photos, quotes and change requests, team tasks, parts, time, files, the conversation with the client, internal notes, shipping and activity.
 
+- Every project starts at **Reception**. **New → Project** on Today, a day on the calendar, and **Log as a project** on an appointment all open the same intake form, filled in with what's already known. A project made from an appointment stays linked to it.
+- The **Project lead** is the person the client deals with. Give out the work itself as tasks.
+- The **Status** menu can only move a project back a stage or cancel it, with a reason that's saved as a team note. Move forward with the buttons in the stage panel, so nothing skips its quote, quality check or handover.
+
 ### 5.3 Quotes and change requests
 
 - From a project in **Evaluation**, build a quote with line items and an optional discount (percent or fixed, before tax), then send it. Evaluation is free.
@@ -157,6 +161,8 @@ Open projects by stage, today's appointments, quotes waiting for the client, pro
 
 - On an approved project, add **tasks** for each team (for example Machining, then Electrical). A task goes to the team first; the team lead or a member then takes it or gives it to a person.
 - When a task is done, the person **hands it off** to the next team with a note. Handoffs show in the project activity and on the Goals page.
+- Notes written on a task also appear in the project's **Team notes**, marked with the task.
+- Give tasks **estimated hours** where you can: Goals uses them to share the quote's value between the tasks.
 - When all the work is done the project moves to **Quality check**. Someone with the Quality check permission — usually the Management team — passes it, and it becomes **Ready to ship** and shipping is told. Or they send it back with a reason.
 
 ### 5.5 Inventory
@@ -176,13 +182,20 @@ Open projects by stage, today's appointments, quotes waiting for the client, pro
 2. The client chooses **collection** (and who's collecting) or **delivery** (and the address) in their portal.
 3. Shipping records the handover — who collected it and the vehicle registration, or the carrier, tracking number and cost for a delivery. The project becomes **Shipped**.
 
+Each card shows whether the project is paid, invoiced but unpaid, not invoiced yet, or a walk-in to bill directly. Handing over something that isn't paid for asks for a reason, which is kept as a team note and in the project activity. The client's collection or delivery date also appears in the calendar, and follows any change they make.
+
 ### 5.7 Invoices
 
-**Invoices** lists all invoices. Create one from an accepted quote, apply any discount, send it and record payments. If you use an accounting package, issue the final invoice there; a QuickBooks connection is planned.
+**Invoices** lists all invoices.
+
+- When a project passes its quality check, a **draft invoice** is made from the accepted quote and approved changes, and everyone who handles billing is told. Check it and send it.
+- **Create invoice** on a project also starts from the accepted quote, warns if the lines differ from the agreed price, and warns if the project already has an invoice.
+- **Today** shows drafts waiting to be sent and finished projects with no invoice.
+- Apply any discount, send it and record payments. If you use an accounting package, issue the final invoice there; a QuickBooks connection is planned.
 
 ### 5.8 Staff and Goals
 
-**Staff** shows each person's workload and activity. **Goals** shows the work delivered this month against the monthly goal, plus each person's hours and handoffs. People with Reports and costs also see labour cost. **Show on a screen** turns it into a wall display that refreshes itself.
+**Staff** shows each person, their teams and who leads them. **Goals** shows the work delivered this month against the monthly goal, plus each person's hours, handoffs and **work value** (each finished task's share of its project's agreed quote). People with Reports and costs also see labour cost and a link to the full team report. **Show on a screen** turns it into a wall display that refreshes itself.
 
 ---
 
@@ -206,7 +219,7 @@ Your open tasks, tasks waiting for your team, today's schedule and anything hand
 
 ### 6.3 Team portals {roles: admin,manager,staff}
 
-Depending on your teams you may also see **Reception** (log incoming machines and client requests), **Inventory** (issue parts and handle purchases), **Shipping** (tell clients and record handovers) or **Reports**. If a link is missing, ask an admin to add you to the right team in **Teams and access**.
+Depending on your teams you may also see **Reception** (log incoming machines and client requests), **Inventory** (issue parts and handle purchases), **Shipping** (tell clients and record handovers), **Invoices** (with the Billing permission) or **Reports**. If a link is missing, ask an admin to add you to the right team in **Teams and access**.
 
 ### 6.4 Schedule
 
@@ -224,7 +237,7 @@ Your open projects, quotes waiting for your decision, appointments and outstandi
 
 ### 7.2 My projects
 
-**Projects** lists every project the workshop is doing for you. Open one to see:
+**Projects** is everything you have with the workshop in one list: quotes waiting for your decision at the top, then requests the workshop hasn't received yet, then your projects. Open a project to see:
 
 - Where it is: Received, Evaluation, Quote, In progress, Quality check, Ready, Shipped.
 - The photos taken when your machine arrived.
@@ -234,11 +247,11 @@ Your open projects, quotes waiting for your decision, appointments and outstandi
 
 ### 7.3 Requests
 
-Send a new request — a repair, an evaluation or a question — from **Requests**. It goes to the workshop's reception, who turn it into a project and keep you updated.
+Press **New request** on Projects (or your dashboard) to ask for a repair, an evaluation or a quote. It shows at the top of Projects until the workshop's reception receives it; then it becomes a project in the same list.
 
 ### 7.4 Appointments and invoices
 
-**Appointments** shows confirmed appointments and lets you book a slot. **Invoices** lists your invoices to view, pay online or download as PDF.
+**Appointments** shows confirmed appointments and lets you book a consultation, repair or inspection. Collections and deliveries appear there by themselves once you've chosen one on your project. **Invoices** lists your invoices to view, pay online or download as PDF.
 
 ---
 
@@ -278,11 +291,13 @@ A team requests parts → inventory issues them, or raises a purchase order if t
 
 - **Manual scheduling** — drag a project onto a calendar slot.
 - **Fixed appointments** — create directly from the calendar, e.g. a consultation.
+- **New project on a day** — opens Reception's intake with that due date.
+- **Collections and deliveries** — created from the client's choice in Shipping, never booked by hand.
 - **Client self-booking** — clients pick from slots you've made available.
 
 ### 8.5 Invoice lifecycle {roles: admin,manager}
 
-Draft → Sent → Viewed → Paid (or Overdue). Each transition is logged.
+Draft (made at quality-check pass, or by hand) → Sent → Viewed → Paid (or Overdue). Each transition is logged. Shipping can see the status, so nothing leaves unpaid without a recorded reason.
 
 ### 8.6 Your invoices {roles: client}
 
@@ -382,4 +397,4 @@ Contact your admin. They can reset MFA on your account from **Admin → Users**.
 
 ---
 
-*Workshop Buddy — last updated September 2026.*
+*Workshop Buddy — last updated 28 September 2026.*
