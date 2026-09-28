@@ -274,7 +274,7 @@ export function TodayDashboard({ role }: TodayDashboardProps) {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
                 <DropdownMenuItem asChild className="min-h-[44px]">
-                  <Link to={`/${role}/projects`}><Wrench className="mr-2 h-4 w-4" />Project</Link>
+                  <Link to="/reception"><Wrench className="mr-2 h-4 w-4" />Project</Link>
                 </DropdownMenuItem>
                 {appointmentsEnabled && (
                   <DropdownMenuItem asChild className="min-h-[44px]">

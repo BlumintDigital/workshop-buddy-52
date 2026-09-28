@@ -71,16 +71,16 @@ serve(async (req) => {
 
     // 1. Inventory items
     const inventoryItems = [
-      { name: "Brake Pads (Front)", sku: "BP-001", category: "Brakes", quantity: 24, min_stock: 10, unit_cost: 35.99, unit: "set" },
-      { name: "Oil Filter", sku: "OF-002", category: "Filters", quantity: 50, min_stock: 20, unit_cost: 8.50, unit: "pcs" },
-      { name: "Spark Plugs", sku: "SP-003", category: "Engine", quantity: 100, min_stock: 30, unit_cost: 4.25, unit: "pcs" },
-      { name: "Air Filter", sku: "AF-004", category: "Filters", quantity: 30, min_stock: 10, unit_cost: 12.00, unit: "pcs" },
-      { name: "Synthetic Motor Oil 5W-30", sku: "MO-005", category: "Fluids", quantity: 40, min_stock: 15, unit_cost: 28.99, unit: "qt" },
-      { name: "Windshield Wipers", sku: "WW-006", category: "Exterior", quantity: 18, min_stock: 8, unit_cost: 15.50, unit: "pair" },
-      { name: "Brake Rotor", sku: "BR-007", category: "Brakes", quantity: 12, min_stock: 4, unit_cost: 65.00, unit: "pcs" },
-      { name: "Transmission Fluid", sku: "TF-008", category: "Fluids", quantity: 20, min_stock: 8, unit_cost: 18.75, unit: "qt" },
-      { name: "Battery (12V)", sku: "BT-009", category: "Electrical", quantity: 8, min_stock: 3, unit_cost: 120.00, unit: "pcs" },
-      { name: "Serpentine Belt", sku: "SB-010", category: "Engine", quantity: 15, min_stock: 5, unit_cost: 22.50, unit: "pcs" },
+      { name: "Deep groove bearing 6204-2RS", sku: "BRG-6204", category: "Bearings", quantity: 24, min_stock: 10, unit_cost: 6.50, unit: "pcs" },
+      { name: "Taper roller bearing 30206", sku: "BRG-30206", category: "Bearings", quantity: 12, min_stock: 4, unit_cost: 18.00, unit: "pcs" },
+      { name: "Oil seal 35x52x7", sku: "SEAL-3552", category: "Seals", quantity: 40, min_stock: 15, unit_cost: 2.40, unit: "pcs" },
+      { name: "Mechanical seal 25 mm", sku: "SEAL-M25", category: "Seals", quantity: 6, min_stock: 3, unit_cost: 45.00, unit: "pcs" },
+      { name: "Enamelled copper wire 1.0 mm", sku: "CW-100", category: "Motor rewind", quantity: 20, min_stock: 8, unit_cost: 38.00, unit: "kg" },
+      { name: "MIG wire ER70S-6 0.8 mm", sku: "MIG-08", category: "Welding", quantity: 15, min_stock: 5, unit_cost: 22.50, unit: "spool" },
+      { name: "Mild steel plate 6 mm", sku: "MS-P6", category: "Steel", quantity: 30, min_stock: 10, unit_cost: 42.00, unit: "sheet" },
+      { name: "Hydraulic oil ISO 46", sku: "HO-46", category: "Fluids", quantity: 40, min_stock: 15, unit_cost: 4.20, unit: "litre" },
+      { name: "V-belt SPA 1250", sku: "VB-1250", category: "Drives", quantity: 18, min_stock: 6, unit_cost: 11.75, unit: "pcs" },
+      { name: "Grinding disc 115 mm", sku: "GD-115", category: "Consumables", quantity: 100, min_stock: 30, unit_cost: 1.10, unit: "pcs" },
     ];
 
     const { data: insertedItems } = await adminClient.from("inventory_items").insert(inventoryItems).select("id");
@@ -93,14 +93,14 @@ serve(async (req) => {
     const fmtDate = (d: Date) => d.toISOString().split("T")[0];
 
     const jobsData = [
-      { title: "Full Brake Service", description: "Replace front and rear brake pads, resurface rotors", status: "completed", priority: "high", client_id: pickClient(), assigned_staff_id: pickStaff(), estimated_hours: 4, actual_hours: 3.5, due_date: fmtDate(new Date(today.getTime() - 5 * dayMs)) },
-      { title: "Oil Change & Filter", description: "Synthetic oil change with new oil and air filter", status: "completed", priority: "low", client_id: pickClient(), assigned_staff_id: pickStaff(), estimated_hours: 1, actual_hours: 0.75, due_date: fmtDate(new Date(today.getTime() - 3 * dayMs)) },
-      { title: "Engine Diagnostics", description: "Check engine light on, run full OBD-II scan", status: "in_progress", priority: "high", client_id: pickClient(), assigned_staff_id: pickStaff(), estimated_hours: 2, due_date: fmtDate(new Date(today.getTime() + 1 * dayMs)) },
-      { title: "Tire Rotation & Balance", description: "Rotate all four tires and balance", status: "in_progress", priority: "medium", client_id: pickClient(), assigned_staff_id: pickStaff(), estimated_hours: 1.5, due_date: fmtDate(new Date(today.getTime() + 2 * dayMs)) },
-      { title: "Transmission Flush", description: "Full transmission fluid flush and refill", status: "pending", priority: "medium", client_id: pickClient(), assigned_staff_id: pickStaff(), estimated_hours: 3, due_date: fmtDate(new Date(today.getTime() + 5 * dayMs)) },
-      { title: "A/C Recharge", description: "Recharge air conditioning system, check for leaks", status: "pending", priority: "low", client_id: pickClient(), assigned_staff_id: pickStaff(), estimated_hours: 2, due_date: fmtDate(new Date(today.getTime() + 7 * dayMs)) },
-      { title: "Serpentine Belt Replacement", description: "Replace worn serpentine belt", status: "quoted", priority: "medium", client_id: pickClient(), assigned_staff_id: pickStaff(), estimated_hours: 1.5, due_date: fmtDate(new Date(today.getTime() + 10 * dayMs)) },
-      { title: "Battery Replacement", description: "Test and replace dead battery", status: "cancelled", priority: "high", client_id: pickClient(), assigned_staff_id: pickStaff(), estimated_hours: 0.5, due_date: fmtDate(new Date(today.getTime() - 1 * dayMs)) },
+      { title: "Lathe spindle bearing replacement", description: "Headstock bearings noisy at speed; replace bearings and seals, check runout", status: "completed", priority: "high", client_id: pickClient(), assigned_staff_id: pickStaff(), estimated_hours: 4, actual_hours: 3.5, due_date: fmtDate(new Date(today.getTime() - 5 * dayMs)) },
+      { title: "Gearbox overhaul", description: "Conveyor gearbox leaking oil; strip, replace seals and bearings, refill", status: "completed", priority: "low", client_id: pickClient(), assigned_staff_id: pickStaff(), estimated_hours: 1, actual_hours: 0.75, due_date: fmtDate(new Date(today.getTime() - 3 * dayMs)) },
+      { title: "Electric motor rewind", description: "7.5 kW motor tripping; test windings and rewind the stator", status: "in_progress", priority: "high", client_id: pickClient(), assigned_staff_id: pickStaff(), estimated_hours: 2, due_date: fmtDate(new Date(today.getTime() + 1 * dayMs)) },
+      { title: "Hydraulic press cylinder reseal", description: "Cylinder losing pressure; replace seals and test to 200 bar", status: "in_progress", priority: "medium", client_id: pickClient(), assigned_staff_id: pickStaff(), estimated_hours: 1.5, due_date: fmtDate(new Date(today.getTime() + 2 * dayMs)) },
+      { title: "Fabricate machine guard", description: "Mild steel bandsaw guard to drawing, powder coated", status: "pending", priority: "medium", client_id: pickClient(), assigned_staff_id: pickStaff(), estimated_hours: 3, due_date: fmtDate(new Date(today.getTime() + 5 * dayMs)) },
+      { title: "Pump impeller repair", description: "Worn impeller and leaking mechanical seal on a centrifugal pump", status: "pending", priority: "low", client_id: pickClient(), assigned_staff_id: pickStaff(), estimated_hours: 2, due_date: fmtDate(new Date(today.getTime() + 7 * dayMs)) },
+      { title: "CNC axis servo fault", description: "Y axis servo alarm; diagnose the drive and motor", status: "quote", priority: "medium", client_id: pickClient(), assigned_staff_id: pickStaff(), estimated_hours: 1.5, due_date: fmtDate(new Date(today.getTime() + 10 * dayMs)) },
+      { title: "Air compressor service", description: "Service and pressure test; the customer cancelled", status: "cancelled", priority: "high", client_id: pickClient(), assigned_staff_id: pickStaff(), estimated_hours: 0.5, due_date: fmtDate(new Date(today.getTime() - 1 * dayMs)) },
     ];
 
     const { data: insertedJobs } = await adminClient.from("jobs").insert(jobsData).select("id, status, client_id, assigned_staff_id");
@@ -108,8 +108,8 @@ serve(async (req) => {
 
     // 3. Job tasks
     const taskTemplates = [
-      ["Inspect components", "Order parts", "Perform service", "Quality check"],
-      ["Initial assessment", "Get customer approval", "Complete work", "Final test"],
+      ["Strip and inspect", "Order parts", "Repair and reassemble", "Test run"],
+      ["Initial assessment", "Quote and approval", "Carry out the work", "Final test"],
     ];
     const jobTasks: any[] = [];
     for (const job of insertedJobs || []) {
@@ -129,12 +129,12 @@ serve(async (req) => {
 
     // 4. Appointments
     const appointmentsData = [
-      { title: "Vehicle Inspection", client_id: pickClient(), appointment_date: fmtDate(new Date(today.getTime() + 1 * dayMs)), appointment_time: "09:00", duration_minutes: 60, type: "inspection", status: "confirmed", description: "Annual vehicle inspection" },
-      { title: "Oil Change Appointment", client_id: pickClient(), appointment_date: fmtDate(new Date(today.getTime() + 2 * dayMs)), appointment_time: "10:30", duration_minutes: 30, type: "service", status: "pending", description: "Quick oil change" },
-      { title: "Brake Consultation", client_id: pickClient(), appointment_date: fmtDate(new Date(today.getTime() + 3 * dayMs)), appointment_time: "14:00", duration_minutes: 45, type: "consultation", status: "confirmed", description: "Discuss brake noise issue" },
-      { title: "Tire Replacement", client_id: pickClient(), appointment_date: fmtDate(new Date(today.getTime() + 5 * dayMs)), appointment_time: "08:00", duration_minutes: 90, type: "service", status: "pending", description: "Replace all four tires" },
-      { title: "Engine Check Follow-up", client_id: pickClient(), appointment_date: fmtDate(new Date(today.getTime() - 2 * dayMs)), appointment_time: "11:00", duration_minutes: 60, type: "consultation", status: "completed" },
-      { title: "Warranty Service", client_id: pickClient(), appointment_date: fmtDate(new Date(today.getTime() - 5 * dayMs)), appointment_time: "13:00", duration_minutes: 120, type: "service", status: "cancelled" },
+      { title: "Site survey: conveyor line", client_id: pickClient(), appointment_date: fmtDate(new Date(today.getTime() + 1 * dayMs)), appointment_time: "09:00", duration_minutes: 60, type: "inspection", status: "confirmed", description: "Measure up and assess the conveyor drive" },
+      { title: "Motor drop-off", client_id: pickClient(), appointment_date: fmtDate(new Date(today.getTime() + 2 * dayMs)), appointment_time: "10:30", duration_minutes: 30, type: "repair", status: "pending", description: "Customer bringing in a 7.5 kW motor" },
+      { title: "Quote review: gearbox", client_id: pickClient(), appointment_date: fmtDate(new Date(today.getTime() + 3 * dayMs)), appointment_time: "14:00", duration_minutes: 45, type: "consultation", status: "confirmed", description: "Go through the gearbox overhaul quote" },
+      { title: "Press cylinder repair on site", client_id: pickClient(), appointment_date: fmtDate(new Date(today.getTime() + 5 * dayMs)), appointment_time: "08:00", duration_minutes: 90, type: "repair", status: "pending", description: "Reseal the cylinder at the customer's site" },
+      { title: "Follow-up: CNC servo", client_id: pickClient(), appointment_date: fmtDate(new Date(today.getTime() - 2 * dayMs)), appointment_time: "11:00", duration_minutes: 60, type: "consultation", status: "completed" },
+      { title: "Compressor service", client_id: pickClient(), appointment_date: fmtDate(new Date(today.getTime() - 5 * dayMs)), appointment_time: "13:00", duration_minutes: 120, type: "repair", status: "cancelled" },
     ];
 
     const { data: appointmentsFlag } = await adminClient
@@ -197,9 +197,9 @@ serve(async (req) => {
     const invoiceItemsData: any[] = [];
     for (const inv of insertedInvoices || []) {
       invoiceItemsData.push(
-        { invoice_id: inv.id, description: "Labor - Diagnostic & Repair", quantity: 2, unit_price: 75.00, total: 150.00 },
-        { invoice_id: inv.id, description: "Parts - Replacement components", quantity: 1, unit_price: 45.00, total: 45.00 },
-        { invoice_id: inv.id, description: "Shop supplies & disposal fee", quantity: 1, unit_price: 15.00, total: 15.00 },
+        { invoice_id: inv.id, description: "Labour: diagnosis and repair", quantity: 2, unit_price: 75.00, total: 150.00 },
+        { invoice_id: inv.id, description: "Parts: replacement components", quantity: 1, unit_price: 45.00, total: 45.00 },
+        { invoice_id: inv.id, description: "Workshop consumables", quantity: 1, unit_price: 15.00, total: 15.00 },
       );
     }
     const { data: insertedInvItems } = await adminClient.from("invoice_items").insert(invoiceItemsData).select("id");
@@ -210,15 +210,15 @@ serve(async (req) => {
     for (let i = 0; i < Math.min(5, itemIds.length); i++) {
       invTxns.push({
         item_id: itemIds[i],
-        type: "used",
-        quantity: -2,
+        type: "out",
+        quantity: 2,
         user_id: pickStaff() || callerId,
         job_id: (insertedJobs || [])[0]?.id || null,
-        notes: "Used for service job",
+        notes: "Issued to a repair",
       });
       invTxns.push({
         item_id: itemIds[i],
-        type: "restock",
+        type: "in",
         quantity: 10,
         user_id: pickAdmin(),
         notes: "Monthly restock",

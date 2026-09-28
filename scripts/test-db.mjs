@@ -12,11 +12,17 @@
 // accounts come from .env.e2e, so the same logins work here and on production.
 import { spawnSync } from "node:child_process";
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 import { createClient } from "@supabase/supabase-js";
 
 const ROOT = resolve(import.meta.dirname, "..");
-const WORKDIR = join(ROOT, "supabase-test");
+// The test project as committed: config, production baseline, seed.
+const SOURCE = join(ROOT, "supabase-test", "supabase");
+// Docker Desktop on Windows often can't see files on drives other than C:, so
+// the stack runs from a copy under the home folder there. Elsewhere (and in
+// CI) it runs straight from the repo.
+const WORKDIR = process.platform === "win32" ? join(homedir(), ".shoplane", "test-db") : join(ROOT, "supabase-test");
 const TEST_SUPABASE = join(WORKDIR, "supabase");
 const ENV_FILE = join(ROOT, ".env.testdb.local");
 const MFA_STATE = join(ROOT, "e2e", ".state", "mfa-secrets.local.json");
@@ -59,8 +65,17 @@ function loadEnv(file) {
   return out;
 }
 
-/** Copy the edge functions and any migrations newer than the baseline into the test project. */
+/** Bring the running project up to date: config, baseline, newer migrations and the edge functions. */
 function sync() {
+  const separate = TEST_SUPABASE !== SOURCE;
+  if (separate) {
+    mkdirSync(join(TEST_SUPABASE, "migrations"), { recursive: true });
+    for (const f of ["config.toml", "seed.sql"]) cpSync(join(SOURCE, f), join(TEST_SUPABASE, f));
+    for (const f of readdirSync(join(SOURCE, "migrations")).filter((f) => f.startsWith("2026010100000"))) {
+      cpSync(join(SOURCE, "migrations", f), join(TEST_SUPABASE, "migrations", f));
+    }
+  }
+
   // Copy over rather than delete first: the running stack keeps the folder open.
   const fnSource = join(ROOT, "supabase", "functions");
   const fnTarget = join(TEST_SUPABASE, "functions");

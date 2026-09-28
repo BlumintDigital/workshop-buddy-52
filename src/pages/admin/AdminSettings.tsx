@@ -355,18 +355,18 @@ export default function AdminSettings() {
 
     // 4. Jobs — assigned to Demo Staff, client is Demo Client
     const { data: insertedJobs } = await supabase.from("jobs").insert([
-      { title: "[DEMO] Full Brake Service", description: "Replace front & rear brake pads, resurface rotors. Vehicle: 2019 Toyota Camry.", status: "completed", priority: "high", client_id: clientId, assigned_staff_id: staffId, estimated_hours: 4, actual_hours: 3.5, due_date: d(-5) },
-      { title: "[DEMO] Engine Diagnostics", description: "Check engine light on. Run full OBD-II scan and report findings to client.", status: "in_progress", priority: "high", client_id: clientId, assigned_staff_id: staffId, estimated_hours: 2, due_date: d(1) },
-      { title: "[DEMO] Tire Rotation & Balance", description: "Rotate all four tires and rebalance. Check tread depth.", status: "in_progress", priority: "medium", client_id: clientId, assigned_staff_id: staffId, estimated_hours: 1.5, due_date: d(2) },
-      { title: "[DEMO] Transmission Flush", description: "Full transmission fluid flush and refill. Inspect filter.", status: "pending", priority: "medium", client_id: clientId, assigned_staff_id: staffId, estimated_hours: 3, due_date: d(5) },
-      { title: "[DEMO] A/C Recharge", description: "Recharge A/C system. Check for leaks and inspect compressor.", status: "pending", priority: "low", client_id: clientId, assigned_staff_id: staffId, estimated_hours: 2, due_date: d(8) },
+      { title: "[DEMO] Lathe spindle bearing replacement", description: "Headstock bearings noisy at speed. Replace bearings and seals, check spindle runout.", status: "completed", priority: "high", client_id: clientId, assigned_staff_id: staffId, estimated_hours: 4, actual_hours: 3.5, due_date: d(-5) },
+      { title: "[DEMO] Electric motor rewind", description: "7.5 kW motor tripping on start. Test windings, rewind the stator and load test.", status: "in_progress", priority: "high", client_id: clientId, assigned_staff_id: staffId, estimated_hours: 2, due_date: d(1) },
+      { title: "[DEMO] Gearbox overhaul", description: "Conveyor gearbox leaking oil with worn gears. Strip, replace seals and bearings, refill.", status: "in_progress", priority: "medium", client_id: clientId, assigned_staff_id: staffId, estimated_hours: 1.5, due_date: d(2) },
+      { title: "[DEMO] Fabricate machine guard", description: "Mild steel guard for the bandsaw to the customer's drawing, powder coated.", status: "pending", priority: "medium", client_id: clientId, assigned_staff_id: staffId, estimated_hours: 3, due_date: d(5) },
+      { title: "[DEMO] Pump impeller repair", description: "Worn impeller and leaking mechanical seal on a centrifugal pump.", status: "pending", priority: "low", client_id: clientId, assigned_staff_id: staffId, estimated_hours: 2, due_date: d(8) },
     ]).select("id, status, client_id");
 
     // 5. Job tasks for each job
     const taskMap: Record<string, string[]> = {
-      "completed": ["Inspect components", "Order parts", "Perform service", "Quality check"],
-      "in_progress": ["Inspect components", "Perform service", "Quality check"],
-      "pending": ["Inspect components", "Perform service"],
+      "completed": ["Strip and inspect", "Order parts", "Repair and reassemble", "Test run"],
+      "in_progress": ["Strip and inspect", "Repair and reassemble", "Test run"],
+      "pending": ["Strip and inspect", "Repair and reassemble"],
     };
     const jobTasks: any[] = [];
     for (const job of insertedJobs || []) {
@@ -385,9 +385,9 @@ export default function AdminSettings() {
     // 6. Appointments — linked to Demo Client
     if (appointmentsEnabled) {
       await supabase.from("appointments").insert([
-        { title: "[DEMO] Annual Vehicle Inspection", client_id: clientId, appointment_date: d(1), appointment_time: "09:00", duration_minutes: 60, type: "inspection", status: "confirmed", description: "Annual safety inspection for 2019 Toyota Camry." },
-        { title: "[DEMO] Oil Change Service", client_id: clientId, appointment_date: d(3), appointment_time: "10:30", duration_minutes: 30, type: "service", status: "pending", description: "Synthetic oil change and filter replacement." },
-        { title: "[DEMO] Brake Noise Consultation", client_id: clientId, appointment_date: d(6), appointment_time: "14:00", duration_minutes: 45, type: "consultation", status: "confirmed", description: "Client reports squealing from front brakes." },
+        { title: "[DEMO] Site survey: conveyor line", client_id: clientId, appointment_date: d(1), appointment_time: "09:00", duration_minutes: 60, type: "inspection", status: "confirmed", description: "Measure up and assess the conveyor drive before quoting." },
+        { title: "[DEMO] Motor drop-off", client_id: clientId, appointment_date: d(3), appointment_time: "10:30", duration_minutes: 30, type: "repair", status: "pending", description: "Customer bringing in a 7.5 kW motor that trips on start." },
+        { title: "[DEMO] Quote review: gearbox", client_id: clientId, appointment_date: d(6), appointment_time: "14:00", duration_minutes: 45, type: "consultation", status: "confirmed", description: "Go through the gearbox overhaul quote with the client." },
       ]);
     }
 
@@ -405,7 +405,7 @@ export default function AdminSettings() {
         total: 336.35,
         due_date: d(-10),
         paid_at: new Date(today.getTime() - 8 * 86400000).toISOString(),
-        notes: "Full brake service completed. Parts and labor included.",
+        notes: "Spindle bearing replacement completed. Parts and labour included.",
       },
       {
         invoice_number: "DEMO-002",
@@ -418,7 +418,7 @@ export default function AdminSettings() {
         total: 200.73,
         due_date: d(15),
         paid_at: null,
-        notes: "Engine diagnostic report and initial repair estimate.",
+        notes: "Motor test report and rewind estimate.",
       },
       {
         invoice_number: "DEMO-003",
@@ -431,16 +431,16 @@ export default function AdminSettings() {
         total: 488.25,
         due_date: d(30),
         paid_at: null,
-        notes: "Upcoming transmission flush — awaiting client approval.",
+        notes: "Machine guard fabrication, awaiting client approval.",
       },
     ];
     const { data: insertedInvoices } = await supabase.from("invoices").insert(invoicesToInsert).select("id");
 
     // 8. Invoice line items
     const lineItems = [
-      [{ description: "Brake pads (front & rear)", quantity: 2, unit_price: 65, total: 130 }, { description: "Labor — brake service (3.5 hrs)", quantity: 1, unit_price: 140, total: 140 }, { description: "Shop supplies", quantity: 1, unit_price: 40, total: 40 }],
-      [{ description: "OBD-II diagnostic scan", quantity: 1, unit_price: 95, total: 95 }, { description: "Technician labor (1 hr)", quantity: 1, unit_price: 75, total: 75 }, { description: "Written report", quantity: 1, unit_price: 15, total: 15 }],
-      [{ description: "Transmission fluid flush", quantity: 1, unit_price: 220, total: 220 }, { description: "Fluid & filter", quantity: 1, unit_price: 155, total: 155 }, { description: "Labor (3 hrs)", quantity: 1, unit_price: 75, total: 75 }],
+      [{ description: "Angular contact bearings (pair)", quantity: 2, unit_price: 65, total: 130 }, { description: "Labour: strip, fit and runout check (3.5 hrs)", quantity: 1, unit_price: 140, total: 140 }, { description: "Shop supplies", quantity: 1, unit_price: 40, total: 40 }],
+      [{ description: "Winding insulation and surge test", quantity: 1, unit_price: 95, total: 95 }, { description: "Technician labour (1 hr)", quantity: 1, unit_price: 75, total: 75 }, { description: "Written report", quantity: 1, unit_price: 15, total: 15 }],
+      [{ description: "Mild steel fabrication", quantity: 1, unit_price: 220, total: 220 }, { description: "Powder coating", quantity: 1, unit_price: 155, total: 155 }, { description: "Labor (3 hrs)", quantity: 1, unit_price: 75, total: 75 }],
     ];
     for (let i = 0; i < (insertedInvoices || []).length; i++) {
       const items = lineItems[i] || lineItems[0];
@@ -450,9 +450,9 @@ export default function AdminSettings() {
     // 9. Notifications for demo users
     const notifications = [
       { user_id: clientId, title: "Invoice Ready", message: "Invoice DEMO-002 has been sent. Total due: $200.73.", read: false, link: "/client/invoices" },
-      ...(appointmentsEnabled ? [{ user_id: clientId, title: "Appointment Confirmed", message: `Your Annual Vehicle Inspection on ${d(1)} at 9:00 AM is confirmed.`, read: false, link: "/client/appointments" }] : []),
-      { user_id: staffId, title: "New project assigned", message: "You have been assigned: Engine Diagnostics. Due tomorrow.", read: false, link: "/staff/projects" },
-      { user_id: staffId, title: "Project due soon", message: "Tire Rotation & Balance is due in 2 days.", read: true, link: "/staff/projects" },
+      ...(appointmentsEnabled ? [{ user_id: clientId, title: "Appointment Confirmed", message: `Your conveyor line site survey on ${d(1)} at 9:00 AM is confirmed.`, read: false, link: "/client/appointments" }] : []),
+      { user_id: staffId, title: "New project assigned", message: "You have been assigned: Electric motor rewind. Due tomorrow.", read: false, link: "/staff/projects" },
+      { user_id: staffId, title: "Project due soon", message: "Gearbox overhaul is due in 2 days.", read: true, link: "/staff/projects" },
       { user_id: managerId, title: "Invoice Overdue", message: "Check pending invoices — DEMO-002 is awaiting client payment.", read: false, link: "/manager/invoices" },
     ];
     await supabase.from("notifications").insert(notifications);

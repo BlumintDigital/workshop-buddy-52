@@ -21,6 +21,10 @@ http://127.0.0.1:55324, not in anyone's mailbox.
 `npm run test:e2e:prod` runs only the read-only checks (sign-in, route guards,
 accessibility) against the live app. Nothing else touches production.
 
+On Windows, Docker Desktop often can't see files on drives other than C:, so
+the scripts run the stack from a copy in `~/.shoplane/test-db`, refreshed from
+this folder on every start and reset. Edit the files here, not the copy.
+
 ## What's in it
 
 - `supabase/migrations/20260101000000_baseline_schema.sql`: production's
