@@ -76,7 +76,7 @@ export default function StaffJobs() {
         />
         <ListControls
           filters={[
-            { value: "mine", label: "Assigned to me", count: mine.length },
+            { value: "mine", label: "Mine", count: mine.length },
             { value: "all", label: "All projects" },
             { value: "pending", label: "Pending" },
             { value: "in_progress", label: "In progress" },

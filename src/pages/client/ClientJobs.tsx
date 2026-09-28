@@ -1,87 +1,127 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
+import { FileText, Plus } from "lucide-react";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { Link } from "react-router-dom";
 import DashboardLayout from "@/components/layout/DashboardLayout";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { PageBar } from "@/components/dashboard/PageBar";
-import { JobStatusPill, PriorityLabel } from "@/components/dashboard/StatusPill";
+import { JobStatusPill, StatusPill, type StatusTone } from "@/components/dashboard/StatusPill";
 import { ListControls } from "@/components/list/ListControls";
 import { DataList, type Column } from "@/components/list/DataList";
 import { EmptyState } from "@/components/list/EmptyState";
-import { formatDate } from "@/lib/format";
+import NewRequestDialog from "@/components/client/NewRequestDialog";
 import ProjectName from "@/components/project/ProjectName";
-import { CheckCircle2, XCircle } from "lucide-react";
-import { toast } from "sonner";
+import { formatDate } from "@/lib/format";
+import { projectPath } from "@/lib/projects";
 
+type Project = { id: string; ref: string | null; title: string; status: string; due_date: string | null; created_at: string };
+type Request = {
+  id: string;
+  request_type: "quote" | "job";
+  title: string;
+  description: string | null;
+  preferred_date: string | null;
+  status: string;
+  decline_reason: string | null;
+  created_at: string;
+  reviewed_at: string | null;
+};
+type WaitingQuote = { id: string; job_id: string; kind: string; title: string; subtotal: number };
+
+const REQUEST_STATE: Record<string, { label: string; tone: StatusTone }> = {
+  pending: { label: "Waiting for the workshop", tone: "info" },
+  declined: { label: "Declined by the workshop", tone: "danger" },
+};
+
+// The stages a client recognises, not the workshop's internal steps.
+const GROUPS: Record<string, string[]> = {
+  open: ["received", "evaluation", "quote", "pending", "in_progress", "review"],
+  ready: ["completed"],
+  done: ["shipped"],
+  cancelled: ["cancelled"],
+};
+
+/**
+ * Everything the client has with the workshop in one place: requests not yet
+ * received, quotes waiting for them, and every project. A request leaves this
+ * list's top section once reception turns it into a project below.
+ */
 export default function ClientJobs() {
   const { user } = useAuth();
-  const [jobs, setJobs] = useState<any[]>([]);
+  const [params, setParams] = useSearchParams();
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [requests, setRequests] = useState<Request[]>([]);
+  const [quotes, setQuotes] = useState<WaitingQuote[]>([]);
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
-  const [live, setLive] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const dialogOpen = params.get("new") === "request";
+  const setDialogOpen = (open: boolean) =>
+    setParams((p) => {
+      if (open) p.set("new", "request");
+      else p.delete("new");
+      return p;
+    });
 
-  const fetchJobs = async () => {
-    setIsLoading(true);
-    if (!user) { setIsLoading(false); return; }
-    const { data } = await supabase
-      .from("jobs")
-      .select("*")
-      .eq("client_id", user.id)
-      .order("created_at", { ascending: false });
-    setJobs(data || []);
+  const load = useCallback(async () => {
+    if (!user) return;
+    const monthAgo = new Date(Date.now() - 30 * 86400000).toISOString();
+    const [j, r] = await Promise.all([
+      supabase.from("jobs").select("id, ref, title, status, due_date, created_at").eq("client_id", user.id).order("created_at", { ascending: false }),
+      supabase
+        .from("client_requests")
+        .select("id, request_type, title, description, preferred_date, status, decline_reason, created_at, reviewed_at")
+        .eq("client_id", user.id)
+        .or(`status.eq.pending,and(status.eq.declined,reviewed_at.gte.${monthAgo})`)
+        .order("created_at", { ascending: false }),
+    ]);
+    const rows = (j.data ?? []) as Project[];
+    setProjects(rows);
+    setRequests((r.data ?? []) as Request[]);
+    if (rows.length) {
+      const { data: q } = await supabase
+        .from("project_quotes")
+        .select("id, job_id, kind, title, subtotal")
+        .in("job_id", rows.map((p) => p.id))
+        .eq("status", "sent");
+      setQuotes(((q ?? []) as WaitingQuote[]).map((x) => ({ ...x, subtotal: Number(x.subtotal) })));
+    }
     setIsLoading(false);
-  };
+  }, [user]);
 
   useEffect(() => {
     if (!user) return;
-    fetchJobs();
-
+    void load();
     const channel = supabase
-      .channel("client-jobs-rt")
-      .on("postgres_changes", {
-        event: "UPDATE", schema: "public", table: "jobs",
-        filter: `client_id=eq.${user.id}`,
-      }, (payload) => {
-        setJobs(prev => prev.map(j => j.id === payload.new.id ? { ...j, ...payload.new } : j));
-      })
-      .on("postgres_changes", {
-        event: "INSERT", schema: "public", table: "jobs",
-        filter: `client_id=eq.${user.id}`,
-      }, (payload) => {
-        setJobs(prev => [payload.new as any, ...prev]);
-      })
-      .subscribe((status) => {
-        setLive(status === "SUBSCRIBED");
-      });
+      .channel("client-projects-rt")
+      .on("postgres_changes", { event: "*", schema: "public", table: "jobs", filter: `client_id=eq.${user.id}` }, () => void load())
+      .subscribe();
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [user, load]);
 
-    return () => { supabase.removeChannel(channel); };
-  }, [user]);
-
-  const handleQuoteAction = async (jobId: string, approve: boolean) => {
-    const newStatus = approve ? "pending" : "cancelled";
-    const { error } = await supabase.from("jobs").update({ status: newStatus }).eq("id", jobId);
-    if (error) { toast.error(error.message); return; }
-    setJobs(prev => prev.map(j => j.id === jobId ? { ...j, status: newStatus } : j));
-    toast.success(approve ? "Quote approved — work will begin shortly" : "Quote declined");
+  const cancelRequest = async (r: Request) => {
+    const { error } = await supabase.from("client_requests").update({ status: "cancelled" }).eq("id", r.id);
+    if (error) return toast.error(error.message);
+    toast.success(`Cancelled "${r.title}"`);
+    void load();
   };
 
-  const quotes = jobs.filter(j => j.status === "quote");
   const q = search.trim().toLowerCase();
-  const filtered = (filter === "all" ? jobs.filter((j) => j.status !== "quote") : jobs.filter((j) => j.status === filter)).filter(
-    (j) => !q || j.title?.toLowerCase().includes(q) || j.ref?.toLowerCase().includes(q),
-  );
-  const countOf = (status: string) => jobs.filter((j) => j.status === status).length;
-  const active = jobs.filter((j) => j.status === "pending" || j.status === "in_progress" || j.status === "review").length;
+  const shown = projects
+    .filter((p) => filter === "all" || GROUPS[filter]?.includes(p.status))
+    .filter((p) => !q || p.title.toLowerCase().includes(q) || (p.ref ?? "").toLowerCase().includes(q));
+  const count = (group: string) => projects.filter((p) => GROUPS[group].includes(p.status)).length;
+  const refOf = Object.fromEntries(projects.map((p) => [p.id, p.ref ?? p.title]));
 
-  const columns: Column<any>[] = [
-    { key: "title", header: "Project", cell: (job) => <ProjectName refId={job.ref} title={job.title} /> },
-    { key: "status", header: "Status", cell: (job) => <JobStatusPill status={job.status} /> },
-    { key: "priority", header: "Priority", cell: (job) => <PriorityLabel priority={job.priority} />, hideBelow: "md" },
-    { key: "due", header: "Due", cell: (job) => formatDate(job.due_date), hideBelow: "lg" },
-    { key: "created", header: "Created", cell: (job) => formatDate(job.created_at) },
+  const columns: Column<Project>[] = [
+    { key: "title", header: "Project", cell: (p) => <ProjectName refId={p.ref} title={p.title} /> },
+    { key: "status", header: "Stage", cell: (p) => <JobStatusPill status={p.status} /> },
+    { key: "due", header: "Due", cell: (p) => formatDate(p.due_date), hideBelow: "lg" },
+    { key: "created", header: "Received", cell: (p) => formatDate(p.created_at), hideBelow: "md" },
   ];
 
   return (
@@ -89,49 +129,75 @@ export default function ClientJobs() {
       <div className="mx-auto min-w-0 max-w-5xl space-y-4">
         <PageBar
           title="Projects"
-          subtitle={isLoading ? "Loading…" : `${active} in progress · ${jobs.length} in total`}
+          subtitle={isLoading ? "Loading…" : `${count("open")} in the workshop · ${count("ready")} ready · ${projects.length} in total`}
           actions={
-            <span className="flex items-center gap-1.5 text-xs text-muted-foreground" role="status">
-              <span aria-hidden className={`h-2 w-2 rounded-full ${live ? "bg-success" : "bg-muted-foreground"}`} />
-              {live ? "Live updates" : "Connecting…"}
-            </span>
+            <Button onClick={() => setDialogOpen(true)}>
+              <Plus aria-hidden />
+              New request
+            </Button>
           }
         />
 
-        {/* Quotes awaiting approval */}
         {quotes.length > 0 && (
-          <Card className="border-warning/40 bg-warning-soft">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base">Quotes waiting for your approval</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {quotes.map(q => (
-                <div key={q.id} className="flex items-center justify-between gap-3 flex-wrap">
-                  <div>
-                    <Link to={`/projects/${q.id}`} className="font-medium text-sm hover:underline">{q.title}</Link>
-                    {q.description && <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{q.description}</p>}
-                  </div>
-                  <div className="flex gap-2 shrink-0">
-                    <Button size="sm" variant="outline" className="min-h-[40px]" onClick={() => handleQuoteAction(q.id, false)}>
-                      <XCircle className="mr-1.5 h-3.5 w-3.5 text-destructive" aria-hidden />Decline
-                    </Button>
-                    <Button size="sm" className="min-h-[40px]" onClick={() => handleQuoteAction(q.id, true)}>
-                      <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" aria-hidden />Approve
-                    </Button>
-                  </div>
-                </div>
+          <section aria-label="Quotes waiting for you" className="space-y-2 rounded-lg border border-warning/30 bg-warning-soft p-4">
+            <h2 className="text-base font-semibold">{quotes.length === 1 ? "A quote is waiting for you" : `${quotes.length} quotes are waiting for you`}</h2>
+            <ul className="space-y-2">
+              {quotes.map((w) => (
+                <li key={w.id} className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-sm">
+                    <span className="font-mono text-xs text-muted-foreground">{refOf[w.job_id]}</span> {w.kind === "change" ? "Change to the work" : "Quote"}
+                    {w.title ? `: ${w.title}` : ""}
+                  </span>
+                  <Button asChild size="sm">
+                    <Link to={projectPath(w.job_id)}>
+                      <FileText className="mr-1.5 h-4 w-4" aria-hidden />
+                      Review and decide
+                    </Link>
+                  </Button>
+                </li>
               ))}
-            </CardContent>
-          </Card>
+            </ul>
+          </section>
+        )}
+
+        {requests.length > 0 && (
+          <section aria-label="Requests" className="rounded-lg border bg-card">
+            <h2 className="border-b px-4 py-3 text-base font-semibold">Requests</h2>
+            <ul className="divide-y">
+              {requests.map((r) => {
+                const state = REQUEST_STATE[r.status] ?? { label: r.status, tone: "neutral" as StatusTone };
+                return (
+                  <li key={r.id} className="space-y-2 p-4">
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="text-xs text-muted-foreground">
+                          {r.request_type === "quote" ? "Quote request" : "Repair request"} · sent {formatDate(r.created_at)}
+                          {r.preferred_date && ` · wanted by ${formatDate(r.preferred_date)}`}
+                        </p>
+                        <h3 className="text-sm font-semibold">{r.title}</h3>
+                      </div>
+                      <StatusPill tone={state.tone}>{state.label}</StatusPill>
+                    </div>
+                    {r.status === "declined" && r.decline_reason && <p className="rounded-md bg-secondary px-3 py-2 text-sm">Workshop's reason: {r.decline_reason}</p>}
+                    {r.status === "pending" && (
+                      <Button size="sm" variant="ghost" onClick={() => void cancelRequest(r)}>
+                        Cancel request
+                      </Button>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
         )}
 
         <ListControls
           filters={[
             { value: "all", label: "All" },
-            { value: "pending", label: "Pending", count: countOf("pending") },
-            { value: "in_progress", label: "In progress", count: countOf("in_progress") },
-            { value: "review", label: "Awaiting review", count: countOf("review") },
-            { value: "completed", label: "Completed" },
+            { value: "open", label: "In the workshop", count: count("open") },
+            { value: "ready", label: "Ready", count: count("ready") },
+            { value: "done", label: "Collected or delivered" },
+            { value: "cancelled", label: "Cancelled" },
           ]}
           filter={filter}
           onFilterChange={setFilter}
@@ -141,25 +207,30 @@ export default function ClientJobs() {
         />
 
         <DataList
-          rows={filtered}
+          rows={shown}
           columns={columns}
           isLoading={isLoading}
-          getRowKey={(job) => job.id}
-          getRowHref={(job) => `/projects/${job.id}`}
+          getRowKey={(p) => p.id}
+          getRowHref={(p) => projectPath(p.id)}
           mobile={{
-            title: (job) => <ProjectName refId={job.ref} title={job.title} />,
-            trailing: (job) => <JobStatusPill status={job.status} />,
-            meta: (job) => (job.due_date ? `Due ${formatDate(job.due_date)}` : `Created ${formatDate(job.created_at)}`),
+            title: (p) => <ProjectName refId={p.ref} title={p.title} />,
+            trailing: (p) => <JobStatusPill status={p.status} />,
+            meta: (p) => (p.due_date ? `Due ${formatDate(p.due_date)}` : `Received ${formatDate(p.created_at)}`),
           }}
           empty={
             filter !== "all" || q ? (
               <EmptyState title="No projects match" description="Try another filter or clear the search." />
             ) : (
-              <EmptyState title="No projects yet" description="When the workshop receives your item, the project and its progress show here." />
+              <EmptyState
+                title="No projects yet"
+                description="Send a request, or bring your machine in. Once the workshop receives it, its progress shows here."
+                action={<Button onClick={() => setDialogOpen(true)}><Plus />New request</Button>}
+              />
             )
           }
         />
       </div>
+      <NewRequestDialog open={dialogOpen} onOpenChange={setDialogOpen} onCreated={() => void load()} />
     </DashboardLayout>
   );
 }

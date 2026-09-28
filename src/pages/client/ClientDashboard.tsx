@@ -178,7 +178,7 @@ export default function ClientDashboard() {
           subtitle={company || undefined}
           actions={
             <Button asChild size="sm" className="h-10">
-              <Link to="/client/requests">
+              <Link to="/client/projects?new=request">
                 <Plus />
                 New request
               </Link>
@@ -208,7 +208,7 @@ export default function ClientDashboard() {
             <h2 className="mt-2 font-sans text-lg font-semibold">Nothing in progress</h2>
             <p className="mt-1 text-sm text-muted-foreground">Send the workshop a request and you'll see the quote, progress and invoices here.</p>
             <Button asChild className="mt-4">
-              <Link to="/client/requests">Request a quote or repair</Link>
+              <Link to="/client/projects?new=request">Request a quote or repair</Link>
             </Button>
           </section>
         ) : (

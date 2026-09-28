@@ -394,7 +394,7 @@ export default function JobDetail() {
               <p className="capitalize mt-1 text-sm font-medium">{job.priority}</p>
             </div>
             <div>
-              <Label className="text-xs text-muted-foreground">Lead technician</Label>
+              <Label className="text-xs text-muted-foreground">Project lead</Label>
               <p className="mt-1 text-sm">{staffName}</p>
             </div>
             <div>
@@ -514,7 +514,7 @@ export default function JobDetail() {
                 <Input id="f-estimated-hours" type="number" min="0" step="0.5" value={editForm.estimated_hours || ""} onChange={(e) => setEditForm({ ...editForm, estimated_hours: e.target.value })} className="mt-1" />
               </div>
               <div>
-                <Label htmlFor="f-assign-staff">Assign Staff</Label>
+                <Label htmlFor="f-assign-staff">Project lead</Label>
                 <Select value={editForm.assigned_staff_id || "__none__"} onValueChange={(v) => setEditForm({ ...editForm, assigned_staff_id: v === "__none__" ? "" : v })}>
                   <SelectTrigger id="f-assign-staff" className="mt-1"><SelectValue placeholder="None" /></SelectTrigger>
                   <SelectContent>
@@ -522,6 +522,7 @@ export default function JobDetail() {
                     {staffUsers.map(u => <SelectItem key={u.id} value={u.id}>{u.full_name}</SelectItem>)}
                   </SelectContent>
                 </Select>
+                <p className="mt-1 text-xs text-muted-foreground">The person the client deals with. Give out the work itself as tasks.</p>
               </div>
               <div>
                 <Label htmlFor="f-assign-client">Assign Client</Label>

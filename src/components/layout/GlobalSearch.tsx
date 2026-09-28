@@ -24,7 +24,7 @@ function likePattern(q: string) {
 async function search(q: string, role: AppRole): Promise<Results> {
   const pattern = likePattern(q);
   const privileged = role === "admin" || role === "manager";
-  const requestsUrl = role === "client" ? "/client/requests" : "/reception?tab=requests";
+  const requestsUrl = role === "client" ? "/client/projects" : "/reception?tab=requests";
 
   const [jobs, invoices, requests, clients] = await Promise.all([
     projectSearchFilter(q)

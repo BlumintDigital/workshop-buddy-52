@@ -14,6 +14,8 @@ type StaffRow = {
   full_name: string | null;
   role: string;
   created_at: string;
+  /** Teams they belong to, "(lead)" marked. */
+  teams: string[];
 };
 
 export default function ManagerStaff() {
@@ -26,11 +28,17 @@ export default function ManagerStaff() {
     setIsLoading(true);
     const { data: roles } = await supabase.from("user_roles").select("user_id, role").in("role", ["staff", "manager"]);
     const { data: profiles } = await supabase.from("profiles").select("id, full_name, created_at, is_super_admin");
+    const { data: memberships } = await supabase.from("department_members").select("user_id, is_lead, departments(name)");
+    const teamsOf = (id: string) =>
+      (memberships ?? [])
+        .filter((m) => m.user_id === id)
+        .map((m) => `${(m.departments as { name: string } | null)?.name ?? "Team"}${m.is_lead ? " (lead)" : ""}`)
+        .sort();
     if (roles && profiles) {
       const merged = roles
         .map((r) => {
           const p = profiles.find((p) => p.id === r.user_id);
-          return { user_id: r.user_id, full_name: p?.full_name || "Unknown", role: r.role, created_at: p?.created_at || "" };
+          return { user_id: r.user_id, full_name: p?.full_name || "Unknown", role: r.role, created_at: p?.created_at || "", teams: teamsOf(r.user_id) };
         })
         .filter((u) => {
           const p = profiles.find((p) => p.id === u.user_id);
@@ -60,6 +68,7 @@ export default function ManagerStaff() {
 
   const columns: Column<StaffRow>[] = [
     { key: "name", header: "Name", cell: (s) => s.full_name },
+    { key: "teams", header: "Teams", cell: (s) => (s.teams.length ? s.teams.join(", ") : <span className="text-muted-foreground">No team yet</span>) },
     { key: "joined", header: "Joined", cell: (s) => formatDate(s.created_at), hideBelow: "md" },
   ];
 
@@ -103,7 +112,7 @@ export default function ManagerStaff() {
           actions={roleSelect}
           mobile={{
             title: (s) => s.full_name,
-            meta: (s) => `${roleLabel(s.role)} · joined ${formatDate(s.created_at)}`,
+            meta: (s) => `${roleLabel(s.role)} · ${s.teams.length ? s.teams.join(", ") : "no team yet"}`,
           }}
           empty={
             q || filter !== "all" ? (

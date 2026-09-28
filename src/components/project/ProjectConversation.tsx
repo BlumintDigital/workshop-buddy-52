@@ -16,7 +16,9 @@ import { cn } from "@/lib/utils";
 type Channel = "team" | "client";
 
 interface Note {
-  id: number;
+  id: number | string;
+  /** Set for notes written on a task, shown in the team thread with the task's name. */
+  task?: string;
   user_id: string;
   body: string;
   is_internal: boolean;
@@ -63,7 +65,19 @@ export default function ProjectConversation({ project, clientName, teamIds = [] 
         .select("id, user_id, body, is_internal, source, created_at")
         .eq("job_id", project.id)
         .order("created_at", { ascending: true });
-      const rows = data ?? [];
+      const rows: Omit<Note, "author">[] = data ?? [];
+      // Notes written on the project's tasks belong in the team thread too.
+      if (!isClient) {
+        const { data: tasks } = await supabase.from("job_tasks").select("id, title").eq("job_id", project.id);
+        if (tasks?.length) {
+          const title = Object.fromEntries(tasks.map((t) => [t.id, t.title]));
+          const { data: taskNotes } = await supabase.from("job_task_notes").select("id, task_id, user_id, note, created_at").in("task_id", tasks.map((t) => t.id));
+          for (const t of taskNotes ?? []) {
+            rows.push({ id: `task-${t.id}`, task: title[t.task_id], user_id: t.user_id, body: t.note, is_internal: true, source: "task", created_at: t.created_at });
+          }
+          rows.sort((a, b) => a.created_at.localeCompare(b.created_at));
+        }
+      }
       // Clients can't read staff profiles, so their view names the workshop instead.
       const fallback = isClient ? "Workshop team" : "Team member";
       const names = await fetchProfileNames(rows.map((r) => r.user_id), fallback);
@@ -209,6 +223,7 @@ function Thread({ notes, ownId, empty }: { notes: Note[]; ownId?: string; empty:
                   {relativeTime(n.created_at)}
                 </time>
                 {n.source === "update" && <span>· from Updates</span>}
+                {n.task && <span>· on task {n.task}</span>}
               </div>
               <div
                 className={cn(

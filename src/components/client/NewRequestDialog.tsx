@@ -103,7 +103,7 @@ export default function NewRequestDialog({ open, onOpenChange, onCreated }: Prop
 
           <div>
             <Label htmlFor="f-title">Title <span className="text-destructive">*</span></Label>
-            <Input id="f-title" value={title} onChange={(e) => setTitle(e.target.value.slice(0, 120))} placeholder="e.g. Brake pad replacement" />
+            <Input id="f-title" value={title} onChange={(e) => setTitle(e.target.value.slice(0, 120))} placeholder="e.g. Lathe spindle rebuild" />
             <p className="mt-1 text-xs text-muted-foreground text-right">{title.length}/120</p>
           </div>
 

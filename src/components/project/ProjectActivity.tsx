@@ -28,9 +28,9 @@ function describe(e: EventRow, names: Record<string, string>): { label: string; 
     case "assigned": {
       const to = who(d.to);
       const from = who(d.from);
-      if (to && from) return { label: `Reassigned to ${to}`, sub: `from ${from}`, tone: "people" };
-      if (to) return { label: `Assigned to ${to}`, tone: "people" };
-      return { label: "Unassigned", sub: from ? `was ${from}` : undefined, tone: "people" };
+      if (to && from) return { label: `Project lead changed to ${to}`, sub: `from ${from}`, tone: "people" };
+      if (to) return { label: `${to} leads the project`, tone: "people" };
+      return { label: "No project lead", sub: from ? `was ${from}` : undefined, tone: "people" };
     }
     case "handoff":
       return { label: `Handed off: ${str(d.task) ?? "task"}`, sub: str(d.next) ? `next: ${d.next}` : undefined, tone: "good" };

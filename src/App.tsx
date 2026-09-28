@@ -66,7 +66,6 @@ const ClientDashboard = lazy(() => import("@/pages/client/ClientDashboard"));
 const ClientJobs = lazy(() => import("@/pages/client/ClientJobs"));
 const ClientAppointments = lazy(() => import("@/pages/client/ClientAppointments"));
 const ClientInvoices = lazy(() => import("@/pages/client/ClientInvoices"));
-const ClientRequests = lazy(() => import("@/pages/client/ClientRequests"));
 const Reception = lazy(() => import("@/pages/reception/Reception"));
 const InventoryPortal = lazy(() => import("@/pages/inventory/InventoryPortal"));
 const ShippingPortal = lazy(() => import("@/pages/shipping/ShippingPortal"));
@@ -190,7 +189,8 @@ function AppRoutes() {
         <Route path="/client/projects" element={<ProtectedRoute allowedRoles={["client"]}><FeatureRoute feature="client_portal"><ClientJobs /></FeatureRoute></ProtectedRoute>} />
         <Route path="/client/appointments" element={<ProtectedRoute allowedRoles={["client"]}><FeatureRoute feature="client_portal"><FeatureRoute feature="appointments"><ClientAppointments /></FeatureRoute></FeatureRoute></ProtectedRoute>} />
         <Route path="/client/invoices" element={<ProtectedRoute allowedRoles={["client"]}><FeatureRoute feature="client_portal"><ClientInvoices /></FeatureRoute></ProtectedRoute>} />
-        <Route path="/client/requests" element={<ProtectedRoute allowedRoles={["client"]}><FeatureRoute feature="client_portal"><ClientRequests /></FeatureRoute></ProtectedRoute>} />
+        {/* Requests now sit at the top of the client's Projects list. */}
+        <Route path="/client/requests" element={<LegacyListRedirect to="/client/projects" />} />
         <Route path="/reception" element={<ProtectedRoute allowedRoles={["admin", "manager", "staff"]}><Reception /></ProtectedRoute>} />
         <Route path="/shipping" element={<ProtectedRoute allowedRoles={["admin", "manager", "staff"]}><ShippingPortal /></ProtectedRoute>} />
         <Route path="/inventory/*" element={<ProtectedRoute allowedRoles={["admin", "manager", "staff"]}><InventoryPortal /></ProtectedRoute>} />

@@ -102,7 +102,7 @@ export default function AdminJobs() {
     },
     { key: "status", header: "Status", cell: (job) => <JobStatusPill status={job.status} /> },
     { key: "priority", header: "Priority", cell: (job) => <PriorityLabel priority={job.priority} />, hideBelow: "md" },
-    { key: "staff", header: "Assigned to", cell: (job) => job.staff_name, hideBelow: "lg" },
+    { key: "staff", header: "Lead", cell: (job) => job.staff_name, hideBelow: "lg" },
     { key: "client", header: "Client", cell: (job) => job.client_name, hideBelow: "md" },
     { key: "due", header: "Due", cell: (job) => formatDate(job.due_date), hideBelow: "lg" },
     { key: "created", header: "Created", cell: (job) => formatDate(job.created_at) },
@@ -146,7 +146,7 @@ export default function AdminJobs() {
           mobile={{
             title: (job) => <ProjectName refId={job.ref} title={job.title} />,
             trailing: (job) => <JobStatusPill status={job.status} />,
-            meta: (job) => [job.client_name !== "—" && job.client_name, job.staff_name !== "—" && `Assigned to ${job.staff_name}`, job.due_date && `Due ${formatDate(job.due_date)}`].filter(Boolean).join(" · "),
+            meta: (job) => [job.client_name !== "—" && job.client_name, job.staff_name !== "—" && `Lead: ${job.staff_name}`, job.due_date && `Due ${formatDate(job.due_date)}`].filter(Boolean).join(" · "),
           }}
           empty={
             hasQuery ? (

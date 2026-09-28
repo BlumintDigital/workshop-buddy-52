@@ -332,7 +332,7 @@ export default function AdminUserDetail() {
             <CardHeader className="pb-3">
               <CardTitle className="text-lg flex items-center gap-2">
                 <Briefcase className="h-5 w-5" />
-                {isClient ? "Projects" : "Assigned projects"}
+                {isClient ? "Projects" : "Projects worked on"}
               </CardTitle>
             </CardHeader>
             <CardContent className="p-0">

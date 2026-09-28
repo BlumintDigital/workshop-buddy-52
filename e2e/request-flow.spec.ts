@@ -13,11 +13,11 @@ const requestItem = (page: Page) => page.getByRole("listitem").filter({ hasText:
 test.describe.serial("client request → reception → quote → approval", () => {
   test("client submits a quote request", async ({ page }) => {
     await login(page, "CLIENT");
-    await page.goto("/client/requests");
+    await page.goto("/client/projects");
     await page.getByRole("button", { name: /new request/i }).first().click();
 
     // "Request a quote" is preselected; fill title and details.
-    await page.getByPlaceholder("e.g. Brake pad replacement").fill(REQUEST_TITLE);
+    await page.getByPlaceholder("e.g. Lathe spindle rebuild").fill(REQUEST_TITLE);
     await page.getByPlaceholder(/describe what you need/i).fill("E2E test request — safe to delete.");
     await page.getByRole("button", { name: "Submit quote request" }).click();
 
@@ -68,9 +68,11 @@ test.describe.serial("client request → reception → quote → approval", () =
 
   test("the project is approved and the request shows it was received", async ({ page }) => {
     await login(page, "CLIENT");
-    await page.goto("/client/requests");
-    await expect(requestItem(page).getByText("Received")).toBeVisible({ timeout: 15_000 });
-    await requestItem(page).getByRole("link", { name: /view project/i }).click();
+    await page.goto("/client/projects");
+    // Once received, the request becomes a project in the same list.
+    await expect(page.getByRole("region", { name: "Requests" }).getByText(REQUEST_TITLE)).toHaveCount(0);
+    await page.getByRole("searchbox").fill(REQUEST_TITLE);
+    await page.getByRole("link", { name: new RegExp(REQUEST_TITLE) }).first().click();
     await expect(page).toHaveURL(/\/projects\//, { timeout: 15_000 });
     await expect(page.getByText("Approved").first()).toBeVisible();
   });
@@ -97,8 +99,9 @@ test.describe.serial("client request → reception → quote → approval", () =
 
   test("client sees the message but not the team note", async ({ page }) => {
     await login(page, "CLIENT");
-    await page.goto("/client/requests");
-    await requestItem(page).getByRole("link", { name: /view project/i }).click();
+    await page.goto("/client/projects");
+    await page.getByRole("searchbox").fill(REQUEST_TITLE);
+    await page.getByRole("link", { name: new RegExp(REQUEST_TITLE) }).first().click();
     await expect(page).toHaveURL(/\/projects\//, { timeout: 15_000 });
 
     await expect(page.getByText("E2E public comment — hello client!")).toBeVisible({ timeout: 15_000 });

@@ -138,7 +138,6 @@ export const NAV_GROUPS: Record<AppRole, NavGroup[]> = {
     {
       items: [
         { title: "Your orders", short: "Orders", url: "/client/dashboard", icon: Home, exact: true, features: ["client_portal"] },
-        { title: "Requests", url: "/client/requests", icon: Inbox, features: ["client_portal"] },
         { title: "Projects", url: "/client/projects", icon: Briefcase, count: "quotesToDecide", features: ["client_portal"] },
         { title: "Appointments", short: "Bookings", url: "/client/appointments", icon: Calendar, features: ["client_portal", "appointments"] },
         { title: "Invoices", url: "/client/invoices", icon: FileText, features: ["client_portal"] },
@@ -153,7 +152,7 @@ export const TAB_BAR_URLS: Record<AppRole, string[]> = {
   admin: ["/admin/dashboard", "/admin/projects", "/reception", "/admin/invoices"],
   manager: ["/manager/dashboard", "/manager/projects", "/reception", "/manager/invoices"],
   staff: ["/staff/dashboard", "/staff/projects", "/staff/schedule", "/inventory"],
-  client: ["/client/dashboard", "/client/requests", "/client/invoices", "/client/appointments"],
+  client: ["/client/dashboard", "/client/projects", "/client/invoices", "/client/appointments"],
 };
 
 export function isItemEnabled(item: NavItem, flags: Partial<Record<FeatureKey, boolean>>, can: (p: Permission) => boolean = () => true): boolean {
