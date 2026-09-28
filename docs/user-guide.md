@@ -117,6 +117,7 @@ Codes apply to public sign-ups only — admin-created users skip the code requir
 - **Branding** — primary colour and theme tokens; changes apply live across the app.
 - **Features** — toggle Appointments, Reports, Client Portal and Goals on or off.
 - **Email** — configure the from-address and contact email used in notifications.
+- **Integrations** — connect QuickBooks Online, Xero or any other accounting system. Sent invoices go there, and payments recorded there mark invoices paid here. Choose the tax codes and products or accounts invoices post to, whether the other system numbers and emails invoices, and see the sync log. Each invoice shows where it stands in the connected system, with **Sync now** if it didn't get there. Setup steps for each system are in `docs/integrations.md`.
 - **Data** — destructive actions: Factory Reset, Setup Demo Users, seed data.
 
 ### 4.7 Reports {roles: admin,manager,staff}
@@ -191,7 +192,7 @@ Each card shows whether the project is paid, invoiced but unpaid, not invoiced y
 - When a project passes its quality check, a **draft invoice** is made from the accepted quote and approved changes, and everyone who handles billing is told. Check it and send it.
 - **Create invoice** on a project also starts from the accepted quote, warns if the lines differ from the agreed price, and warns if the project already has an invoice.
 - **Today** shows drafts waiting to be sent and finished projects with no invoice.
-- Apply any discount, send it and record payments. If you use an accounting package, issue the final invoice there; a QuickBooks connection is planned.
+- Apply any discount, send it and record payments. With an accounting system connected in Settings → Integrations, sent invoices and payments sync with it automatically.
 
 ### 5.8 Staff and Goals
 

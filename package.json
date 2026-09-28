@@ -13,6 +13,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test -c e2e/playwright.config.ts",
+    "test:accounting": "npx deno test --allow-env supabase/functions/_shared/accounting",
     "test:e2e:headed": "playwright test -c e2e/playwright.config.ts --headed",
     "test:e2e:prod": "node scripts/e2e-prod.mjs",
     "test-db:start": "node scripts/test-db.mjs start",

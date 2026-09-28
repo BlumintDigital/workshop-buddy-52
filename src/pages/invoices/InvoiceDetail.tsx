@@ -1,8 +1,10 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { usePermissions } from "@/hooks/usePermissions";
+import { AccountingSyncStatus } from "@/components/invoices/AccountingSyncStatus";
+import { kickAccountingSync, loadInvoiceAccounting, PROVIDER_LABEL, type InvoiceAccounting } from "@/lib/accounting";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -65,6 +67,19 @@ export default function InvoiceDetail() {
   // Admins, managers and staff with the Billing permission run invoices.
   const canManage = role === "admin" || role === "manager" || (role === "staff" && has("billing"));
   const canEdit = canManage && invoice?.status === "draft";
+
+  // Where this invoice stands in the connected accounting system, if any.
+  const [accounting, setAccounting] = useState<InvoiceAccounting | null>(null);
+  const refreshAccounting = useCallback(() => {
+    if (id && canManage) void loadInvoiceAccounting(id).then(setAccounting);
+  }, [id, canManage]);
+  useEffect(() => refreshAccounting(), [refreshAccounting]);
+  // After a change: push it now, then show where it landed.
+  const pushToAccounting = () => {
+    if (!accounting) return;
+    kickAccountingSync();
+    window.setTimeout(refreshAccounting, 3000);
+  };
   const isClient = role === "client";
 
   const editableSnapshot = (inv: any, lineItems: LineItem[]) =>
@@ -214,7 +229,7 @@ export default function InvoiceDetail() {
     }
   };
 
-  const notifyClient = async (title: string, body: string) => {
+  const notifyClient = async (title: string, body: string, skipEmail = false) => {
     if (!invoice?.client_id) {
       toast.error("This invoice has no client to notify.");
       return;
@@ -233,7 +248,7 @@ export default function InvoiceDetail() {
 
     // 2) Email — via send-email edge function (server resolves recipient)
     let emailOk = false;
-    try {
+    if (!skipEmail) try {
       await sendEmail({
         to_user_id: invoice.client_id,
         subject: title,
@@ -264,6 +279,7 @@ export default function InvoiceDetail() {
     if (inAppOk) channels.push("in-app");
     if (emailOk) channels.push("email");
     if (pushSent > 0) channels.push(`push (${pushSent})`);
+    if (skipEmail && accounting) channels.push(`email from ${PROVIDER_LABEL[accounting.provider]}`);
     if (channels.length === 0) toast.error("Couldn't notify the client. Please try again.");
     else toast.success(`Client notified via ${channels.join(", ")}.`);
   };
@@ -279,10 +295,13 @@ export default function InvoiceDetail() {
         if (error) { toast.error(friendlyErrorMessageSync(error, "Couldn't update invoice status.")); return; }
         setInvoice({ ...invoice, status: "sent" });
       }
+      // The connected accounting system emails it when it's set to; Shoplane still notifies in the app.
       await notifyClient(
         `Invoice ${invoice.invoice_number}`,
         `Total: ${fmt(total, invoice.currency)} — view and pay online.`,
+        accounting?.send_from === "provider",
       );
+      pushToAccounting();
     } finally {
       setSending(false);
     }
@@ -314,6 +333,7 @@ export default function InvoiceDetail() {
       if (error) { toast.error(friendlyErrorMessageSync(error, "Couldn't mark as paid.")); return; }
       setInvoice({ ...invoice, status: "paid", paid_at: paidAt });
       toast.success("Marked as paid.");
+      pushToAccounting();
       if (invoice.client_id) {
         sendEmail({
           to_user_id: invoice.client_id,
@@ -470,6 +490,10 @@ export default function InvoiceDetail() {
           </div>
         )}
 
+        {canManage && accounting && (
+          <AccountingSyncStatus info={accounting} invoiceId={invoice.id} invoiceStatus={invoice.status} isAdmin={role === "admin"} onChanged={refreshAccounting} />
+        )}
+
         {canManage && invoice.client_marked_paid_at && invoice.status !== "paid" && (
           <div className="rounded-lg border border-warning/40 bg-warning-soft px-4 py-3 text-sm flex items-center justify-between gap-3 flex-wrap">
             <span>The client marked this invoice as paid on {new Date(invoice.client_marked_paid_at).toLocaleString()}.</span>
@@ -526,6 +550,7 @@ export default function InvoiceDetail() {
                       if (error) { toast.error(friendlyErrorMessageSync(error, "Couldn't update invoice status.")); return; }
                       setInvoice({ ...invoice, status: v });
                       toast.success(`Status updated to ${v}`);
+                      pushToAccounting();
                       if (v === "sent" && invoice.client_id) {
                         sendEmail({
                           to_user_id: invoice.client_id,

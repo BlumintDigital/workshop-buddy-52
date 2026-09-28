@@ -15,6 +15,183 @@ export type Database = {
 
   public: {
     Tables: {
+      accounting_connections: {
+        Row: {
+          active: boolean
+          connected_at: string | null
+          connected_by: string | null
+          last_error: string | null
+          last_sync_at: string | null
+          org_id: string | null
+          org_name: string | null
+          provider: string
+          settings: NonNullable<Json>
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          connected_at?: string | null
+          connected_by?: string | null
+          last_error?: string | null
+          last_sync_at?: string | null
+          org_id?: string | null
+          org_name?: string | null
+          provider: string
+          settings?: NonNullable<Json>
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          connected_at?: string | null
+          connected_by?: string | null
+          last_error?: string | null
+          last_sync_at?: string | null
+          org_id?: string | null
+          org_name?: string | null
+          provider?: string
+          settings?: NonNullable<Json>
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      accounting_links: {
+        Row: {
+          entity_type: string
+          external_id: string
+          external_number: string | null
+          external_url: string | null
+          id: string
+          local_id: string
+          provider: string
+          synced_at: string
+        }
+        Insert: {
+          entity_type: string
+          external_id: string
+          external_number?: string | null
+          external_url?: string | null
+          id?: string
+          local_id: string
+          provider: string
+          synced_at?: string
+        }
+        Update: {
+          entity_type?: string
+          external_id?: string
+          external_number?: string | null
+          external_url?: string | null
+          id?: string
+          local_id?: string
+          provider?: string
+          synced_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "accounting_links_provider_fkey"
+            columns: ["provider"]
+            isOneToOne: false
+            referencedRelation: "accounting_connections"
+            referencedColumns: ["provider"]
+          },
+        ]
+      }
+      accounting_queue: {
+        Row: {
+          action: string
+          attempts: number
+          created_at: string
+          entity_type: string
+          external_id: string | null
+          finished_at: string | null
+          id: number
+          last_error: string | null
+          local_id: string | null
+          next_attempt_at: string
+          provider: string
+          result: Json | null
+          status: string
+        }
+        Insert: {
+          action: string
+          attempts?: number
+          created_at?: string
+          entity_type: string
+          external_id?: string | null
+          finished_at?: string | null
+          id?: never
+          last_error?: string | null
+          local_id?: string | null
+          next_attempt_at?: string
+          provider: string
+          result?: Json | null
+          status?: string
+        }
+        Update: {
+          action?: string
+          attempts?: number
+          created_at?: string
+          entity_type?: string
+          external_id?: string | null
+          finished_at?: string | null
+          id?: never
+          last_error?: string | null
+          local_id?: string | null
+          next_attempt_at?: string
+          provider?: string
+          result?: Json | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "accounting_queue_provider_fkey"
+            columns: ["provider"]
+            isOneToOne: false
+            referencedRelation: "accounting_connections"
+            referencedColumns: ["provider"]
+          },
+        ]
+      }
+      accounting_secrets: {
+        Row: {
+          access_token: string | null
+          extra: NonNullable<Json>
+          provider: string
+          refresh_token: string | null
+          token_expires_at: string | null
+          updated_at: string
+          webhook_secret: string | null
+        }
+        Insert: {
+          access_token?: string | null
+          extra?: NonNullable<Json>
+          provider: string
+          refresh_token?: string | null
+          token_expires_at?: string | null
+          updated_at?: string
+          webhook_secret?: string | null
+        }
+        Update: {
+          access_token?: string | null
+          extra?: NonNullable<Json>
+          provider?: string
+          refresh_token?: string | null
+          token_expires_at?: string | null
+          updated_at?: string
+          webhook_secret?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "accounting_secrets_provider_fkey"
+            columns: ["provider"]
+            isOneToOne: true
+            referencedRelation: "accounting_connections"
+            referencedColumns: ["provider"]
+          },
+        ]
+      }
       activity_logs: {
         Row: {
           action: string
@@ -2270,6 +2447,66 @@ export type Database = {
         Args: { _assigned_staff_id?: string; _request_id: string }
         Returns: string
       }
+      accounting_active_provider: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      accounting_claim_jobs: {
+        Args: { _limit: number }
+        Returns: {
+          action: string
+          attempts: number
+          created_at: string
+          entity_type: string
+          external_id: string | null
+          finished_at: string | null
+          id: number
+          last_error: string | null
+          local_id: string | null
+          next_attempt_at: string
+          provider: string
+          result: Json | null
+          status: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "accounting_queue"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      accounting_enqueue: {
+        Args: {
+          _action: string
+          _entity: string
+          _external: string
+          _local: string
+          _provider: string
+        }
+        Returns: undefined
+      }
+      accounting_invoice_status: {
+        Args: { _invoice_id: string }
+        Returns: {
+          external_number: string
+          external_url: string
+          job_attempts: number
+          job_error: string
+          job_status: string
+          org_name: string
+          provider: string
+          send_from: string
+          synced_at: string
+        }[]
+      }
+      accounting_mark_paid: {
+        Args: { _invoice_id: string; _paid_at: string; _provider: string }
+        Returns: boolean
+      }
+      accounting_sync_invoice: {
+        Args: { _invoice_id: string }
+        Returns: undefined
+      }
       add_project_event: {
         Args: {
           _client_visible?: boolean
@@ -2291,6 +2528,7 @@ export type Database = {
         Args: { _amount: number; _user_id: string }
         Returns: boolean
       }
+      can_bill: { Args: { _uid: string }; Returns: boolean }
       can_quote: { Args: { _user_id: string }; Returns: boolean }
       can_run_job: { Args: { _user_id: string }; Returns: boolean }
       can_view_job: {

@@ -145,3 +145,9 @@ verify_jwt = false
 
 [functions.validate-signup-code]
 verify_jwt = false
+[functions.accounting]
+verify_jwt = false
+[functions.accounting-callback]
+verify_jwt = false
+[functions.accounting-webhook]
+verify_jwt = false

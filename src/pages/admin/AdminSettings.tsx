@@ -15,7 +15,8 @@ import {
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { Bell, Building2, Database, Trash2, Loader2, Upload, ImageIcon, X, Users, AlertTriangle, Lock, Mail, Palette, Receipt, Send, Download } from "lucide-react";
+import { Bell, Building2, Database, Trash2, Loader2, Upload, ImageIcon, X, Users, AlertTriangle, Lock, Mail, Palette, Receipt, Send, Download, Plug } from "lucide-react";
+import IntegrationsPanel from "@/components/settings/IntegrationsPanel";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
@@ -88,7 +89,11 @@ export default function AdminSettings() {
   const [restoreFile, setRestoreFile] = useState<File | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
-  const [activeTab, setActiveTab] = useState("general");
+  // Links (and the QuickBooks/Xero sign-in) can open a tab directly with ?tab=.
+  const [activeTab, setActiveTab] = useState(() => {
+    const t = new URLSearchParams(window.location.search).get("tab");
+    return SETTINGS_SECTIONS.some((s) => s.value === t) ? (t as string) : "general";
+  });
   const { state: sidebarState } = useSidebar();
   const [currentMonthGoal, setCurrentMonthGoal] = useState<number | null | undefined>(undefined);
   const [pastGoals, setPastGoals] = useState<{ year: number; month: number; goal_amount: number }[]>([]);
@@ -1050,6 +1055,11 @@ export default function AdminSettings() {
             </Card>
           </TabsContent>
 
+          <TabsContent value="integrations" className="mt-0 max-w-4xl space-y-4">
+            <SectionHeading title="Accounting" description="Send invoices to QuickBooks, Xero or any other finance system, and get payments back." />
+            {activeTab === "integrations" && <IntegrationsPanel />}
+          </TabsContent>
+
           <TabsContent value="data" className="mt-0 max-w-3xl space-y-4">
             <SectionHeading title="Demo and testing" description="Only shown where demo tools are enabled." />
             {canSetupDemoUsers && (
@@ -1245,6 +1255,7 @@ const SETTINGS_SECTIONS = [
   { value: "notifications", label: "Notifications", hint: "In-app alerts", icon: Bell },
   { value: "branding", label: "Branding", hint: "Logo, colours, sign-in image", icon: Palette },
   { value: "email", label: "Email", hint: "Delivery and test sends", icon: Mail },
+  { value: "integrations", label: "Integrations", hint: "QuickBooks, Xero, webhooks", icon: Plug },
   { value: "data", label: "Data", hint: "Backups, demo, reset", icon: Database },
 ] as const;
 

@@ -27,6 +27,32 @@ const TEST_SUPABASE = join(WORKDIR, "supabase");
 const ENV_FILE = join(ROOT, ".env.testdb.local");
 const MFA_STATE = join(ROOT, "e2e", ".state", "mfa-secrets.local.json");
 const DB_CONTAINER = "supabase_db_shoplane_test";
+const FUNCTIONS_CONTAINER = "supabase_edge_runtime_shoplane_test";
+
+/** The function runner only picks up new or changed functions when it restarts. */
+function restartFunctions() {
+  spawnSync("docker", ["restart", FUNCTIONS_CONTAINER], { stdio: "ignore" });
+}
+
+// The CLI hands the function runner its list of functions at start, so a
+// new function needs a full stop and start; code changes only a restart.
+const FUNCTION_LIST = join(WORKDIR, ".functions-at-start");
+const functionNames = () => readdirSync(join(TEST_SUPABASE, "functions")).filter((f) => !f.startsWith("_")).sort().join(",");
+function startedWithCurrentFunctions() {
+  return existsSync(FUNCTION_LIST) && readFileSync(FUNCTION_LIST, "utf8") === functionNames();
+}
+function startStack() {
+  supabase(["start"]);
+  writeFileSync(FUNCTION_LIST, functionNames());
+}
+function ensureRunning() {
+  if (isRunning() && !startedWithCurrentFunctions()) {
+    console.log("New edge functions: restarting the test stack so they load.");
+    supabase(["stop"]);
+  }
+  if (!isRunning()) startStack();
+  else restartFunctions();
+}
 // CI installs the CLI directly; locally npx fetches it.
 const SUPABASE_CLI = process.env.SUPABASE_CLI ?? "npx supabase";
 
@@ -205,14 +231,15 @@ const command = process.argv[2] ?? "status";
 
 if (command === "start") {
   sync();
-  if (!isRunning()) supabase(["start"]);
+  ensureRunning();
   const s = status();
   writeEnv(s);
   console.log(`\nTest database running.\n  API:    ${s.API_URL}\n  Studio: ${s.STUDIO_URL}\n  Email:  ${s.INBUCKET_URL ?? s.MAILPIT_URL ?? "(local inbox)"}\nWrote .env.testdb.local. Next: npm run test-db:reset (first time), then npm run dev:test.`);
 } else if (command === "reset") {
   sync();
-  if (!isRunning()) supabase(["start"]);
+  ensureRunning();
   supabase(["db", "reset"]);
+  restartFunctions();
   const s = status();
   writeEnv(s);
   // A fresh database has no two-step sign-in set up, so forget old codes.
