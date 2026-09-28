@@ -442,7 +442,7 @@ function TeamReport() {
   }, [from, to]);
 
   const exportCsv = () =>
-    downloadCSV(`team-${from}-to-${to}.csv`, ["Person", "Role", "Projects", "Hours", "Tasks completed value", "Handoffs", "Labour cost"], (people ?? []).map((p) => [p.full_name, p.role, p.projects, p.hours, p.task_value, p.handoffs, p.labour_cost ?? ""]));
+    downloadCSV(`team-${from}-to-${to}.csv`, ["Person", "Role", "Projects", "Hours", "Work value", "Handoffs", "Labour cost"], (people ?? []).map((p) => [p.full_name, p.role, p.projects, p.hours, p.task_value, p.handoffs, p.labour_cost ?? ""]));
 
   return (
     <div className="space-y-4">
@@ -470,7 +470,7 @@ function TeamReport() {
                   <th scope="col" className="px-4 py-2 font-medium">Person</th>
                   <th scope="col" className="px-3 py-2 text-right font-medium">Projects</th>
                   <th scope="col" className="px-3 py-2 text-right font-medium">Hours</th>
-                  <th scope="col" className="px-3 py-2 text-right font-medium">Tasks completed</th>
+                  <th scope="col" className="px-3 py-2 text-right font-medium">Work value</th>
                   <th scope="col" className="px-3 py-2 text-right font-medium">Handoffs</th>
                   <th scope="col" className="px-4 py-2 text-right font-medium">Labour cost</th>
                 </tr>

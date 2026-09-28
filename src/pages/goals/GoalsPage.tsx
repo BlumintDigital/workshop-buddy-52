@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Maximize2, Minimize2, RefreshCw } from "lucide-react";
+import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useCurrency } from "@/hooks/useCurrency";
@@ -161,7 +162,17 @@ export default function GoalsPage() {
           <section aria-label="Team" className="rounded-lg border bg-card">
             <div className="border-b px-5 py-3">
               <h2 className="text-base font-semibold">Team</h2>
-              <p className="text-xs text-muted-foreground">Value of tasks completed, hours logged and handoffs this month{seesCost ? ". Labour cost uses each person's hourly cost." : "."}</p>
+              <p className="text-xs text-muted-foreground">
+                Work value is each finished task's share of its project's agreed quote. Hours logged and handoffs this month{seesCost ? "; labour cost uses each person's hourly cost." : "."}
+                {seesCost && (
+                  <>
+                    {" "}
+                    <Link to="/reports?tab=team" className="font-medium text-primary underline-offset-2 hover:underline">
+                      Full team report
+                    </Link>
+                  </>
+                )}
+              </p>
             </div>
             {people.length === 0 ? (
               <p className="px-5 py-8 text-center text-sm text-muted-foreground">Nothing logged yet this month.</p>
@@ -172,7 +183,7 @@ export default function GoalsPage() {
                     <tr className="border-b text-left text-xs text-muted-foreground">
                       <th scope="col" className="px-5 py-2 font-medium">#</th>
                       <th scope="col" className="px-2 py-2 font-medium">Person</th>
-                      <th scope="col" className="px-2 py-2 text-right font-medium">Task value</th>
+                      <th scope="col" className="px-2 py-2 text-right font-medium">Work value</th>
                       <th scope="col" className="px-2 py-2 text-right font-medium">Hours</th>
                       <th scope="col" className="px-2 py-2 text-right font-medium">Handoffs</th>
                       {seesCost && <th scope="col" className="px-2 py-2 text-right font-medium">Labour cost</th>}

@@ -64,6 +64,32 @@ export default function Reception() {
     void load();
   }, [load]);
 
+  // Arriving from the calendar (?due=) or an appointment (?appointment=): start
+  // the intake with what's already known.
+  const fromAppointment = params.get("appointment");
+  const dueFromCalendar = params.get("due");
+  useEffect(() => {
+    if (fromAppointment) {
+      void supabase
+        .from("appointments")
+        .select("id, client_id, title, description, appointment_date, job_id")
+        .eq("id", fromAppointment)
+        .maybeSingle()
+        .then(({ data }) => {
+          if (!data) return;
+          if (data.job_id) {
+            toast.info("This appointment is already linked to a project");
+            return;
+          }
+          setPrefill({ appointmentId: data.id, clientId: data.client_id, title: data.title, description: data.description, intakeType: "evaluation" });
+          setFormKey((k) => k + 1);
+        });
+    } else if (dueFromCalendar) {
+      setPrefill({ dueDate: dueFromCalendar });
+      setFormKey((k) => k + 1);
+    }
+  }, [fromAppointment, dueFromCalendar]);
+
   const clientName = useMemo(() => Object.fromEntries(clients.map((c) => [c.id, clientLabel(c)])), [clients]);
   const setTab = (t: string) => setParams(t === "requests" ? { tab: "requests" } : {}, { replace: true });
 

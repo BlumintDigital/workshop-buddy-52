@@ -368,7 +368,6 @@ function TaskDialog({
     assigned_to: task?.assigned_to ?? NONE,
     due_date: task?.due_date ?? "",
     estimated_hours: task?.estimated_hours != null ? String(task.estimated_hours) : "",
-    value: task?.value ? String(task.value) : "",
   });
   const [saving, setSaving] = useState(false);
   const teamId = form.department_id === NONE ? null : form.department_id;
@@ -388,7 +387,6 @@ function TaskDialog({
           assigned_to: assignee,
           due_date: form.due_date || null,
           estimated_hours: form.estimated_hours ? Number(form.estimated_hours) : null,
-          value: form.value ? Number(form.value) : 0,
           ...(task ? {} : { order_index: nextOrder }),
         };
     const { error } = task ? await supabase.from("job_tasks").update(payload).eq("id", task.id) : await supabase.from("job_tasks").insert(payload as never);
@@ -461,18 +459,15 @@ function TaskDialog({
             {people.length === 0 && <p className="mt-1 text-xs text-muted-foreground">Nobody is in this team yet. Add people in Teams and access.</p>}
           </div>
           {!assignOnly && (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <Label htmlFor="f-task-due">Due (optional)</Label>
                 <DatePickerInput id="f-task-due" value={form.due_date} onChange={(v) => setForm({ ...form, due_date: v })} />
               </div>
               <div>
                 <Label htmlFor="f-task-hours">Estimated hours</Label>
-                <Input id="f-task-hours" type="number" min={0} step={0.5} value={form.estimated_hours} onChange={(e) => setForm({ ...form, estimated_hours: e.target.value })} />
-              </div>
-              <div>
-                <Label htmlFor="f-task-value">Value (optional)</Label>
-                <Input id="f-task-value" type="number" min={0} step={0.01} value={form.value} onChange={(e) => setForm({ ...form, value: e.target.value })} />
+                <Input id="f-task-hours" type="number" min={0} step={0.5} value={form.estimated_hours} onChange={(e) => setForm({ ...form, estimated_hours: e.target.value })} aria-describedby="f-task-hours-hint" />
+                <p id="f-task-hours-hint" className="mt-1 text-xs text-muted-foreground">Also shares the quote's value between tasks on Goals.</p>
               </div>
             </div>
           )}

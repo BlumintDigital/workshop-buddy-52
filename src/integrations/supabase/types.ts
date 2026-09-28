@@ -81,6 +81,7 @@ export type Database = {
           description: string | null
           duration_minutes: number
           id: string
+          job_id: string | null
           notes: string | null
           status: string
           title: string
@@ -95,6 +96,7 @@ export type Database = {
           description?: string | null
           duration_minutes?: number
           id?: string
+          job_id?: string | null
           notes?: string | null
           status?: string
           title: string
@@ -109,13 +111,22 @@ export type Database = {
           description?: string | null
           duration_minutes?: number
           id?: string
+          job_id?: string | null
           notes?: string | null
           status?: string
           title?: string
           type?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "appointments_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       broadcasts: {
         Row: {
@@ -2394,6 +2405,10 @@ export type Database = {
         Args: { _item_id?: string; _quantity: number; _request_item_id: string }
         Returns: undefined
       }
+      link_appointment_to_project: {
+        Args: { _appointment_id: string; _job_id: string }
+        Returns: undefined
+      }
       mark_purchase_ordered: {
         Args: { _expected?: string; _po_id: string }
         Returns: undefined
@@ -2561,6 +2576,7 @@ export type Database = {
         }
         Returns: number
       }
+      task_share_value: { Args: { _task_id: string }; Returns: number }
       team_performance: {
         Args: { _from: string; _to: string }
         Returns: {

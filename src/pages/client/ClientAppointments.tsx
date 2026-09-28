@@ -134,8 +134,6 @@ export default function ClientAppointments() {
                       <SelectItem value="consultation">Consultation</SelectItem>
                       <SelectItem value="repair">Repair</SelectItem>
                       <SelectItem value="inspection">Inspection</SelectItem>
-                      <SelectItem value="pickup">Pickup</SelectItem>
-                      <SelectItem value="delivery">Delivery</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

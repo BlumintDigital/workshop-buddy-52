@@ -26,10 +26,6 @@ const statusColors: Record<string, "default" | "secondary" | "outline" | "destru
 
 const APPT_STATUSES = ["pending", "confirmed", "in_progress", "completed", "cancelled"];
 
-const emptyJobForm = {
-  title: "", description: "", priority: "medium", assigned_staff_id: "", due_date: "", isQuote: false,
-};
-
 export default function AppointmentDetail() {
   const { id } = useParams<{ id: string }>();
   const { user, role } = useAuth();
@@ -37,7 +33,6 @@ export default function AppointmentDetail() {
 
   const [appt, setAppt] = useState<any>(null);
   const [clientName, setClientName] = useState("—");
-  const [staffUsers, setStaffUsers] = useState<{ id: string; full_name: string }[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Notes edit
@@ -45,9 +40,6 @@ export default function AppointmentDetail() {
   const [savingNotes, setSavingNotes] = useState(false);
 
   // Create job dialog
-  const [jobDialogOpen, setJobDialogOpen] = useState(false);
-  const [jobForm, setJobForm] = useState({ ...emptyJobForm });
-  const [creatingJob, setCreatingJob] = useState(false);
 
   const canManage = role === "admin" || role === "manager";
 
@@ -87,15 +79,8 @@ export default function AppointmentDetail() {
       setLoading(false);
     };
 
-    const loadStaff = async () => {
-      const { data: roles } = await supabase.from("user_roles").select("user_id").eq("role", "staff");
-      if (!roles?.length) return;
-      const { data: profiles } = await supabase.from("profiles").select("id, full_name").in("id", roles.map(r => r.user_id));
-      setStaffUsers((profiles || []).map(p => ({ id: p.id, full_name: p.full_name || "Unknown" })));
-    };
 
     load();
-    if (canManage) loadStaff();
   }, [id, role, user?.id]);
 
   const handleStatusChange = async (status: string) => {
@@ -114,44 +99,8 @@ export default function AppointmentDetail() {
     setSavingNotes(false);
   };
 
-  const handleOpenCreateJob = () => {
-    setJobForm({
-      title: appt.title,
-      description: appt.notes || "",
-      priority: "medium",
-      assigned_staff_id: "",
-      due_date: "",
-      isQuote: false,
-    });
-    setJobDialogOpen(true);
-  };
-
-  const handleCreateJob = async () => {
-    if (!jobForm.title.trim()) { toast.error("Give the project a title"); return; }
-    setCreatingJob(true);
-
-    const jobPayload: any = {
-      title: jobForm.title,
-      description: jobForm.description || null,
-      priority: jobForm.priority,
-      status: jobForm.isQuote ? "evaluation" : "pending",
-      intake_type: jobForm.isQuote ? "quote" : "approved",
-      client_id: appt.client_id,
-    };
-    if (jobForm.assigned_staff_id) jobPayload.assigned_staff_id = jobForm.assigned_staff_id;
-    if (jobForm.due_date) jobPayload.due_date = jobForm.due_date;
-
-    const { data: newJob, error: jobError } = await supabase.from("jobs").insert(jobPayload).select("id").single();
-    if (jobError) { toast.error(jobError.message); setCreatingJob(false); return; }
-
-    await supabase.from("appointments").update({ status: "confirmed" }).eq("id", appt.id);
-    setAppt((prev: any) => ({ ...prev, status: "confirmed" }));
-
-    setCreatingJob(false);
-    setJobDialogOpen(false);
-    toast.success(jobForm.isQuote ? "Quote created" : "Project created");
-    navigate(`/projects/${newJob.id}`);
-  };
+  // Projects start at Reception; an appointment that already became one opens it.
+  const handleOpenCreateJob = () => navigate(appt.job_id ? `/projects/${appt.job_id}` : `/reception?appointment=${appt.id}`);
 
   const backPath = role === "client"
     ? "/client/appointments"
@@ -213,7 +162,7 @@ export default function AppointmentDetail() {
             )}
             {canManage && (
               <Button size="sm" onClick={handleOpenCreateJob}>
-                <Briefcase className="mr-2 h-4 w-4" />Create Job
+                <Briefcase className="mr-2 h-4 w-4" />{appt.job_id ? "Open its project" : "Log as a project"}
               </Button>
             )}
           </div>
@@ -310,65 +259,6 @@ export default function AppointmentDetail() {
         </Card>
       </div>
 
-      {/* Create Job dialog */}
-      <Dialog open={jobDialogOpen} onOpenChange={setJobDialogOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Create a project from this appointment</DialogTitle>
-            <DialogDescription>
-              A work order will be created for <strong>{clientName}</strong> and the appointment will be marked as confirmed.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="f-job-title">Project title</Label>
-              <Input id="f-job-title" value={jobForm.title} onChange={(e) => setJobForm({ ...jobForm, title: e.target.value })} className="mt-1" />
-            </div>
-            <div>
-              <Label htmlFor="f-description">Description</Label>
-              <Textarea id="f-description" value={jobForm.description} onChange={(e) => setJobForm({ ...jobForm, description: e.target.value })} className="mt-1" rows={3} />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="f-priority">Priority</Label>
-                <Select value={jobForm.priority} onValueChange={(v) => setJobForm({ ...jobForm, priority: v })}>
-                  <SelectTrigger id="f-priority" className="mt-1"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="low">Low</SelectItem>
-                    <SelectItem value="medium">Medium</SelectItem>
-                    <SelectItem value="high">High</SelectItem>
-                    <SelectItem value="urgent">Urgent</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label htmlFor="f-assign-staff">Assign Staff</Label>
-                <Select value={jobForm.assigned_staff_id} onValueChange={(v) => setJobForm({ ...jobForm, assigned_staff_id: v })}>
-                  <SelectTrigger id="f-assign-staff" className="mt-1"><SelectValue placeholder="None" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="">None</SelectItem>
-                    {staffUsers.map(u => <SelectItem key={u.id} value={u.id}>{u.full_name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div>
-              <Label htmlFor="f-due-date">Due Date</Label>
-              <DatePickerInput id="f-due-date" value={jobForm.due_date} onChange={(v) => setJobForm({ ...jobForm, due_date: v })} className="mt-1" />
-            </div>
-            <div className="flex items-center gap-2">
-              <Checkbox id="isQuote" checked={jobForm.isQuote} onCheckedChange={(v) => setJobForm({ ...jobForm, isQuote: !!v })} />
-              <label htmlFor="isQuote" className="text-sm cursor-pointer">
-                <span className="font-medium">Needs a quote first</span>
-                <span className="text-muted-foreground ml-1">The client approves a quote before work starts.</span>
-              </label>
-            </div>
-            <Button onClick={handleCreateJob} disabled={creatingJob} className="w-full">
-              {creatingJob ? "Creating…" : "Create project"}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
     </DashboardLayout>
   );
 }

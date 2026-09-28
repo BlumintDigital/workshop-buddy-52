@@ -17,6 +17,8 @@ export type IntakeType = "evaluation" | "quote" | "approved";
 
 export interface IntakePrefill {
   requestId?: string;
+  /** The appointment this machine came in from; linked to the new project. */
+  appointmentId?: string;
   clientId?: string | null;
   title?: string;
   description?: string | null;
@@ -101,6 +103,7 @@ export default function IntakeForm({ clients, prefill, onCancel }: { clients: Re
       setSaving(false);
       return toast.error(error?.message ?? "Couldn't log the project. Try again.");
     }
+    if (prefill?.appointmentId) await supabase.rpc("link_appointment_to_project", { _appointment_id: prefill.appointmentId, _job_id: id });
     let failed = 0;
     for (const file of photos) {
       const ext = file.name.includes(".") ? file.name.split(".").pop() : "jpg";

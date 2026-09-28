@@ -53,6 +53,24 @@ test.describe.serial("appointments", () => {
     await expect(page.getByText("Status updated")).toBeVisible({ timeout: 10_000 });
   });
 
+  test("the booking becomes a project through Reception and stays linked", async ({ page }) => {
+    await login(page, "ADMIN");
+    await page.goto("/admin/appointments");
+    await page.getByRole("link", { name: CLIENT_APPT }).click();
+    await page.getByRole("button", { name: "Log as a project" }).click();
+    // Reception's intake opens with the appointment's details filled in.
+    await expect(page).toHaveURL(/\/reception\?appointment=/);
+    await expect(page.getByLabel("What's come in")).toHaveValue(CLIENT_APPT, { timeout: 15_000 });
+    await page.getByRole("button", { name: "Log project" }).click();
+    await expect(page).toHaveURL(/\/projects\//, { timeout: 15_000 });
+
+    await page.goto("/admin/appointments");
+    await page.getByRole("link", { name: CLIENT_APPT }).click();
+    await page.getByRole("button", { name: "Open its project" }).click();
+    await expect(page).toHaveURL(/\/projects\//);
+    await expect(page.getByRole("heading", { name: CLIENT_APPT })).toBeVisible();
+  });
+
   test("admin creates an appointment directly", async ({ page }) => {
     await login(page, "ADMIN");
     await page.goto("/admin/appointments");

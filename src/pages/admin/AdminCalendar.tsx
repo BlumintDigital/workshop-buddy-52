@@ -9,9 +9,8 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ChevronLeft, ChevronRight, Briefcase, CalendarDays, AlertTriangle, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import CreateJobDialog from "@/components/calendar/CreateJobDialog";
 
 type CalendarEvent = {
   id: string;
@@ -60,14 +59,11 @@ export default function AdminCalendar() {
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [draggedEventId, setDraggedEventId] = useState<string | null>(null);
   const [dragOverDate, setDragOverDate] = useState<Date | null>(null);
-  const [createJobOpen, setCreateJobOpen] = useState(false);
-  const [createJobDate, setCreateJobDate] = useState("");
-  const [fetchKey, setFetchKey] = useState(0);
+  const [fetchKey] = useState(0);
+  const navigate = useNavigate();
 
-  const openCreateJob = (date: Date) => {
-    setCreateJobDate(format(date, "yyyy-MM-dd"));
-    setCreateJobOpen(true);
-  };
+  // New projects always go through Reception's intake, due on the chosen day.
+  const openCreateJob = (date: Date) => navigate(`/reception?due=${format(date, "yyyy-MM-dd")}`);
 
   const handleDragStart = (e: React.DragEvent, eventId: string) => {
     e.dataTransfer.setData("text/plain", eventId);
@@ -416,13 +412,6 @@ export default function AdminCalendar() {
           </Card>
         )}
 
-        {/* Create Job Dialog */}
-        <CreateJobDialog
-          open={createJobOpen}
-          onOpenChange={setCreateJobOpen}
-          defaultDate={createJobDate}
-          onCreated={() => setFetchKey((k) => k + 1)}
-        />
       </div>
     </DashboardLayout>
   );
