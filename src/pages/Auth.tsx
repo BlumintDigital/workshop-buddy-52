@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, type ReactNode } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth, getRoleDashboardPath } from "@/hooks/useAuth";
 import type { AppRole } from "@/hooks/useAuth";
@@ -7,14 +7,94 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { ShieldCheck, KeyRound, Briefcase, User, Eye, EyeOff } from "lucide-react";
+import {
+  ShieldCheck, KeyRound, Briefcase, Building2, Eye, EyeOff, Loader2, ArrowLeft, MailCheck,
+  Lock, Users, History, AlertTriangle,
+} from "lucide-react";
 import LoadingScreen from "@/components/LoadingScreen";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { useCountdown } from "@/hooks/useCountdown";
 import { resolveLogoUrl, useDefaultLogoOnError } from "@/lib/branding";
+import { trustThisDevice } from "@/lib/deviceTrust";
+import { cn } from "@/lib/utils";
+
+const MIN_PASSWORD = 8;
+
+/** 0–4: length, mixed case, digits, symbols. */
+function passwordScore(pw: string): number {
+  if (!pw) return 0;
+  let score = pw.length >= MIN_PASSWORD ? 1 : 0;
+  if (pw.length >= 12) score++;
+  if (/[a-z]/.test(pw) && /[A-Z]/.test(pw)) score++;
+  if (/\d/.test(pw) && /[^A-Za-z0-9]/.test(pw)) score++;
+  return Math.min(score, 4);
+}
+const SCORE_LABEL = ["Too short", "Weak", "Fair", "Good", "Strong"];
+const SCORE_COLOR = ["bg-destructive", "bg-destructive", "bg-warning", "bg-success", "bg-success"];
+
+function PasswordInput({
+  id, value, onChange, autoComplete, placeholder, minLength,
+}: { id: string; value: string; onChange: (v: string) => void; autoComplete: string; placeholder?: string; minLength?: number }) {
+  const [show, setShow] = useState(false);
+  const [capsLock, setCapsLock] = useState(false);
+  const checkCaps = (e: React.KeyboardEvent<HTMLInputElement>) => setCapsLock(e.getModifierState?.("CapsLock") ?? false);
+  return (
+    <div className="space-y-1.5">
+      <div className="relative">
+        <Input
+          id={id}
+          type={show ? "text" : "password"}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          onKeyUp={checkCaps}
+          onKeyDown={checkCaps}
+          onBlur={() => setCapsLock(false)}
+          required
+          minLength={minLength}
+          placeholder={placeholder}
+          autoComplete={autoComplete}
+          className="h-11 pr-11"
+        />
+        <button
+          type="button"
+          tabIndex={-1}
+          onClick={() => setShow((v) => !v)}
+          className="absolute right-1 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+          aria-label={show ? "Hide password" : "Show password"}
+        >
+          {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+        </button>
+      </div>
+      {capsLock && (
+        <p className="flex items-center gap-1.5 text-xs text-warning">
+          <AlertTriangle className="h-3.5 w-3.5" /> Caps Lock is on
+        </p>
+      )}
+    </div>
+  );
+}
+
+function Field({ label, htmlFor, aside, hint, children }: { label: string; htmlFor: string; aside?: ReactNode; hint?: ReactNode; children: ReactNode }) {
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-baseline justify-between gap-2">
+        <Label htmlFor={htmlFor} className="text-[13px] font-medium">{label}</Label>
+        {aside}
+      </div>
+      {children}
+      {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
+    </div>
+  );
+}
+
+function SubmitButton({ busy, busyLabel, children, disabled }: { busy: boolean; busyLabel: string; children: ReactNode; disabled?: boolean }) {
+  return (
+    <Button type="submit" className="h-11 w-full text-[15px]" disabled={busy || disabled}>
+      {busy ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" />{busyLabel}</>) : children}
+    </Button>
+  );
+}
 
 export default function Auth() {
   const {
@@ -31,6 +111,7 @@ export default function Auth() {
     clearMfaFlag,
   } = useAuth();
   const navigate = useNavigate();
+  const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
   const [signupEmail, setSignupEmail] = useState("");
@@ -42,7 +123,9 @@ export default function Auth() {
   const [signupRole, setSignupRole] = useState<"staff" | "client">("client");
   const [signupCompanyName, setSignupCompanyName] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
   const [loginImageUrl, setLoginImageUrl] = useState<string | null>(null);
+  const [heroFailed, setHeroFailed] = useState(false);
   const [workshopName, setWorkshopName] = useState<string>("Workshop Manager");
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [emailConfirmationSent, setEmailConfirmationSent] = useState(false);
@@ -53,6 +136,7 @@ export default function Auth() {
   const [mfaFactorId, setMfaFactorId] = useState<string | null>(null);
   const [mfaCode, setMfaCode] = useState("");
   const [mfaSubmitting, setMfaSubmitting] = useState(false);
+  const [mfaError, setMfaError] = useState<string | null>(null);
   const [pendingRole, setPendingRole] = useState<AppRole | null>(null);
   const [rememberDevice, setRememberDevice] = useState(false);
   const [useBackupCode, setUseBackupCode] = useState(false);
@@ -60,9 +144,6 @@ export default function Auth() {
   const [backupError, setBackupError] = useState<string | null>(null);
   const [backupRemainingAttempts, setBackupRemainingAttempts] = useState<number | null>(null);
   const [backupLockoutSec, setBackupLockoutSec] = useState<number | null>(null);
-  const [showLoginPassword, setShowLoginPassword] = useState(false);
-  const [showSignupPassword, setShowSignupPassword] = useState(false);
-  const [showSignupConfirm, setShowSignupConfirm] = useState(false);
   const lockout = useCountdown(backupLockoutSec);
   const isLocked = lockout.remaining > 0;
   const mfaStep = localMfaStep || needsMfaVerification;
@@ -75,6 +156,8 @@ export default function Auth() {
     backupCode.length > 0 && !backupFormatValid
       ? "Use the format XXXX-XXXX (letters A–Z and digits 2–9)."
       : null;
+  const score = passwordScore(signupPassword);
+  const confirmMismatch = signupConfirmPassword.length > 0 && signupConfirmPassword !== signupPassword;
 
   const formatBackupInput = (raw: string) => {
     const cleaned = raw.toUpperCase().replace(/[^A-HJ-NP-Z2-9]/g, "").slice(0, 8);
@@ -144,13 +227,13 @@ export default function Auth() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
+    setLoginError(null);
     try {
-      const result = await signIn(loginEmail, loginPassword);
+      const result = await signIn(loginEmail.trim(), loginPassword);
       if (result.needsMfa) {
         setLocalMfaStep(true);
         setMfaFactorId(result.factorId ?? null);
         setPendingRole(result.role);
-        toast.info("Please enter your 2FA code");
       } else if (result.role) {
         toast.success("Signed in successfully");
         navigate(getRoleDashboardPath(result.role), { replace: true });
@@ -159,83 +242,44 @@ export default function Auth() {
         await signOut();
       }
     } catch (err: unknown) {
-      toast.error(getErrorMessage(err, "Failed to sign in"));
+      setLoginError(getErrorMessage(err, "Failed to sign in"));
     } finally {
       setSubmitting(false);
     }
   };
 
-  const checkTrustedDevice = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.access_token) return false;
-    const res = await fetch(
-      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/mfa-check-device`,
-      {
-        method: "POST",
-        credentials: "include",
-        headers: {
-          "Authorization": `Bearer ${session.access_token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({}),
-      }
-    );
-    if (!res.ok) return false;
-    const data: unknown = await res.json().catch(() => null);
-    const trusted = data && typeof data === "object" && (data as Record<string, unknown>).trusted;
-    return trusted === true;
-  };
-
   const trustThisDeviceIfRequested = async () => {
     if (!rememberDevice) return;
-    try {
-      const label = navigator.userAgent.slice(0, 180);
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) throw new Error("Missing session");
-      // Token is set as an httpOnly cookie by the edge function — no localStorage needed
-      const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/mfa-trust-device`,
-        {
-          method: "POST",
-          credentials: "include",
-          headers: {
-            "Authorization": `Bearer ${session.access_token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ device_label: label }),
-        }
-      );
-      const data: unknown = await res.json().catch(() => null);
-      const record = data && typeof data === "object" ? data as Record<string, unknown> : {};
-      if (!res.ok || record.ok !== true) {
-        throw new Error(typeof record.error === "string" ? record.error : "Trust-device request failed");
-      }
-      const trusted = await checkTrustedDevice();
-      if (!trusted) {
-        throw new Error("Trust-device cookie was not accepted");
-      }
-    } catch {
-      toast.error("Could not remember this device, but you are signed in.");
-    }
+    const { data: { session } } = await supabase.auth.getSession();
+    const ok = session ? await trustThisDevice(session.access_token, session.user.id) : false;
+    if (!ok) toast.error("Couldn't trust this browser, but you are signed in.");
   };
 
-  const finishMfaSuccess = async () => {
-    await trustThisDeviceIfRequested();
+  const resetMfa = () => {
     clearMfaFlag();
     setLocalMfaStep(false);
     setMfaFactorId(null);
     setPendingRole(null);
     setMfaCode("");
+    setMfaError(null);
     setBackupCode("");
+    setBackupError(null);
     setUseBackupCode(false);
-    toast.success("Signed in successfully");
-    navigate(getRoleDashboardPath(activePendingRole), { replace: true });
   };
 
-  const handleMfaVerify = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!activeMfaFactorId || mfaCode.length !== 6) return;
+  const finishMfaSuccess = async () => {
+    await trustThisDeviceIfRequested();
+    const next = activePendingRole;
+    resetMfa();
+    toast.success("Signed in successfully");
+    navigate(getRoleDashboardPath(next), { replace: true });
+  };
+
+  const handleMfaVerify = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if (!activeMfaFactorId || mfaCode.length !== 6 || mfaSubmitting) return;
     setMfaSubmitting(true);
+    setMfaError(null);
     try {
       const { data: challengeData, error: challengeError } = await supabase.auth.mfa.challenge({ factorId: activeMfaFactorId });
       if (challengeError) throw challengeError;
@@ -249,7 +293,9 @@ export default function Auth() {
 
       await finishMfaSuccess();
     } catch (err: unknown) {
-      toast.error(getErrorMessage(err, "Invalid verification code"));
+      const message = getErrorMessage(err, "Invalid verification code");
+      setMfaError(message);
+      toast.error(message);
       setMfaCode("");
     } finally {
       setMfaSubmitting(false);
@@ -302,6 +348,10 @@ export default function Auth() {
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (signupPassword.length < MIN_PASSWORD) {
+      toast.error(`Use at least ${MIN_PASSWORD} characters for your password`);
+      return;
+    }
     if (signupPassword !== signupConfirmPassword) {
       toast.error("Passwords do not match");
       return;
@@ -339,8 +389,8 @@ export default function Auth() {
         return;
       }
       const fullName = `${signupFirstName.trim()} ${signupLastName.trim()}`;
-      await signUp(signupEmail, signupPassword, fullName, signupRole, signupCompanyName.trim() || undefined);
-      setConfirmationEmail(signupEmail);
+      await signUp(signupEmail.trim(), signupPassword, fullName, signupRole, signupCompanyName.trim() || undefined);
+      setConfirmationEmail(signupEmail.trim());
       setEmailConfirmationSent(true);
     } catch (err: unknown) {
       toast.error(getErrorMessage(err, "Failed to create account"));
@@ -349,372 +399,372 @@ export default function Auth() {
     }
   };
 
+  const logo = (size: string) => (
+    <img src={resolveLogoUrl(logoUrl)} alt="" className={cn(size, "rounded-xl object-contain")} onError={useDefaultLogoOnError} />
+  );
+
+  const legal = (
+    <footer className="space-y-1.5 text-center text-xs leading-relaxed text-muted-foreground">
+      <p>
+        <Link to="/privacy" className="hover:text-foreground hover:underline">Privacy</Link>
+        <span className="mx-2" aria-hidden>·</span>
+        <Link to="/terms" className="hover:text-foreground hover:underline">Terms</Link>
+      </p>
+      <p>Shoplane · © {new Date().getFullYear()} Blumint Digital Limited · Registered in England and Wales · Company No. 15709531</p>
+    </footer>
+  );
+
+  // Single-column screens (2FA, email sent): a focused panel with the brand above it.
+  // Called as a function, not rendered as a component, so its inputs keep focus.
+  const focused = ({ icon, title, subtitle, children }: { icon: ReactNode; title: string; subtitle: ReactNode; children: ReactNode }) => (
+    <div className="flex min-h-screen flex-col bg-background px-4 py-10 sm:px-6">
+      <div className="mx-auto flex w-full max-w-[420px] flex-1 flex-col justify-center gap-8">
+        <div className="flex items-center justify-center gap-2.5">
+          {logo("h-8 w-8")}
+          <span className="text-sm font-semibold tracking-tight">{workshopName}</span>
+        </div>
+        <div className="rounded-2xl border bg-card p-6 shadow-elevation sm:p-8">
+          <div className="mb-6 space-y-3 text-center">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary-soft text-primary">{icon}</div>
+            <h1 className="text-xl font-semibold tracking-tight text-balance">{title}</h1>
+            <div className="text-sm text-muted-foreground">{subtitle}</div>
+          </div>
+          {children}
+        </div>
+        {legal}
+      </div>
+    </div>
+  );
+
   // Email confirmation screen
   if (emailConfirmationSent) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background p-6">
-        <div className="w-full max-w-md space-y-6">
-          <div className="flex flex-col items-center gap-2">
-            <img src={resolveLogoUrl(logoUrl)} alt={workshopName} className="h-16 w-16 rounded-lg object-contain" onError={useDefaultLogoOnError} />
-            <h1 className="text-2xl font-bold tracking-tight">Check your email</h1>
-            <p className="text-sm text-muted-foreground text-center">
-              We've sent a confirmation link to
-            </p>
-            <p className="text-sm font-medium">{confirmationEmail}</p>
-          </div>
-          <Card>
-            <CardContent className="pt-6 space-y-4">
-              <p className="text-sm text-muted-foreground text-center">
-                Click the link in the email to verify your account and sign in. If you don't see it, check your spam folder.
-              </p>
-              <div className="flex flex-col gap-2">
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  onClick={async () => {
-                    try {
-                      await supabase.auth.resend({ type: "signup", email: confirmationEmail });
-                      toast.success("Confirmation email resent!");
-                    } catch {
-                      toast.error("Failed to resend email");
-                    }
-                  }}
-                >
-                  Resend confirmation email
-                </Button>
-                <Button
-                  variant="ghost"
-                  className="w-full"
-                  onClick={() => {
-                    setEmailConfirmationSent(false);
-                    setConfirmationEmail("");
-                  }}
-                >
-                  Back to sign in
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+    return focused({
+      icon: <MailCheck className="h-6 w-6" />,
+      title: "Check your email",
+      subtitle: <>We sent a confirmation link to <span className="font-medium text-foreground">{confirmationEmail}</span>.</>,
+      children: (
+        <div className="space-y-3">
+          <p className="text-center text-sm text-muted-foreground">
+            Open the link to verify your account, then sign in. It can take a minute to arrive; check spam if it doesn't.
+          </p>
+          <Button
+            variant="outline"
+            className="h-11 w-full"
+            onClick={async () => {
+              const { error } = await supabase.auth.resend({ type: "signup", email: confirmationEmail });
+              if (error) toast.error("Failed to resend email");
+              else toast.success("Confirmation email resent");
+            }}
+          >
+            Resend email
+          </Button>
+          <Button
+            variant="ghost"
+            className="h-11 w-full"
+            onClick={() => {
+              setEmailConfirmationSent(false);
+              setConfirmationEmail("");
+              setMode("signin");
+            }}
+          >
+            <ArrowLeft className="mr-1.5 h-4 w-4" /> Back to sign in
+          </Button>
         </div>
-      </div>
-    );
+      ),
+    });
   }
+
+  const trustToggle = (
+    <label className="flex cursor-pointer items-start gap-3 rounded-lg border bg-muted/40 p-3 text-left">
+      <Checkbox className="mt-0.5" checked={rememberDevice} onCheckedChange={(v) => setRememberDevice(!!v)} aria-describedby="trust-hint" />
+      <span className="space-y-0.5">
+        <span className="block text-sm font-medium">Trust this browser for 30 days</span>
+        <span id="trust-hint" className="block text-xs text-muted-foreground">
+          Skip the code here next time. Don't tick this on a shared computer. You can revoke it in Profile → Security.
+        </span>
+      </span>
+    </label>
+  );
 
   // MFA verification screen
   if (mfaStep) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background p-6">
-        <div className="w-full max-w-md space-y-6">
-          <div className="flex flex-col items-center gap-2">
-            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-              {useBackupCode ? <KeyRound className="h-6 w-6" /> : <ShieldCheck className="h-6 w-6" />}
-            </div>
-            <h1 className="text-2xl font-bold tracking-tight">
-              {useBackupCode ? "Use a backup code" : "Two-Factor Authentication"}
-            </h1>
-            <p className="text-sm text-muted-foreground text-center">
-              {useBackupCode
-                ? "Enter one of the backup codes you saved when setting up 2FA"
-                : "Enter the 6-digit code from your authenticator app"}
-            </p>
-          </div>
-          <Card>
-            <CardContent className="pt-6">
-              {useBackupCode ? (
-                <form onSubmit={handleBackupCodeVerify} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="backup-code">Backup code</Label>
-                    <Input
-                      id="backup-code"
-                      value={backupCode}
-                      onChange={(e) => {
-                        setBackupCode(formatBackupInput(e.target.value));
-                        setBackupError(null);
-                      }}
-                      placeholder="XXXX-XXXX"
-                      autoComplete="one-time-code"
-                      maxLength={9}
-                      disabled={isLocked}
-                      aria-invalid={!!backupFormatHint || !!backupError}
-                      className={`font-mono tracking-wider text-center ${
-                        (backupFormatHint || backupError) ? "border-destructive focus-visible:ring-destructive" : ""
-                      }`}
-                      autoFocus
-                    />
-                    {backupFormatHint && (
-                      <p className="text-xs text-destructive">{backupFormatHint}</p>
-                    )}
-                    {backupError && !backupFormatHint && (
-                      <p className="text-xs text-destructive">{backupError}</p>
-                    )}
-                    {isLocked && (
-                      <p className="text-xs text-destructive">
-                        Locked out. Try again in {lockout.formatted}.
-                      </p>
-                    )}
-                    {!isLocked && backupRemainingAttempts !== null && backupRemainingAttempts > 0 && !backupError && (
-                      <p className="text-xs text-muted-foreground">
-                        {backupRemainingAttempts} attempt{backupRemainingAttempts === 1 ? "" : "s"} remaining before lockout.
-                      </p>
-                    )}
-                  </div>
-                  <label className="flex items-center gap-2 text-sm">
-                    <Checkbox checked={rememberDevice} onCheckedChange={(v) => setRememberDevice(!!v)} />
-                    Remember this device for 30 days
-                  </label>
-                  <Button
-                    type="submit"
-                    className="w-full"
-                    disabled={mfaSubmitting || !backupFormatValid || isLocked}
-                  >
-                    {mfaSubmitting ? "Verifying..." : "Verify backup code"}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    className="w-full"
-                    onClick={() => { setUseBackupCode(false); setBackupCode(""); }}
-                  >
-                    Back to authenticator code
-                  </Button>
-                </form>
-              ) : (
-                <form onSubmit={handleMfaVerify} className="space-y-6">
-                  <div className="flex justify-center">
-                    <InputOTP maxLength={6} value={mfaCode} onChange={setMfaCode}>
-                      <InputOTPGroup>
-                        <InputOTPSlot index={0} />
-                        <InputOTPSlot index={1} />
-                        <InputOTPSlot index={2} />
-                        <InputOTPSlot index={3} />
-                        <InputOTPSlot index={4} />
-                        <InputOTPSlot index={5} />
-                      </InputOTPGroup>
-                    </InputOTP>
-                  </div>
-                  <label className="flex items-center justify-center gap-2 text-sm">
-                    <Checkbox checked={rememberDevice} onCheckedChange={(v) => setRememberDevice(!!v)} />
-                    Remember this device for 30 days
-                  </label>
-                  <Button type="submit" className="w-full" disabled={mfaSubmitting || !activeMfaFactorId || mfaCode.length !== 6}>
-                    {mfaSubmitting ? "Verifying..." : "Verify"}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full"
-                    onClick={() => setUseBackupCode(true)}
-                  >
-                    <KeyRound className="h-4 w-4 mr-1" />
-                    Use a backup code instead
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    className="w-full"
-                    onClick={() => {
-                      setLocalMfaStep(false);
-                      setMfaFactorId(null);
-                      setPendingRole(null);
-                      setMfaCode("");
-                      clearMfaFlag();
-                      supabase.auth.signOut();
-                    }}
-                  >
-                    Cancel
-                  </Button>
-                </form>
+    return focused({
+      icon: useBackupCode ? <KeyRound className="h-6 w-6" /> : <ShieldCheck className="h-6 w-6" />,
+      title: useBackupCode ? "Use a backup code" : "Two-Factor Authentication",
+      subtitle: useBackupCode
+        ? "Enter one of the backup codes you saved when you set up 2FA."
+        : "Enter the 6-digit code from your authenticator app.",
+      children: useBackupCode ? (
+          <form onSubmit={handleBackupCodeVerify} className="space-y-5">
+            <Field label="Backup code" htmlFor="backup-code">
+              <Input
+                id="backup-code"
+                value={backupCode}
+                onChange={(e) => {
+                  setBackupCode(formatBackupInput(e.target.value));
+                  setBackupError(null);
+                }}
+                placeholder="XXXX-XXXX"
+                autoComplete="one-time-code"
+                maxLength={9}
+                disabled={isLocked}
+                aria-invalid={!!backupFormatHint || !!backupError}
+                className={cn(
+                  "h-12 text-center font-mono text-lg tracking-[0.2em]",
+                  (backupFormatHint || backupError) && "border-destructive focus-visible:ring-destructive",
+                )}
+                autoFocus
+              />
+              {backupFormatHint && <p className="text-xs text-destructive">{backupFormatHint}</p>}
+              {backupError && !backupFormatHint && <p role="alert" className="text-xs text-destructive">{backupError}</p>}
+              {isLocked && <p className="text-xs text-destructive">Locked out. Try again in {lockout.formatted}.</p>}
+              {!isLocked && backupRemainingAttempts !== null && backupRemainingAttempts > 0 && !backupError && (
+                <p className="text-xs text-muted-foreground">
+                  {backupRemainingAttempts} attempt{backupRemainingAttempts === 1 ? "" : "s"} remaining before lockout.
+                </p>
               )}
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    );
+            </Field>
+            {trustToggle}
+            <SubmitButton busy={mfaSubmitting} busyLabel="Verifying…" disabled={!backupFormatValid || isLocked}>
+              Verify backup code
+            </SubmitButton>
+            <Button type="button" variant="ghost" className="h-10 w-full" onClick={() => { setUseBackupCode(false); setBackupCode(""); }}>
+              <ArrowLeft className="mr-1.5 h-4 w-4" /> Use authenticator code
+            </Button>
+          </form>
+        ) : (
+          <form onSubmit={handleMfaVerify} className="space-y-5">
+            <div className="flex flex-col items-center gap-2">
+              <InputOTP
+                maxLength={6}
+                value={mfaCode}
+                onChange={(v) => { setMfaCode(v); setMfaError(null); }}
+                autoFocus
+                aria-invalid={!!mfaError}
+              >
+                <InputOTPGroup className="gap-2">
+                  {[0, 1, 2, 3, 4, 5].map((i) => (
+                    <InputOTPSlot key={i} index={i} className="h-12 w-11 rounded-md border text-lg font-semibold first:rounded-md last:rounded-md" />
+                  ))}
+                </InputOTPGroup>
+              </InputOTP>
+              {mfaError && <p role="alert" className="text-xs text-destructive">{mfaError}</p>}
+            </div>
+            {trustToggle}
+            <SubmitButton busy={mfaSubmitting} busyLabel="Verifying…" disabled={!activeMfaFactorId || mfaCode.length !== 6}>
+              Verify
+            </SubmitButton>
+            <div className="flex items-center justify-between gap-2 text-sm">
+              <button type="button" className="font-medium text-primary hover:underline" onClick={() => setUseBackupCode(true)}>
+                Use a backup code
+              </button>
+              <button
+                type="button"
+                className="text-muted-foreground hover:text-foreground"
+                onClick={() => { resetMfa(); void signOut(); }}
+              >
+                Sign in as someone else
+              </button>
+            </div>
+          </form>
+        ),
+    });
   }
 
+  const heroSrc = loginImageUrl ?? "/auth-hero.jpg";
+
   return (
-    <div className="flex min-h-screen">
-      {/* Left side - Form */}
-      <div className="flex flex-1 items-center justify-center bg-background p-6 sm:p-8">
-        <div className="w-full max-w-md space-y-6">
-          <div className="flex flex-col items-center gap-2">
-            <img src={resolveLogoUrl(logoUrl)} alt={workshopName} className="h-40 w-40 rounded-2xl object-contain drop-shadow-md" onError={useDefaultLogoOnError} />
-            <h1 className="text-2xl font-bold tracking-tight">{workshopName}</h1>
-            <p className="text-sm text-muted-foreground">Manufacturing & Fabrication Management</p>
+    <div className="flex min-h-screen bg-background">
+      {/* Brand panel */}
+      <aside className="relative hidden w-[44%] max-w-[720px] overflow-hidden bg-[hsl(150_30%_12%)] text-white lg:flex lg:flex-col">
+        {!heroFailed && (
+          <img
+            src={heroSrc}
+            alt=""
+            className="absolute inset-0 h-full w-full object-cover"
+            onError={() => setHeroFailed(true)}
+          />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-b from-[hsl(150_30%_8%/0.55)] via-[hsl(150_30%_8%/0.35)] to-[hsl(150_30%_6%/0.92)]" />
+        <div className="relative flex flex-1 flex-col justify-between p-10 xl:p-14">
+          <div className="flex items-center gap-3">
+            <div className="rounded-xl bg-white/95 p-1.5 shadow-sm">{logo("h-9 w-9")}</div>
+            <span className="text-base font-semibold tracking-tight">{workshopName}</span>
+          </div>
+          <div className="max-w-md space-y-8">
+            <div className="space-y-3">
+              <h2 className="text-3xl font-semibold leading-tight tracking-tight text-balance xl:text-4xl">
+                Every project, from reception to delivery.
+              </h2>
+              <p className="text-[15px] leading-relaxed text-white/75">
+                Quotes, the workshop floor, quality checks, invoicing and handover in one place, for your team and your clients.
+              </p>
+            </div>
+            <ul className="grid gap-3 text-sm text-white/85">
+              <li className="flex items-center gap-3"><Lock className="h-4 w-4 shrink-0 text-white/60" /> Two-factor sign-in for admins and managers</li>
+              <li className="flex items-center gap-3"><Users className="h-4 w-4 shrink-0 text-white/60" /> Access by role: admin, manager, staff and client</li>
+              <li className="flex items-center gap-3"><History className="h-4 w-4 shrink-0 text-white/60" /> Every change recorded in the activity log</li>
+            </ul>
+          </div>
+        </div>
+      </aside>
+
+      {/* Form */}
+      <main className="flex flex-1 flex-col px-4 py-8 sm:px-8">
+        <div className="mx-auto flex w-full max-w-[400px] flex-1 flex-col justify-center gap-8">
+          <div className="flex items-center gap-2.5 lg:hidden">
+            {logo("h-9 w-9")}
+            <span className="text-base font-semibold tracking-tight">{workshopName}</span>
           </div>
 
-          <Tabs defaultValue="login" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="login">Sign In</TabsTrigger>
-              <TabsTrigger value="signup">Sign Up</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="login">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Welcome back</CardTitle>
-                  <CardDescription>Enter your credentials to access your account</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <form onSubmit={handleLogin} className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="login-email">Email</Label>
-                      <Input id="login-email" type="email" value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} required placeholder="you@example.com" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="login-password">Password</Label>
-                      <div className="relative">
-                        <Input id="login-password" type={showLoginPassword ? "text" : "password"} value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} required placeholder="••••••••" autoComplete="current-password" className="pr-10" />
-                        <button type="button" tabIndex={-1} onClick={() => setShowLoginPassword(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" aria-label={showLoginPassword ? "Hide password" : "Show password"}>
-                          {showLoginPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                        </button>
-                      </div>
-                    </div>
-                    <Button type="submit" className="w-full" disabled={submitting}>
-                      {submitting ? "Signing in..." : "Sign In"}
-                    </Button>
-                    <Link to="/forgot-password" className="block text-center text-sm text-muted-foreground hover:text-foreground">
-                      Forgot password?
-                    </Link>
-                  </form>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="signup">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Create account</CardTitle>
-                  <CardDescription>Select your role then enter your invite code</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <form onSubmit={handleSignup} className="space-y-4">
-                    {/* Role selector */}
-                    <div className="space-y-2">
-                      <Label>I am a…</Label>
-                      <div className="grid grid-cols-2 gap-3">
+          {mode === "signin" ? (
+            <section className="space-y-7">
+              <header className="space-y-1.5">
+                <h1 className="text-2xl font-semibold tracking-tight">Sign in</h1>
+                <p className="text-sm text-muted-foreground">Welcome back. Use the email your workshop invited you with.</p>
+              </header>
+              <form onSubmit={handleLogin} className="space-y-5">
+                <Field label="Email" htmlFor="login-email">
+                  <Input
+                    id="login-email"
+                    type="email"
+                    value={loginEmail}
+                    onChange={(e) => { setLoginEmail(e.target.value); setLoginError(null); }}
+                    required
+                    autoFocus
+                    autoComplete="username"
+                    inputMode="email"
+                    placeholder="name@company.com"
+                    className="h-11"
+                  />
+                </Field>
+                <Field
+                  label="Password"
+                  htmlFor="login-password"
+                  aside={<Link to="/forgot-password" className="text-xs font-medium text-primary hover:underline">Forgot password?</Link>}
+                >
+                  <PasswordInput id="login-password" value={loginPassword} onChange={(v) => { setLoginPassword(v); setLoginError(null); }} autoComplete="current-password" />
+                </Field>
+                {loginError && (
+                  <p role="alert" className="rounded-md border border-destructive/30 bg-destructive-soft px-3 py-2 text-sm text-destructive">
+                    {loginError}
+                  </p>
+                )}
+                <SubmitButton busy={submitting} busyLabel="Signing in…">Sign In</SubmitButton>
+              </form>
+              <p className="text-center text-sm text-muted-foreground">
+                Have an invite code?{" "}
+                <button type="button" className="font-medium text-primary hover:underline" onClick={() => setMode("signup")}>
+                  Create an account
+                </button>
+              </p>
+            </section>
+          ) : (
+            <section className="space-y-7">
+              <header className="space-y-1.5">
+                <h1 className="text-2xl font-semibold tracking-tight">Create your account</h1>
+                <p className="text-sm text-muted-foreground">You'll need the invite code your workshop sent you.</p>
+              </header>
+              <form onSubmit={handleSignup} className="space-y-5">
+                <fieldset className="space-y-1.5">
+                  <legend className="mb-1.5 text-[13px] font-medium">Account type</legend>
+                  <div role="radiogroup" className="grid grid-cols-2 gap-2">
+                    {([
+                      { value: "client", icon: Building2, title: "Client", sub: "We bring work to the workshop" },
+                      { value: "staff", icon: Briefcase, title: "Staff", sub: "I work at the workshop" },
+                    ] as const).map((opt) => {
+                      const active = signupRole === opt.value;
+                      return (
                         <button
+                          key={opt.value}
                           type="button"
-                          onClick={() => { setSignupRole("client"); setSignupCompanyName(""); }}
-                          className={`flex flex-col items-center gap-1.5 rounded-lg border-2 p-4 text-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring ${signupRole === "client" ? "border-primary bg-primary/5" : "border-border hover:border-muted-foreground/50"}`}
+                          role="radio"
+                          aria-checked={active}
+                          onClick={() => { setSignupRole(opt.value); setSignupCompanyName(""); }}
+                          className={cn(
+                            "flex items-start gap-2.5 rounded-lg border p-3 text-left transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                            active ? "border-primary bg-primary-soft" : "hover:border-muted-foreground/40",
+                          )}
                         >
-                          <User className="h-6 w-6" />
-                          <span className="font-medium">Client</span>
-                          <span className="text-xs text-muted-foreground text-center">I'm a customer / client</span>
+                          <opt.icon className={cn("mt-0.5 h-4 w-4 shrink-0", active ? "text-primary" : "text-muted-foreground")} />
+                          <span>
+                            <span className="block text-sm font-medium">{opt.title}</span>
+                            <span className="block text-xs leading-snug text-muted-foreground">{opt.sub}</span>
+                          </span>
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => { setSignupRole("staff"); setSignupCompanyName(""); }}
-                          className={`flex flex-col items-center gap-1.5 rounded-lg border-2 p-4 text-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring ${signupRole === "staff" ? "border-primary bg-primary/5" : "border-border hover:border-muted-foreground/50"}`}
-                        >
-                          <Briefcase className="h-6 w-6" />
-                          <span className="font-medium">Staff</span>
-                          <span className="text-xs text-muted-foreground text-center">I work at the workshop</span>
-                        </button>
-                      </div>
-                    </div>
-                    {signupRole === "client" && (
-                      <div className="space-y-2">
-                        <Label htmlFor="signup-company-name">Company Name</Label>
-                        <Input id="signup-company-name" value={signupCompanyName} onChange={(e) => setSignupCompanyName(e.target.value)} required placeholder="Acme Ltd." />
-                      </div>
-                    )}
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-2">
-                        <Label htmlFor="signup-first-name">{signupRole === "client" ? "Contact First Name" : "First Name"}</Label>
-                        <Input id="signup-first-name" value={signupFirstName} onChange={(e) => setSignupFirstName(e.target.value)} required placeholder="John" />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="signup-last-name">{signupRole === "client" ? "Contact Last Name" : "Last Name"}</Label>
-                        <Input id="signup-last-name" value={signupLastName} onChange={(e) => setSignupLastName(e.target.value)} required placeholder="Doe" />
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="signup-email">Email</Label>
-                      <Input id="signup-email" type="email" value={signupEmail} onChange={(e) => setSignupEmail(e.target.value)} required placeholder="you@example.com" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="signup-password">Password</Label>
-                      <div className="relative">
-                        <Input id="signup-password" type={showSignupPassword ? "text" : "password"} value={signupPassword} onChange={(e) => setSignupPassword(e.target.value)} required minLength={6} placeholder="••••••••" autoComplete="new-password" className="pr-10" />
-                        <button type="button" tabIndex={-1} onClick={() => setShowSignupPassword(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" aria-label={showSignupPassword ? "Hide password" : "Show password"}>
-                          {showSignupPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                        </button>
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="signup-confirm-password">Confirm Password</Label>
-                      <div className="relative">
-                        <Input id="signup-confirm-password" type={showSignupConfirm ? "text" : "password"} value={signupConfirmPassword} onChange={(e) => setSignupConfirmPassword(e.target.value)} required minLength={6} placeholder="••••••••" autoComplete="new-password" className="pr-10" />
-                        <button type="button" tabIndex={-1} onClick={() => setShowSignupConfirm(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" aria-label={showSignupConfirm ? "Hide password" : "Show password"}>
-                          {showSignupConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                        </button>
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="signup-invite-code">Invite Code</Label>
-                      <Input
-                        id="signup-invite-code"
-                        value={signupInviteCode}
-                        onChange={(e) => setSignupInviteCode(e.target.value)}
-                        required
-                        placeholder="Enter the code provided by your workshop"
-                        autoComplete="off"
-                        maxLength={64}
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        Don't have one? Ask your workshop admin to issue you an invite code.
-                      </p>
-                    </div>
-                    <Button type="submit" className="w-full" disabled={submitting}>
-                      {submitting ? "Creating account..." : "Create Account"}
-                    </Button>
-                  </form>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
-          <div className="text-center text-xs text-muted-foreground mt-6 space-y-1">
-            <p>Shoplane is powered by Blumint Workspace · © {new Date().getFullYear()} Blumint Digital Limited · Registered in England and Wales · Company No. 15709531</p>
-            <p>
-              <Link to="/privacy" className="hover:underline">Privacy Policy</Link>
-              {" · "}
-              <Link to="/terms" className="hover:underline">Terms of Service</Link>
-            </p>
-          </div>
-        </div>
-      </div>
+                      );
+                    })}
+                  </div>
+                </fieldset>
 
-      {/* Right side - Hero image */}
-      <div className="hidden lg:flex lg:flex-1 relative overflow-hidden">
-        <img
-          src={loginImageUrl ?? "/auth-hero.jpg"}
-          alt="Workshop"
-          className="absolute inset-0 w-full h-full object-cover"
-          onError={(e) => {
-            // If the default image isn't found, fall back to the gradient placeholder
-            const target = e.currentTarget;
-            target.style.display = "none";
-            target.nextElementSibling?.classList.remove("hidden");
-          }}
-        />
-        {/* Gradient fallback — hidden when image loads, shown on image error */}
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/80 via-primary/60 to-primary/90 items-center justify-center hidden">
-          <div className="text-center space-y-4 px-12">
-            <img src={resolveLogoUrl(logoUrl)} alt={workshopName} className="h-16 w-16 rounded-lg object-contain mx-auto" onError={useDefaultLogoOnError} />
-            <h2 className="text-3xl font-bold text-primary-foreground">{workshopName}</h2>
-            <p className="text-primary-foreground/70 text-lg max-w-sm mx-auto">
-              Streamline your manufacturing & fabrication workflow with powerful job tracking, inventory management, and client collaboration.
-            </p>
-          </div>
+                <Field label="Invite code" htmlFor="signup-invite-code" hint="Your workshop admin can issue one from Settings.">
+                  <Input
+                    id="signup-invite-code"
+                    value={signupInviteCode}
+                    onChange={(e) => setSignupInviteCode(e.target.value)}
+                    required
+                    placeholder="Paste your code"
+                    autoComplete="off"
+                    maxLength={64}
+                    className="h-11 font-mono"
+                  />
+                </Field>
+
+                {signupRole === "client" && (
+                  <Field label="Company name" htmlFor="signup-company-name">
+                    <Input id="signup-company-name" value={signupCompanyName} onChange={(e) => setSignupCompanyName(e.target.value)} required autoComplete="organization" placeholder="Acme Fabrication Ltd" className="h-11" />
+                  </Field>
+                )}
+
+                <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-3">
+                  <Field label={signupRole === "client" ? "Contact first name" : "First name"} htmlFor="signup-first-name">
+                    <Input id="signup-first-name" value={signupFirstName} onChange={(e) => setSignupFirstName(e.target.value)} required autoComplete="given-name" className="h-11" />
+                  </Field>
+                  <Field label={signupRole === "client" ? "Contact last name" : "Last name"} htmlFor="signup-last-name">
+                    <Input id="signup-last-name" value={signupLastName} onChange={(e) => setSignupLastName(e.target.value)} required autoComplete="family-name" className="h-11" />
+                  </Field>
+                </div>
+
+                <Field label="Work email" htmlFor="signup-email">
+                  <Input id="signup-email" type="email" value={signupEmail} onChange={(e) => setSignupEmail(e.target.value)} required autoComplete="email" inputMode="email" placeholder="name@company.com" className="h-11" />
+                </Field>
+
+                <Field label="Password" htmlFor="signup-password">
+                  <PasswordInput id="signup-password" value={signupPassword} onChange={setSignupPassword} autoComplete="new-password" minLength={MIN_PASSWORD} />
+                  <div className="flex items-center gap-3 pt-0.5" aria-live="polite">
+                    <div className="grid flex-1 grid-cols-4 gap-1">
+                      {[1, 2, 3, 4].map((i) => (
+                        <span key={i} className={cn("h-1 rounded-full", signupPassword && score >= i ? SCORE_COLOR[score] : "bg-muted")} />
+                      ))}
+                    </div>
+                    <span className="w-16 text-right text-xs text-muted-foreground">
+                      {signupPassword ? SCORE_LABEL[score] : `${MIN_PASSWORD}+ chars`}
+                    </span>
+                  </div>
+                </Field>
+
+                <Field label="Confirm password" htmlFor="signup-confirm-password">
+                  <PasswordInput id="signup-confirm-password" value={signupConfirmPassword} onChange={setSignupConfirmPassword} autoComplete="new-password" minLength={MIN_PASSWORD} />
+                  {confirmMismatch && <p className="text-xs text-destructive">Passwords don't match yet.</p>}
+                </Field>
+
+                <SubmitButton busy={submitting} busyLabel="Creating account…">Create account</SubmitButton>
+                <p className="text-center text-xs text-muted-foreground">
+                  By creating an account you agree to the <Link to="/terms" className="underline hover:text-foreground">Terms</Link> and{" "}
+                  <Link to="/privacy" className="underline hover:text-foreground">Privacy Policy</Link>.
+                </p>
+              </form>
+              <p className="text-center text-sm text-muted-foreground">
+                Already have an account?{" "}
+                <button type="button" className="font-medium text-primary hover:underline" onClick={() => setMode("signin")}>
+                  Sign in
+                </button>
+              </p>
+            </section>
+          )}
         </div>
-        <div className="absolute inset-0 bg-black/30 flex items-end p-8">
-          <div className="text-white">
-            <h2 className="text-2xl font-bold">{workshopName}</h2>
-            <p className="text-white/70 text-sm mt-1">Manufacturing & Fabrication Management</p>
-          </div>
-        </div>
-      </div>
+        <div className="mx-auto mt-10 w-full max-w-[400px]">{legal}</div>
+      </main>
     </div>
   );
 }

@@ -2,10 +2,27 @@ import { createContext, useContext, useEffect, useState, useRef, useCallback, Re
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { checkTrustedDevice } from "@/lib/deviceTrust";
 
 export type AppRole = "admin" | "manager" | "staff" | "client";
 
 export const SESSION_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
+
+// Last activity in any tab of this browser. Tabs share one sign-in, so they
+// share one idle clock: working in one tab keeps the others signed in too.
+const ACTIVITY_KEY = "shoplane.last-activity";
+const readActivity = (): number => {
+  try {
+    return Number(localStorage.getItem(ACTIVITY_KEY)) || 0;
+  } catch {
+    return 0;
+  }
+};
+const writeActivity = (at: number) => {
+  try {
+    localStorage.setItem(ACTIVITY_KEY, String(at));
+  } catch { /* storage unavailable: this tab keeps its own clock */ }
+};
 
 interface AuthContextType {
   session: Session | null;
@@ -43,8 +60,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [pendingMfaRole, setPendingMfaRole] = useState<AppRole | null>(null);
   const [mfaEnabled, setMfaEnabled] = useState(false);
   const [sessionTimeLeft, setSessionTimeLeft] = useState(SESSION_TIMEOUT_MS);
-  const inactivityTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const sessionDeadline = useRef<number>(Date.now() + SESSION_TIMEOUT_MS);
   const needsMfaVerificationRef = useRef(false);
 
   const clearPendingMfa = useCallback(() => {
@@ -62,11 +77,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const performSignOut = useCallback(async (reason?: string) => {
-    if (inactivityTimer.current) {
-      clearTimeout(inactivityTimer.current);
-      inactivityTimer.current = null;
-    }
-    await supabase.auth.signOut();
+    // Sign out this browser only. The default ends every session the user
+    // has, so one idle tab or laptop used to sign them out everywhere.
+    await supabase.auth.signOut({ scope: "local" });
     // Keep the trusted-device token: the whole point is to skip MFA next time on this device.
     setRole(null);
     setProfile(null);
@@ -77,59 +90,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [clearPendingMfa]);
 
-  // Inactivity timer
-  const resetInactivityTimer = useCallback(() => {
-    if (inactivityTimer.current) {
-      clearTimeout(inactivityTimer.current);
-    }
-    sessionDeadline.current = Date.now() + SESSION_TIMEOUT_MS;
-    setSessionTimeLeft(SESSION_TIMEOUT_MS);
-    inactivityTimer.current = setTimeout(() => {
-      performSignOut("Session expired due to inactivity");
-    }, SESSION_TIMEOUT_MS);
-  }, [performSignOut]);
+  const lastActivity = useRef<number>(Date.now());
+  const markActivity = useCallback((force = false) => {
+    const now = Date.now();
+    // Storage writes are throttled; the idle clock only needs seconds.
+    if (force || now - lastActivity.current > 5000) writeActivity(now);
+    lastActivity.current = now;
+  }, []);
 
   const extendSession = useCallback(() => {
-    resetInactivityTimer();
-  }, [resetInactivityTimer]);
+    markActivity(true);
+    setSessionTimeLeft(SESSION_TIMEOUT_MS);
+  }, [markActivity]);
 
-  // Countdown interval
+  // Idle sign-out after 30 minutes without activity in any tab. Checked once a
+  // second against the shared clock rather than with a long timer, so it also
+  // holds after the computer sleeps.
   useEffect(() => {
     if (!user) return;
-    const interval = setInterval(() => {
-      setSessionTimeLeft(Math.max(0, sessionDeadline.current - Date.now()));
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [user]);
+    const shared = readActivity();
+    if (shared > lastActivity.current) lastActivity.current = shared;
 
-  // Reset inactivity timer on user activity (debounced to avoid excessive calls)
-  useEffect(() => {
-    if (!user) return;
-    resetInactivityTimer();
-
-    let debounceHandle: ReturnType<typeof setTimeout> | null = null;
-    const handleActivity = () => {
-      if (debounceHandle) clearTimeout(debounceHandle);
-      debounceHandle = setTimeout(() => resetInactivityTimer(), 500);
-    };
-
-    window.addEventListener("mousemove", handleActivity, { passive: true });
-    window.addEventListener("keydown", handleActivity, { passive: true });
-    window.addEventListener("pointerdown", handleActivity, { passive: true });
-    window.addEventListener("scroll", handleActivity, { passive: true });
-
-    return () => {
-      if (debounceHandle) clearTimeout(debounceHandle);
-      window.removeEventListener("mousemove", handleActivity);
-      window.removeEventListener("keydown", handleActivity);
-      window.removeEventListener("pointerdown", handleActivity);
-      window.removeEventListener("scroll", handleActivity);
-      if (inactivityTimer.current) {
-        clearTimeout(inactivityTimer.current);
-        inactivityTimer.current = null;
+    let signingOut = false;
+    const tick = () => {
+      const last = Math.max(lastActivity.current, readActivity());
+      lastActivity.current = last;
+      const left = Math.max(0, last + SESSION_TIMEOUT_MS - Date.now());
+      setSessionTimeLeft(left);
+      if (left === 0 && !signingOut) {
+        signingOut = true;
+        void performSignOut("Session expired due to inactivity");
       }
     };
-  }, [user, resetInactivityTimer]);
+    tick();
+    const interval = setInterval(tick, 1000);
+
+    const handleActivity = () => markActivity();
+    const events = ["mousemove", "keydown", "pointerdown", "scroll", "touchstart"] as const;
+    events.forEach((e) => window.addEventListener(e, handleActivity, { passive: true }));
+    return () => {
+      clearInterval(interval);
+      events.forEach((e) => window.removeEventListener(e, handleActivity));
+    };
+  }, [user, markActivity, performSignOut]);
 
   const refreshMfaStatus = useCallback(async () => {
     const { data } = await supabase.auth.mfa.listFactors();
@@ -172,20 +175,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return nextRole;
   };
 
-  const checkMfaStatus = async (nextRole: AppRole | null) => {
+  const checkMfaStatus = async (nextRole: AppRole | null, session: Session) => {
     const { data } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
     if (data && data.currentLevel === "aal1" && data.nextLevel === "aal2") {
-      // Device trust bypass only applies to staff/client roles. Admin and manager must
-      // complete TOTP every session so the JWT reaches aal2 — required by the server-side
-      // RLS restrictive policies on user_roles and profiles.
-      const isElevatedRole = nextRole === "admin" || nextRole === "manager";
-      try {
-        const trusted = await checkTrustedDevice();
-        if (trusted && !isElevatedRole) {
-          clearPendingMfa();
-          return false;
-        }
-      } catch { /* ignore */ }
+      // A trusted browser skips the code for every role: the server records
+      // this session as vouched for, which the database rules accept.
+      if (await checkTrustedDevice(session.access_token, session.user.id)) {
+        clearPendingMfa();
+        return false;
+      }
       const { data: factorsData } = await supabase.auth.mfa.listFactors();
       const totpFactor = factorsData?.totp?.find((f) => f.status === "verified");
       markPendingMfa(nextRole, totpFactor?.id);
@@ -202,11 +200,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const handleSession = (session: Session | null) => {
       if (session?.user) {
-        // Check JWT expiry
-        if (session.expires_at && session.expires_at * 1000 < Date.now()) {
-          performSignOut("Session expired. Please sign in again.");
-          return;
-        }
+        // An expired access token is not a reason to sign out: the client
+        // refreshes it, and a failed refresh arrives as SIGNED_OUT.
 
         // signIn() fires onAuthStateChange synchronously before its Promise resolves.
         // Yield to signIn() so only one path runs fetchUserData and MFA checks.
@@ -219,6 +214,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (sameUser && sameToken && !needsMfaVerificationRef.current) {
           return;
         }
+        // Hourly token refresh for a user already signed in: take the new token
+        // without re-running the sign-in checks (that blanked the app).
+        if (sameUser && !needsMfaVerificationRef.current) {
+          currentAccessTokenRef.current = session.access_token;
+          setSession(session);
+          return;
+        }
 
         // New user login or initial load
         currentUserIdRef.current = session.user.id;
@@ -228,7 +230,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setLoading(true);
         setMfaCheckPending(true);
         fetchUserData(session.user.id)
-          .then((nextRole) => checkMfaStatus(nextRole))
+          .then((nextRole) => checkMfaStatus(nextRole, session))
           .finally(() => { setMfaCheckPending(false); setLoading(false); });
       } else {
         currentUserIdRef.current = null;
@@ -243,7 +245,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     };
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      // Signing in (password, email link or reset link) starts a fresh idle clock.
+      if (event === "SIGNED_IN" || event === "PASSWORD_RECOVERY") markActivity(true);
       handleSession(session);
     });
 
@@ -253,30 +257,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Auth subscriptions should be registered once; mutable refs keep session reconciliation current.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  const checkTrustedDevice = async (): Promise<boolean> => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) return false;
-      const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/mfa-check-device`,
-        {
-          method: "POST",
-          credentials: "include",
-          headers: {
-            "Authorization": `Bearer ${session.access_token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({}),
-        }
-      );
-      if (!res.ok) return false;
-      const data = await res.json();
-      return !!data?.trusted;
-    } catch {
-      return false;
-    }
-  };
 
   const signIn = async (email: string, password: string) => {
     isSigningInRef.current = true;
@@ -288,6 +268,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
 
+      // A fresh sign-in starts a fresh idle clock, whatever an old tab left behind.
+      markActivity(true);
       setSession(data.session ?? null);
       setUser(data.user ?? null);
       currentUserIdRef.current = data.user?.id ?? null;
@@ -307,10 +289,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Check if MFA is required
       const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
       if (aalData && aalData.currentLevel === "aal1" && aalData.nextLevel === "aal2") {
-        // Device trust bypass only applies to staff/client roles (same gate as checkMfaStatus).
-        const isElevatedRole = nextRole === "admin" || nextRole === "manager";
-        const trusted = await checkTrustedDevice();
-        if (trusted && !isElevatedRole) {
+        const trusted = data.session ? await checkTrustedDevice(data.session.access_token, data.user.id) : false;
+        if (trusted) {
           clearPendingMfa();
           return { role: nextRole, needsMfa: false };
         }

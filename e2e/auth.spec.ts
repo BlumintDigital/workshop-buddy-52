@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
-import { login, account } from "./helpers/auth";
+import { login, account, mfaSecretFor } from "./helpers/auth";
+import { totp } from "./helpers/totp";
 
 test.describe("authentication", () => {
   test("wrong password shows an error and stays on the login page", async ({ page }) => {
@@ -83,5 +84,54 @@ test.describe("route guards", () => {
   test("signed-out visitor is sent to the login page", async ({ page }) => {
     await page.goto("/client/dashboard");
     await expect(page).toHaveURL(/\/auth/, { timeout: 15_000 });
+  });
+});
+
+test.describe("trusted browser", () => {
+  test("after trusting the browser, the next sign-in skips the 2FA code and still has full access", async ({ page }) => {
+    const { email, password } = account("ADMIN");
+    const secret = mfaSecretFor(email);
+    test.skip(!secret, "admin has no 2FA set up in this database");
+
+    const signInWithPassword = async () => {
+      await page.goto("/auth");
+      await page.locator("#login-email").fill(email);
+      await page.locator("#login-password").fill(password);
+      await page.getByRole("button", { name: "Sign In" }).click();
+    };
+
+    // First sign-in: enter the code and trust this browser.
+    await signInWithPassword();
+    const otpInput = page.locator("input[data-input-otp]");
+    await expect(otpInput).toBeVisible({ timeout: 20_000 });
+    await otpInput.fill(totp(secret!));
+    await page.getByRole("checkbox").click();
+    await page.getByRole("button", { name: "Verify", exact: true }).click();
+    await expect(page).toHaveURL(/\/admin\/dashboard/, { timeout: 20_000 });
+    await expect.poll(() => page.evaluate(() => Object.keys(localStorage).some((k) => k.startsWith("shoplane.device-trust.")))).toBe(true);
+
+    // End the session but keep the browser's trust, as closing the browser would.
+    await page.evaluate(() => Object.keys(localStorage).filter((k) => k.startsWith("sb-")).forEach((k) => localStorage.removeItem(k)));
+
+    // Second sign-in: straight to the dashboard, no code.
+    let askedForCode = false;
+    await signInWithPassword();
+    const outcome = await Promise.race([
+      page.waitForURL(/\/admin\/dashboard/, { timeout: 20_000 }).then(() => "dashboard"),
+      otpInput.waitFor({ state: "visible", timeout: 20_000 }).then(() => "code"),
+    ]);
+    askedForCode = outcome === "code";
+    expect(askedForCode, "asked for a 2FA code on a trusted browser").toBe(false);
+
+    // The database accepts the session: admin-only rows are readable.
+    const token = await page.evaluate(() => {
+      const key = Object.keys(localStorage).find((k) => k.startsWith("sb-") && k.endsWith("-auth-token"));
+      return key ? JSON.parse(localStorage.getItem(key)!).access_token : null;
+    });
+    const res = await page.request.get(`${process.env.VITE_SUPABASE_URL}/rest/v1/user_roles?select=role`, {
+      headers: { apikey: process.env.VITE_SUPABASE_PUBLISHABLE_KEY!, Authorization: `Bearer ${token}` },
+    });
+    expect(res.ok()).toBe(true);
+    expect((await res.json()).length, "admin sees the team's roles").toBeGreaterThan(1);
   });
 });

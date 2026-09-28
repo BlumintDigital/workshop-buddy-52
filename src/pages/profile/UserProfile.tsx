@@ -23,10 +23,11 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useCountdown } from "@/hooks/useCountdown";
+import { forgetDevice } from "@/lib/deviceTrust";
 import PushNotificationsCard from "@/components/profile/PushNotificationsCard";
 
 export default function UserProfile() {
-  const { user, profile, role, refreshMfaStatus, refreshProfile } = useAuth();
+  const { user, profile, role, refreshMfaStatus, refreshProfile, signOut } = useAuth();
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
   const [companyName, setCompanyName] = useState("");
@@ -126,6 +127,15 @@ export default function UserProfile() {
         return;
       }
       setTrustedDeviceCount(0);
+      forgetDevice(user.id);
+      // A session that skipped the code because this browser was trusted has
+      // just lost that trust, so it signs in again with a code.
+      const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+      if (aal?.currentLevel === "aal1" && aal.nextLevel === "aal2") {
+        await signOut();
+        toast.info("Trusted browsers revoked. Sign in again with your 2FA code.");
+        return;
+      }
       toast.success("All trusted devices have been revoked");
     } catch (err: any) {
       toast.error(err.message || "Failed to revoke trusted devices");
@@ -336,6 +346,7 @@ export default function UserProfile() {
           supabase.from("mfa_backup_codes").delete().eq("user_id", user.id),
           supabase.from("mfa_trusted_devices").delete().eq("user_id", user.id),
         ]);
+        forgetDevice(user.id);
       }
       setMfaEnabled(false);
       setFactorId(null);
