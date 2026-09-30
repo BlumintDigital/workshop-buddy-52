@@ -49,6 +49,8 @@ serve(async (req) => {
     const action = String(body?.action ?? "");
     const needAdmin = !["status", "sync"].includes(action);
     if (needAdmin ? !isAdmin : !canBill) return json({ error: "You don't have access to accounting integrations" }, 403);
+    const { data: accountingOn } = await admin.rpc("is_feature_enabled", { feature_key: "accounting_sync" });
+    if (accountingOn === false) return json({ error: "Accounting sync is switched off for this workshop" }, 403);
 
     if (action === "status") {
       const [{ data: conns }, { data: log }] = await Promise.all([

@@ -1174,9 +1174,14 @@ Deno.serve(async (req) => {
       //   PATCH ?action=feature_flags   body: { key }
       //     → toggle a flag (flip its current value); returns { key, enabled } with new state
       //
-      // Valid keys: appointments | client_portal | goals | reports | job_chat | generate_sample_data | setup_demo_users | backup_restore
+      // Valid keys: appointments | client_portal | goals | reports | job_chat | inventory | shipping |
+      //             accounting_sync | generate_sample_data | setup_demo_users | backup_restore
       case "feature_flags": {
-        const VALID_KEYS = ["appointments", "client_portal", "goals", "reports", "job_chat", "generate_sample_data", "setup_demo_users", "backup_restore"];
+        const VALID_KEYS = [
+          "appointments", "client_portal", "goals", "reports", "job_chat",
+          "inventory", "shipping", "accounting_sync",
+          "generate_sample_data", "setup_demo_users", "backup_restore",
+        ];
 
         if (req.method === "GET") {
           const { data, error: fetchErr } = await supabase

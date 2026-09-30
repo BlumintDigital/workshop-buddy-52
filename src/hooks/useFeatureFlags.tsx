@@ -15,6 +15,9 @@ export type FeatureKey =
   | "goals"
   | "reports"
   | "job_chat"
+  | "inventory"
+  | "shipping"
+  | "accounting_sync"
   | "generate_sample_data"
   | "setup_demo_users"
   | "backup_restore";
@@ -33,6 +36,9 @@ export const FEATURE_DEFAULTS: FeatureFlags = {
   goals: true,
   reports: true,
   job_chat: true,
+  inventory: true,
+  shipping: true,
+  accounting_sync: true,
   generate_sample_data: false,
   setup_demo_users: false,
   backup_restore: false,

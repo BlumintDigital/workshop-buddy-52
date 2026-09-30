@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useCurrency } from "@/hooks/useCurrency";
+import { FeatureGate } from "@/hooks/useFeatureFlags";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -97,7 +98,7 @@ export default function ClientProjectView({ project, onStatusChange }: { project
       </Card>
 
       <ClientQuotes project={project} onDecided={() => void refreshStatus()} />
-      <ShipmentPanel project={project} forClient />
+      <FeatureGate feature="shipping"><ShipmentPanel project={project} forClient /></FeatureGate>
 
       <div className="grid items-start gap-6 lg:grid-cols-5">
         <div className="space-y-6 lg:col-span-3">

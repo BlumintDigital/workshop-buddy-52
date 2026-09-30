@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useFeature } from "@/hooks/useFeatureFlags";
 
 export type AdminOnboardingStepId =
   | "workshop_settings"
@@ -90,6 +91,8 @@ export const ADMIN_ONBOARDING_STEP_DEFINITIONS: Array<Omit<AdminOnboardingStep, 
 export function buildAdminOnboardingSteps(
   metrics: AdminOnboardingMetrics,
   skippedSteps: string[] = [],
+  /** Steps for switched-off features are left out. */
+  features: { inventory?: boolean } = {},
 ): AdminOnboardingStep[] {
   const skipped = new Set(skippedSteps);
   const completedByStep: Record<AdminOnboardingStepId, boolean> = {
@@ -100,7 +103,7 @@ export function buildAdminOnboardingSteps(
     inventory: metrics.inventoryCount > 0,
   };
 
-  return ADMIN_ONBOARDING_STEP_DEFINITIONS.map((step) => ({
+  return ADMIN_ONBOARDING_STEP_DEFINITIONS.filter((step) => step.id !== "inventory" || features.inventory !== false).map((step) => ({
     ...step,
     completed: completedByStep[step.id],
     skipped: skipped.has(step.id),
@@ -109,6 +112,7 @@ export function buildAdminOnboardingSteps(
 
 export function useAdminOnboarding() {
   const { user, role } = useAuth();
+  const inventoryEnabled = useFeature("inventory");
   const [progress, setProgress] = useState<OnboardingProgress | null>(null);
   const [metrics, setMetrics] = useState<AdminOnboardingMetrics>(DEFAULT_METRICS);
   const [loading, setLoading] = useState(true);
@@ -184,8 +188,8 @@ export function useAdminOnboarding() {
   }, [load]);
 
   const steps = useMemo(
-    () => buildAdminOnboardingSteps(metrics, progress?.skipped_steps ?? []),
-    [metrics, progress?.skipped_steps],
+    () => buildAdminOnboardingSteps(metrics, progress?.skipped_steps ?? [], { inventory: inventoryEnabled }),
+    [metrics, progress?.skipped_steps, inventoryEnabled],
   );
   const activeSteps = steps.filter((step) => !step.skipped);
   const completedCount = steps.filter((step) => step.completed).length;

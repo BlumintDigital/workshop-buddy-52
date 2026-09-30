@@ -192,8 +192,8 @@ function AppRoutes() {
         {/* Requests now sit at the top of the client's Projects list. */}
         <Route path="/client/requests" element={<LegacyListRedirect to="/client/projects" />} />
         <Route path="/reception" element={<ProtectedRoute allowedRoles={["admin", "manager", "staff"]}><Reception /></ProtectedRoute>} />
-        <Route path="/shipping" element={<ProtectedRoute allowedRoles={["admin", "manager", "staff"]}><ShippingPortal /></ProtectedRoute>} />
-        <Route path="/inventory/*" element={<ProtectedRoute allowedRoles={["admin", "manager", "staff"]}><InventoryPortal /></ProtectedRoute>} />
+        <Route path="/shipping" element={<ProtectedRoute allowedRoles={["admin", "manager", "staff"]}><FeatureRoute feature="shipping"><ShippingPortal /></FeatureRoute></ProtectedRoute>} />
+        <Route path="/inventory/*" element={<ProtectedRoute allowedRoles={["admin", "manager", "staff"]}><FeatureRoute feature="inventory"><InventoryPortal /></FeatureRoute></ProtectedRoute>} />
         {/* Each role had its own stock page; they're all the inventory portal now. */}
         <Route path="/admin/inventory" element={<Navigate to="/inventory/stock" replace />} />
         <Route path="/manager/inventory" element={<Navigate to="/inventory/stock" replace />} />

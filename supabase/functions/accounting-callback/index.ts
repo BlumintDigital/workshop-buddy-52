@@ -31,6 +31,8 @@ serve(async (req) => {
     return back(appUrl, { error: "The sign-in took too long. Try connecting again." });
   }
   if (params.get("error")) return back(appUrl, { error: params.get("error_description") ?? params.get("error")! });
+  const { data: accountingOn } = await admin.rpc("is_feature_enabled", { feature_key: "accounting_sync" });
+  if (accountingOn === false) return back(appUrl, { error: "Accounting sync is switched off for this workshop." });
 
   try {
     const provider = getProvider(pending.provider);
