@@ -28,8 +28,8 @@ export default defineConfig(({ mode }) => ({
       registerType: "autoUpdate",
       injectRegister: null,
       manifest: {
-        name: "Workshop Manager",
-        short_name: "Workshop",
+        name: "Shoplane",
+        short_name: "Shoplane",
         description: "Workshop management - jobs, appointments, inventory and invoices",
         start_url: "/",
         scope: "/",

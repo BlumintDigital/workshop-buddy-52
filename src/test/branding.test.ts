@@ -21,6 +21,11 @@ describe("branding logo helpers", () => {
     expect(resolveLogoUrl("https://example.com/assets/Blumint_Logo.png")).toBe(DEFAULT_LOGO_URL);
   });
 
+  it("treats the old bundled lowercase logo path as the bundled default", () => {
+    expect(isLegacyDefaultLogoUrl("/blumint_logo.png")).toBe(true);
+    expect(resolveLogoUrl("/assets/blumint_logo.png?v=2")).toBe(DEFAULT_LOGO_URL);
+  });
+
   it("keeps real uploaded custom logo URLs", () => {
     const customLogo = "https://example.com/storage/v1/object/public/workshop-assets/logo-123.png";
 
