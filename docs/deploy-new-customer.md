@@ -1,244 +1,255 @@
-# New Customer Deployment Guide
+# Setting up a new Shoplane customer
 
-## Prerequisites
-
-- Access to the GitHub repository
-- [Supabase](https://supabase.com) account (one project per customer)
-- [Resend](https://resend.com) account with a verified sender domain (for email)
-- Supabase CLI installed: `npm install -g supabase`
-- The `GLOBAL_ADMIN_SECRET` for the super admin command center
+This guide is for someone who has just joined and has never seen Shoplane before.
+You don't need to be technical: setting up a customer is a form and a button.
+Read it once from top to bottom before your first customer.
 
 ---
 
-## Step 1 — Create a new Supabase project
+## 1. What Shoplane is, in one page
 
-1. Go to [supabase.com](https://supabase.com) → New Project
-2. Choose a name (e.g., `workshopbuddy-customername`)
-3. Set a strong database password — **save it**, you'll need it
-4. Select the region closest to the customer
-5. Once the project is ready, note:
-   - **Project ref** (e.g., `abcdefghijklmno`) — visible in the URL
-   - **Project URL** — `https://<ref>.supabase.co`
-   - **Anon key** — Settings → API → Project API Keys → `anon public`
+**Shoplane** is software for engineering workshops: projects, tasks, quotes,
+invoices, stock, shipping, appointments and a client portal. It's a brand of
+**Blumint Digital Limited**.
 
----
+Every customer (a "workshop") gets **their own separate copy** of Shoplane:
 
-## Step 2 — Apply the database schema
+| Piece | What it is | Where it lives |
+|---|---|---|
+| Website | What the workshop's staff and clients use, e.g. `https://ieq.shoplane.uk` | Vercel, one project per customer |
+| Database and sign-in | All the workshop's data, their user accounts, and server functions | Supabase, one project per customer, in London |
+| Email | Invites, password resets, notifications, sent from `noreply@shoplane.uk` | Resend, one sending key per customer |
+| Code | One codebase shared by every customer | GitHub: `BlumintDigital/workshop-buddy-52` |
 
-The schema lives in `supabase/migrations/` — each `.sql` file is a versioned migration, and the Supabase CLI applies them in order. This is the **single source of truth**; there is no longer a hand-maintained `schema.sql` file to keep in sync.
+No customer can see another customer's data: they are in different databases.
 
-**Apply all migrations to the new project:**
-
-```bash
-# 1. Sign in (once per machine)
-supabase login
-
-# 2. Link this repo to the new customer's Supabase project
-supabase link --project-ref <project-ref>
-# When prompted, paste the database password from Step 1.
-
-# 3. Push every migration to the remote database
-supabase db push
-```
-
-`supabase db push` reads `supabase/migrations/` in filename order, compares against the remote `supabase_migrations.schema_migrations` table, and applies only the ones that haven't run yet. Running it again on an up-to-date project is a no-op and safe.
-
-Confirm the schema landed by opening **Supabase Studio → Table Editor** and checking that the expected tables (`jobs`, `profiles`, `user_roles`, `signup_codes`, `push_subscriptions`, `workshop_admin_contacts`, …) are present.
-
-> **No CLI available?** As a fallback, you can paste the contents of each file in `supabase/migrations/` (in filename order) into **Supabase Studio → SQL Editor** and run them one by one. Use this only if `supabase db push` is not an option — it is error-prone and easy to skip files.
+**Shoplane Control** (`https://shoplane-control.vercel.app`) is our own
+back-office. It sets up new customers, keeps track of them, sends them notices,
+turns features on and off, and rolls out new versions. You'll do almost
+everything from there.
 
 ---
 
-## Step 3 — Set Supabase secrets
+## 2. Before your first customer
 
-Run these from a terminal with the CLI linked to the new project:
+### Your access
 
-```bash
-# Required — used by the admin-api edge function
-supabase secrets set GLOBAL_ADMIN_SECRET=<generate-a-strong-random-string>
+Ask your manager for:
 
-# Required for email — get from Resend dashboard
-supabase secrets set RESEND_API_KEY=re_xxxxxxxxxxxx
+- A **Shoplane Control** account. You'll set up two-factor sign-in (an
+  authenticator app such as Google Authenticator or 1Password) the first time
+  you sign in. Save the backup codes it shows you somewhere safe.
+- Access to the **DNS settings for `shoplane.uk`** (the domain is managed
+  outside Vercel), or the name of whoever changes DNS records for us.
 
-# Optional — set after Step 8 (push notifications)
-# supabase secrets set VAPID_PRIVATE_KEY=<key>
-```
+That's all you need for everyday work. You don't need Supabase, Vercel or
+GitHub accounts to set up a customer.
 
-> To generate a strong `GLOBAL_ADMIN_SECRET`:
-> ```bash
-> node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
-> ```
+### Connections (done once, by an admin)
+
+Shoplane Control needs a key for each service it uses. These are pasted once on
+the **Connections** page, and each has step-by-step instructions under its box:
+
+| Service | What it's used for | Setting to check |
+|---|---|---|
+| Supabase | Creates each customer's database | "New customers go in": **Backup** |
+| Vercel | Creates each customer's website | Team: **ukohaemmanuel's projects** |
+| Resend | Creates each customer's email key | Sending domain: **shoplane.uk** |
+| GitHub | Reads the Shoplane code (read-only) | Repository: `workshop-buddy-52` |
+
+Each box shows **Connected** when its key works. If one says **Not working**,
+follow the note in the box to create a new key and paste it in. Keys can never
+be read back once saved, not even by admins; to change one, paste a new one.
 
 ---
 
-## Step 4 — Deploy edge functions
+## 3. Setting up a customer
 
-```bash
-supabase functions deploy --project-ref <project-ref>
-```
+Allow about 15 minutes, most of it waiting for DNS.
 
-This deploys: `admin-api`, `send-email`, `seed-data`, `delete-data`, and all MFA functions.
+### Step 1: Gather the details
+
+From the customer (or the salesperson), you need:
+
+- **Workshop name** as they want it shown, e.g. *Acme Engineering Ltd*.
+- **Web address**: a short name for `<name>.shoplane.uk`, e.g. `acme`. Lowercase
+  letters, numbers and hyphens, starting with a letter. **It can't be changed
+  later**, so confirm it with the customer.
+- **Their admin**: the name and email of the person at the workshop who will
+  manage Shoplane. They'll be the first user and can invite everyone else.
+- **Which features they bought** (see step 2).
+
+### Step 2: Fill in the New customer form
+
+In Shoplane Control, click **New customer** and fill in:
+
+1. Workshop name. The web address fills itself in; change it if needed.
+2. Admin's name and email.
+3. "Emails are sent from": leave it as `noreply@shoplane.uk`.
+4. **Features**: switch on what the customer has bought.
+
+   | Feature | Starts | Notes |
+   |---|---|---|
+   | Appointments and calendar | On | |
+   | Client portal | On | Clients sign in to follow their work and pay invoices |
+   | Reports | On | |
+   | Project chat | On | |
+   | Inventory | On | |
+   | Shipping | On | Turn off for workshops where customers always collect |
+   | Accounting sync | Off | QuickBooks/Xero; only for customers who've bought it |
+   | Goals | Off | Floor-screen scoreboard; only for customers who asked for it |
+
+   **Operator tools** (sample data, demo accounts, backup and restore) stay off
+   for real customers. They're for demos.
+5. Tick the box confirming this creates a paid database and website, then click
+   **Set up customer**.
+
+### Step 3: Watch it build
+
+You'll see a list of steps ticking off: database, schema, server functions,
+website, features, admin account. It usually takes **2 to 5 minutes**.
+
+**Keep the page open** until it finishes: the page is what moves it along. If
+you close it by accident, open the customer's setup from the Customers page and
+it carries on where it stopped.
+
+If a step fails, the page says what went wrong in plain words and offers
+**Try again**. Most failures are a Connections key that has expired; fix it on
+the Connections page, then try again. It never repeats steps that already
+worked.
+
+### Step 4: Point the web address at the website (DNS)
+
+When the build finishes, the page shows a **Finish setting up** card with one
+DNS record to add, for example:
+
+| Type | Name / Host | Value / Points to |
+|---|---|---|
+| CNAME | `acme` | `188f98cdd13aecdd.vercel-dns-016.com` |
+
+- **Copy the value from the card.** Vercel gives every customer their own
+  target, so never reuse one from another customer or from this guide.
+- Add the record in the DNS settings for `shoplane.uk` (or send it to whoever
+  manages DNS). Don't change any other records.
+- Back in Shoplane Control, click **Check the record**. New records can take a
+  few minutes (occasionally up to an hour) to appear. Try again until it says
+  **Working**.
+
+### Step 5: Send the welcome email
+
+Click **Send welcome email**. The admin receives a link to set their password.
+The first time they sign in, Shoplane makes them set up two-factor sign-in with
+an authenticator app; they can't use anything until they do. That's expected;
+tell them in advance.
+
+### Step 6: Hand over
+
+Tell the customer's admin:
+
+- Their address: `https://<name>.shoplane.uk`.
+- To look for the welcome email (and check spam).
+- That they invite their team from **Settings → Signup Codes** (invite codes)
+  or **Users**.
+- Where the user guide is: **Help** in the menu.
+
+The customer now appears on the **Customers** page as **Live**.
 
 ---
 
-## Step 5 — Configure the frontend environment
+## 4. Looking after customers
 
-For **hosted deployments** (Netlify, Vercel, etc.), set these environment variables in the platform dashboard:
+Open a customer from the **Customers** page. The tabs:
 
-| Variable | Value |
+| Tab | Use it to |
 |---|---|
-| `VITE_SUPABASE_URL` | `https://<project-ref>.supabase.co` |
-| `VITE_SUPABASE_PUBLISHABLE_KEY` | Anon key from Step 1 |
-| `VITE_SUPABASE_PROJECT_ID` | `<project-ref>` |
+| Overview | See health, key figures, and finish setup if it wasn't completed |
+| Insights | Look at their work in progress, performance and stock |
+| People | See their users, change roles, switch access off, create a super admin |
+| Messages | Post a notice inside their Shoplane (e.g. planned maintenance) |
+| Features | Switch features on or off. Changes apply the next time a page loads |
+| Settings | Their workshop settings and version label |
+| System | Technical details (database version, project reference) |
+| Activity | What's been happening in their Shoplane |
 
-For a **self-hosted build**, copy `.env.example` to `.env.local`, fill in the values, then run:
-```bash
-npm run build
-```
+**Status on the Customers page**
 
----
+- **Live**: answering normally.
+- **Not responding**: the last check got no proper answer. The card shows the
+  reason. Click **Refresh** on Overview; if it persists, tell a developer.
+- **Finishing setup**: DNS or the welcome email is still to do.
 
-## Step 6 — Create the first admin user
-
-Use the super admin command center to provision the customer's admin account:
-
-```
-POST https://<project-ref>.supabase.co/functions/v1/admin-api?action=ensure-super-admin
-Authorization: Bearer <GLOBAL_ADMIN_SECRET>
-Content-Type: application/json
-
-{
-  "email": "admin@customer.com",
-  "full_name": "Admin Name",
-  "password": "choose-a-strong-password"
-}
-```
-
-This creates the user (if they don't exist), assigns the `admin` role, and marks them as super admin.
-
-> **Manual alternative (Supabase Studio):**
-> 1. Authentication → Users → Add user → Create new user
-> 2. Table Editor → `user_roles` → find the user row → set `role` to `admin`
+**Releases.** When developers finish a new version, they'll ask you to run a
+release on the **Releases** page. It updates every customer's database and
+server functions one by one, then tells you to merge (developers do the merge).
+If one customer fails, the others still update; retry that one after it's fixed.
 
 ---
 
-## Step 7 — Configure workshop settings
+## 5. Removing a customer
 
-Log in as the admin and go to **Settings** to configure:
+Only when a manager asks, because it deletes the customer's data for good.
 
-- Workshop name and logo
-- Contact email, phone, address
-- Currency and default tax rate
-
-The footer is fixed (the configured footer text) — no settings needed.
-
----
-
-## Step 8 — Set up email (Resend)
-
-1. In the Resend dashboard, add and verify the customer's sender domain (e.g., `mail.customer.com`)
-2. The `RESEND_API_KEY` was set in Step 3
-3. In the app: **Settings → Email**
-   - Set **From Email Address** to a verified address (e.g., `noreply@customer.com`)
-   - Toggle **Email Notifications** on
-4. All transactional emails (job status changes, invoices sent, appointment confirmations) will now fire automatically to clients
+1. Ask a developer to take a final backup of their database.
+2. In Supabase (Backup organisation), delete their project `shoplane-<name>`.
+3. In Vercel, delete their project `shoplane-<name>` (this removes the domain).
+4. In Resend, delete their API key `shoplane-<name>`.
+5. Delete their `<name>` CNAME record from the `shoplane.uk` DNS.
+6. Remove them from Shoplane Control (ask a developer; there is no button yet).
 
 ---
 
-## Step 9 — Set up push notifications
+## 6. Rules that keep customers safe
 
-1. From the super admin command center, call:
-   ```
-   GET https://<project-ref>.supabase.co/functions/v1/admin-api?action=generate_vapid
-   Authorization: Bearer <GLOBAL_ADMIN_SECRET>
-   ```
-   Response includes `public_key` (saved automatically to the DB) and `private_key`.
-
-2. Set the private key as a secret:
-   ```bash
-   supabase secrets set VAPID_PRIVATE_KEY=<private_key> --project-ref <project-ref>
-   ```
-
-3. Redeploy the admin-api function for the secret to take effect:
-   ```bash
-   supabase functions deploy admin-api --project-ref <project-ref>
-   ```
-
-4. Users will be prompted for browser notification permission on next login.
-
-**Sending a push notification** (from super admin dashboard):
-```
-POST .../admin-api?action=notices
-Authorization: Bearer <GLOBAL_ADMIN_SECRET>
-{ "title": "Hello", "message": "Your job is ready", "url": "/jobs/123" }
-```
-
-**Managing subscribers:**
-```
-GET    .../admin-api?action=notices          → list all subscribers
-DELETE .../admin-api?action=notices&id=<id> → remove a subscription
-```
+- **Never share keys, passwords or backup codes** by email or chat. Keys go
+  straight into the Connections page and nowhere else.
+- **Never sign in to a customer's Shoplane as them.** If you need to see their
+  system, use Shoplane Control, or ask their admin to invite you.
+- **Accounts are created by invitation only.** Nobody can sign up to a
+  workshop's Shoplane without an invite code from that workshop.
+- **Admins and managers must use two-factor sign-in.** Staff can choose to.
+- **A floor screen showing Goals** should be signed in with a staff account,
+  not an admin's. Goals keeps the screen signed in while it's open.
 
 ---
 
-## Step 10 — Configure feature flags (optional)
+## 7. For developers: what happens behind the button
 
-By default all features are enabled. To hide a feature from this customer:
+Useful if a setup fails in a way the page can't explain.
 
-```
-POST .../admin-api?action=set_feature_flags
-Authorization: Bearer <GLOBAL_ADMIN_SECRET>
-{
-  "flags": {
-    "goals": false,
-    "client_portal": true,
-    "reports": true,
-    "appointments": true
-  }
-}
-```
+The work is done by the `operations` edge function in the Shoplane Control
+repository (`BlumintDigital/command-center-control`,
+`supabase/functions/operations/`). Each step lives in `provision.ts`; the engine
+(`engine.ts`) runs steps in order, saves progress in the `runs` table, and
+resumes from the failed step on retry.
 
-Available flags: `goals`, `client_portal`, `reports`, `appointments`
+| Step | What it does |
+|---|---|
+| check | Reads the current code version from GitHub |
+| project, project_ready | Creates the Supabase project `shoplane-<slug>` in the Backup organisation (eu-west-2) and waits for it |
+| keys | Reads the new project's API keys |
+| email_key | Creates a Resend key named `shoplane-<slug>` |
+| auth | Sets sign-in: site URL, redirect URLs, email through Resend. (Sign-up stays on in Supabase; the database refuses any account without a valid invite code.) |
+| schema | Loads the schema snapshot (`supabase-test/supabase/migrations/2026010100000*.sql`) |
+| migrations | Applies every migration newer than the snapshot (`BASELINE_VERSION` in `scripts/test-db.mjs`) |
+| settings, secrets | Workshop settings and edge function secrets (admin API key, site URL, Resend key, sender) |
+| functions | Deploys every edge function in `supabase/functions/` |
+| vercel_project, vercel_domain | Creates the Vercel project with its env vars, adds `<slug>.shoplane.uk`, and stores Vercel's CNAME target |
+| vercel_deploy, vercel_ready | Builds the website from `main` and waits until it's ready |
+| admin | Creates the customer's admin through their `admin-api` (`provision_account` first; invite-only sign-up) |
+| features | Sets the chosen feature switches through `admin-api` |
+| register | Adds the customer to Shoplane Control and clears the run's temporary secrets |
 
-Flags are invisible to the admin — they only take effect silently in the UI and routing.
+Things to know:
 
----
-
-## Step 11 — Verify the deployment
-
-Run a health check from the super admin dashboard:
-```
-GET .../admin-api?action=health
-```
-
-Expected response:
-```json
-{ "status": "ok", "version": "1.0.0", "workshop_name": "...", "timestamp": "..." }
-```
-
-Then do a quick smoke test:
-- [ ] Log in as admin → dashboard loads
-- [ ] Create a test job with a client → job appears
-- [ ] Change job status → email arrives (if Resend is configured)
-- [ ] Open site on mobile → install PWA prompt appears
-- [ ] Check browser for notification permission prompt
-
----
-
-## Adding new migrations later
-
-The deploy flow is migration-driven, so shipping a schema change to existing customers is just:
-
-1. Create a new file in `supabase/migrations/` (the Lovable migration tool does this automatically, or use `supabase migration new <name>`).
-2. Commit it.
-3. For each customer project, run:
-
-   ```bash
-   supabase link --project-ref <customer-project-ref>
-   supabase db push
-   ```
-
-   Only the new migrations are applied; previously-applied ones are skipped.
-
-No `schema.sql` regeneration step is needed — that file has been retired.
-
+- **Don't replay the full migration history** on a new database; it fails
+  partway. New databases always start from the schema snapshot.
+- **Never run `supabase db push` or `supabase db reset`** against a customer.
+  Database changes for existing customers go out through **Releases**, and a
+  backup comes first.
+- Feature switches live in each customer's `feature_flags` table. A new switch
+  needs: the `feature_flags_key_check` constraint and a seed row (migration),
+  `is_feature_enabled()`, restrictive "Feature gate" policies on its tables,
+  gating in routes, navigation and pages, `VALID_KEYS` in `admin-api`, and the
+  lists in Shoplane Control (`FEATURE_FLAG_META`, `FEATURE_KEYS`).
+- Commits to either repository must be authored with an email linked to the
+  Vercel account's GitHub login, or Vercel blocks the build.
