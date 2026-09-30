@@ -151,7 +151,7 @@ Current daily volume (from `pg_stat_statements` totals over the observation wind
 ### 4.2 Migrations
 
 - 73 migration files; `schema.sql` retired in favour of `supabase db push`.
-- Deploy guide (`docs/deploy-new-customer.md`) documents the new flow.
+- Deploy guide (Shoplane Control repo, `docs/deploy-new-customer.md`; shown in Shoplane Control under Setup guide) documents the new flow.
 - Recommend tagging each prod deploy with the highest migration applied, and storing the `supabase migration list` output in the release notes.
 
 ### 4.3 Backups & DR
@@ -168,7 +168,7 @@ Current daily volume (from `pg_stat_statements` totals over the observation wind
 
 ### 4.5 Runbooks
 
-`SECURITY.md`, `docs/incident-response.md`, `docs/vendor-risk.md`, `docs/data-retention.md`, `docs/deploy-new-customer.md`, `docs/user-guide.md` are all present and recently maintained. **This is best-in-class for an app of this size.**
+`SECURITY.md`, `docs/incident-response.md`, `docs/vendor-risk.md`, `docs/data-retention.md`, `docs/user-guide.md` (and the setup guide in the Shoplane Control repo) are all present and recently maintained. **This is best-in-class for an app of this size.**
 
 ### 4.6 Email
 
