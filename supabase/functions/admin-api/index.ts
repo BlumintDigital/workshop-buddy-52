@@ -1188,22 +1188,28 @@ Deno.serve(async (req) => {
         }
 
         if (req.method === "POST") {
+          // One flag ({ key, enabled }) or several at once ({ flags: { key: enabled } }).
           const body = await req.json();
-          const { key, enabled } = body ?? {};
-          if (!VALID_KEYS.includes(key) || typeof enabled !== "boolean") {
+          const changes: Record<string, unknown> = body?.flags && typeof body.flags === "object"
+            ? body.flags
+            : { [body?.key]: body?.enabled };
+          const entries = Object.entries(changes);
+          if (entries.length === 0 || entries.some(([k, v]) => !VALID_KEYS.includes(k) || typeof v !== "boolean")) {
             return err(`key must be one of [${VALID_KEYS.join(", ")}] and enabled must be a boolean`);
           }
-          const { error: updateErr } = await supabase
+          // Upsert, so a database missing a flag's row still takes the change.
+          const now = new Date().toISOString();
+          const { error: upsertErr } = await supabase
             .from("feature_flags")
-            .update({ enabled, updated_at: new Date().toISOString() })
-            .eq("key", key);
-          if (updateErr) return err(updateErr.message, 500);
-          await supabase.from("activity_logs").insert({
+            .upsert(entries.map(([key, enabled]) => ({ key, enabled: enabled as boolean, updated_at: now })), { onConflict: "key" });
+          if (upsertErr) return err(upsertErr.message, 500);
+          await supabase.from("activity_logs").insert(entries.map(([key, enabled]) => ({
             action: "updated", table_name: "feature_flags", record_id: key,
             summary: `Feature ${key} ${enabled ? "enabled" : "disabled"} via admin API`,
             details: { key, enabled, source: "admin-api" },
-          });
-          return json({ ok: true, key, enabled });
+          })));
+          if (entries.length === 1) return json({ ok: true, key: entries[0][0], enabled: entries[0][1] });
+          return json({ ok: true, flags: Object.fromEntries(entries) });
         }
 
         if (req.method === "PATCH") {

@@ -208,7 +208,6 @@ function AppRoutes() {
         <Route path="/invoices" element={<ProtectedRoute allowedRoles={["admin", "manager", "staff"]}><BillingGate><AdminInvoices /></BillingGate></ProtectedRoute>} />
         <Route path="/invoices/new" element={<ProtectedRoute allowedRoles={["admin", "manager", "staff"]}><BillingGate><InvoiceCreate /></BillingGate></ProtectedRoute>} />
         <Route path="/invoices/:id" element={<ProtectedRoute allowedRoles={["admin", "manager", "staff", "client"]}><ClientPortalRoute><BillingGate><InvoiceDetail /></BillingGate></ClientPortalRoute></ProtectedRoute>} />
-        <Route path="/goals" element={<ProtectedRoute allowedRoles={["admin", "manager", "staff"]}><FeatureRoute feature="goals"><GoalsPage /></FeatureRoute></ProtectedRoute>} />
         <Route path="/appointments/:id" element={<ProtectedRoute allowedRoles={["admin", "manager", "staff", "client"]}><ClientPortalRoute><FeatureRoute feature="appointments"><AppointmentDetail /></FeatureRoute></ClientPortalRoute></ProtectedRoute>} />
         <Route path="/report-issue" element={<ProtectedRoute allowedRoles={["admin", "manager", "staff", "client"]}><ReportIssue /></ProtectedRoute>} />
         <Route path="/help" element={<ProtectedRoute allowedRoles={["admin", "manager", "staff", "client"]}><Help /></ProtectedRoute>} />
@@ -225,6 +224,8 @@ function AppRoutes() {
       ))}
 
       {/* Standalone pages (no app shell) */}
+      {/* Goals is shown on a screen on the workshop floor, so it has no app menu. */}
+      <Route path="/goals" element={<ProtectedRoute allowedRoles={["admin", "manager", "staff"]}><FeatureRoute feature="goals"><GoalsPage /></FeatureRoute></ProtectedRoute>} />
       <Route path="/admin/deploy-guide" element={<ProtectedRoute allowedRoles={["admin"]}><AdminDeployGuide /></ProtectedRoute>} />
       <Route path="/privacy" element={<Privacy />} />
       <Route path="/terms" element={<Terms />} />

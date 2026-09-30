@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useCurrency } from "@/hooks/useCurrency";
+import { useFeature } from "@/hooks/useFeatureFlags";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -361,6 +362,7 @@ function TaskDialog({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const goalsEnabled = useFeature("goals");
   const [form, setForm] = useState({
     title: task?.title ?? "",
     description: task?.description ?? "",
@@ -466,8 +468,8 @@ function TaskDialog({
               </div>
               <div>
                 <Label htmlFor="f-task-hours">Estimated hours</Label>
-                <Input id="f-task-hours" type="number" min={0} step={0.5} value={form.estimated_hours} onChange={(e) => setForm({ ...form, estimated_hours: e.target.value })} aria-describedby="f-task-hours-hint" />
-                <p id="f-task-hours-hint" className="mt-1 text-xs text-muted-foreground">Also shares the quote's value between tasks on Goals.</p>
+                <Input id="f-task-hours" type="number" min={0} step={0.5} value={form.estimated_hours} onChange={(e) => setForm({ ...form, estimated_hours: e.target.value })} aria-describedby={goalsEnabled ? "f-task-hours-hint" : undefined} />
+                {goalsEnabled && <p id="f-task-hours-hint" className="mt-1 text-xs text-muted-foreground">Also shares the quote's value between tasks on Goals.</p>}
               </div>
             </div>
           )}
