@@ -2,8 +2,10 @@
 // Builds a PDF in public/docs/ from a guide in docs/, so a download always
 // matches the guide itself:
 //
-//   npm run docs:guide-pdf      docs/user-guide.md          -> public/docs/user-guide.pdf
-//   npm run docs:deploy-pdf     docs/deploy-new-customer.md -> public/docs/deploy-new-customer.pdf
+//   npm run docs:guide-pdf      docs/user-guide.md -> public/docs/user-guide.pdf
+//
+// Anything in public/ can be downloaded without signing in: internal guides
+// belong in Shoplane Control instead.
 //
 // Uses the Chrome that Playwright already drives for the E2E tests.
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";

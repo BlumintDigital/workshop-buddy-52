@@ -41,7 +41,6 @@ const AdminCalendar = lazy(() => import("@/pages/admin/AdminCalendar"));
 const AdminSettings = lazy(() => import("@/pages/admin/AdminSettings"));
 const AdminActivityLogs = lazy(() => import("@/pages/admin/AdminActivityLogs"));
 const AdminFeedback = lazy(() => import("@/pages/admin/AdminFeedback"));
-const AdminDeployGuide = lazy(() => import("@/pages/admin/AdminDeployGuide"));
 const AdminSignupCodes = lazy(() => import("@/pages/admin/AdminSignupCodes"));
 const AdminAccessReview = lazy(() => import("@/pages/admin/AdminAccessReview"));
 const Privacy = lazy(() => import("@/pages/Privacy"));
@@ -226,7 +225,6 @@ function AppRoutes() {
       {/* Standalone pages (no app shell) */}
       {/* Goals is shown on a screen on the workshop floor, so it has no app menu. */}
       <Route path="/goals" element={<ProtectedRoute allowedRoles={["admin", "manager", "staff"]}><FeatureRoute feature="goals"><GoalsPage /></FeatureRoute></ProtectedRoute>} />
-      <Route path="/admin/deploy-guide" element={<ProtectedRoute allowedRoles={["admin"]}><AdminDeployGuide /></ProtectedRoute>} />
       <Route path="/privacy" element={<Privacy />} />
       <Route path="/terms" element={<Terms />} />
 
