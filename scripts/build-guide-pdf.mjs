@@ -1,8 +1,9 @@
 #!/usr/bin/env node
-// Builds public/docs/user-guide.pdf from docs/user-guide.md, so the Help page's
-// "Download PDF" always matches the guide shown on screen.
+// Builds a PDF in public/docs/ from a guide in docs/, so a download always
+// matches the guide itself:
 //
-//   npm run docs:guide-pdf
+//   npm run docs:guide-pdf      docs/user-guide.md          -> public/docs/user-guide.pdf
+//   npm run docs:deploy-pdf     docs/deploy-new-customer.md -> public/docs/deploy-new-customer.pdf
 //
 // Uses the Chrome that Playwright already drives for the E2E tests.
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
@@ -10,8 +11,9 @@ import { join, resolve } from "node:path";
 import { chromium } from "@playwright/test";
 
 const ROOT = resolve(import.meta.dirname, "..");
-const SOURCE = join(ROOT, "docs", "user-guide.md");
-const OUT = join(ROOT, "public", "docs", "user-guide.pdf");
+const NAME = process.argv[2] ?? "user-guide";
+const SOURCE = join(ROOT, "docs", `${NAME}.md`);
+const OUT = join(ROOT, "public", "docs", `${NAME}.pdf`);
 const FONT = join(ROOT, "node_modules", "@fontsource-variable", "archivo", "files", "archivo-latin-wght-normal.woff2");
 
 const escape = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -64,14 +66,26 @@ function render(md) {
       i++;
       continue;
     }
+    if (/^\s*\|/.test(line)) {
+      const rows = [];
+      while (i < lines.length && /^\s*\|/.test(lines[i])) rows.push(lines[i++]);
+      const cells = (r) => r.trim().replace(/^\||\|$/g, "").split("|").map((c) => inline(c.trim()));
+      const [head, , ...rest] = rows;
+      html.push(`<table><thead><tr>${cells(head).map((c) => `<th>${c}</th>`).join("")}</tr></thead><tbody>${rest.map((r) => `<tr>${cells(r).map((c) => `<td>${c}</td>`).join("")}</tr>`).join("")}</tbody></table>`);
+      continue;
+    }
     if (/^\s*[-*]\s+/.test(line) || /^\s*\d+\.\s+/.test(line)) {
       const ordered = /^\s*\d+\./.test(line);
+      const start = ordered ? Number(line.match(/\d+/)[0]) : 1;
       const items = [];
       while (i < lines.length && (ordered ? /^\s*\d+\.\s+/ : /^\s*[-*]\s+/).test(lines[i])) {
-        items.push(`<li>${inline(lines[i].replace(/^\s*([-*]|\d+\.)\s+/, ""))}</li>`);
+        let text = lines[i].replace(/^\s*([-*]|\d+\.)\s+/, "");
         i++;
+        // A wrapped item continues on indented lines.
+        while (i < lines.length && /^\s{2,}\S/.test(lines[i]) && !/^\s*([-*]|\d+\.)\s+|^\s*\|/.test(lines[i])) text += " " + lines[i++].trim();
+        items.push(`<li>${inline(text)}</li>`);
       }
-      html.push(ordered ? `<ol>${items.join("")}</ol>` : `<ul>${items.join("")}</ul>`);
+      html.push(ordered ? `<ol${start > 1 ? ` start="${start}"` : ""}>${items.join("")}</ol>` : `<ul>${items.join("")}</ul>`);
       continue;
     }
     if (!line.trim()) {
@@ -79,7 +93,7 @@ function render(md) {
       continue;
     }
     const para = [];
-    while (i < lines.length && lines[i].trim() && !/^(#{1,3}\s|```|---\s*$|\s*[-*]\s+|\s*\d+\.\s+)/.test(lines[i])) para.push(lines[i++]);
+    while (i < lines.length && lines[i].trim() && !/^(#{1,3}\s|```|---\s*$|\s*[-*]\s+|\s*\d+\.\s+|\s*\|)/.test(lines[i])) para.push(lines[i++]);
     const text = para.join(" ");
     // A closing line in italics is the "last updated" note.
     if (/^\*[^*].*\*$/.test(text.trim())) html.push(`<p class="updated">${inline(text.trim().slice(1, -1))}</p>`);
@@ -124,6 +138,9 @@ const page = `<!doctype html>
   pre { font-family: ui-monospace, Consolas, monospace; font-size: 9pt; line-height: 1.5; background: var(--soft); border-radius: 2mm; padding: 4mm 5mm; white-space: pre-wrap; page-break-inside: avoid; }
   a { color: var(--brand); }
   .updated { color: var(--muted); font-size: 9pt; margin-top: 8mm; }
+  table { width: 100%; border-collapse: collapse; margin: 0 0 4mm; font-size: 9.5pt; page-break-inside: avoid; }
+  th, td { text-align: left; vertical-align: top; padding: 1.6mm 2.4mm; border-bottom: 1px solid var(--line); }
+  th { font-weight: 600; background: var(--soft); }
 </style></head>
 <body>
   <section class="cover">
