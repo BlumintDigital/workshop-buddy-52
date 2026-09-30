@@ -93,7 +93,7 @@ function ShellFrame({ children }: { children: ReactNode }) {
                 <PageBoundary>{children}</PageBoundary>
               </div>
               <footer className="border-t px-3 pb-24 pt-3 text-center text-xs text-muted-foreground sm:px-6 md:pb-3">
-                Shoplane is powered by Blumint Workspace · © {new Date().getFullYear()} Blumint Digital Limited · Registered in England and Wales · Company No. 15709531
+                Shoplane · © {new Date().getFullYear()} Blumint Digital Limited · Registered in England and Wales · Company No. 15709531
               </footer>
             </SidebarInset>
           </div>

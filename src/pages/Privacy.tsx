@@ -18,7 +18,7 @@ export default function Privacy() {
           <section>
             <h2 className="text-xl font-semibold mb-3">1. Who we are</h2>
             <p className="text-muted-foreground">
-              Workshop Manager is operated by Blumint Digital Limited ("we", "our", "us"), accessible at{" "}
+              Shoplane is operated by Blumint Digital Limited ("we", "our", "us"), accessible at{" "}
               <a href="https://www.shoplane.uk" className="underline">www.shoplane.uk</a>.
               This policy explains what personal data we collect, why we collect it, and your rights.
             </p>
@@ -40,7 +40,7 @@ export default function Privacy() {
               We process your data under the following lawful bases (UK GDPR Article 6):
             </p>
             <ul className="list-disc pl-6 space-y-2 text-muted-foreground mt-2">
-              <li><strong>Contract:</strong> to provide the Workshop Manager service you have signed up for</li>
+              <li><strong>Contract:</strong> to provide the Shoplane service you have signed up for</li>
               <li><strong>Legitimate interests:</strong> to maintain security, prevent fraud, and audit access</li>
               <li><strong>Legal obligation:</strong> to retain financial records for 7 years as required by UK HMRC</li>
             </ul>

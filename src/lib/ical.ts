@@ -44,11 +44,11 @@ function nowStamp(): string {
   return `${n.getFullYear()}${pad(n.getMonth() + 1)}${pad(n.getDate())}T${pad(n.getHours())}${pad(n.getMinutes())}${pad(n.getSeconds())}Z`;
 }
 
-export function generateICS(events: ICalEvent[], calendarName = "Workshop Manager"): string {
+export function generateICS(events: ICalEvent[], calendarName = "Shoplane"): string {
   const lines: string[] = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    `PRODID:-//Workshop Manager//EN`,
+    `PRODID:-//Shoplane//EN`,
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
     `X-WR-CALNAME:${calendarName}`,

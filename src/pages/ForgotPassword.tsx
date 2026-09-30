@@ -14,7 +14,7 @@ export default function ForgotPassword() {
   const [submitting, setSubmitting] = useState(false);
   const [sent, setSent] = useState(false);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
-  const [workshopName, setWorkshopName] = useState("Workshop Manager");
+  const [workshopName, setWorkshopName] = useState("Shoplane");
 
   useEffect(() => {
     supabase
@@ -82,7 +82,7 @@ export default function ForgotPassword() {
             )}
           </CardContent>
         </Card>
-        <p className="text-center text-xs text-muted-foreground">Shoplane is powered by Blumint Workspace · © {new Date().getFullYear()} Blumint Digital Limited · Registered in England and Wales · Company No. 15709531</p>
+        <p className="text-center text-xs text-muted-foreground">Shoplane · © {new Date().getFullYear()} Blumint Digital Limited · Registered in England and Wales · Company No. 15709531</p>
       </div>
     </div>
   );

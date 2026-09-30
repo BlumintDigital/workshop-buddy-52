@@ -1,13 +1,14 @@
-import blumintLogoUrl from "@/assets/blumint_logo.png";
+import shoplaneMarkUrl from "@/assets/shoplane-mark.svg";
 import type { SyntheticEvent } from "react";
 
-export const DEFAULT_LOGO_URL = blumintLogoUrl;
-const LEGACY_DEFAULT_LOGO_FILENAME = "Blumint_Logo.png";
+export const DEFAULT_LOGO_URL = shoplaneMarkUrl;
+// Older installs stored the previous bundled Blumint logo as their logo_url; treat it as "no custom logo".
+const LEGACY_DEFAULT_LOGO_FILENAME = "blumint_logo.png";
 
 export const isLegacyDefaultLogoUrl = (logoUrl?: string | null) => {
   const trimmed = logoUrl?.trim();
   if (!trimmed) return false;
-  const normalizedPath = trimmed.split("?")[0].split("#")[0].replace(/\\/g, "/");
+  const normalizedPath = trimmed.split("?")[0].split("#")[0].replace(/\\/g, "/").toLowerCase();
   return normalizedPath === LEGACY_DEFAULT_LOGO_FILENAME || normalizedPath.endsWith(`/${LEGACY_DEFAULT_LOGO_FILENAME}`);
 };
 

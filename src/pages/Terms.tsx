@@ -18,7 +18,7 @@ export default function Terms() {
           <section>
             <h2 className="text-xl font-semibold text-foreground mb-3">1. Acceptance</h2>
             <p>
-              By accessing or using Workshop Manager ("the Service"), you agree to be bound by these Terms.
+              By accessing or using Shoplane ("the Service"), you agree to be bound by these Terms.
               If you are using the Service on behalf of an organisation, you represent that you have authority
               to bind that organisation to these Terms.
             </p>
@@ -27,7 +27,7 @@ export default function Terms() {
           <section>
             <h2 className="text-xl font-semibold text-foreground mb-3">2. Description of service</h2>
             <p>
-              Workshop Manager is a business management platform for automotive and trade workshops.
+              Shoplane is a business management platform for automotive and trade workshops.
               It provides tools for managing jobs, invoices, appointments, inventory, and staff.
               The Service is provided "as is" and features may change at any time.
             </p>

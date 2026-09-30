@@ -83,7 +83,7 @@ export function AppSidebar() {
   const { has } = usePermissions();
   const { flags } = useFeatureFlags();
   const counts = useNavCounts();
-  const [workshopName, setWorkshopName] = useState("Workshop Manager");
+  const [workshopName, setWorkshopName] = useState("Shoplane");
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>(readCollapsed);
 

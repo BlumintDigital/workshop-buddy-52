@@ -881,7 +881,7 @@ export default function AdminSettings() {
                   )}
                 </div>
                 {!customLogoUrl && (
-                  <p className="text-sm text-muted-foreground">No custom logo set. The default Blumint logo will be shown.</p>
+                  <p className="text-sm text-muted-foreground">No custom logo set. The default Shoplane logo will be shown.</p>
                 )}
                 <input ref={logoInputRef} type="file" accept="image/*" className="hidden" onChange={handleUploadLogo} />
                 <Button variant="outline" disabled={uploadingLogo} onClick={() => logoInputRef.current?.click()}>

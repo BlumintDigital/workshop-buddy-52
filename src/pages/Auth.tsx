@@ -126,7 +126,7 @@ export default function Auth() {
   const [loginError, setLoginError] = useState<string | null>(null);
   const [loginImageUrl, setLoginImageUrl] = useState<string | null>(null);
   const [heroFailed, setHeroFailed] = useState(false);
-  const [workshopName, setWorkshopName] = useState<string>("Workshop Manager");
+  const [workshopName, setWorkshopName] = useState<string>("Shoplane");
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [emailConfirmationSent, setEmailConfirmationSent] = useState(false);
   const [confirmationEmail, setConfirmationEmail] = useState("");
