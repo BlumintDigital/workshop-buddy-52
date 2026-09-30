@@ -66,6 +66,7 @@ export default function AdminSettings() {
   const { role, loading: authLoading } = useAuth();
   const isAdmin = role === "admin";
   const goalsEnabled = useFeature("goals");
+  const accountingEnabled = useFeature("accounting_sync");
   const appointmentsEnabled = useFeature("appointments");
   const canGenerateSampleData = useFeature("generate_sample_data");
   const canSetupDemoUsers = useFeature("setup_demo_users");
@@ -603,7 +604,7 @@ export default function AdminSettings() {
             aria-label="Settings sections"
             className="-mx-3 flex h-auto justify-start gap-1.5 overflow-x-auto bg-transparent px-3 pb-1 [scrollbar-width:none] md:sticky md:top-20 md:mx-0 md:flex-col md:items-stretch md:gap-0.5 md:self-start md:px-0 [&::-webkit-scrollbar]:hidden"
           >
-            {SETTINGS_SECTIONS.map(({ value, label, hint, icon: Icon }) => (
+            {SETTINGS_SECTIONS.filter((s) => s.value !== "integrations" || accountingEnabled).map(({ value, label, hint, icon: Icon }) => (
               <TabsTrigger
                 key={value}
                 value={value}
@@ -1057,7 +1058,9 @@ export default function AdminSettings() {
 
           <TabsContent value="integrations" className="mt-0 max-w-4xl space-y-4">
             <SectionHeading title="Accounting" description="Send invoices to QuickBooks, Xero or any other finance system, and get payments back." />
-            {activeTab === "integrations" && <IntegrationsPanel />}
+            {activeTab === "integrations" && (accountingEnabled
+              ? <IntegrationsPanel />
+              : <p className="text-sm text-muted-foreground">Accounting sync isn't switched on for your workshop. Contact Shoplane support to add it.</p>)}
           </TabsContent>
 
           <TabsContent value="data" className="mt-0 max-w-3xl space-y-4">

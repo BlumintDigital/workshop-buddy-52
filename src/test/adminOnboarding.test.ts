@@ -14,6 +14,12 @@ const emptyMetrics: AdminOnboardingMetrics = {
 };
 
 describe("buildAdminOnboardingSteps", () => {
+  it("leaves out the inventory step when Inventory is switched off", () => {
+    const ids = buildAdminOnboardingSteps(emptyMetrics, [], { inventory: false }).map((s) => s.id);
+    expect(ids).not.toContain("inventory");
+    expect(ids).toContain("job");
+  });
+
   it("marks first-time admin steps incomplete when no setup data exists", () => {
     const steps = buildAdminOnboardingSteps(emptyMetrics);
 

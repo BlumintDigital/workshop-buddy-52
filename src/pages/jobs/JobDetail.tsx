@@ -25,6 +25,7 @@ import ProjectTasks from "@/components/project/ProjectTasks";
 import ProjectParts from "@/components/project/ProjectParts";
 import ShipmentPanel from "@/components/shipping/ShipmentPanel";
 import { usePermissions } from "@/hooks/usePermissions";
+import { FeatureGate } from "@/hooks/useFeatureFlags";
 import ProjectActivity from "@/components/project/ProjectActivity";
 import ProjectFiles from "@/components/project/ProjectFiles";
 import ClientProjectView from "@/components/project/ClientProjectView";
@@ -446,7 +447,7 @@ export default function JobDetail() {
           onOpenTask={(task) => { setViewTask(task); setNewTaskNote(""); fetchTaskDetails(task.id); }}
         />
 
-        <ProjectParts project={job} isStores={isStores} onChanged={reloadJob} />
+        <FeatureGate feature="inventory"><ProjectParts project={job} isStores={isStores} onChanged={reloadJob} /></FeatureGate>
 
         <ProjectConversation
           project={job}
@@ -459,7 +460,7 @@ export default function JobDetail() {
         {/* ── Right sidebar ── */}
         <div className="space-y-6">
 
-        <ShipmentPanel project={job} canShip={has("shipping")} onChanged={reloadJob} />
+        <FeatureGate feature="shipping"><ShipmentPanel project={job} canShip={has("shipping")} onChanged={reloadJob} /></FeatureGate>
 
         <IntakeDetails project={job} receivedBy={receivedBy} />
 

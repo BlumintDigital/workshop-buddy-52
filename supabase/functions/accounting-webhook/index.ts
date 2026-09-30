@@ -22,6 +22,9 @@ serve(async (req) => {
   const { ctx } = await loadContext(admin, provider.id);
   if (!(await provider.verifyWebhook(ctx, req.headers, raw))) return new Response("Invalid signature", { status: 401 });
   if (!ctx.connection.active || ctx.connection.status !== "connected") return new Response("Not connected", { status: 200 });
+  // Switched off: acknowledge so the provider doesn't keep retrying, but change nothing.
+  const { data: accountingOn } = await admin.rpc("is_feature_enabled", { feature_key: "accounting_sync" });
+  if (accountingOn === false) return new Response("Accounting sync is switched off", { status: 200 });
 
   let events;
   try {
