@@ -692,16 +692,16 @@ export default function Auth() {
                   </div>
                 </fieldset>
 
-                <Field label="Invite code" htmlFor="signup-invite-code" hint="Your workshop admin can issue one from Settings.">
+                <Field label="Invitation code" htmlFor="signup-invite-code">
                   <Input
                     id="signup-invite-code"
                     value={signupInviteCode}
                     onChange={(e) => setSignupInviteCode(e.target.value)}
                     required
-                    placeholder="Paste your code"
+                    placeholder="Enter your invitation code"
                     autoComplete="off"
                     maxLength={64}
-                    className="h-11 font-mono"
+                    className="h-11 font-mono placeholder:font-sans"
                   />
                 </Field>
 
