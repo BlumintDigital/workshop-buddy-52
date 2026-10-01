@@ -11,7 +11,7 @@ export default function Privacy() {
         </Button>
 
         <h1 className="text-3xl font-bold tracking-tight mb-2">Privacy Policy</h1>
-        <p className="text-sm text-muted-foreground mb-10">Last updated: June 2026</p>
+        <p className="text-sm text-muted-foreground mb-10">Last updated: October 2026</p>
 
         <div className="prose prose-sm dark:prose-invert max-w-none space-y-8">
 
@@ -61,8 +61,19 @@ export default function Privacy() {
             <p className="text-muted-foreground">
               We use a small number of trusted sub-processors to host the application, store data,
               and deliver transactional emails. All processors are bound by data-processing
-              agreements and process data only as instructed by us. A current list is available on
-              request.
+              agreements and process data only as instructed by us. Your workshop's database is held in
+              the region agreed when it started with Shoplane (the UK by default). A current list of
+              sub-processors is available on request.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold mb-3">5a. The AI assistant</h2>
+            <p className="text-muted-foreground">
+              If your workshop switches on the assistant, a question and the records needed to answer it
+              (never more than the person asking can already see) are sent to the AI provider your workshop
+              uses, Anthropic or OpenAI, only to produce the answer. They are not used to train AI models,
+              and we don't store conversations: only a count of questions, to apply usage limits.
             </p>
           </section>
 

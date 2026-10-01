@@ -11,7 +11,7 @@ export default function Terms() {
         </Button>
 
         <h1 className="text-3xl font-bold tracking-tight mb-2">Terms of Service</h1>
-        <p className="text-sm text-muted-foreground mb-10">Last updated: June 2026</p>
+        <p className="text-sm text-muted-foreground mb-10">Last updated: October 2026</p>
 
         <div className="space-y-8 text-muted-foreground">
 
@@ -27,9 +27,10 @@ export default function Terms() {
           <section>
             <h2 className="text-xl font-semibold text-foreground mb-3">2. Description of service</h2>
             <p>
-              Shoplane is a business management platform for automotive and trade workshops.
-              It provides tools for managing jobs, invoices, appointments, inventory, and staff.
-              The Service is provided "as is" and features may change at any time.
+              Shoplane is a workshop management platform for garages, fabrication shops, marine and plant service
+              companies and service fleets. It provides tools for managing projects, quotes, invoices, appointments,
+              inventory, shipping and staff. If your workshop uses the AI assistant, its answers are generated
+              automatically and may be wrong, so check anything important.
             </p>
           </section>
 
@@ -89,10 +90,11 @@ export default function Terms() {
           <section>
             <h2 className="text-xl font-semibold text-foreground mb-3">8. Availability and changes</h2>
             <p>
-              We do not guarantee uninterrupted availability of the Service. We reserve the right to
-              modify, suspend, or discontinue any part of the Service at any time, with reasonable notice
-              where practicable. We may update these Terms from time to time; continued use after changes
-              take effect constitutes acceptance.
+              Our target is for the Service to be available 99.9% of the time each month, excluding notified
+              planned maintenance and events outside our reasonable control. Your workshop's Customer Agreement
+              sets out how availability is measured and the service credits that apply. We may improve or change
+              parts of the Service over time, with reasonable notice of anything that materially affects you. We may
+              update these Terms from time to time; continued use after changes take effect constitutes acceptance.
             </p>
           </section>
 
