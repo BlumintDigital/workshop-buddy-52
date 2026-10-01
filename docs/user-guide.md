@@ -1,4 +1,4 @@
-# Workshop Buddy — User Guide
+# Shoplane User Guide
 
 A complete reference for Admins, Managers, Staff, and Clients.
 
@@ -59,6 +59,7 @@ Every signed-in page shares the same shell:
 
 - **Sidebar (left)** — primary navigation. Collapses to icons on smaller screens. The trigger in the header expands or collapses it. Links to Reception, Inventory, Shipping and Reports appear when your role or teams allow them.
 - **Header (top)** — breadcrumbs, search, notification bell, and broadcast banner area.
+- **Ask** — when your workshop has the assistant switched on, ask it questions in plain words: where a project is up to, which invoices are unpaid, what's on this week, or how to do something. It answers from your workshop's records and this guide, sees only what you can see, and can't change anything. If it can't help a client, it drafts a message to the workshop for them to check and send.
 - **Notification bell** — shows unread in-app notifications. Click to view recent activity and mark them as read.
 - **Broadcast banner** — system-wide notices from your administrator appear here. Use the X to dismiss.
 - **Profile menu (sidebar footer)** — access your profile, security settings, and sign out.
@@ -316,7 +317,7 @@ When work on your project is finished you'll receive an invoice by email. Open i
 
 ## 9. Notifications
 
-Workshop Buddy delivers notifications through three channels:
+Shoplane delivers notifications through three channels:
 
 - **In-app bell** — every signed-in user. Click the bell to read, mark as read, or jump to the source.
 - **Web push** — opt in from **Profile → Notifications** to receive browser/mobile push even when the app is closed. Requires permission on first opt-in.
@@ -406,4 +407,4 @@ Contact your admin. They can reset MFA on your account from **Admin → Users**.
 
 ---
 
-*Workshop Buddy — last updated 28 September 2026.*
+*Shoplane — last updated 1 October 2026.*

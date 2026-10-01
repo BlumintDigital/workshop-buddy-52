@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { Eye, Lock, Send } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -56,6 +57,9 @@ export default function ProjectConversation({ project, clientName, teamIds = [] 
   // Bumped after posting, so your own message shows even if the live feed is down.
   const [version, setVersion] = useState(0);
   const [tab, setTab] = useState<Channel>(isClient ? "client" : "team");
+  // A message the assistant drafted for the client ("Open in project chat"), ready to check and send.
+  const handoff = (useLocation().state as { assistantDraft?: { project_id: string; message: string } } | null)?.assistantDraft;
+  const assistantDraft = isClient && handoff?.project_id === project.id ? handoff.message : undefined;
 
   useEffect(() => {
     let cancelled = false;
@@ -135,7 +139,7 @@ export default function ProjectConversation({ project, clientName, teamIds = [] 
         </CardHeader>
         <CardContent>
           <Thread notes={client} ownId={user?.id} empty="No messages yet." />
-          <Composer label="Message to the workshop" placeholder="Write a message…" onSend={(b) => post("client", b)} />
+          <Composer label="Message to the workshop" placeholder="Write a message…" initial={assistantDraft} onSend={(b) => post("client", b)} />
         </CardContent>
       </Card>
     );
@@ -249,6 +253,7 @@ function Composer({
   sendLabel = "Send",
   disabled,
   disabledHint,
+  initial,
   onSend,
 }: {
   label: string;
@@ -256,11 +261,20 @@ function Composer({
   sendLabel?: string;
   disabled?: boolean;
   disabledHint?: string;
+  initial?: string;
   onSend: (body: string) => Promise<boolean | string>;
 }) {
-  const [body, setBody] = useState("");
+  const [body, setBody] = useState(initial ?? "");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const field = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (!initial) return;
+    setBody(initial);
+    field.current?.scrollIntoView({ block: "center" });
+    field.current?.focus();
+  }, [initial]);
 
   const submit = async (e?: React.FormEvent) => {
     e?.preventDefault();
@@ -280,6 +294,7 @@ function Composer({
   return (
     <form onSubmit={submit} className="mt-4 space-y-2 border-t pt-3">
       <Textarea
+        ref={field}
         aria-label={label}
         value={body}
         onChange={(e) => setBody(e.target.value)}

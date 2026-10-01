@@ -360,6 +360,70 @@ Deno.serve(async (req) => {
         });
       }
 
+      // ==================== AI ASSISTANT ====================
+      //   GET  ?action=assistant  → settings, which AI keys are set, and this month's usage
+      //   POST ?action=assistant  body: { provider?, model?, monthly_question_limit?, daily_question_limit_per_person? }
+      // Switching it on or off is the "assistant" feature flag. The keys are edge function secrets
+      // that Control sets through Supabase; they are never stored or returned here.
+      case "assistant": {
+        if (req.method === "POST") {
+          const body = await req.json().catch(() => ({}));
+          const patch: Record<string, unknown> = {};
+          if (body.provider !== undefined) {
+            if (!["anthropic", "openai"].includes(body.provider)) return err("provider must be anthropic or openai");
+            patch.provider = body.provider;
+          }
+          if (body.model !== undefined) {
+            if (body.model !== null && !/^[A-Za-z0-9._:-]{1,80}$/.test(String(body.model))) return err("model isn't a valid model name");
+            patch.model = body.model || null;
+          }
+          for (const [k, max] of [["monthly_question_limit", 100000], ["daily_question_limit_per_person", 1000]] as const) {
+            if (body[k] === undefined) continue;
+            const n = Number(body[k]);
+            if (!Number.isInteger(n) || n < (k === "monthly_question_limit" ? 0 : 1) || n > max) return err(`${k} must be a whole number up to ${max}`);
+            patch[k] = n;
+          }
+          if (!Object.keys(patch).length) return err("Nothing to change");
+          const { error } = await supabase.from("assistant_settings")
+            .upsert({ id: 1, ...patch, updated_at: new Date().toISOString() }, { onConflict: "id" });
+          if (error) return err(error.message, 500);
+          await supabase.from("activity_logs").insert({
+            action: "updated", table_name: "assistant_settings", record_id: "1",
+            summary: "AI assistant settings changed via admin API", details: { ...patch, source: "admin-api" },
+          });
+        }
+        const today = new Date().toISOString().slice(0, 10);
+        const monthStart = `${today.slice(0, 8)}01`;
+        const [{ data: settings, error: sErr }, { data: rows }, { data: flag }] = await Promise.all([
+          supabase.from("assistant_settings").select("provider, model, monthly_question_limit, daily_question_limit_per_person, updated_at").eq("id", 1).maybeSingle(),
+          supabase.from("assistant_usage").select("user_id, used_on, role, questions, input_tokens, output_tokens, handed_over").gte("used_on", monthStart),
+          supabase.from("feature_flags").select("enabled").eq("key", "assistant").maybeSingle(),
+        ]);
+        if (sErr) return err(sErr.message, 500);
+        const people = new Set<string>();
+        const byRole: Record<string, number> = {};
+        const byDay: Record<string, number> = {};
+        let questions = 0, inputTokens = 0, outputTokens = 0, handedOver = 0;
+        for (const r of rows || []) {
+          people.add(r.user_id);
+          questions += r.questions;
+          inputTokens += Number(r.input_tokens);
+          outputTokens += Number(r.output_tokens);
+          handedOver += r.handed_over;
+          byRole[r.role || "unknown"] = (byRole[r.role || "unknown"] ?? 0) + r.questions;
+          byDay[r.used_on] = (byDay[r.used_on] ?? 0) + r.questions;
+        }
+        return json({
+          enabled: flag?.enabled === true,
+          settings,
+          keys: { anthropic: !!Deno.env.get("ANTHROPIC_API_KEY"), openai: !!Deno.env.get("OPENAI_API_KEY") },
+          month: {
+            since: monthStart, questions, people: people.size, input_tokens: inputTokens, output_tokens: outputTokens,
+            handed_over: handedOver, questions_by_role: byRole, questions_by_day: byDay,
+          },
+        });
+      }
+
       // ==================== CONFIG ====================
       case "config": {
         const { data, error } = await supabase
@@ -1210,12 +1274,12 @@ Deno.serve(async (req) => {
       //     → toggle a flag (flip its current value); returns { key, enabled } with new state
       //
       // Valid keys: appointments | client_portal | goals | reports | job_chat | inventory | shipping |
-      //             accounting_sync | generate_sample_data | setup_demo_users | backup_restore
+      //             accounting_sync | generate_sample_data | setup_demo_users | backup_restore | assistant
       case "feature_flags": {
         const VALID_KEYS = [
           "appointments", "client_portal", "goals", "reports", "job_chat",
           "inventory", "shipping", "accounting_sync",
-          "generate_sample_data", "setup_demo_users", "backup_restore",
+          "generate_sample_data", "setup_demo_users", "backup_restore", "assistant",
         ];
 
         if (req.method === "GET") {

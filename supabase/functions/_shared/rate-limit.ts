@@ -5,7 +5,8 @@ export type RateLimitAction =
   | "trust_device"
   | "backup_verify"
   | "send_push"
-  | "send_email";
+  | "send_email"
+  | "assistant";
 
 export interface RateLimitResult {
   allowed: boolean;

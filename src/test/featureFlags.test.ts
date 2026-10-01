@@ -27,6 +27,7 @@ describe("normalizeFeatureFlags", () => {
       generate_sample_data: false,
       setup_demo_users: false,
       backup_restore: false,
+      assistant: false,
     });
   });
 
