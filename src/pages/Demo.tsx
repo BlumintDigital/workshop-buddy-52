@@ -71,7 +71,7 @@ export default function Demo() {
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
       <div className="w-full max-w-5xl space-y-8">
         <div className="text-center space-y-2">
-          <h1 className="text-4xl font-bold tracking-tight">Workshop Buddy Demo</h1>
+          <h1 className="text-4xl font-bold tracking-tight">Shoplane Demo</h1>
           <p className="text-muted-foreground text-lg">
             Choose a role to explore the app. Each role has a different level of access.
           </p>

@@ -20,7 +20,9 @@
     "test-db:reset": "node scripts/test-db.mjs reset",
     "test-db:rls": "node scripts/test-db.mjs rls",
     "test-db:stop": "node scripts/test-db.mjs stop",
-    "docs:guide-pdf": "node scripts/build-guide-pdf.mjs",
+    "docs:guide-pdf": "node scripts/build-guide-pdf.mjs",
+    "docs:assistant-guide": "node scripts/sync-assistant-guide.mjs",
+
     "db:push": "supabase db push",
     "db:status": "supabase migration list",
     "functions:deploy": "supabase functions deploy",

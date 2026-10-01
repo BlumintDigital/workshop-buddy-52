@@ -210,7 +210,7 @@ export default function Help() {
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">Help &amp; User Guide</h1>
             <p className="text-sm text-muted-foreground">
-              Everything you need to use Workshop Buddy — for every role.
+              Everything you need to use Shoplane, for every role.
             </p>
           </div>
           <div className="flex gap-2">

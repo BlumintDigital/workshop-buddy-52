@@ -20,7 +20,8 @@ export type FeatureKey =
   | "accounting_sync"
   | "generate_sample_data"
   | "setup_demo_users"
-  | "backup_restore";
+  | "backup_restore"
+  | "assistant";
 
 export type FeatureFlags = Record<FeatureKey, boolean>;
 
@@ -42,6 +43,7 @@ export const FEATURE_DEFAULTS: FeatureFlags = {
   generate_sample_data: false,
   setup_demo_users: false,
   backup_restore: false,
+  assistant: false,
 };
 
 const FEATURE_KEYS = Object.keys(FEATURE_DEFAULTS) as FeatureKey[];

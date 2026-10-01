@@ -151,3 +151,6 @@ verify_jwt = false
 verify_jwt = false
 [functions.accounting-webhook]
 verify_jwt = false
+
+[functions.assistant]
+verify_jwt = false
