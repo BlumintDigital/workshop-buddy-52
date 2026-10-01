@@ -21,7 +21,6 @@ import { clientFriendlyInvoiceStatus, clientStatusTone } from "@/lib/invoiceStat
 import { Skeleton } from "@/components/ui/skeleton";
 import { DatePickerInput } from "@/components/ui/date-picker-input";
 import { toast } from "sonner";
-import { generateInvoicePDF } from "@/lib/invoicePdf";
 import { friendlyErrorMessage, friendlyErrorMessageSync } from "@/lib/friendlyError";
 import { sendEmail, invoiceSentEmailHtml } from "@/lib/email";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -220,6 +219,8 @@ export default function InvoiceDetail() {
     if (!invoice) return;
     setDownloading(true);
     try {
+      // The PDF library is large; load it only when someone downloads a PDF.
+      const { generateInvoicePDF } = await import("@/lib/invoicePdf");
       await generateInvoicePDF({ invoice, clientName, items });
       toast.success("PDF downloaded");
     } catch (e) {

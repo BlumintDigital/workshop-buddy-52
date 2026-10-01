@@ -572,19 +572,37 @@ export default function Auth() {
   }
 
   const heroSrc = loginImageUrl ?? "/auth-hero.jpg";
+  // The brand panel only shows from the lg breakpoint, so phones skip the photo entirely.
+  const heroMedia = "(min-width: 1024px)";
+  const heroSizes = "(min-width: 1640px) 720px, 44vw";
+  const heroSet = (ext: string) => [640, 960, 1280].map((w) => `/auth-hero-${w}.${ext} ${w}w`).join(", ");
 
   return (
     <div className="flex min-h-screen bg-background">
       {/* Brand panel */}
       <aside className="relative hidden w-[44%] max-w-[720px] overflow-hidden bg-[hsl(150_30%_12%)] text-white lg:flex lg:flex-col">
-        {!heroFailed && (
+        {!heroFailed && (loginImageUrl ? (
           <img
             src={heroSrc}
             alt=""
             className="absolute inset-0 h-full w-full object-cover"
             onError={() => setHeroFailed(true)}
           />
-        )}
+        ) : (
+          <picture>
+            <source media={heroMedia} type="image/avif" srcSet={heroSet("avif")} sizes={heroSizes} />
+            <source media={heroMedia} type="image/webp" srcSet={heroSet("webp")} sizes={heroSizes} />
+            <source media={heroMedia} srcSet={heroSrc} />
+            {/* Transparent placeholder so narrow screens, where the panel is hidden, download nothing. */}
+            <img
+              src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw=="
+              alt=""
+              className="absolute inset-0 h-full w-full object-cover"
+              {...{ fetchpriority: "high" }}
+              onError={() => setHeroFailed(true)}
+            />
+          </picture>
+        ))}
         <div className="absolute inset-0 bg-gradient-to-b from-[hsl(150_30%_8%/0.55)] via-[hsl(150_30%_8%/0.35)] to-[hsl(150_30%_6%/0.92)]" />
         <div className="relative flex flex-1 flex-col justify-between p-10 xl:p-14">
           <div className="flex items-center gap-3">

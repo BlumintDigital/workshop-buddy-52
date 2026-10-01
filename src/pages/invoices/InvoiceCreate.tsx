@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { Suspense, lazy, useEffect, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { invoiceSchema } from "@/lib/schemas/invoice";
@@ -14,10 +14,13 @@ import { Plus, Trash2 } from "lucide-react";
 import { DatePickerInput } from "@/components/ui/date-picker-input";
 import { toast } from "sonner";
 import { useCurrency } from "@/hooks/useCurrency";
-import InvoicePdfPreview from "@/components/invoices/InvoicePdfPreview";
 import { useWorkshopDetails } from "@/hooks/useWorkshopDetails";
 import { DiscountField } from "@/components/invoices/DiscountField";
 import { discountColumns, discountLabel, invoiceTotals, type InvoiceDiscount } from "@/lib/invoiceTotals";
+import { Skeleton } from "@/components/ui/skeleton";
+
+// The live preview pulls in the large PDF library, so the form renders first and the preview follows.
+const InvoicePdfPreview = lazy(() => import("@/components/invoices/InvoicePdfPreview"));
 import { friendlyErrorMessageSync } from "@/lib/friendlyError";
 import { Link } from "react-router-dom";
 import { loadQuotes } from "@/components/project/ProjectQuotes";
@@ -418,14 +421,16 @@ export default function InvoiceCreate() {
                   <span className="text-xs text-muted-foreground">Updates as you type</span>
                 </CardHeader>
                 <CardContent>
-                  <InvoicePdfPreview
-                    invoice={previewInvoice}
-                    clientName={clientName}
-                    items={items}
-                    workshop={workshop}
-                    currency={currency}
-                    height={820}
-                  />
+                  <Suspense fallback={<Skeleton className="h-[820px] w-full" />}>
+                    <InvoicePdfPreview
+                      invoice={previewInvoice}
+                      clientName={clientName}
+                      items={items}
+                      workshop={workshop}
+                      currency={currency}
+                      height={820}
+                    />
+                  </Suspense>
                 </CardContent>
               </Card>
             </div>
