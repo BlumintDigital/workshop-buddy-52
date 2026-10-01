@@ -6,7 +6,7 @@ A complete reference for Admins, Managers, Staff, and Clients.
 
 ## 1. Welcome
 
-Workshop Buddy is a workshop management platform that takes every project from reception to shipping — quotes, team tasks, parts, quality check, handover and invoicing — in one shared workspace. Every account on the platform belongs to one of four roles, each with a tailored experience:
+Shoplane is a workshop management platform that takes every project from reception to shipping — quotes, team tasks, parts, quality check, handover and invoicing — in one shared workspace. Every account on the platform belongs to one of four roles, each with a tailored experience:
 
 - **Admin** — full control of the workspace: users, teams and access, settings, reports, billing and security.
 - **Manager** — runs day-to-day operations: projects, quotes, quality check, inventory, shipping, invoicing and staff.
@@ -197,6 +197,14 @@ Each card shows whether the project is paid, invoiced but unpaid, not invoiced y
 ### 5.8 Staff and Goals
 
 **Staff** shows each person, their teams and who leads them. **Goals** shows the work delivered this month against the monthly goal, plus each person's hours, handoffs and **work value** (each finished task's share of its project's agreed quote). People with Reports and costs also see labour cost and a link to the full team report. **Show on a screen** turns it into a wall display that refreshes itself.
+
+### 5.9 Reception
+
+**Reception** is where every project starts. It has two tabs.
+
+- **Log a machine** — record a machine as it arrives: choose a portal client or enter a walk-in or phone customer's name, phone and email, then what's come in, make and model, serial or asset number, the reported problem in the customer's words, what came with it and its condition on arrival. Add arrival photos the client can see. Choose how it came in: **Evaluation** (assess it first, free), **Quote** (price it before work starts) or **Approved job** (work can begin). Logging it creates the project with its permanent ID and opens the project page.
+- **Client requests** — repair, evaluation and quote requests sent from the client portal. Receive one when the machine arrives and it becomes a project, or decline it with a reason.
+- **Received this week** lists the latest machines with their stage, so the front desk can answer "where's my machine?" without leaving the page.
 
 ---
 

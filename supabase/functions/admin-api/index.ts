@@ -325,6 +325,41 @@ Deno.serve(async (req) => {
         });
       }
 
+      // ==================== HELP USAGE ====================
+      // How often people opened the in-app help, per page. Totals only: no user ids leave here.
+      case "help-usage": {
+        const days = Math.min(Math.max(Number(url.searchParams.get("days")) || 30, 1), 365);
+        const since = new Date(Date.now() - (days - 1) * 86_400_000).toISOString().slice(0, 10);
+        const { data: rows, error } = await supabase
+          .from("help_views")
+          .select("user_id, page_key, opens, role")
+          .gte("viewed_on", since);
+        if (error) throw error;
+
+        const pages = new Map<string, { people: Set<string>; opens: number; byRole: Record<string, number> }>();
+        const everyone = new Set<string>();
+        let opens = 0;
+        for (const r of rows || []) {
+          const p = pages.get(r.page_key) ?? { people: new Set<string>(), opens: 0, byRole: {} };
+          p.people.add(r.user_id);
+          p.opens += r.opens;
+          const role = r.role || "unknown";
+          p.byRole[role] = (p.byRole[role] ?? 0) + r.opens;
+          pages.set(r.page_key, p);
+          everyone.add(r.user_id);
+          opens += r.opens;
+        }
+        return json({
+          since,
+          days,
+          total_people: everyone.size,
+          total_opens: opens,
+          pages: [...pages.entries()]
+            .map(([page_key, p]) => ({ page_key, people: p.people.size, opens: p.opens, opens_by_role: p.byRole }))
+            .sort((a, b) => b.opens - a.opens),
+        });
+      }
+
       // ==================== CONFIG ====================
       case "config": {
         const { data, error } = await supabase
