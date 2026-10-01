@@ -196,8 +196,9 @@ export function InvoiceDocument({ invoice, clientName, items, workshop, currency
  * Fetch workshop details from Supabase, then generate and download a PDF.
  */
 export async function generateInvoicePDF(props: Omit<InvoicePDFProps, "workshop">): Promise<void> {
+  // The public view gives every signed-in role the details printed on invoices; the table is admin-only.
   const { data: settings } = await supabase
-    .from("workshop_settings")
+    .from("workshop_settings_public")
     .select("workshop_name, address, phone, contact_email, logo_url, currency")
     .eq("id", 1)
     .maybeSingle();

@@ -22,8 +22,11 @@ export const WORKSHOP_SETTINGS_KEY = ["workshop-settings"] as const;
 const FULL_COLUMNS =
   "workshop_name, logo_url, currency, enabled_currencies, address, phone, contact_email, brand_primary_hsl, brand_accent_hsl";
 
-async function fetchWorkshopSettings(): Promise<WorkshopSettings> {
-  const { data } = await (supabase.from("workshop_settings") as any).select(FULL_COLUMNS).eq("id", 1).maybeSingle();
+async function fetchWorkshopSettings(signedIn: boolean): Promise<WorkshopSettings> {
+  // Admins and managers can read the table; skip the attempt for signed-out visitors.
+  const { data } = signedIn
+    ? await (supabase.from("workshop_settings") as any).select(FULL_COLUMNS).eq("id", 1).maybeSingle()
+    : { data: null };
   if (data) {
     return {
       workshop_name: data.workshop_name ?? null,
@@ -38,22 +41,23 @@ async function fetchWorkshopSettings(): Promise<WorkshopSettings> {
       source: "full",
     };
   }
-  // Staff and clients can't read the full row; fall back to the public view (name, logo, currency).
+  // Staff, clients and signed-out visitors read the public view: the workshop's branding, plus its
+  // contact details for anyone signed in (see get_public_workshop_settings).
   const { data: pub } = await supabase
     .from("workshop_settings_public")
-    .select("workshop_name, logo_url, currency")
+    .select("workshop_name, logo_url, currency, enabled_currencies, address, phone, contact_email, brand_primary_hsl, brand_accent_hsl")
     .eq("id", 1)
     .maybeSingle();
   return {
     workshop_name: pub?.workshop_name ?? null,
     logo_url: pub?.logo_url ?? null,
     currency: pub?.currency || "USD",
-    enabled_currencies: [],
-    address: null,
-    phone: null,
-    contact_email: null,
-    brand_primary_hsl: null,
-    brand_accent_hsl: null,
+    enabled_currencies: pub?.enabled_currencies ?? [],
+    address: pub?.address ?? null,
+    phone: pub?.phone ?? null,
+    contact_email: pub?.contact_email ?? null,
+    brand_primary_hsl: pub?.brand_primary_hsl ?? null,
+    brand_accent_hsl: pub?.brand_accent_hsl ?? null,
     source: "public",
   };
 }
@@ -67,9 +71,9 @@ export function useWorkshopSettings() {
   const ready = useSessionReady();
   return useQuery({
     queryKey: [...WORKSHOP_SETTINGS_KEY, user?.id ?? "signed-out", role ?? "no-role"],
-    queryFn: fetchWorkshopSettings,
-    // Signed-out pages (sign-in, password reset) read the public view themselves.
-    enabled: ready && !!user,
+    queryFn: () => fetchWorkshopSettings(!!user),
+    // Signed-out pages get the workshop's branding too (colours on the sign-in page).
+    enabled: ready,
     staleTime: Infinity,
   });
 }

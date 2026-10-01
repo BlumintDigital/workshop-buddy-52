@@ -79,59 +79,79 @@ export async function countReviewJobs(): Promise<number> {
 
 export type StaleQuote = { id: string; title: string; quoted_total: number | null; days: number };
 
-/** Quotes and change requests sent to clients and still undecided after a few days. */
-export async function fetchStaleQuotes(now = new Date()): Promise<StaleQuote[]> {
-  const cutoff = new Date(now.getTime() - STALE_QUOTE_DAYS * 86_400_000).toISOString();
-  const { data, error } = await supabase
-    .from("project_quotes")
-    .select("id, kind, number, subtotal, sent_at, jobs(ref, title)")
-    .eq("status", "sent")
-    .lt("sent_at", cutoff)
-    .order("sent_at", { ascending: true });
-  if (error) throw error;
-  return (data || []).map((row) => ({
-    id: row.id,
-    title: `${row.jobs?.ref ?? ""}-${row.kind === "quote" ? "Q" : "CR"}${row.number} · ${row.jobs?.title ?? ""}`,
-    quoted_total: row.subtotal,
-    days: Math.floor((now.getTime() - new Date(row.sent_at ?? now).getTime()) / 86_400_000),
-  }));
-}
-
-export async function countPendingInvites(): Promise<number> {
-  const { count, error } = await supabase
-    .from("profiles")
-    .select("id", { count: "exact", head: true })
-    .not("invited_at", "is", null)
-    .is("invite_accepted_at", null);
-  if (error) throw error;
-  return count || 0;
-}
-
 export type DraftInvoice = { id: string; invoice_number: string; job_id: string | null; total: number };
 
-/** Invoices drafted (by hand or at quality-check pass) and not sent yet. */
-export async function fetchDraftInvoices(): Promise<DraftInvoice[]> {
-  const { data, error } = await supabase
-    .from("invoices")
-    .select("id, invoice_number, job_id, total, base_total")
-    .eq("status", "draft")
-    .order("created_at", { ascending: true });
+/**
+ * Everything the admin and manager Today dashboard needs, from one `dashboard_today` call.
+ * It runs as the caller, so row-level security applies exactly as for the separate queries below.
+ */
+export type DashboardSnapshot = {
+  openJobs: { id: string; ref: string; title: string; status: string; priority: string | null; due_date: string | null; estimated_hours: number | null; assigned_staff_id: string | null }[];
+  people: { id: string; full_name: string | null }[];
+  paidInvoices: { base_total: number | null; total: number | null; paid_at: string | null; created_at: string }[];
+  unpaidTotal: number;
+  overdueInvoices: OverdueInvoice[];
+  draftInvoices: DraftInvoice[];
+  appointments: { id: string; title: string | null; appointment_time: string; duration_minutes: number | null; status: string }[];
+  reviewCount: number;
+  lowStock: LowStockItem[];
+  staleQuotes: StaleQuote[];
+  pendingInvites: number;
+  uninvoicedProjects: UninvoicedProject[];
+};
+
+/** Start of the month five months back: the revenue chart covers six calendar months. */
+export function revenueWindowStart(now = new Date()): Date {
+  const d = new Date(now);
+  d.setMonth(d.getMonth() - 5);
+  d.setDate(1);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+export async function fetchDashboardSnapshot(
+  opts: { appointments: boolean; invites: boolean },
+  now = new Date(),
+): Promise<DashboardSnapshot> {
+  const { data, error } = await (supabase.rpc as any)("dashboard_today", {
+    p_today: todayIso(now),
+    p_paid_since: revenueWindowStart(now).toISOString(),
+    p_stale_quote_before: new Date(now.getTime() - STALE_QUOTE_DAYS * 86_400_000).toISOString(),
+    p_include_appointments: opts.appointments,
+    p_include_invites: opts.invites,
+  });
   if (error) throw error;
-  return (data || []).map((row) => ({ id: row.id, invoice_number: row.invoice_number, job_id: row.job_id, total: Number(row.base_total ?? row.total) || 0 }));
+  const d = data as any;
+  return {
+    openJobs: d.open_jobs ?? [],
+    people: d.people ?? [],
+    paidInvoices: d.paid_invoices ?? [],
+    unpaidTotal: Number(d.unpaid_total) || 0,
+    overdueInvoices: (d.overdue_invoices ?? []).map((row: any) => ({
+      id: row.id,
+      invoice_number: row.invoice_number,
+      client_id: row.client_id,
+      due_date: row.due_date,
+      amount: Number(row.base_total ?? row.total) || 0,
+    })),
+    draftInvoices: (d.draft_invoices ?? []).map((row: any) => ({
+      id: row.id,
+      invoice_number: row.invoice_number,
+      job_id: row.job_id,
+      total: Number(row.base_total ?? row.total) || 0,
+    })),
+    appointments: d.appointments ?? [],
+    reviewCount: Number(d.review_count) || 0,
+    lowStock: d.low_stock ?? [],
+    staleQuotes: (d.stale_quotes ?? []).map((row: any) => ({
+      id: row.id,
+      title: `${row.job_ref ?? ""}-${row.kind === "quote" ? "Q" : "CR"}${row.number} · ${row.job_title ?? ""}`,
+      quoted_total: row.subtotal,
+      days: Math.floor((now.getTime() - new Date(row.sent_at ?? now).getTime()) / 86_400_000),
+    })),
+    pendingInvites: Number(d.pending_invites) || 0,
+    uninvoicedProjects: d.uninvoiced_projects ?? [],
+  };
 }
 
 export type UninvoicedProject = { id: string; ref: string | null; title: string; client_id: string | null };
-
-/** Projects that passed their quality check (or shipped) with no invoice at all. */
-export async function fetchUninvoicedProjects(): Promise<UninvoicedProject[]> {
-  const { data, error } = await supabase
-    .from("jobs")
-    .select("id, ref, title, client_id, updated_at, invoices(id, status)")
-    .in("status", ["completed", "shipped"])
-    .order("updated_at", { ascending: true })
-    .limit(200);
-  if (error) throw error;
-  return (data || [])
-    .filter((j) => !(j.invoices ?? []).some((i) => i.status !== "cancelled"))
-    .map((j) => ({ id: j.id, ref: j.ref, title: j.title, client_id: j.client_id }));
-}
