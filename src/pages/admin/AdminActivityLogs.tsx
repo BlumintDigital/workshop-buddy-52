@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useVisibleInterval } from "@/hooks/useVisibleInterval";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -170,17 +171,8 @@ export default function AdminActivityLogs() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Auto-refresh logs every 20s and on window focus so the page never feels stale.
-  useEffect(() => {
-    const interval = setInterval(() => { fetchLogs(); }, 20000);
-    const onFocus = () => fetchLogs();
-    window.addEventListener("focus", onFocus);
-    return () => {
-      clearInterval(interval);
-      window.removeEventListener("focus", onFocus);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, filterTable, filterAction, search]);
+  // Auto-refresh logs every 20s while the tab is visible, and straight away when it comes back.
+  useVisibleInterval(() => { fetchLogs(); }, 20_000);
 
   const handleSearch = () => {
     setPage(0);

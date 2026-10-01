@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { ChevronDown, ChevronRight, LogOut, Monitor, Moon, Sun, User } from "lucide-react";
 import { useTheme } from "next-themes";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -7,7 +7,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useFeatureFlags } from "@/hooks/useFeatureFlags";
 import { useNavCounts, type NavCounts } from "@/hooks/useNavCounts";
-import { supabase } from "@/integrations/supabase/client";
+import { useWorkshopSettings } from "@/hooks/useWorkshopSettings";
 import {
   Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
   SidebarHeader, SidebarMenu, SidebarMenuBadge, SidebarMenuButton, SidebarMenuItem, SidebarSeparator, useSidebar,
@@ -83,39 +83,10 @@ export function AppSidebar() {
   const { has } = usePermissions();
   const { flags } = useFeatureFlags();
   const counts = useNavCounts();
-  const [workshopName, setWorkshopName] = useState("Shoplane");
-  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const { data: settings } = useWorkshopSettings();
+  const workshopName = settings?.workshop_name || "Shoplane";
+  const logoUrl = settings?.logo_url ?? null;
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>(readCollapsed);
-
-  useEffect(() => {
-    supabase
-      .from("workshop_settings")
-      .select("workshop_name, logo_url")
-      .eq("id", 1)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (!data) return;
-        if ((data as any)?.workshop_name) setWorkshopName((data as any).workshop_name);
-        if ((data as any)?.logo_url) setLogoUrl((data as any).logo_url);
-      });
-
-    const channel = supabase
-      .channel("sidebar-workshop-settings")
-      .on(
-        "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "workshop_settings" },
-        (payload) => {
-          const row = payload.new as any;
-          if (row?.workshop_name) setWorkshopName(row.workshop_name);
-          setLogoUrl(row?.logo_url ?? null);
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, []);
 
   const groups: NavGroup[] = NAV_GROUPS[role || "client"]
     .map((g) => ({ ...g, items: g.items.filter((item) => isItemEnabled(item, flags, has)) }))

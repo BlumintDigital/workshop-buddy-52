@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { NoticeBanner, type NoticeTone } from "@/components/NoticeBanner";
+import { useNow } from "@/hooks/useVisibleInterval";
 
 type Severity = "info" | "warning" | "critical";
 
@@ -70,22 +71,23 @@ export function BroadcastBanner() {
         }
       )
       .subscribe();
-    const interval = window.setInterval(load, 30_000);
 
     return () => {
       cancelled = true;
-      window.clearInterval(interval);
       supabase.removeChannel(channel);
     };
   }, [user]);
 
+  // Realtime delivers edits; this tick only re-checks start and expiry times, with no request.
+  const now = useNow(30_000);
   const visible = useMemo(() => {
     return broadcasts
       .filter(isActive)
       .filter((b) => !dismissed.has(b.id))
       .sort((a, b) => severityRank[a.severity] - severityRank[b.severity])
       .slice(0, MAX_VISIBLE);
-  }, [broadcasts, dismissed]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [broadcasts, dismissed, now]);
 
   const dismiss = async (id: string) => {
     if (!user) return;

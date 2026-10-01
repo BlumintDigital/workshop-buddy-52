@@ -248,6 +248,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       // Signing in (password, email link or reset link) starts a fresh idle clock.
       if (event === "SIGNED_IN" || event === "PASSWORD_RECOVERY") markActivity(true);
+      // Realtime keeps the token it joined with. Hand it the current one so live channels see what
+      // this session may see: passing 2FA upgrades the token to aal2, and tables guarded by the
+      // 2FA policy deliver no change events to an aal1 token.
+      if (session?.access_token) void supabase.realtime?.setAuth?.(session.access_token);
       handleSession(session);
     });
 
