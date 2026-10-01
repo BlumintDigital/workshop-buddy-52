@@ -132,6 +132,15 @@ export default function AdminClients() {
     toast.success(active ? `Portal turned on for ${displayName(c)}` : `Portal turned off for ${displayName(c)}`);
   };
 
+  const sendInvite = async (c: ClientRow) => {
+    const { data, error } = await supabase.functions.invoke("admin-resend-invite", { body: { user_id: c.user_id } });
+    if (error || (data as { error?: string } | null)?.error) {
+      toast.error((data as { error?: string } | null)?.error || (await friendlyErrorMessage(error, "Couldn't send the link")));
+      return;
+    }
+    toast.success(`Emailed ${displayName(c)} a link to set their password and sign in`);
+  };
+
   const openEdit = (c: ClientRow) => {
     setEditing(c);
     setEditForm({
@@ -194,7 +203,13 @@ export default function AdminClients() {
       toast.error(data?.error || error?.message || "Couldn't create the client");
       return;
     }
-    toast.success(`${form.company} added. They can set a password with "Forgot password" on the sign-in page.`);
+    // Email them a link to set their password, the same invite the Users page sends.
+    const invite = await supabase.functions.invoke("admin-resend-invite", { body: { user_id: data.user_id } });
+    if (invite.error || (invite.data as { error?: string } | null)?.error) {
+      toast.warning(`${form.company} added, but the invite email didn't send. Use "Send sign-in link" on their row to try again.`);
+    } else {
+      toast.success(`${form.company} added and emailed a link to set their password.`);
+    }
     setAddOpen(false);
     setForm(EMPTY_FORM);
     setTimeout(refresh, 1500);
@@ -296,6 +311,9 @@ export default function AdminClients() {
                 <DropdownMenuItem className="min-h-[40px]" onClick={() => openEdit(c)}>
                   Edit details
                 </DropdownMenuItem>
+                <DropdownMenuItem className="min-h-[40px]" onClick={() => void sendInvite(c)}>
+                  Send sign-in link
+                </DropdownMenuItem>
                 <DropdownMenuItem className="min-h-[40px]" onClick={() => toggleActive(c)}>
                   {c.is_active ? "Turn portal off" : "Turn portal on"}
                 </DropdownMenuItem>
@@ -331,7 +349,7 @@ export default function AdminClients() {
         <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Add a client</DialogTitle>
-            <DialogDescription>They'll get a confirmation email and can set their password with "Forgot password".</DialogDescription>
+            <DialogDescription>We'll email them a link to set their password and sign in to their portal.</DialogDescription>
           </DialogHeader>
           {fields(form, setForm, true)}
           <DialogFooter>

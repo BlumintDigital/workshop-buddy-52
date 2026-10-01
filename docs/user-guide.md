@@ -97,7 +97,17 @@ Admins always hold every permission. Clients never hold any.
 
 ### 4.4 Clients
 
-**Clients** manages client companies. Each client can have one or more linked user accounts and owns their projects, quotes and invoices.
+**Clients** lists the companies you work for. Each client has a portal login where they follow their projects, accept quotes, book appointments and pay invoices.
+
+**To invite a new client:**
+
+1. Open **Clients** and click **Add client**.
+2. Enter the company name and the email address they'll sign in with. Contact person, phone and address are optional.
+3. Click **Add client**. They're emailed a link to set their password and sign in. No invite code is needed.
+
+If the email doesn't arrive, open the **⋯** menu on their row and choose **Send sign-in link**. The same menu has **Edit details**, **Turn portal off** (blocks sign-in but keeps their history) and **Delete client** (only possible when they have no projects or invoices).
+
+A walk-in or phone customer who doesn't need the portal doesn't have to be added here: Reception can log their machine with just their name, phone and email (see 5.9).
 
 ### 4.5 Signup Codes
 
@@ -369,6 +379,9 @@ Your browser may be blocking cookies for the site, or you may be in a private/in
 
 **I'm not receiving push notifications.**
 Check **Profile → Notifications** is toggled on, and that your browser hasn't blocked notifications for the site (browser settings → site permissions).
+
+**How do I invite a new client?**
+Open **Clients**, click **Add client**, and enter their company name and email. They're emailed a link to set their password. See 4.4. {roles: admin}
 
 **I can't create an account — "Invalid invite code".**
 The code may be expired, fully used, or deactivated. Ask your admin for a new one.
