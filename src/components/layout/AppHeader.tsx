@@ -18,6 +18,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { NotificationBell } from "@/components/NotificationBell";
+import { PageHelp } from "@/components/help/PageHelp";
 import { SessionIndicator } from "@/components/SessionIndicator";
 import { GlobalSearch } from "./GlobalSearch";
 import { Link, useLocation } from "react-router-dom";
@@ -141,6 +142,7 @@ export function AppHeader() {
       <div className="ml-auto flex items-center gap-2 sm:gap-3">
         <GlobalSearch />
         <SessionIndicator />
+        <PageHelp />
         <NotificationBell />
       </div>
     </header>

@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { ExternalLink, FileText } from "lucide-react";
+import { useLocation } from "react-router-dom";
+import { guideSlug } from "@/lib/guideAnchors";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -51,9 +53,7 @@ type Block =
   | { type: "code"; text: string }
   | { type: "hr" };
 
-function slug(s: string) {
-  return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
-}
+const slug = guideSlug;
 
 function inline(text: string) {
   // Escape HTML, then re-apply minimal markdown inline as HTML.
@@ -178,6 +178,15 @@ export default function Help() {
     [blocks]
   );
   const [active, setActive] = useState<string>("");
+  const { hash } = useLocation();
+
+  // Links from the in-page help ("Read the full guide") open /help#<section>; this page loads
+  // lazily, so the browser's own jump to the anchor happens before the section exists.
+  useEffect(() => {
+    if (!hash || role === null) return;
+    const el = document.getElementById(decodeURIComponent(hash.slice(1)));
+    if (el) el.scrollIntoView({ block: "start" });
+  }, [hash, role, blocks]);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
