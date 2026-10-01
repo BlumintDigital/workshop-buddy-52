@@ -1,13 +1,12 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { pdf } from "@react-pdf/renderer";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FileDown, FilePlus2, History } from "lucide-react";
 import { toast } from "sonner";
-import { InvoiceDocument, type WorkshopDetails } from "@/lib/invoicePdf";
+import type { WorkshopDetails } from "@/lib/invoicePdf";
 import { friendlyErrorMessageSync } from "@/lib/friendlyError";
 
 interface InvoicePdfVersion {
@@ -79,6 +78,11 @@ export default function InvoicePdfVersions({
     if (!invoice?.id) return;
     setBusy(true);
     try {
+      // The PDF library is large; load it only when a version is generated.
+      const [{ pdf }, { InvoiceDocument }] = await Promise.all([
+        import("@react-pdf/renderer"),
+        import("@/lib/invoicePdf"),
+      ]);
       const blob = await pdf(
         <InvoiceDocument
           invoice={invoice}

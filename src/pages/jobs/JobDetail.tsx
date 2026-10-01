@@ -35,7 +35,6 @@ import ProjectQuotes from "@/components/project/ProjectQuotes";
 import ProjectStageActions from "@/components/project/ProjectStageActions";
 import IntakeDetails from "@/components/project/IntakeDetails";
 import { useBreadcrumbLabel } from "@/lib/breadcrumbs";
-import { generateJobReport } from "@/lib/jobReportPdf";
 
 // Admins and managers can override the stage by hand; everyone else moves it with the stage actions.
 
@@ -341,8 +340,13 @@ export default function JobDetail() {
             <div className="flex gap-2 shrink-0 flex-wrap">
               <Button variant="outline" size="sm" disabled={generatingReport} onClick={async () => {
                 setGeneratingReport(true);
-                await generateJobReport(job.id);
-                setGeneratingReport(false);
+                try {
+                  // The PDF library is large; load it only when a report is requested.
+                  const { generateJobReport } = await import("@/lib/jobReportPdf");
+                  await generateJobReport(job.id);
+                } finally {
+                  setGeneratingReport(false);
+                }
               }}>
                 <Download className="mr-2 h-3 w-3" />{generatingReport ? "Generating…" : "Project report"}
               </Button>
