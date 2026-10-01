@@ -2,19 +2,8 @@ import { useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth, type AppRole } from "@/hooks/useAuth";
 import { useCurrency } from "@/hooks/useCurrency";
-import { DASHBOARD_KEY, DASHBOARD_STALE_MS, useSharedDashboardFetchers } from "@/hooks/useDashboardQueries";
-import {
-  countPendingInvites,
-  fetchDraftInvoices,
-  fetchUninvoicedProjects,
-  type DraftInvoice,
-  type UninvoicedProject,
-  fetchStaleQuotes,
-  todayIso,
-  type LowStockItem,
-  type OverdueInvoice,
-  type StaleQuote,
-} from "@/lib/dashboardQueries";
+import { DASHBOARD_KEY, DASHBOARD_STALE_MS, useDashboardSnapshotFetcher } from "@/hooks/useDashboardQueries";
+import { todayIso, type DashboardSnapshot } from "@/lib/dashboardQueries";
 
 export type AttentionSeverity = "danger" | "warning" | "info";
 
@@ -39,8 +28,6 @@ function listPreview(values: string[], max = 3): string {
   return `${values.slice(0, max).join(", ")} and ${values.length - max} more`;
 }
 
-type SharedFetchers = ReturnType<typeof useSharedDashboardFetchers>;
-
 /**
  * Everything that needs someone's action right now, most severe first.
  * This is the single source for "needs attention" counts on the dashboards. Cached per user for
@@ -50,11 +37,16 @@ export function useAttentionItems() {
   const { user, role, mfaEnabled, loading: authLoading } = useAuth();
   const { format, currency } = useCurrency();
   const queryClient = useQueryClient();
-  const shared = useSharedDashboardFetchers();
+  const fetchSnapshot = useDashboardSnapshotFetcher();
 
   const query = useQuery({
     queryKey: [DASHBOARD_KEY, user?.id ?? "signed-out", "attention", role, mfaEnabled, currency],
-    queryFn: () => buildAttentionItems(role as AppRole, mfaEnabled, format, shared),
+    queryFn: async () => {
+      const privileged = role === "admin" || role === "manager";
+      // One dashboard_today call, shared with the Today cards. If it fails, still show what we can.
+      const snapshot = privileged ? await fetchSnapshot().catch(() => null) : null;
+      return buildAttentionItems(role as AppRole, mfaEnabled, format, snapshot);
+    },
     enabled: !authLoading && !!role,
     staleTime: DASHBOARD_STALE_MS,
   });
@@ -66,26 +58,24 @@ export function useAttentionItems() {
   return { items: query.data ?? [], isLoading: query.isLoading || (!query.data && authLoading), refresh };
 }
 
-async function buildAttentionItems(
+function buildAttentionItems(
   currentRole: AppRole,
   mfaEnabled: boolean,
   format: (n: number) => string,
-  shared: SharedFetchers,
-): Promise<AttentionItem[]> {
+  snapshot: DashboardSnapshot | null,
+): AttentionItem[] {
   const next: AttentionItem[] = [];
   const privileged = currentRole === "admin" || currentRole === "manager";
   const base = `/${currentRole}`;
 
   if (privileged) {
-    const [overdue, reviewCount, lowStock, staleQuotes, invites, drafts, uninvoiced] = await Promise.all([
-      shared.overdueInvoices().catch((): OverdueInvoice[] => []),
-      shared.reviewJobsCount().catch(() => 0),
-      shared.lowStockItems().catch((): LowStockItem[] => []),
-      fetchStaleQuotes().catch((): StaleQuote[] => []),
-      currentRole === "admin" ? countPendingInvites().catch(() => 0) : Promise.resolve(0),
-      fetchDraftInvoices().catch((): DraftInvoice[] => []),
-      fetchUninvoicedProjects().catch((): UninvoicedProject[] => []),
-    ]);
+    const overdue = snapshot?.overdueInvoices ?? [];
+    const reviewCount = snapshot?.reviewCount ?? 0;
+    const lowStock = snapshot?.lowStock ?? [];
+    const staleQuotes = snapshot?.staleQuotes ?? [];
+    const invites = currentRole === "admin" ? snapshot?.pendingInvites ?? 0 : 0;
+    const drafts = snapshot?.draftInvoices ?? [];
+    const uninvoiced = snapshot?.uninvoicedProjects ?? [];
 
     if (overdue.length > 0) {
       const today = todayIso();

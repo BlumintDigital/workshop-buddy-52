@@ -1,10 +1,9 @@
 import { useCallback, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
-import { DASHBOARD_KEY, DASHBOARD_STALE_MS, useSharedDashboardFetchers } from "@/hooks/useDashboardQueries";
-import { fetchOverdueInvoices, OPEN_JOB_STATUSES, todayIso } from "@/lib/dashboardQueries";
+import { DASHBOARD_KEY, DASHBOARD_STALE_MS, useDashboardSnapshotFetcher } from "@/hooks/useDashboardQueries";
+import { todayIso, type DashboardSnapshot } from "@/lib/dashboardQueries";
 
 export type TodayFigures = {
   revenueMonth: number;
@@ -58,11 +57,11 @@ type TodayData = {
 export function useTodayData({ appointmentsEnabled }: { appointmentsEnabled: boolean }) {
   const queryClient = useQueryClient();
   const { user } = useAuth();
-  const shared = useSharedDashboardFetchers();
+  const fetchSnapshot = useDashboardSnapshotFetcher();
 
   const query = useQuery({
     queryKey: [DASHBOARD_KEY, user?.id ?? "signed-out", "today", appointmentsEnabled],
-    queryFn: () => loadTodayData(appointmentsEnabled, shared.overdueInvoices),
+    queryFn: async () => buildTodayData(await fetchSnapshot()),
     enabled: !!user,
     staleTime: DASHBOARD_STALE_MS,
   });
@@ -87,40 +86,14 @@ export function useTodayData({ appointmentsEnabled }: { appointmentsEnabled: boo
   };
 }
 
-async function loadTodayData(
-  appointmentsEnabled: boolean,
-  fetchOverdue: () => ReturnType<typeof fetchOverdueInvoices>,
-): Promise<TodayData> {
+/** Turns the dashboard snapshot into the Today cards' figures, lists and chart series. */
+function buildTodayData(snapshot: DashboardSnapshot): TodayData {
   const today = todayIso();
-
-  const since6mo = new Date();
-  since6mo.setMonth(since6mo.getMonth() - 5);
-  since6mo.setDate(1);
-  since6mo.setHours(0, 0, 0, 0);
-
-  const [jobsRes, revenueRes, unpaidRes, overdue, apptsRes, peopleRes] = await Promise.all([
-    supabase
-      .from("jobs")
-      .select("id, ref, title, status, priority, due_date, estimated_hours, assigned_staff_id")
-      .in("status", [...OPEN_JOB_STATUSES])
-      .order("due_date", { ascending: true, nullsFirst: false }),
-    supabase
-      .from("invoices")
-      .select("base_total, total, status, paid_at, created_at")
-      .eq("status", "paid")
-      .gte("paid_at", since6mo.toISOString()),
-    supabase.from("invoices").select("base_total, total").in("status", ["sent", "overdue"]),
-    fetchOverdue(),
-    appointmentsEnabled
-      ? supabase
-          .from("appointments")
-          .select("id, title, appointment_time, duration_minutes, status")
-          .eq("appointment_date", today)
-          .not("status", "in", "(completed,cancelled)")
-          .order("appointment_time", { ascending: true })
-      : Promise.resolve({ data: [] as any[] }),
-    supabase.from("profiles").select("id, full_name"),
-  ]);
+  const peopleRes = { data: snapshot.people };
+  const revenueRes = { data: snapshot.paidInvoices };
+  const jobsRes = { data: snapshot.openJobs };
+  const apptsRes = { data: snapshot.appointments };
+  const overdue = snapshot.overdueInvoices;
 
   const names = new Map<string, string>(
     ((peopleRes.data || []) as any[]).map((p) => [p.id, p.full_name || "Unnamed"]),
@@ -162,10 +135,7 @@ async function loadTodayData(
   });
 
   const appts = (apptsRes.data || []) as TodayAppointment[];
-  const unpaid = ((unpaidRes.data || []) as any[]).reduce(
-    (sum, row) => sum + (Number(row.base_total ?? row.total) || 0),
-    0,
-  );
+  const unpaid = snapshot.unpaidTotal;
 
   return {
     figures: {

@@ -2410,10 +2410,16 @@ export type Database = {
     Views: {
       workshop_settings_public: {
         Row: {
+          address: string | null
+          brand_accent_hsl: string | null
+          brand_primary_hsl: string | null
+          contact_email: string | null
           currency: string | null
+          enabled_currencies: string[] | null
           id: number | null
           login_image_url: string | null
           logo_url: string | null
+          phone: string | null
           vapid_public_key: string | null
           workshop_name: string | null
         }
