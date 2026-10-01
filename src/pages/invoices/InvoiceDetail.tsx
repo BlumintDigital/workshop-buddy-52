@@ -386,13 +386,13 @@ export default function InvoiceDetail() {
         </Button>
 
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div className="min-w-0">
+          <div className="min-w-0 sm:max-w-[50%] sm:shrink-0">
             <h1 className="text-2xl font-semibold tracking-tight break-words">{invoice.invoice_number}</h1>
             <p className="text-sm text-muted-foreground">
               Client: <span className="font-medium text-foreground">{clientName}</span>
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-2 sm:shrink-0 sm:justify-end">
+          <div className="flex flex-wrap items-center gap-2 sm:min-w-0 sm:flex-1 sm:justify-end">
             {isClient ? (
               <Badge variant={clientStatusTone[invoice.status] || "outline"}>
                 {clientFriendlyInvoiceStatus(invoice.status, invoice.client_marked_paid_at)}
@@ -567,7 +567,11 @@ export default function InvoiceDetail() {
                   >
                     <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      {/* `draft` and `sent` are controlled by the explicit Send to client button to avoid confusion. */}
+                      {/* `draft` and `sent` are controlled by the explicit Send to client button to avoid confusion,
+                          but the current one is still listed (disabled) so the trigger shows it. */}
+                      {(["draft", "sent"].includes(invoice.status) ? [invoice.status] : []).map((s) => (
+                        <SelectItem key={s} value={s} disabled>{s}</SelectItem>
+                      ))}
                       {["paid", "overdue", "cancelled"].map((s) => (
                         <SelectItem key={s} value={s}>{s}</SelectItem>
                       ))}
