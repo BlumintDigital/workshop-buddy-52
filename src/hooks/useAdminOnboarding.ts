@@ -1,7 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useFeature } from "@/hooks/useFeatureFlags";
+import { useWorkshopSettings } from "@/hooks/useWorkshopSettings";
+import { DASHBOARD_KEY, DASHBOARD_STALE_MS } from "@/hooks/useDashboardQueries";
 
 export type AdminOnboardingStepId =
   | "workshop_settings"
@@ -110,82 +113,78 @@ export function buildAdminOnboardingSteps(
   }));
 }
 
+const ONBOARDING_KEY = "admin-onboarding";
+
+async function fetchOnboardingCounts() {
+  const [teamRes, inviteRes, clientRes, jobRes, inventoryRes] = await Promise.all([
+    supabase.from("user_roles").select("*", { count: "exact", head: true }).in("role", ["admin", "manager", "staff"]),
+    supabase.from("signup_codes").select("*", { count: "exact", head: true }),
+    supabase.from("user_roles").select("*", { count: "exact", head: true }).eq("role", "client"),
+    supabase.from("jobs").select("*", { count: "exact", head: true }),
+    supabase.from("inventory_items").select("*", { count: "exact", head: true }),
+  ]);
+  return {
+    teamCount: teamRes.count ?? 0,
+    inviteCodeCount: inviteRes.count ?? 0,
+    clientCount: clientRes.count ?? 0,
+    jobCount: jobRes.count ?? 0,
+    inventoryCount: inventoryRes.count ?? 0,
+  };
+}
+
 export function useAdminOnboarding() {
   const { user, role } = useAuth();
   const inventoryEnabled = useFeature("inventory");
-  const [progress, setProgress] = useState<OnboardingProgress | null>(null);
-  const [metrics, setMetrics] = useState<AdminOnboardingMetrics>(DEFAULT_METRICS);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
+  const { data: settings } = useWorkshopSettings();
   const [updating, setUpdating] = useState(false);
+  const isAdmin = !!user && role === "admin";
+  const uid = user?.id ?? "signed-out";
+  const progressKey = [DASHBOARD_KEY, uid, ONBOARDING_KEY, "progress"];
+  const countsKey = [DASHBOARD_KEY, uid, ONBOARDING_KEY, "counts"];
 
-  const load = useCallback(async () => {
-    if (!user || role !== "admin") {
-      setProgress(null);
-      setMetrics(DEFAULT_METRICS);
-      setLoading(false);
-      return;
-    }
-
-    setLoading(true);
-    const [
-      progressRes,
-      settingsRes,
-      teamRes,
-      inviteRes,
-      clientRes,
-      jobRes,
-      inventoryRes,
-    ] = await Promise.all([
-      supabase
+  const progressQuery = useQuery({
+    queryKey: progressKey,
+    queryFn: async () => {
+      const { data } = await supabase
         .from("admin_onboarding_progress")
         .select("user_id, skipped_steps, dismissed_at")
-        .eq("user_id", user.id)
-        .maybeSingle(),
-      supabase
-        .from("workshop_settings")
-        .select("workshop_name, contact_email, phone, address")
-        .eq("id", 1)
-        .maybeSingle(),
-      supabase
-        .from("user_roles")
-        .select("*", { count: "exact", head: true })
-        .in("role", ["admin", "manager", "staff"]),
-      supabase
-        .from("signup_codes")
-        .select("*", { count: "exact", head: true }),
-      supabase
-        .from("user_roles")
-        .select("*", { count: "exact", head: true })
-        .eq("role", "client"),
-      supabase
-        .from("jobs")
-        .select("*", { count: "exact", head: true }),
-      supabase
-        .from("inventory_items")
-        .select("*", { count: "exact", head: true }),
-    ]);
+        .eq("user_id", user!.id)
+        .maybeSingle();
+      return (data ?? null) as OnboardingProgress | null;
+    },
+    enabled: isAdmin,
+    staleTime: DASHBOARD_STALE_MS,
+  });
+  const progress = isAdmin ? progressQuery.data ?? null : null;
 
-    const settings = settingsRes.data;
-    setProgress(progressRes.data ?? null);
-    setMetrics({
+  // Once the checklist is dismissed nobody sees these counts, so don't fetch them.
+  const countsQuery = useQuery({
+    queryKey: countsKey,
+    queryFn: fetchOnboardingCounts,
+    enabled: isAdmin && progressQuery.isSuccess && !progress?.dismissed_at,
+    staleTime: DASHBOARD_STALE_MS,
+  });
+
+  const metrics: AdminOnboardingMetrics = useMemo(() => {
+    if (!isAdmin) return DEFAULT_METRICS;
+    return {
+      ...DEFAULT_METRICS,
+      ...countsQuery.data,
       hasWorkshopDetails: !!(
         settings?.workshop_name?.trim() ||
         settings?.contact_email?.trim() ||
         settings?.phone?.trim() ||
         settings?.address?.trim()
       ),
-      teamCount: teamRes.count ?? 0,
-      inviteCodeCount: inviteRes.count ?? 0,
-      clientCount: clientRes.count ?? 0,
-      jobCount: jobRes.count ?? 0,
-      inventoryCount: inventoryRes.count ?? 0,
-    });
-    setLoading(false);
-  }, [role, user]);
+    };
+  }, [isAdmin, countsQuery.data, settings?.workshop_name, settings?.contact_email, settings?.phone, settings?.address]);
 
-  useEffect(() => {
-    void load();
-  }, [load]);
+  const loading = isAdmin && (progressQuery.isLoading || countsQuery.isLoading);
+
+  const load = useCallback(async () => {
+    await queryClient.invalidateQueries({ queryKey: [DASHBOARD_KEY, uid, ONBOARDING_KEY] });
+  }, [queryClient, uid]);
 
   const steps = useMemo(
     () => buildAdminOnboardingSteps(metrics, progress?.skipped_steps ?? [], { inventory: inventoryEnabled }),
@@ -211,10 +210,12 @@ export function useAdminOnboarding() {
       .single();
 
     if (!error && data) {
-      setProgress(data);
+      queryClient.setQueryData(progressKey, data);
     }
     setUpdating(false);
-  }, [role, user]);
+    // progressKey is rebuilt each render from uid, which is already a dependency.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [role, user, queryClient, uid]);
 
   const skipStep = useCallback(async (stepId: AdminOnboardingStepId) => {
     const nextSkipped = Array.from(new Set([...(progress?.skipped_steps ?? []), stepId]));

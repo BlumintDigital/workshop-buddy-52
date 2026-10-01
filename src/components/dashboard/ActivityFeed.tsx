@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -7,6 +7,7 @@ import { Link } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
 import { Activity } from "lucide-react";
 import { useFeature } from "@/hooks/useFeatureFlags";
+import { useVisibleInterval } from "@/hooks/useVisibleInterval";
 
 type LogEntry = {
   id: string;
@@ -37,28 +38,22 @@ export function ActivityFeed() {
   const [entries, setEntries] = useState<LogEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    let active = true;
-    const fetch = async () => {
-      const { data } = await supabase
-        .from("activity_logs")
-        .select("id, action, table_name, summary, created_at")
-        .order("created_at", { ascending: false })
-        .limit(5);
-      if (!active) return;
-      setEntries((data || []).filter((entry) => appointmentsEnabled || entry.table_name !== "appointments"));
-      setLoading(false);
-    };
-    fetch();
-    const interval = setInterval(fetch, 15000);
-    const onFocus = () => fetch();
-    window.addEventListener("focus", onFocus);
-    return () => {
-      active = false;
-      clearInterval(interval);
-      window.removeEventListener("focus", onFocus);
-    };
+  const fetchEntries = useCallback(async () => {
+    const { data } = await supabase
+      .from("activity_logs")
+      .select("id, action, table_name, summary, created_at")
+      .order("created_at", { ascending: false })
+      .limit(5);
+    setEntries((data || []).filter((entry) => appointmentsEnabled || entry.table_name !== "appointments"));
+    setLoading(false);
   }, [appointmentsEnabled]);
+
+  useEffect(() => {
+    void fetchEntries();
+  }, [fetchEntries]);
+
+  // activity_logs isn't in the realtime publication, so poll: once a minute, and only while visible.
+  useVisibleInterval(() => void fetchEntries(), 60_000);
 
   return (
     <Card className="min-w-0 max-w-full overflow-hidden">
