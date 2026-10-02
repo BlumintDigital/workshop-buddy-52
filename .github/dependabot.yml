@@ -1,0 +1,32 @@
+# Keeps dependencies current. Every update is a pull request that must pass CI; once merged it
+# goes to staging and is smoke-checked like any change, and reaches customers only when released
+# from Shoplane Control. See docs/maintenance.md.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "07:00"
+      timezone: Europe/London
+    open-pull-requests-limit: 5
+    groups:
+      # Minor and patch updates together: one PR a week to review.
+      minor-and-patch:
+        update-types: [minor, patch]
+    # Major versions arrive as separate PRs, since they can need code changes.
+    labels: [dependencies]
+    commit-message:
+      prefix: deps
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      actions:
+        patterns: ["*"]
+    labels: [dependencies]
+    commit-message:
+      prefix: ci
