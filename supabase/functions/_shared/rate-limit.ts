@@ -6,7 +6,8 @@ export type RateLimitAction =
   | "backup_verify"
   | "send_push"
   | "send_email"
-  | "assistant";
+  | "assistant"
+  | "lookup";
 
 export interface RateLimitResult {
   allowed: boolean;

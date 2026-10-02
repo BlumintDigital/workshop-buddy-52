@@ -34,6 +34,7 @@ import { friendlyErrorMessage } from "@/lib/friendlyError";
 
 import { CURRENCIES } from "@/lib/currencies";
 import { PRESETS, hexToHslString, hslStringToHex, applyBrandColors, DEFAULT_BRAND, contrastWithWhite, ensureReadablePrimary } from "@/lib/brand-colors";
+import { AddressInput } from "@/components/lookup/AddressInput";
 const currencies = CURRENCIES;
 
 const defaultSettings = {
@@ -657,7 +658,7 @@ export default function AdminSettings() {
                     </div>
                     <div>
                       <Label htmlFor="address">Address</Label>
-                      <Input id="address" value={settings.address} onChange={(e) => set("address", e.target.value)} placeholder="123 Workshop St, City, State" className="mt-1" />
+                      <AddressInput id="address" value={settings.address} onChange={(v) => set("address", v)} className="mt-1" />
                     </div>
                   </CardContent>
                 </Card>

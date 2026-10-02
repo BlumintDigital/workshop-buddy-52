@@ -42,7 +42,7 @@ async function exportRows(kind: ImportKind, t: Template): Promise<(string | numb
     return (items ?? []).map((i) => pick({ ...i, supplier: i.supplier_id ? sup.get(i.supplier_id) : null }));
   }
   const [{ data: assets }, { data: reminders }, { data: clients }] = await Promise.all([
-    supabase.from("assets").select("id, client_id, owner_name, owner_phone, name, make_model, serial_number, registration, vin, fleet_number, meter_reading, notes").is("archived_at", null).order("name"),
+    supabase.from("assets").select("id, client_id, owner_name, owner_phone, name, make_model, year_of_manufacture, colour, fuel_type, serial_number, registration, vin, fleet_number, meter_reading, notes").is("archived_at", null).order("name"),
     supabase.from("asset_reminders").select("asset_id, title, due_date, interval_months").eq("active", true).order("due_date"),
     supabase.rpc("reception_clients"),
   ]);
@@ -52,7 +52,7 @@ async function exportRows(kind: ImportKind, t: Template): Promise<(string | numb
     const mot = rs.find((r) => r.title === "MOT");
     const other = rs.find((r) => r.title !== "MOT");
     return pick({
-      ...a, owner_email: a.client_id ? email.get(a.client_id) : null,
+      ...a, year: a.year_of_manufacture, owner_email: a.client_id ? email.get(a.client_id) : null,
       service_title: other?.title, service_due: other?.due_date, service_every_months: other?.interval_months, mot_due: mot?.due_date,
     });
   });

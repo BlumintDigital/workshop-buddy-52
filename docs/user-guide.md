@@ -178,6 +178,8 @@ Admins always hold every permission. Clients never hold any.
 2. Enter the company name and the email address they'll sign in with. Contact person, phone and address are optional. In a garage or marine workshop, where customers are usually people, you enter the **Customer name** instead, with **Company** optional.
 3. Click **Add client**. They're emailed a link to set their password and sign in. No invite code is needed.
 
+**Address search.** Address boxes for clients, suppliers, your workshop and your profile suggest addresses as you type. Pick one to fill in the whole address. If worldwide search isn't switched on for your workshop, type the street and then a UK postcode, and pick **Fill in…** to add the town and county. You can always type an address by hand.
+
 If the email doesn't arrive, open the **⋯** menu on their row and choose **Send sign-in link**. The same menu has:
 
 - **Edit details** — company name, contact person, phone and address.
@@ -376,6 +378,17 @@ Each card shows whether the project is **paid**, **invoiced but unpaid**, **not 
 
 Staff need the Reception permission to use this page.
 
+**Looking up a vehicle (garages and fleets, UK).** Type the registration and click **Look up**. Shoplane fills in:
+- the **Make and model** and **Year**
+- the latest **mileage** from its MOT history, if you haven't typed a reading
+- **What's come in**, if it's still empty
+
+Under the registration you'll see:
+- its colour, fuel, engine size and MOT expiry, and whether it's SORN or untaxed
+- the areas it has failed or had advisories on at past MOTs, as a hint of what to check
+
+When you save, the vehicle gets an **MOT** reminder on its expiry date, or its existing MOT reminder moves to that date. **Look up** only appears when your workshop has vehicle lookup switched on. You can always type the details by hand.
+
 **Job cards and labels.** On any project page, **Print** gives you two choices. Each opens in a new tab with the print dialog ready.
 
 - **Job card (A4)** is a sheet that travels with the machine. It has:
@@ -410,6 +423,10 @@ The asset register is every machine, vehicle or piece of equipment your customer
 - **When it comes due** — a reminder is **Due soon** within 14 days of its date, or within 10% of its reading; then **Overdue**. Each morning Shoplane tells the owner (if they have a portal login) and your admins, managers and reception that it's coming due. Today's **Needs attention** shows the services due, and the menu item shows a count.
 - **Mark done** — record the date and reading, and the project it was done on. The next one is set from the interval, so the cycle carries on by itself.
 - **Readings** — every project logged with a reading updates the asset's reading. You can also use **Update reading** at any time.
+- **Vehicles** also have **Year**, **Colour** and **Fuel**. When adding or editing a vehicle:
+  - **Look up** beside the registration fills these in, plus the make and model, mileage and MOT date (UK registrations, when switched on).
+  - **Decode** beside the VIN fills the make, model and year from the VIN (best for US and Canadian vehicles).
+  - Saving after a lookup adds or moves the vehicle's MOT reminder.
 - **Print label** on an asset's page prints a QR sticker with its registration, fleet or serial number, its name and owner. Stick it on the machine: scanning it opens its service history, so whoever is standing next to it can see what was done last and what's due.
 
 ---

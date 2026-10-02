@@ -8,7 +8,9 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DatePickerInput } from "@/components/ui/date-picker-input";
 import { clientLabel, type ReceptionClient } from "@/components/project/IntakeForm";
-import { useAssetActions, type Asset, type AssetInput, type AssetReminder } from "@/hooks/useAssets";
+import { ensureMotReminder, useAssetActions, type Asset, type AssetInput, type AssetReminder } from "@/hooks/useAssets";
+import { VehicleLookupButton, VinDecodeButton } from "@/components/lookup/VehicleLookupButton";
+import { describeMotHistory, describeVehicle, vehicleMakeModel, type VehicleLookup, type VinLookup } from "@/lib/lookup";
 import { ASSET_KIND_LABEL, METER_LABEL, normaliseRegistration, useIndustry, type AssetKind, type MeterUnit } from "@/lib/industry";
 import { firstDueDate } from "@/lib/assets";
 
@@ -42,6 +44,9 @@ export function AssetFormDialog({
     kind: (asset?.kind ?? profile.asset.kind) as AssetKind,
     name: asset?.name ?? "",
     make_model: asset?.make_model ?? "",
+    year: asset?.year_of_manufacture != null ? String(asset.year_of_manufacture) : "",
+    colour: asset?.colour ?? "",
+    fuel_type: asset?.fuel_type ?? "",
     serial_number: asset?.serial_number ?? "",
     registration: asset?.registration ?? "",
     vin: asset?.vin ?? "",
@@ -60,10 +65,41 @@ export function AssetFormDialog({
   const vehicle = f.kind === "vehicle";
   const noClient = f.client === NO_OWNER;
 
+  // Registration lookup (UK) or VIN decode fills in what it knows; the MOT date becomes a reminder on save.
+  const [found, setFound] = useState<VehicleLookup | null>(null);
+  useEffect(() => setFound(null), [open]);
+  const applyVehicle = (v: VehicleLookup) => {
+    setFound(v);
+    const makeModel = vehicleMakeModel(v);
+    setF((x) => ({
+      ...x,
+      make_model: makeModel || x.make_model,
+      year: v.year != null ? String(v.year) : x.year,
+      colour: v.colour ?? x.colour,
+      fuel_type: v.fuel ?? x.fuel_type,
+      name: x.name.trim() ? x.name : [makeModel, normaliseRegistration(x.registration)].filter(Boolean).join(" "),
+      meter_reading: x.meter_reading.trim() || v.mileage == null ? x.meter_reading : String(v.mileage),
+      meter_unit: v.mileage != null && !x.meter_reading.trim() ? "miles" : x.meter_unit,
+    }));
+  };
+  const applyVin = (v: VinLookup) => {
+    const makeModel = [v.make, v.model].filter(Boolean).join(" ");
+    setF((x) => ({
+      ...x,
+      make_model: x.make_model.trim() ? x.make_model : makeModel,
+      year: x.year.trim() || v.year == null ? x.year : String(v.year),
+      fuel_type: x.fuel_type.trim() ? x.fuel_type : v.fuel ?? "",
+      name: x.name.trim() ? x.name : [v.year, makeModel].filter(Boolean).join(" "),
+    }));
+    toast.success([v.year, v.make, v.model, v.body].filter(Boolean).join(" · "));
+  };
+
   const save = async () => {
     if (!f.name.trim()) return toast.error(`Give the ${profile.asset.singular} a name, e.g. ${profile.intake.makePlaceholder.replace(/^e\.g\. /, "")}`);
     const reading = num(f.meter_reading);
     if (reading != null && (Number.isNaN(reading) || reading < 0)) return toast.error("The reading must be a number of 0 or more");
+    const year = num(f.year);
+    if (vehicle && year != null && (!Number.isInteger(year) || year < 1900 || year > new Date().getFullYear() + 1)) return toast.error("Enter the year as four digits, e.g. 2019");
     const input: AssetInput = {
       client_id: noClient ? null : f.client,
       owner_name: noClient ? f.owner_name.trim() || null : null,
@@ -72,6 +108,9 @@ export function AssetFormDialog({
       kind: f.kind,
       name: f.name.trim(),
       make_model: f.make_model.trim() || null,
+      year_of_manufacture: vehicle ? year : asset?.year_of_manufacture ?? null,
+      colour: vehicle ? f.colour.trim() || null : asset?.colour ?? null,
+      fuel_type: vehicle ? f.fuel_type.trim() || null : asset?.fuel_type ?? null,
       serial_number: f.serial_number.trim() || null,
       registration: f.registration.trim() ? normaliseRegistration(f.registration) : null,
       vin: f.vin.trim().toUpperCase() || null,
@@ -83,7 +122,12 @@ export function AssetFormDialog({
     setSaving(true);
     try {
       const id = await actions.saveAsset(input, asset?.id);
-      toast.success(asset ? "Saved" : `${input.name} added`);
+      let mot = "";
+      if (vehicle && found?.mot_expiry) {
+        const done = await ensureMotReminder(id, found.mot_expiry);
+        if (done !== "unchanged") mot = `. MOT reminder ${done === "added" ? "added" : "moved"} to ${new Date(`${found.mot_expiry}T00:00:00`).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })}`;
+      }
+      toast.success(`${asset ? "Saved" : `${input.name} added`}${mot}`);
       onOpenChange(false);
       onSaved?.(id);
     } catch (e) {
@@ -136,11 +180,34 @@ export function AssetFormDialog({
             <Label htmlFor="asset-make">Make and model</Label>
             <Input id="asset-make" value={f.make_model} onChange={(e) => set("make_model", e.target.value)} placeholder={profile.intake.makePlaceholder} />
           </div>
-          {vehicle ? (
+          {vehicle && (
             <div className="grid gap-3 sm:grid-cols-3">
-              <div className="space-y-1.5"><Label htmlFor="asset-reg">Registration</Label><Input id="asset-reg" value={f.registration} onChange={(e) => set("registration", e.target.value)} className="font-mono uppercase" /></div>
-              <div className="space-y-1.5"><Label htmlFor="asset-fleet">Fleet number</Label><Input id="asset-fleet" value={f.fleet_number} onChange={(e) => set("fleet_number", e.target.value)} /></div>
-              <div className="space-y-1.5"><Label htmlFor="asset-vin">VIN</Label><Input id="asset-vin" value={f.vin} onChange={(e) => set("vin", e.target.value)} className="font-mono uppercase" maxLength={17} /></div>
+              <div className="space-y-1.5"><Label htmlFor="asset-year">Year</Label><Input id="asset-year" inputMode="numeric" maxLength={4} value={f.year} onChange={(e) => set("year", e.target.value)} placeholder="e.g. 2019" /></div>
+              <div className="space-y-1.5"><Label htmlFor="asset-colour">Colour</Label><Input id="asset-colour" maxLength={50} value={f.colour} onChange={(e) => set("colour", e.target.value)} /></div>
+              <div className="space-y-1.5"><Label htmlFor="asset-fuel">Fuel</Label><Input id="asset-fuel" maxLength={50} value={f.fuel_type} onChange={(e) => set("fuel_type", e.target.value)} placeholder="e.g. Diesel" /></div>
+            </div>
+          )}
+          {vehicle ? (
+            <div className="space-y-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="asset-reg">Registration</Label>
+                <div className="flex gap-2">
+                  <Input id="asset-reg" value={f.registration} onChange={(e) => { set("registration", e.target.value); setFound(null); }} className="font-mono uppercase" />
+                  <VehicleLookupButton registration={f.registration} onFound={applyVehicle} />
+                </div>
+                {found && <p className="text-xs text-muted-foreground" data-testid="vehicle-summary">{describeVehicle(found)}</p>}
+                {found && describeMotHistory(found) && <p className="text-xs text-muted-foreground">{describeMotHistory(found)}</p>}
+              </div>
+              <div className="grid gap-3 sm:grid-cols-[1fr_2fr]">
+                <div className="space-y-1.5"><Label htmlFor="asset-fleet">Fleet number</Label><Input id="asset-fleet" value={f.fleet_number} onChange={(e) => set("fleet_number", e.target.value)} /></div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="asset-vin">VIN</Label>
+                  <div className="flex gap-2">
+                    <Input id="asset-vin" value={f.vin} onChange={(e) => set("vin", e.target.value)} className="font-mono uppercase" maxLength={17} />
+                    <VinDecodeButton vin={f.vin} onFound={applyVin} />
+                  </div>
+                </div>
+              </div>
             </div>
           ) : (
             <div className="space-y-1.5">

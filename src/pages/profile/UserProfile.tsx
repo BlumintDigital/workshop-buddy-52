@@ -25,6 +25,7 @@ import {
 import { useCountdown } from "@/hooks/useCountdown";
 import { forgetDevice } from "@/lib/deviceTrust";
 import PushNotificationsCard from "@/components/profile/PushNotificationsCard";
+import { AddressInput } from "@/components/lookup/AddressInput";
 
 export default function UserProfile() {
   const { user, profile, role, refreshMfaStatus, refreshProfile, signOut } = useAuth();
@@ -442,7 +443,7 @@ export default function UserProfile() {
               </div>
               <div className="sm:col-span-2">
                 <Label htmlFor="profile-address">Address</Label>
-                <Input id="profile-address" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Street, City, Country" className="mt-1" />
+                <AddressInput id="profile-address" value={address} onChange={setAddress} placeholder="Street, City, Country" className="mt-1" />
               </div>
             </div>
             <Button onClick={handleSave} disabled={saving}>

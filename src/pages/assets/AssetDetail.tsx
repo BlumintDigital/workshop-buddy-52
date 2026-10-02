@@ -145,6 +145,9 @@ export default function AssetDetail() {
           <Panel title="Details" className="lg:col-span-1">
             <dl className="divide-y text-sm">
               {asset.make_model && <Row label="Make and model" value={asset.make_model} />}
+              {asset.year_of_manufacture != null && <Row label="Year" value={String(asset.year_of_manufacture)} />}
+              {asset.colour && <Row label="Colour" value={asset.colour} />}
+              {asset.fuel_type && <Row label="Fuel" value={asset.fuel_type} />}
               {ids.map(([k, v]) => <Row key={k} label={k} value={<span className="font-mono">{v}</span>} />)}
               <Row label="Reading" value={formatMeter(asset.meter_reading, unit) ? `${formatMeter(asset.meter_reading, unit)}${asset.meter_read_at ? ` (${fmtDate(asset.meter_read_at)})` : ""}` : "Not recorded"} />
               {!isClient && <Row label="Owner" value={owner} />}

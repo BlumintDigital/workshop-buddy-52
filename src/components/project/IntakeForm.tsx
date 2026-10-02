@@ -13,7 +13,9 @@ import { DatePickerInput } from "@/components/ui/date-picker-input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { projectPath } from "@/lib/projects";
 import { useFeature } from "@/hooks/useFeatureFlags";
-import { findAssets, type Asset } from "@/hooks/useAssets";
+import { ensureMotReminder, fillAssetDetails, findAssets, type Asset } from "@/hooks/useAssets";
+import { VehicleLookupButton } from "@/components/lookup/VehicleLookupButton";
+import { describeMotHistory, describeVehicle, vehicleMakeModel, type VehicleLookup } from "@/lib/lookup";
 import { assetSummary, normaliseRegistration, useIndustry } from "@/lib/industry";
 import { cn } from "@/lib/utils";
 
@@ -65,6 +67,7 @@ export default function IntakeForm({ clients, prefill, onCancel }: { clients: Re
     contact_email: "",
     title: prefill?.title ?? "",
     make_model: "",
+    year: "",
     serial_number: "",
     registration: "",
     meter_reading: "",
@@ -89,9 +92,25 @@ export default function IntakeForm({ clients, prefill, onCancel }: { clients: Re
   const set = <K extends keyof typeof form>(key: K, value: (typeof form)[K]) => setForm((f) => ({ ...f, [key]: value }));
   const walkIn = form.client === WALK_IN;
 
+  // ---- Registration lookup: fills make and model and the mileage, and remembers the MOT date
+  // so the asset gets an MOT reminder when the project is saved.
+  const [vehicle, setVehicle] = useState<VehicleLookup | null>(null);
+  const applyVehicle = (v: VehicleLookup) => {
+    setVehicle(v);
+    const makeModel = vehicleMakeModel(v);
+    setForm((f) => ({
+      ...f,
+      make_model: makeModel || f.make_model,
+      year: v.year != null ? String(v.year) : f.year,
+      title: f.title.trim() ? f.title : makeModel,
+      meter_reading: f.meter_reading.trim() || v.mileage == null ? f.meter_reading : String(v.mileage),
+    }));
+  };
+
   // ---- The asset this is for: picked from the client's list, found by registration or serial,
   // or saved as a new one so its service history starts here.
   const [asset, setAsset] = useState<Asset | null>(null);
+  const isVehicle = profile.intake.showRegistration || asset?.kind === "vehicle";
   const [saveAsset, setSaveAsset] = useState(true);
   const [clientAssets, setClientAssets] = useState<Asset[]>([]);
   const [assetQuery, setAssetQuery] = useState("");
@@ -155,6 +174,8 @@ export default function IntakeForm({ clients, prefill, onCancel }: { clients: Re
     if (walkIn && !form.contact_name.trim() && !form.contact_phone.trim()) return toast.error("Add the customer's name or phone number");
     const reading = form.meter_reading.trim() === "" ? null : Number(form.meter_reading);
     if (reading != null && (Number.isNaN(reading) || reading < 0)) return toast.error("The reading must be a number of 0 or more");
+    const year = !isVehicle || form.year.trim() === "" ? null : Number(form.year);
+    if (year != null && (!Number.isInteger(year) || year < 1900 || year > new Date().getFullYear() + 1)) return toast.error("Enter the year as four digits, e.g. 2019");
     setSaving(true);
     const { data: id, error } = await supabase.rpc("create_project", {
       _p: {
@@ -185,6 +206,20 @@ export default function IntakeForm({ clients, prefill, onCancel }: { clients: Re
       return toast.error(error?.message ?? "Couldn't log the project. Try again.");
     }
     if (prefill?.appointmentId) await supabase.rpc("link_appointment_to_project", { _appointment_id: prefill.appointmentId, _job_id: id });
+    // Year, colour and fuel live on the asset; fill in whichever it doesn't have yet.
+    let motNote = "";
+    const extras = { year_of_manufacture: year, colour: vehicle?.colour ?? null, fuel_type: vehicle?.fuel ?? null };
+    const wantsMot = isVehicle && !!vehicle?.mot_expiry;
+    if (assetsOn && (wantsMot || Object.values(extras).some((v) => v != null))) {
+      const assetId = asset?.id ?? (await supabase.from("jobs").select("asset_id").eq("id", id).single()).data?.asset_id;
+      if (assetId) {
+        await fillAssetDetails(assetId, extras);
+        if (wantsMot) {
+          const done = await ensureMotReminder(assetId, vehicle!.mot_expiry!);
+          if (done !== "unchanged") motNote = `. MOT reminder ${done === "added" ? "added" : "moved"} to ${new Date(`${vehicle!.mot_expiry}T00:00:00`).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })}`;
+        }
+      }
+    }
     let failed = 0;
     for (const file of photos) {
       const ext = file.name.includes(".") ? file.name.split(".").pop() : "jpg";
@@ -207,7 +242,7 @@ export default function IntakeForm({ clients, prefill, onCancel }: { clients: Re
     }
     const { data: job } = await supabase.from("jobs").select("ref").eq("id", id).single();
     setSaving(false);
-    toast.success(`${job?.ref ?? "Project"} logged${failed ? `. ${failed} photo${failed > 1 ? "s" : ""} didn't upload; add them on the project page.` : ""}`);
+    toast.success(`${job?.ref ?? "Project"} logged${motNote}${failed ? `. ${failed} photo${failed > 1 ? "s" : ""} didn't upload; add them on the project page.` : ""}`);
     navigate(projectPath(id));
   };
 
@@ -305,15 +340,27 @@ export default function IntakeForm({ clients, prefill, onCancel }: { clients: Re
           <Input id="f-intake-title" value={form.title} onChange={(e) => set("title", e.target.value)} placeholder={profile.intake.titlePlaceholder} maxLength={200} />
         </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          {(profile.intake.showRegistration || asset?.kind === "vehicle") && (
+          {isVehicle && (
             <div>
               <Label htmlFor="f-intake-reg">Registration</Label>
-              <Input id="f-intake-reg" value={form.registration} onChange={(e) => set("registration", e.target.value)} className="font-mono uppercase" autoComplete="off" />
+              <div className="flex gap-2">
+                <Input id="f-intake-reg" value={form.registration} onChange={(e) => { set("registration", e.target.value); setVehicle(null); }} className="font-mono uppercase" autoComplete="off" />
+                <VehicleLookupButton registration={form.registration} onFound={applyVehicle} />
+              </div>
+              {vehicle && <p className="mt-1 text-xs text-muted-foreground" data-testid="vehicle-summary">{describeVehicle(vehicle)}</p>}
+              {vehicle && describeMotHistory(vehicle) && <p className="text-xs text-muted-foreground">{describeMotHistory(vehicle)}</p>}
             </div>
           )}
           <div>
             <Label htmlFor="f-intake-make">Make and model</Label>
-            <Input id="f-intake-make" value={form.make_model} onChange={(e) => set("make_model", e.target.value)} placeholder={profile.intake.makePlaceholder} />
+            {isVehicle ? (
+              <div className="flex gap-2">
+                <Input id="f-intake-make" value={form.make_model} onChange={(e) => set("make_model", e.target.value)} placeholder={profile.intake.makePlaceholder} className="min-w-0 flex-1" />
+                <Input id="f-intake-year" aria-label="Year of manufacture" inputMode="numeric" maxLength={4} value={form.year} onChange={(e) => set("year", e.target.value)} placeholder="Year" className="w-20" />
+              </div>
+            ) : (
+              <Input id="f-intake-make" value={form.make_model} onChange={(e) => set("make_model", e.target.value)} placeholder={profile.intake.makePlaceholder} />
+            )}
           </div>
           {(profile.intake.showSerial || (asset && asset.kind !== "vehicle")) && (
             <div>

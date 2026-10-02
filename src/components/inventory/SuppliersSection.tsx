@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AddressInput } from "@/components/lookup/AddressInput";
 
 export type SupplierRow = { id: string; name: string; contact_name: string | null; email: string | null; phone: string | null; address: string | null; notes: string | null };
 
@@ -108,7 +109,7 @@ function SupplierDialog({ supplier, onClose, onSaved }: { supplier: SupplierRow 
           </div>
           <div className="sm:col-span-2">
             <Label htmlFor="f-sup-address">Address</Label>
-            <Textarea id="f-sup-address" value={form.address} onChange={(e) => set("address", e.target.value)} rows={2} />
+            <AddressInput id="f-sup-address" value={form.address} onChange={(v) => set("address", v)} rows={2} />
           </div>
           <div className="sm:col-span-2">
             <Label htmlFor="f-sup-notes">Notes</Label>

@@ -47,10 +47,10 @@ describe("mapping and checking rows", () => {
   const t = templateFor("assets", INDUSTRIES.garage);
 
   it("matches headers people actually use", () => {
-    const { mapping, missingRequired, unknownHeaders } = mapHeaders(["Reg No", "Odometer", "Customer Email", "Colour"], t);
+    const { mapping, missingRequired, unknownHeaders } = mapHeaders(["Reg No", "Odometer", "Customer Email", "Insurer"], t);
     expect(mapping).toEqual(["registration", "meter_reading", "owner_email", null]);
     expect(missingRequired).toEqual([]);
-    expect(unknownHeaders).toEqual(["Colour"]);
+    expect(unknownHeaders).toEqual(["Insurer"]);
   });
 
   it("flags problems per line and tidies numbers and UK dates", () => {

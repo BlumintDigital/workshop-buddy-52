@@ -33,6 +33,7 @@ import { EmptyState } from "@/components/list/EmptyState";
 import { usePagination, PAGE_SIZE } from "@/hooks/usePagination";
 import { friendlyErrorMessage } from "@/lib/friendlyError";
 import { customerName, useIndustry } from "@/lib/industry";
+import { AddressInput } from "@/components/lookup/AddressInput";
 
 type ClientRow = {
   user_id: string;
@@ -279,7 +280,7 @@ export default function AdminClients() {
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="client-address">Address</Label>
-          <Input id="client-address" value={value.address} onChange={(e) => onChange({ ...value, address: e.target.value })} />
+          <AddressInput id="client-address" value={value.address} onChange={(address) => onChange({ ...value, address })} />
         </div>
       </div>
     </div>

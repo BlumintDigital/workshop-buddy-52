@@ -146,12 +146,15 @@ Deno.serve(async (req) => {
         const clientId = ownerEmail ? clientByEmail.get(ownerEmail) ?? null : null;
         if (ownerEmail && !clientId) { results.push({ line, status: "failed", message: `No client with email ${ownerEmail}. Import clients first, or leave the email empty for a walk-in owner.` }); continue; }
         const meter = n(v.meter_reading);
+        const year = n(v.year);
         const { data: asset, error } = await admin.from("assets").insert({
           client_id: clientId,
           owner_name: clientId ? null : t(v.owner_name, 200),
           owner_phone: clientId ? null : t(v.owner_phone, 50),
           kind: vehicleShop || reg ? "vehicle" : ws?.industry === "marine_plant" ? "plant" : "machine",
           name, make_model: t(v.make_model, 200), serial_number: serial, registration: reg,
+          year_of_manufacture: year != null && Number.isInteger(year) && year >= 1900 && year <= 2100 ? year : null,
+          colour: t(v.colour, 50), fuel_type: t(v.fuel_type, 50),
           vin: t(v.vin, 17)?.toUpperCase() ?? null, fleet_number: t(v.fleet_number, 50),
           meter_unit: unit, meter_reading: meter, meter_read_at: meter != null ? new Date().toISOString() : null,
           notes: t(v.notes, 2000), created_by: uid,

@@ -1,0 +1,26 @@
+{
+  "registration": "KS69LYH",
+  "make": "VAUXHALL",
+  "model": "INSIGNIA",
+  "vehicleType": "car",
+  "colour": "BLUE",
+  "fuelType": "diesel",
+  "engineCapacityCc": 1956,
+  "yearOfManufacture": 2019,
+  "monthOfFirstRegistration": "2019-11",
+  "vehicleAgeYears": 7.8,
+  "summary": { "buyRecommendation": "consider", "vehicleRiskLevel": "medium", "motRiskLevel": "low" },
+  "signals": {
+    "taxStatus": "taxed",
+    "taxDueDate": "2027-02-01",
+    "motStatus": "valid",
+    "motExpiryDate": "2027-09-21",
+    "odometerTrend": "consistent",
+    "latestOdometerMiles": 115001,
+    "failureClusters": ["suspension", "tyres"],
+    "advisoryClusters": ["brakes", "tyres", "lights"]
+  },
+  "sources": { "motHistory": "DVSA MOT History API", "mutableData": "DVLA Vehicle Enquiry Service (VES)" },
+  "schemaVersion": "1.0",
+  "enrichmentPending": false
+}
