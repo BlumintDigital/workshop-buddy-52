@@ -38,6 +38,8 @@ export interface IndustryProfile {
     findPlaceholder: string;
   };
   reminderPresets: ReminderPreset[];
+  /** Garages deal with people; machine shops and fleets with companies. Company stays optional for people. */
+  customer: { personFirst: boolean; noun: string; plural: string };
 }
 
 export const INDUSTRIES: Record<Industry, IndustryProfile> = {
@@ -64,6 +66,7 @@ export const INDUSTRIES: Record<Industry, IndustryProfile> = {
       { title: "LOLER thorough examination", months: 6 },
       { title: "Service every 500 hours", meter: 500 },
     ],
+    customer: { personFirst: false, noun: "company", plural: "companies" },
   },
   garage: {
     key: "garage",
@@ -88,6 +91,7 @@ export const INDUSTRIES: Record<Industry, IndustryProfile> = {
       { title: "Timing belt", months: 60, meter: 60000 },
       { title: "Brake fluid change", months: 24 },
     ],
+    customer: { personFirst: true, noun: "customer", plural: "customers" },
   },
   fleet: {
     key: "fleet",
@@ -112,6 +116,7 @@ export const INDUSTRIES: Record<Industry, IndustryProfile> = {
       { title: "Service", months: 12, meter: 15000 },
       { title: "Tachograph calibration", months: 24 },
     ],
+    customer: { personFirst: false, noun: "company", plural: "companies" },
   },
   marine_plant: {
     key: "marine_plant",
@@ -136,6 +141,7 @@ export const INDUSTRIES: Record<Industry, IndustryProfile> = {
       { title: "LOLER thorough examination", months: 12 },
       { title: "Service every 250 hours", meter: 250 },
     ],
+    customer: { personFirst: true, noun: "customer", plural: "customers" },
   },
 };
 
@@ -166,6 +172,11 @@ export const METER_LABEL: Record<MeterUnit, string> = { hours: "hours", miles: "
 export function assetSummary(a: { name: string; registration?: string | null; serial_number?: string | null; fleet_number?: string | null }): string {
   const id = a.registration ? a.registration : a.fleet_number ? `Fleet ${a.fleet_number}` : a.serial_number ? `SN ${a.serial_number}` : null;
   return id ? `${id} · ${a.name}` : a.name;
+}
+
+/** A client's name the way this workshop thinks of them: the person for garages, the company otherwise. */
+export function customerName(c: { full_name?: string | null; company_name?: string | null }, personFirst: boolean): string {
+  return (personFirst ? c.full_name || c.company_name : c.company_name || c.full_name) || "Unnamed client";
 }
 
 /** UK-style registration as people write it: upper case, no stray spaces. */

@@ -8,6 +8,7 @@ import DashboardLayout from "@/components/layout/DashboardLayout";
 import { PageBar } from "@/components/dashboard/PageBar";
 import { JobStatusPill, StatusPill } from "@/components/dashboard/StatusPill";
 import { EmptyState } from "@/components/list/EmptyState";
+import { useIndustry } from "@/lib/industry";
 import IntakeForm, { clientLabel, type IntakePrefill, type ReceptionClient } from "@/components/project/IntakeForm";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -96,7 +97,8 @@ export default function Reception() {
     }
   }, [fromAppointment, dueFromCalendar, fromAsset]);
 
-  const clientName = useMemo(() => Object.fromEntries(clients.map((c) => [c.id, clientLabel(c)])), [clients]);
+  const personFirst = useIndustry().customer.personFirst;
+  const clientName = useMemo(() => Object.fromEntries(clients.map((c) => [c.id, clientLabel(c, personFirst)])), [clients, personFirst]);
   const setTab = (t: string) => setParams(t === "requests" ? { tab: "requests" } : {}, { replace: true });
 
   const receive = (r: Request) => {

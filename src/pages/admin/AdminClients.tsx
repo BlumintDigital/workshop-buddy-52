@@ -32,6 +32,7 @@ import { ListPagination } from "@/components/list/ListPagination";
 import { EmptyState } from "@/components/list/EmptyState";
 import { usePagination, PAGE_SIZE } from "@/hooks/usePagination";
 import { friendlyErrorMessage } from "@/lib/friendlyError";
+import { customerName, useIndustry } from "@/lib/industry";
 
 type ClientRow = {
   user_id: string;
@@ -44,12 +45,17 @@ type ClientRow = {
   is_active: boolean;
 };
 
-type ClientForm = { company: string; contact: string; email: string; phone: string; address: string };
-const EMPTY_FORM: ClientForm = { company: "", contact: "", email: "", phone: "", address: "" };
+type ClientForm = { name: string; company: string; contact: string; email: string; phone: string; address: string };
+const EMPTY_FORM: ClientForm = { name: "", company: "", contact: "", email: "", phone: "", address: "" };
 
-const displayName = (c: ClientRow) => c.company_name || c.full_name || "Unnamed client";
+
 
 export default function AdminClients() {
+  const profile = useIndustry();
+  const personFirst = profile.customer.personFirst;
+  const displayName = (c: ClientRow) => customerName(c, personFirst);
+  /** What a person is called: required name for garages, company otherwise. */
+  const primary = (f: ClientForm) => (personFirst ? f.name : f.company).trim();
   const [clients, setClients] = useState<ClientRow[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -144,7 +150,8 @@ export default function AdminClients() {
   const openEdit = (c: ClientRow) => {
     setEditing(c);
     setEditForm({
-      company: c.company_name || c.full_name || "",
+      name: c.full_name || "",
+      company: personFirst ? c.company_name || "" : c.company_name || c.full_name || "",
       contact: c.contact_person || "",
       email: "",
       phone: c.phone || "",
@@ -153,13 +160,13 @@ export default function AdminClients() {
   };
 
   const saveEdit = async () => {
-    if (!editing || !editForm.company.trim()) return;
+    if (!editing || !primary(editForm)) return;
     const { error } = await supabase
       .from("profiles")
       .update({
-        full_name: editForm.company,
-        company_name: editForm.company,
-        contact_person: editForm.contact || null,
+        full_name: personFirst ? editForm.name.trim() : editForm.company,
+        company_name: personFirst ? editForm.company.trim() || null : editForm.company,
+        contact_person: personFirst ? null : editForm.contact || null,
         phone: editForm.phone || null,
         address: editForm.address || null,
       } as any)
@@ -168,7 +175,7 @@ export default function AdminClients() {
       toast.error(error.message);
       return;
     }
-    toast.success(`Saved ${editForm.company}`);
+    toast.success(`Saved ${primary(editForm)}`);
     setEditing(null);
     refresh();
   };
@@ -186,15 +193,15 @@ export default function AdminClients() {
   };
 
   const handleAdd = async () => {
-    if (!form.email || !form.company) return;
+    if (!form.email || !primary(form)) return;
     setAdding(true);
     const { data, error } = await supabase.functions.invoke("create-client", {
       body: {
         email: form.email,
-        full_name: form.company,
+        full_name: primary(form),
         phone: form.phone || undefined,
-        company_name: form.company,
-        contact_person: form.contact || undefined,
+        company_name: personFirst ? form.company.trim() || undefined : form.company,
+        contact_person: personFirst ? undefined : form.contact || undefined,
         address: form.address || undefined,
       },
     });
@@ -206,9 +213,9 @@ export default function AdminClients() {
     // Email them a link to set their password, the same invite the Users page sends.
     const invite = await supabase.functions.invoke("admin-resend-invite", { body: { user_id: data.user_id } });
     if (invite.error || (invite.data as { error?: string } | null)?.error) {
-      toast.warning(`${form.company} added, but the invite email didn't send. Use "Send sign-in link" on their row to try again.`);
+      toast.warning(`${primary(form)} added, but the invite email didn't send. Use "Send sign-in link" on their row to try again.`);
     } else {
-      toast.success(`${form.company} added and emailed a link to set their password.`);
+      toast.success(`${primary(form)} added and emailed a link to set their password.`);
     }
     setAddOpen(false);
     setForm(EMPTY_FORM);
@@ -225,8 +232,8 @@ export default function AdminClients() {
     c.is_active ? <StatusPill tone="success">Portal on</StatusPill> : <StatusPill tone="neutral">Portal off</StatusPill>;
 
   const columns: Column<ClientRow>[] = [
-    { key: "company", header: "Company", cell: displayName },
-    { key: "contact", header: "Contact", cell: (c) => c.contact_person || "—", hideBelow: "md" },
+    { key: "company", header: personFirst ? "Customer" : "Company", cell: displayName },
+    { key: "contact", header: personFirst ? "Company" : "Contact", cell: (c) => (personFirst ? (c.company_name && c.company_name !== c.full_name ? c.company_name : "—") : c.contact_person || "—"), hideBelow: "md" },
     { key: "phone", header: "Phone", cell: (c) => c.phone || "—", hideBelow: "md" },
     { key: "address", header: "Address", cell: (c) => <span className="block max-w-xs truncate">{c.address || "—"}</span>, hideBelow: "xl" },
     { key: "portal", header: "Portal", cell: portalPill },
@@ -236,14 +243,29 @@ export default function AdminClients() {
 
   const fields = (value: ClientForm, onChange: (v: ClientForm) => void, withEmail: boolean) => (
     <div className="space-y-4">
-      <div className="space-y-1.5">
-        <Label htmlFor="client-company">Company name</Label>
-        <Input id="client-company" value={value.company} onChange={(e) => onChange({ ...value, company: e.target.value })} placeholder="Acme Fabrication Ltd" />
-      </div>
-      <div className="space-y-1.5">
-        <Label htmlFor="client-contact">Contact person</Label>
-        <Input id="client-contact" value={value.contact} onChange={(e) => onChange({ ...value, contact: e.target.value })} placeholder="Jo Smith" />
-      </div>
+      {personFirst ? (
+        <>
+          <div className="space-y-1.5">
+            <Label htmlFor="client-name">Customer name</Label>
+            <Input id="client-name" value={value.name} onChange={(e) => onChange({ ...value, name: e.target.value })} placeholder="Jo Smith" autoComplete="off" />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="client-company">Company (optional)</Label>
+            <Input id="client-company" value={value.company} onChange={(e) => onChange({ ...value, company: e.target.value })} placeholder="Only if it's a business customer" />
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="space-y-1.5">
+            <Label htmlFor="client-company">Company name</Label>
+            <Input id="client-company" value={value.company} onChange={(e) => onChange({ ...value, company: e.target.value })} placeholder="Acme Fabrication Ltd" />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="client-contact">Contact person</Label>
+            <Input id="client-contact" value={value.contact} onChange={(e) => onChange({ ...value, contact: e.target.value })} placeholder="Jo Smith" />
+          </div>
+        </>
+      )}
       {withEmail && (
         <div className="space-y-1.5">
           <Label htmlFor="client-email">Email</Label>
@@ -268,7 +290,7 @@ export default function AdminClients() {
       <div className="min-w-0 max-w-full space-y-4">
         <PageBar
           title="Clients"
-          subtitle={isLoading ? "Loading…" : `${totalCount} ${totalCount === 1 ? "company" : "companies"}`}
+          subtitle={isLoading ? "Loading…" : `${totalCount} ${totalCount === 1 ? profile.customer.noun : profile.customer.plural}`}
           actions={
             <Button onClick={() => setAddOpen(true)}>
               <Plus />
@@ -286,7 +308,7 @@ export default function AdminClients() {
           }}
           search={search}
           onSearchChange={setSearch}
-          searchPlaceholder="Search company, contact or phone"
+          searchPlaceholder={personFirst ? "Search name, company or phone" : "Search company, contact or phone"}
         />
 
         <DataList
@@ -330,7 +352,7 @@ export default function AdminClients() {
             ) : (
               <EmptyState
                 title="No clients yet"
-                description="Add a client company to give them a portal for quotes, orders and invoices."
+                description={`Add a ${profile.customer.noun} to give them a portal for quotes, orders and invoices.`}
                 action={
                   <Button onClick={() => setAddOpen(true)}>
                     <Plus />
@@ -356,7 +378,7 @@ export default function AdminClients() {
             <Button variant="ghost" onClick={() => setAddOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleAdd} disabled={adding || !form.email || !form.company}>
+            <Button onClick={handleAdd} disabled={adding || !form.email || !primary(form)}>
               {adding ? "Adding…" : "Add client"}
             </Button>
           </DialogFooter>
@@ -373,7 +395,7 @@ export default function AdminClients() {
             <Button variant="ghost" onClick={() => setEditing(null)}>
               Cancel
             </Button>
-            <Button onClick={saveEdit} disabled={!editForm.company.trim()}>
+            <Button onClick={saveEdit} disabled={!primary(editForm)}>
               Save changes
             </Button>
           </DialogFooter>

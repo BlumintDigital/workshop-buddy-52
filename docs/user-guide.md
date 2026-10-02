@@ -175,7 +175,7 @@ Admins always hold every permission. Clients never hold any.
 **To invite a new client:**
 
 1. Open **Clients** and click **Add client**.
-2. Enter the company name and the email address they'll sign in with. Contact person, phone and address are optional.
+2. Enter the company name and the email address they'll sign in with. Contact person, phone and address are optional. In a garage or marine workshop, where customers are usually people, you enter the **Customer name** instead, with **Company** optional.
 3. Click **Add client**. They're emailed a link to set their password and sign in. No invite code is needed.
 
 If the email doesn't arrive, open the **⋯** menu on their row and choose **Send sign-in link**. The same menu has:

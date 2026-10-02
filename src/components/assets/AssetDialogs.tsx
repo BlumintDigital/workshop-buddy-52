@@ -106,7 +106,7 @@ export function AssetFormDialog({
               <SelectTrigger id="asset-owner"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value={NO_OWNER}>Walk-in or phone customer (no portal account)</SelectItem>
-                {clients.map((c) => <SelectItem key={c.id} value={c.id}>{clientLabel(c)}</SelectItem>)}
+                {clients.map((c) => <SelectItem key={c.id} value={c.id}>{clientLabel(c, profile.customer.personFirst)}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>

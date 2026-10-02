@@ -1,4 +1,5 @@
 import { useState, useEffect, type ReactNode } from "react";
+import { useIndustry } from "@/lib/industry";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth, getRoleDashboardPath } from "@/hooks/useAuth";
 import type { AppRole } from "@/hooks/useAuth";
@@ -97,6 +98,7 @@ function SubmitButton({ busy, busyLabel, children, disabled }: { busy: boolean; 
 }
 
 export default function Auth() {
+  const industry = useIndustry();
   const {
     signIn,
     signUp,
@@ -360,7 +362,7 @@ export default function Auth() {
       toast.error("First and last name are required");
       return;
     }
-    if (signupRole === "client" && !signupCompanyName.trim()) {
+    if (signupRole === "client" && !industry.customer.personFirst && !signupCompanyName.trim()) {
       toast.error("Company name is required");
       return;
     }
@@ -724,13 +726,13 @@ export default function Auth() {
                 </Field>
 
                 {signupRole === "client" && (
-                  <Field label="Company name" htmlFor="signup-company-name">
-                    <Input id="signup-company-name" value={signupCompanyName} onChange={(e) => setSignupCompanyName(e.target.value)} required autoComplete="organization" placeholder="Acme Fabrication Ltd" className="h-11" />
+                  <Field label={industry.customer.personFirst ? "Company (optional)" : "Company name"} htmlFor="signup-company-name">
+                    <Input id="signup-company-name" value={signupCompanyName} onChange={(e) => setSignupCompanyName(e.target.value)} required={!industry.customer.personFirst} autoComplete="organization" placeholder={industry.customer.personFirst ? "Only if you're signing up for a business" : "Acme Fabrication Ltd"} className="h-11" />
                   </Field>
                 )}
 
                 <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-3">
-                  <Field label={signupRole === "client" ? "Contact first name" : "First name"} htmlFor="signup-first-name">
+                  <Field label={signupRole === "client" && !industry.customer.personFirst ? "Contact first name" : "First name"} htmlFor="signup-first-name">
                     <Input id="signup-first-name" value={signupFirstName} onChange={(e) => setSignupFirstName(e.target.value)} required autoComplete="given-name" className="h-11" />
                   </Field>
                   <Field label={signupRole === "client" ? "Contact last name" : "Last name"} htmlFor="signup-last-name">

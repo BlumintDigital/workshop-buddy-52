@@ -35,8 +35,11 @@ export interface IntakePrefill {
 
 export type ReceptionClient = { id: string; full_name: string | null; company_name: string | null; phone: string | null; email: string | null };
 
-export const clientLabel = (c: ReceptionClient) =>
-  c.company_name ? `${c.company_name}${c.full_name ? ` · ${c.full_name}` : ""}` : c.full_name || c.email || "Unnamed client";
+/** "Company · person", or "Person · company" for workshops that deal with people (garages). */
+export const clientLabel = (c: ReceptionClient, personFirst = false) => {
+  const [a, b] = personFirst ? [c.full_name, c.company_name] : [c.company_name, c.full_name];
+  return a ? `${a}${b && b !== a ? ` · ${b}` : ""}` : b || c.email || "Unnamed client";
+};
 
 const INTAKE_OPTIONS: { value: IntakeType; label: string; description: string }[] = [
   { value: "evaluation", label: "Evaluation", description: "Assess the machine first. Evaluations are free." },
@@ -222,7 +225,7 @@ export default function IntakeForm({ clients, prefill, onCancel }: { clients: Re
               <SelectItem value={WALK_IN}>Walk-in or phone customer (no portal account)</SelectItem>
               {clients.map((c) => (
                 <SelectItem key={c.id} value={c.id}>
-                  {clientLabel(c)}
+                  {clientLabel(c, profile.customer.personFirst)}
                 </SelectItem>
               ))}
             </SelectContent>

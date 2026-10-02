@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { describeDue, describeInterval, firstDueDate, formatMeter, reminderState, worstState } from "@/lib/assets";
-import { INDUSTRIES, INDUSTRY_KEYS, assetSummary, industryProfile, normaliseRegistration } from "@/lib/industry";
+import { INDUSTRIES, INDUSTRY_KEYS, assetSummary, customerName, industryProfile, normaliseRegistration } from "@/lib/industry";
+import { clientLabel } from "@/components/project/IntakeForm";
 
 const r = (o: Partial<Parameters<typeof reminderState>[0]> = {}) => ({
   title: "Service", active: true, due_date: null, due_meter: null, interval_meter: null, ...o,
@@ -74,5 +75,17 @@ describe("industry profiles", () => {
     expect(assetSummary({ name: "Lathe", serial_number: "4471" })).toBe("SN 4471 · Lathe");
     expect(assetSummary({ name: "Van", fleet_number: "17" })).toBe("Fleet 17 · Van");
     expect(normaliseRegistration(" ab12   cde ")).toBe("AB12 CDE");
+  });
+
+  it("garages name customers by person, machine shops by company", () => {
+    expect(INDUSTRIES.garage.customer.personFirst).toBe(true);
+    expect(INDUSTRIES.industrial.customer.personFirst).toBe(false);
+    const c = { id: "1", full_name: "Jo Smith", company_name: "Acme Ltd", phone: null, email: "jo@x.uk" };
+    expect(customerName(c, true)).toBe("Jo Smith");
+    expect(customerName(c, false)).toBe("Acme Ltd");
+    expect(customerName({ full_name: "Jo Smith", company_name: null }, false)).toBe("Jo Smith");
+    expect(clientLabel(c, true)).toBe("Jo Smith · Acme Ltd");
+    expect(clientLabel(c)).toBe("Acme Ltd · Jo Smith");
+    expect(clientLabel({ ...c, company_name: null }, true)).toBe("Jo Smith");
   });
 });
