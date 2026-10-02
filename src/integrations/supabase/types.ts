@@ -393,9 +393,11 @@ export type Database = {
         Row: {
           archived_at: string | null;
           client_id: string | null;
+          colour: string | null;
           created_at: string;
           created_by: string | null;
           fleet_number: string | null;
+          fuel_type: string | null;
           id: string;
           kind: string;
           make_model: string | null;
@@ -411,13 +413,16 @@ export type Database = {
           serial_number: string | null;
           updated_at: string;
           vin: string | null;
+          year_of_manufacture: number | null;
         };
         Insert: {
           archived_at?: string | null;
           client_id?: string | null;
+          colour?: string | null;
           created_at?: string;
           created_by?: string | null;
           fleet_number?: string | null;
+          fuel_type?: string | null;
           id?: string;
           kind?: string;
           make_model?: string | null;
@@ -433,13 +438,16 @@ export type Database = {
           serial_number?: string | null;
           updated_at?: string;
           vin?: string | null;
+          year_of_manufacture?: number | null;
         };
         Update: {
           archived_at?: string | null;
           client_id?: string | null;
+          colour?: string | null;
           created_at?: string;
           created_by?: string | null;
           fleet_number?: string | null;
+          fuel_type?: string | null;
           id?: string;
           kind?: string;
           make_model?: string | null;
@@ -455,6 +463,7 @@ export type Database = {
           serial_number?: string | null;
           updated_at?: string;
           vin?: string | null;
+          year_of_manufacture?: number | null;
         };
         Relationships: [];
       };
@@ -1538,6 +1547,27 @@ export type Database = {
         };
         Relationships: [];
       };
+      lookup_cache: {
+        Row: {
+          fetched_at: string;
+          key: string;
+          kind: string;
+          result: Json | null;
+        };
+        Insert: {
+          fetched_at?: string;
+          key: string;
+          kind: string;
+          result?: Json | null;
+        };
+        Update: {
+          fetched_at?: string;
+          key?: string;
+          kind?: string;
+          result?: Json | null;
+        };
+        Relationships: [];
+      };
       mfa_backup_codes: {
         Row: {
           code_hash: string;
@@ -2098,6 +2128,56 @@ export type Database = {
           user_id?: string;
         };
         Relationships: [];
+      };
+      quote_links: {
+        Row: {
+          created_at: string;
+          created_by: string | null;
+          expires_at: string;
+          first_viewed_at: string | null;
+          id: string;
+          quote_id: string;
+          revoked_at: string | null;
+          sent_to: string | null;
+          token_hash: string;
+          used_at: string | null;
+          view_count: number;
+        };
+        Insert: {
+          created_at?: string;
+          created_by?: string | null;
+          expires_at: string;
+          first_viewed_at?: string | null;
+          id?: string;
+          quote_id: string;
+          revoked_at?: string | null;
+          sent_to?: string | null;
+          token_hash: string;
+          used_at?: string | null;
+          view_count?: number;
+        };
+        Update: {
+          created_at?: string;
+          created_by?: string | null;
+          expires_at?: string;
+          first_viewed_at?: string | null;
+          id?: string;
+          quote_id?: string;
+          revoked_at?: string | null;
+          sent_to?: string | null;
+          token_hash?: string;
+          used_at?: string | null;
+          view_count?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "quote_links_quote_id_fkey";
+            columns: ["quote_id"];
+            isOneToOne: false;
+            referencedRelation: "project_quotes";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       request_quote_items: {
         Row: {
@@ -2857,6 +2937,7 @@ export type Database = {
         Args: { _approve: boolean; _reason?: string; _request_id: string };
         Returns: string;
       };
+      client_id_by_email: { Args: { _email: string }; Returns: string };
       client_mark_invoice_paid: {
         Args: { _invoice_id: string };
         Returns: string;
@@ -2893,6 +2974,10 @@ export type Database = {
         };
       };
       create_project: { Args: { _p: Json }; Returns: string };
+      create_quote_link: {
+        Args: { _quote_id: string; _sent_to?: string };
+        Returns: string;
+      };
       dashboard_today: {
         Args: {
           p_include_appointments?: boolean;
@@ -2909,6 +2994,16 @@ export type Database = {
       };
       decide_purchase_order: {
         Args: { _approve: boolean; _note?: string; _po_id: string };
+        Returns: string;
+      };
+      decide_quote_by_link: {
+        Args: {
+          _accept: boolean;
+          _ip?: string;
+          _name: string;
+          _note?: string;
+          _token: string;
+        };
         Returns: string;
       };
       decline_client_request: {
@@ -3118,6 +3213,7 @@ export type Database = {
         };
         Returns: string;
       };
+      quote_link_view: { Args: { _token: string }; Returns: Json };
       receive_purchase_order: {
         Args: { _lines: Json; _po_id: string };
         Returns: string;

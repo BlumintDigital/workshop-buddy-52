@@ -133,6 +133,9 @@ export function templateFor(kind: ImportKind, p: IndustryProfile): Template {
       ? [
           { key: "registration", header: "Registration", required: true, aliases: ["reg", "reg no", "registration number", "vrm", "plate"] },
           { key: "make_model", header: "Make and model", aliases: ["make", "model", "vehicle"] },
+          { key: "year", header: "Year", type: "integer" as const, aliases: ["year of manufacture", "model year", "yom", "built"] },
+          { key: "colour", header: "Colour", aliases: ["color"] },
+          { key: "fuel_type", header: "Fuel", aliases: ["fuel type"] },
           { key: "vin", header: "VIN", aliases: ["chassis", "chassis number"] },
           ...(p.intake.showFleetNumber ? [{ key: "fleet_number", header: "Fleet number", aliases: ["fleet no", "unit number"] }] : []),
         ]
@@ -155,10 +158,10 @@ export function templateFor(kind: ImportKind, p: IndustryProfile): Template {
     columns,
     examples: vehicle
       ? p.intake.showFleetNumber
-        ? [["fleet@nq.example", "", "", "AB12 CDE", "Ford Transit 350", "WF0XXXTTGXXX12345", "17", "84500", "Safety inspection (PMI)", "2026-12-01", "2", "2027-03-14", "Tail lift fitted"],
-           ["", "Kestrel Motors", "0113 496 0101", "XY65 ZZA", "Mercedes Sprinter", "", "22", "121300", "Service", "2027-01-15", "12", "2026-11-02", ""]]
-        : [["jo.smith@example.com", "", "", "AB12 CDE", "Ford Focus 1.0", "WF0XXXGCDXXX12345", "48200", "Annual service", "2027-02-01", "12", "2027-03-14", ""],
-           ["", "Sam Patel", "07700 900456", "XY65 ZZA", "VW Golf 2.0 TDI", "", "91800", "Annual service", "2026-12-10", "12", "2026-11-02", "Timing belt due soon"]]
+        ? [["fleet@nq.example", "", "", "AB12 CDE", "Ford Transit 350", "2019", "White", "Diesel", "WF0XXXTTGXXX12345", "17", "84500", "Safety inspection (PMI)", "2026-12-01", "2", "2027-03-14", "Tail lift fitted"],
+           ["", "Kestrel Motors", "0113 496 0101", "XY65 ZZA", "Mercedes Sprinter", "2018", "Silver", "Diesel", "", "22", "121300", "Service", "2027-01-15", "12", "2026-11-02", ""]]
+        : [["jo.smith@example.com", "", "", "AB12 CDE", "Ford Focus 1.0", "2017", "Blue", "Petrol", "WF0XXXGCDXXX12345", "48200", "Annual service", "2027-02-01", "12", "2027-03-14", ""],
+           ["", "Sam Patel", "07700 900456", "XY65 ZZA", "VW Golf 2.0 TDI", "2015", "Grey", "Diesel", "", "91800", "Annual service", "2026-12-10", "12", "2026-11-02", "Timing belt due soon"]]
       : [["orders@acme.example", "", "", "Lathe", "Colchester Student 1800", "4471", "1200", "Annual service", "2027-01-31", "12", "Bay 3"],
          ["", "Northern Quarries plc", "01535 496000", "Conveyor gearbox", "Radicon Series M", "RG-88213", "8600", "LOLER thorough examination", "2026-12-15", "6", ""]],
   };

@@ -16,6 +16,9 @@ export interface Asset {
   kind: AssetKind;
   name: string;
   make_model: string | null;
+  year_of_manufacture: number | null;
+  colour: string | null;
+  fuel_type: string | null;
   serial_number: string | null;
   registration: string | null;
   vin: string | null;
@@ -56,7 +59,7 @@ export interface AssetJob {
 export type AssetRow = Asset & { reminders: AssetReminder[]; state: ReminderState | null; owner: string };
 
 export const ASSET_COLUMNS =
-  "id, client_id, owner_name, owner_phone, owner_email, kind, name, make_model, serial_number, registration, vin, fleet_number, meter_unit, meter_reading, meter_read_at, notes, archived_at, created_at";
+  "id, client_id, owner_name, owner_phone, owner_email, kind, name, make_model, year_of_manufacture, colour, fuel_type, serial_number, registration, vin, fleet_number, meter_unit, meter_reading, meter_read_at, notes, archived_at, created_at";
 export const REMINDER_COLUMNS =
   "id, asset_id, title, interval_months, interval_meter, due_date, due_meter, last_done_on, last_done_meter, last_done_job_id, active, notes";
 
@@ -235,4 +238,30 @@ export async function fetchDueReminders(): Promise<{ asset: string; title: strin
     if (s === "overdue" || s === "due_soon") out.push({ asset: a.name, title: r.title, overdue: s === "overdue" });
   }
   return out;
+}
+
+/**
+ * Sets an asset's MOT reminder to the expiry date from a registration lookup: adds one (yearly)
+ * if it has none, or moves an existing one to the official date. Returns what it did.
+ */
+export async function ensureMotReminder(assetId: string, motExpiry: string): Promise<"added" | "updated" | "unchanged"> {
+  const { data: existing } = await supabase.from("asset_reminders").select("id, due_date").eq("asset_id", assetId).eq("active", true).ilike("title", "MOT").limit(1).maybeSingle();
+  if (existing) {
+    if (existing.due_date === motExpiry) return "unchanged";
+    const { error } = await supabase.from("asset_reminders").update({ due_date: motExpiry, notified_at: null }).eq("id", existing.id);
+    return error ? "unchanged" : "updated";
+  }
+  const { error } = await supabase.from("asset_reminders").insert({ asset_id: assetId, title: "MOT", interval_months: 12, due_date: motExpiry });
+  return error ? "unchanged" : "added";
+}
+
+/** Fills in an asset's year, colour and fuel where they're still empty (never overwrites). */
+export async function fillAssetDetails(assetId: string, details: { year_of_manufacture: number | null; colour: string | null; fuel_type: string | null }) {
+  const { data } = await supabase.from("assets").select("year_of_manufacture, colour, fuel_type").eq("id", assetId).maybeSingle();
+  if (!data) return;
+  const patch: Partial<typeof details> = {};
+  if (data.year_of_manufacture == null && details.year_of_manufacture != null) patch.year_of_manufacture = details.year_of_manufacture;
+  if (!data.colour && details.colour) patch.colour = details.colour;
+  if (!data.fuel_type && details.fuel_type) patch.fuel_type = details.fuel_type;
+  if (Object.keys(patch).length) await supabase.from("assets").update(patch).eq("id", assetId);
 }

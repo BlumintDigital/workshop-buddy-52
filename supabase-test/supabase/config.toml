@@ -160,3 +160,6 @@ verify_jwt = false
 
 [functions.import-data]
 verify_jwt = false
+
+[functions.lookup]
+verify_jwt = false
