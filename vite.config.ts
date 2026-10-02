@@ -1,11 +1,29 @@
-import { defineConfig } from "vite";
+import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { componentTagger } from "lovable-tagger";
 import { VitePWA } from "vite-plugin-pwa";
 
+// The version this build is, so support and Shoplane Control can see what each customer runs.
+// Vercel sets VERCEL_GIT_COMMIT_SHA; GitHub Actions sets GITHUB_SHA.
+const APP_VERSION = process.env.VERCEL_GIT_COMMIT_SHA || process.env.GITHUB_SHA || "dev";
+const BUILT_AT = new Date().toISOString();
+
+/** Writes /version.json, which Control's release health check reads. */
+const versionFile = (): Plugin => ({
+  name: "shoplane-version",
+  apply: "build",
+  generateBundle() {
+    this.emitFile({ type: "asset", fileName: "version.json", source: JSON.stringify({ version: APP_VERSION, built_at: BUILT_AT }) });
+  },
+});
+
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
+  define: {
+    __APP_VERSION__: JSON.stringify(APP_VERSION),
+    __APP_BUILT_AT__: JSON.stringify(BUILT_AT),
+  },
   server: {
     host: "::",
     port: 8080,
@@ -20,6 +38,7 @@ export default defineConfig(({ mode }) => ({
   },
   plugins: [
     react(),
+    versionFile(),
     mode === "development" && componentTagger(),
     VitePWA({
       strategies: "injectManifest",

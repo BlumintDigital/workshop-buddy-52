@@ -1,0 +1,80 @@
+name: Staging
+
+# Every merge to main goes to staging.shoplane.uk first, through Shoplane Control (the same
+# steps a customer release uses), then the smoke checks run against it. Control records the
+# result; a version only goes to customers from Control's Releases page once it has passed here.
+#
+# Customer sites never update from this workflow.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: staging
+  cancel-in-progress: false
+
+jobs:
+  staging:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Release this version to staging
+        id: release
+        run: node scripts/staging-release.mjs release "$GITHUB_SHA" "$MESSAGE"
+        env:
+          CONTROL_CI_TOKEN: ${{ secrets.CONTROL_CI_TOKEN }}
+          MESSAGE: ${{ github.event.head_commit.message }}
+
+      - name: Install test tools
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: Write the staging test accounts
+        run: |
+          printf '%s' "$E2E_STAGING_ENV" > .env.staging.e2e
+          mkdir -p e2e/.state
+          printf '%s' "$E2E_STAGING_MFA" > e2e/.state/mfa-secrets.staging.json
+        env:
+          E2E_STAGING_ENV: ${{ secrets.E2E_STAGING_ENV }}
+          E2E_STAGING_MFA: ${{ secrets.E2E_STAGING_MFA }}
+
+      - name: Smoke checks on staging
+        id: smoke
+        run: npx playwright test -c e2e/playwright.config.ts --reporter=list
+        env:
+          E2E_TARGET: staging
+          E2E_EXPECT_VERSION: ${{ github.sha }}
+
+      - name: Tell Control the result
+        if: always() && steps.release.outcome != 'skipped'
+        run: |
+          if [ "${{ steps.release.outcome }}" = "success" ] && [ "${{ steps.smoke.outcome }}" = "success" ]; then
+            node scripts/staging-release.mjs result "$GITHUB_SHA" passed "Smoke checks passed"
+          elif [ "${{ steps.release.outcome }}" != "success" ]; then
+            node scripts/staging-release.mjs result "$GITHUB_SHA" failed "The release to staging didn't finish"
+          else
+            node scripts/staging-release.mjs result "$GITHUB_SHA" failed "Smoke checks failed: $RUN_URL"
+          fi
+        env:
+          CONTROL_CI_TOKEN: ${{ secrets.CONTROL_CI_TOKEN }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+      - name: Keep the test report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: staging-smoke-report
+          path: |
+            e2e/.report
+            e2e/.results
+          retention-days: 14

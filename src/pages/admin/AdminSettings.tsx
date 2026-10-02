@@ -35,6 +35,7 @@ import { friendlyErrorMessage } from "@/lib/friendlyError";
 import { CURRENCIES } from "@/lib/currencies";
 import { PRESETS, hexToHslString, hslStringToHex, applyBrandColors, DEFAULT_BRAND, contrastWithWhite, ensureReadablePrimary } from "@/lib/brand-colors";
 import { AddressInput } from "@/components/lookup/AddressInput";
+import { versionLabel } from "@/lib/version";
 const currencies = CURRENCIES;
 
 const defaultSettings = {
@@ -1263,6 +1264,7 @@ export default function AdminSettings() {
           </div>
         </div>
       )}
+      <p className="mx-auto mt-8 max-w-6xl px-1 text-xs text-muted-foreground" data-testid="app-version">Shoplane version {versionLabel()}</p>
     </DashboardLayout>
   );
 }

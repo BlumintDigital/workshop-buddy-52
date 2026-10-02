@@ -3,16 +3,19 @@ import { resolve } from "node:path";
 
 /**
  * Where the suite runs. "local" (the default) is the test database from
- * `npm run test-db:start`; "prod" is the live app, for read-only checks only.
+ * `npm run test-db:start`; "prod" is the live app, for read-only checks only;
+ * "staging" is staging.shoplane.uk, checked after every release to it.
  */
-export type E2ETarget = "local" | "prod";
+export type E2ETarget = "local" | "prod" | "staging";
 export function e2eTarget(): E2ETarget {
-  return process.env.E2E_TARGET === "prod" ? "prod" : "local";
+  const t = process.env.E2E_TARGET;
+  return t === "prod" || t === "staging" ? t : "local";
 }
 
 /** The two-step sign-in codes differ per database, so each keeps its own file. */
 export function mfaSecretsFile(root: string = process.cwd()): string {
-  return resolve(root, "e2e/.state", e2eTarget() === "local" ? "mfa-secrets.local.json" : "mfa-secrets.json");
+  const t = e2eTarget();
+  return resolve(root, "e2e/.state", t === "local" ? "mfa-secrets.local.json" : t === "staging" ? "mfa-secrets.staging.json" : "mfa-secrets.json");
 }
 
 /**
@@ -21,7 +24,9 @@ export function mfaSecretsFile(root: string = process.cwd()): string {
  * `.env.testdb.local` comes first so its database wins. Existing process env wins.
  */
 export function loadEnvFiles(root: string = process.cwd()) {
-  const files = e2eTarget() === "local" ? [".env.testdb.local", ".env", ".env.e2e"] : [".env", ".env.e2e"];
+  const t = e2eTarget();
+  // Staging has its own database and accounts, all in .env.staging.e2e (written by CI from a secret).
+  const files = t === "local" ? [".env.testdb.local", ".env", ".env.e2e"] : t === "staging" ? [".env.staging.e2e"] : [".env", ".env.e2e"];
   for (const file of files) {
     const p = resolve(root, file);
     if (!existsSync(p)) continue;
