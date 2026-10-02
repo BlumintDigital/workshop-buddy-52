@@ -14,6 +14,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { DatePickerInput } from "@/components/ui/date-picker-input";
 import { StatusPill, type StatusTone } from "@/components/dashboard/StatusPill";
 import { formatDate } from "@/lib/format";
+import ShareQuoteDialog from "@/components/project/ShareQuoteDialog";
 
 export type Quote = {
   id: string;
@@ -64,7 +65,7 @@ export async function loadQuotes(jobId: string): Promise<Quote[]> {
 export const agreedTotal = (quotes: Quote[]) => quotes.filter((q) => q.status === "accepted").reduce((s, q) => s + q.subtotal, 0);
 
 interface Props {
-  project: { id: string; ref: string; title: string; status: string; client_id: string | null };
+  project: { id: string; ref: string; title: string; status: string; client_id: string | null; contact_email?: string | null };
   /** Reception, planners, admins and managers draft and send. */
   canQuote: boolean;
   onChanged?: () => void;
@@ -81,6 +82,7 @@ export default function ProjectQuotes({ project, canQuote, onChanged }: Props) {
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [editing, setEditing] = useState<Quote | { kind: Quote["kind"] } | null>(null);
   const [deciding, setDeciding] = useState<{ quote: Quote; accept: boolean } | null>(null);
+  const [sharing, setSharing] = useState<Quote | null>(null);
   const isAdmin = role === "admin";
 
   const load = useCallback(async () => setQuotes(await loadQuotes(project.id)), [project.id]);
@@ -209,6 +211,9 @@ export default function ProjectQuotes({ project, canQuote, onChanged }: Props) {
                       )}
                       {q.status === "sent" && (
                         <>
+                          <Button size="sm" onClick={() => setSharing(q)}>
+                            Share link
+                          </Button>
                           <Button size="sm" variant="outline" onClick={() => setDeciding({ quote: q, accept: true })}>
                             Record acceptance
                           </Button>
@@ -230,6 +235,13 @@ export default function ProjectQuotes({ project, canQuote, onChanged }: Props) {
           </ul>
         )}
       </CardContent>
+
+      <ShareQuoteDialog
+        open={!!sharing}
+        onOpenChange={(v) => !v && setSharing(null)}
+        quote={sharing ? { id: sharing.id, label: quoteLabel(project.ref, sharing) } : null}
+        defaultEmail={project.contact_email ?? null}
+      />
 
       {editing && (
         <QuoteEditor
