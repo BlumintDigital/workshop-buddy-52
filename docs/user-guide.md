@@ -13,6 +13,8 @@ Shoplane is a workshop management platform that takes every project from recepti
 - **Staff** — works on tasks for their teams and hands work on to the next team. Depending on their teams they may also run reception, inventory, shipping, billing or reports.
 - **Client** — follows their projects, accepts or declines quotes, books appointments, chooses collection or delivery and pays invoices through a self-service portal.
 
+Shoplane uses your workshop's own words. A machine repair shop sees **Machines**, serial numbers and running hours; a garage sees **Vehicles**, registrations and mileage; a fleet workshop sees **Fleet**; a marine or plant workshop sees **Equipment** and engine hours. This guide calls them all **assets**.
+
 Your workshop chooses which parts of Shoplane it uses. If a page in this guide isn't in your menu, that part may be switched off for your workshop, or your role or teams may not include it.
 
 The guide is organised so you can jump straight to your role, or read across roles to understand how work flows through the workshop. Section 8 follows a project from start to finish.
@@ -199,7 +201,7 @@ Each code shows its uses and status: **Active**, **Disabled**, **Expired** or **
 
 **Settings** is organised into sections. Changes are saved with **Save**; a bar warns you if you have unsaved changes, with **Discard** to undo them.
 
-- **General** — workshop name, contact email, phone and address. These appear on invoices, PDFs, emails and the client portal. **Onboarding** brings back the admin setup checklist on Today.
+- **General** — workshop name, **Type of workshop** (Industrial machine repair, Garage, Service fleet, or Marine & plant service; it sets the wording and the reception form, for example serial numbers and hours or registrations and mileage), contact email, phone and address. These appear on invoices, PDFs, emails and the client portal. **Onboarding** brings back the admin setup checklist on Today.
 - **Billing**:
   - **Default Tax Rate (%)** for new invoices.
   - **Project ID prefix** — 2 to 6 letters or numbers. EDL gives project IDs like EDL-202609-001 (prefix, year and month, then a number).
@@ -344,10 +346,11 @@ Each card shows whether the project is **paid**, **invoiced but unpaid**, **not 
 
 - **Log a machine** — record a machine as it arrives:
   1. Choose a portal **Client**, or enter a walk-in or phone customer's **Name**, **Phone** and optional **Email**.
-  2. Describe **What's come in**, the **Make and model**, **Serial or asset number**, the **Reported problem** in the customer's words, what it was **Received with**, and its **Condition on arrival**.
-  3. **Add photos of the machine**. Arrival photos are locked once saved and the client can see them.
-  4. Choose **What the customer wants**: **Evaluation** (assess it first, free), **Quote** (price it before work starts) or **Approved job** (work can begin). Set the **Priority** (Low, Normal, High, Urgent) and an optional **Wanted by** date.
-  5. Save. The project is created with its permanent ID and its page opens.
+  2. **Been in before?** Pick it from the client's assets shown under the client, or type its registration, serial or fleet number in the find box. Picking it fills in its details and adds this project to its service history.
+  3. Describe **What's come in**, the **Make and model**, its **Registration** or **Serial number** (whichever your workshop uses), the current **reading** (running hours or mileage), the **Reported problem** in the customer's words, what it was **Received with**, and its **Condition on arrival**.
+  4. **Add photos**. Arrival photos are locked once saved and the client can see them. Leave **Save to the customer's machines** (or vehicles, or equipment) ticked so a first-time item is added to the asset register with this project as its first visit.
+  5. Choose **What the customer wants**: **Evaluation** (assess it first, free), **Quote** (price it before work starts) or **Approved job** (work can begin). Set the **Priority** (Low, Normal, High, Urgent) and an optional **Wanted by** date.
+  6. Save. The project is created with its permanent ID and its page opens. If it's linked to an asset, the project's **Intake** card has a **Service history** link.
 - **Client requests** — repair and quote requests sent from the client portal, with their priority and preferred date. **Receive item** when the machine arrives and it becomes a project. **Decline** with a reason; the client sees your reason in the portal and is notified.
 - **Received this week** lists the latest machines with their stage, so the front desk can answer "where's my machine?" without leaving the page.
 
@@ -359,6 +362,21 @@ Staff need the Reception permission to use this page.
 - **An appointment's page** — its details and notes. **Log as a project** turns it into a project at Reception, linked to the appointment.
 - **Calendar** — projects by due date and appointments, by **Month** or **Week**. Show projects, appointments or both, and filter by status and priority. Figures at the top show projects due this month, appointments and overdue projects. Click a day to see its events, or **Create Job** to start a project due that day. Drag a project to another day to change its due date.
 - Collections and deliveries appear on the calendar by themselves once the client has chosen, and follow any change they make.
+
+### 5.11 Assets and service reminders
+
+The asset register is every machine, vehicle or piece of equipment your customers bring in. It's called **Machines**, **Vehicles**, **Fleet** or **Equipment** in the menu, depending on your type of workshop. Each asset keeps its own service history and its service reminders. Admins, managers and anyone with Reception or Project planning can add and change assets; everyone on the team can look them up.
+
+- **The list** — every asset with its owner, current reading and next service, and a **Due soon** or **Overdue** badge. Filter by **Due soon** or **Overdue**, or search by name, registration, serial, fleet number or owner. **Add** a new one with its owner, type, name, make and model, registration and VIN (vehicles) or serial number (everything else), current reading (hours, miles or km) and notes.
+- **An asset's page**:
+  - **Details** — make and model, identifiers, the latest reading and when it was taken, the owner and notes.
+  - **Service reminders** — each service or inspection that comes round again, with when it's next due, how often it repeats and when it was last done.
+  - **Service history** — every project this asset came in for, newest first, with the reading at the time.
+  - **New project** opens Reception already linked to the asset. The **⋯** menu has **Edit details**, **Update reading** and **Archive** (hides it from lists, keeps its history).
+- **Adding a reminder** — click **Add reminder**, then pick a common one (for example MOT, Annual service, PUWER inspection, LOLER thorough examination or Service every 500 hours) or type your own. Set how often it repeats (every so many months, every so many hours or miles, or both) and when it's next due (a date, a reading, or both: whichever comes first). Leave both repeat boxes empty for a one-off.
+- **When it comes due** — a reminder is **Due soon** within 14 days of its date, or within 10% of its reading; then **Overdue**. Each morning Shoplane tells the owner (if they have a portal login) and your admins, managers and reception that it's coming due. Today's **Needs attention** shows the services due, and the menu item shows a count.
+- **Mark done** — record the date and reading, and the project it was done on. The next one is set from the interval, so the cycle carries on by itself.
+- **Readings** — every project logged with a reading updates the asset's reading. You can also use **Update reading** at any time.
 
 ---
 
@@ -397,6 +415,7 @@ Depending on your teams you may also see:
 - **Invoices** — with the Billing permission (5.7).
 - **Reports** — with Reports and costs (4.7).
 - **Quality check** — passing or sending back finished work on a project (5.4).
+- **Machines, Vehicles, Fleet or Equipment** — look up a customer's asset, its service history and what's due (5.11). People with Reception or Project planning can add and edit them.
 
 If a link is missing, ask an admin to add you to the right team in **Teams and access**.
 
@@ -461,6 +480,16 @@ Once it's on its way you can see who collected it, or the courier and a **Track 
 ### 7.6 Rating your project
 
 After a project is finished, **Rate this project** asks for a star rating and optional feedback. It goes straight to the workshop and helps them improve.
+
+### 7.7 Your machines and vehicles
+
+When the workshop has the asset register switched on, your menu has **Machines**, **Vehicles** or **Equipment** (depending on the workshop). It lists everything of yours they look after, with what's coming due. Open one to see:
+
+- its details and latest reading;
+- its **service reminders**, with when each is next due (you're notified in the portal when one is coming up);
+- its **service history**: every job the workshop has done on it.
+
+**Request a service** sends the workshop a request about that machine or vehicle, already filled in. It shows at the top of Projects until reception receives it.
 
 ---
 
@@ -587,6 +616,15 @@ Use the button in the project's next step panel, for example New quote, Start qu
 **A client accepted a quote by phone. How do I record it?**
 Open the quote on the project and click **Record acceptance**. {roles: admin,manager}
 
+**How do I set up a service reminder?**
+Open the machine or vehicle from the asset register (Machines, Vehicles, Fleet or Equipment in the menu), click **Add reminder**, and pick a common service or type your own. See 5.11. {roles: admin,manager,staff}
+
+**Why does my menu say Vehicles (or Machines)?**
+Shoplane uses the words for your type of workshop. An admin can change the type in **Settings → General**. {roles: admin,manager}
+
+**When is my next service due?**
+Open **Machines** or **Vehicles** in your menu and choose the item; its service reminders show the next due date. You can request the service from the same page. {roles: client}
+
 **My currency still shows dollars after I changed it.**
 Refresh the page. The new currency applies to invoices, projects and reports automatically. {roles: admin,manager}
 
@@ -653,6 +691,9 @@ It only answers from your workshop's records and this guide, so try asking anoth
 - **Parts request** — parts a team asks stores for on a project. {roles: admin,manager,staff}
 - **Purchase order** — an order to a supplier, approved before it's placed. {roles: admin,manager,staff}
 - **Appointment** — a scheduled calendar slot, optionally linked to a project.
+- **Asset** — a customer's machine, vehicle or piece of equipment, with its service history and reminders. Called Machines, Vehicles, Fleet or Equipment in the menu.
+- **Service reminder** — a service or inspection that repeats every so many months or hours or miles; Shoplane tells the owner and the workshop when it's coming due.
+- **Reading** — running hours or mileage, recorded at each visit and used for reminders by hours or miles.
 - **Invoice** — the bill for work, which can be Draft, Sent, Paid, Overdue or Cancelled.
 - **Payment link** — a web page where the client pays online, shown as Pay Now.
 - **Invite code** — the code needed to sign up without being added by an admin. {roles: admin,manager}

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Camera, X } from "lucide-react";
+import { Camera, Link2, Search, X } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -10,7 +10,11 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DatePickerInput } from "@/components/ui/date-picker-input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { projectPath } from "@/lib/projects";
+import { useFeature } from "@/hooks/useFeatureFlags";
+import { findAssets, type Asset } from "@/hooks/useAssets";
+import { assetSummary, normaliseRegistration, useIndustry } from "@/lib/industry";
 import { cn } from "@/lib/utils";
 
 export type IntakeType = "evaluation" | "quote" | "approved";
@@ -19,6 +23,8 @@ export interface IntakePrefill {
   requestId?: string;
   /** The appointment this machine came in from; linked to the new project. */
   appointmentId?: string;
+  /** The asset this project is for (from its page, or a client request about it). */
+  assetId?: string | null;
   clientId?: string | null;
   title?: string;
   description?: string | null;
@@ -47,6 +53,8 @@ const WALK_IN = "__walk_in__";
 export default function IntakeForm({ clients, prefill, onCancel }: { clients: ReceptionClient[]; prefill?: IntakePrefill; onCancel?: () => void }) {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const profile = useIndustry();
+  const assetsOn = useFeature("assets");
   const [form, setForm] = useState({
     client: prefill?.clientId ?? WALK_IN,
     contact_name: "",
@@ -55,6 +63,8 @@ export default function IntakeForm({ clients, prefill, onCancel }: { clients: Re
     title: prefill?.title ?? "",
     make_model: "",
     serial_number: "",
+    registration: "",
+    meter_reading: "",
     accessories: "",
     description: prefill?.description ?? "",
     condition_notes: "",
@@ -76,10 +86,72 @@ export default function IntakeForm({ clients, prefill, onCancel }: { clients: Re
   const set = <K extends keyof typeof form>(key: K, value: (typeof form)[K]) => setForm((f) => ({ ...f, [key]: value }));
   const walkIn = form.client === WALK_IN;
 
+  // ---- The asset this is for: picked from the client's list, found by registration or serial,
+  // or saved as a new one so its service history starts here.
+  const [asset, setAsset] = useState<Asset | null>(null);
+  const [saveAsset, setSaveAsset] = useState(true);
+  const [clientAssets, setClientAssets] = useState<Asset[]>([]);
+  const [assetQuery, setAssetQuery] = useState("");
+  const [matches, setMatches] = useState<Asset[]>([]);
+
+  const pickAsset = (a: Asset) => {
+    setAsset(a);
+    setAssetQuery("");
+    setMatches([]);
+    setForm((f) => ({
+      ...f,
+      make_model: a.make_model ?? f.make_model,
+      serial_number: a.serial_number ?? f.serial_number,
+      registration: a.registration ?? f.registration,
+      client: a.client_id && clients.some((c) => c.id === a.client_id) ? a.client_id : a.client_id ? f.client : WALK_IN,
+      contact_name: !a.client_id && a.owner_name ? a.owner_name : f.contact_name,
+      contact_phone: !a.client_id && a.owner_phone ? a.owner_phone : f.contact_phone,
+      contact_email: !a.client_id && a.owner_email ? a.owner_email : f.contact_email,
+    }));
+  };
+
+  useEffect(() => {
+    if (!assetsOn || !prefill?.assetId) return;
+    void supabase.from("assets").select("*").eq("id", prefill.assetId).maybeSingle().then(({ data }) => {
+      if (data) pickAsset(data as Asset);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [assetsOn, prefill?.assetId]);
+
+  useEffect(() => {
+    if (!assetsOn || walkIn) {
+      setClientAssets([]);
+      return;
+    }
+    let cancelled = false;
+    void findAssets({ clientId: form.client }).then((list) => !cancelled && setClientAssets(list));
+    return () => {
+      cancelled = true;
+    };
+  }, [assetsOn, walkIn, form.client]);
+
+  useEffect(() => {
+    const q = assetQuery.trim();
+    if (!assetsOn || q.length < 2) {
+      setMatches([]);
+      return;
+    }
+    let cancelled = false;
+    const t = setTimeout(() => {
+      void findAssets({ query: q }).then((list) => !cancelled && setMatches(list));
+    }, 250);
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+    };
+  }, [assetsOn, assetQuery]);
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.title.trim()) return toast.error("Say what the machine is or what the work is");
     if (walkIn && !form.contact_name.trim() && !form.contact_phone.trim()) return toast.error("Add the customer's name or phone number");
+    const reading = form.meter_reading.trim() === "" ? null : Number(form.meter_reading);
+    if (reading != null && (Number.isNaN(reading) || reading < 0)) return toast.error("The reading must be a number of 0 or more");
     setSaving(true);
     const { data: id, error } = await supabase.rpc("create_project", {
       _p: {
@@ -97,6 +169,12 @@ export default function IntakeForm({ clients, prefill, onCancel }: { clients: Re
         priority: form.priority,
         due_date: form.due_date,
         source_request_id: prefill?.requestId ?? "",
+        registration: form.registration.trim() ? normaliseRegistration(form.registration) : "",
+        meter_reading: reading ?? "",
+        asset_id: asset?.id ?? "",
+        save_asset: assetsOn && !asset && saveAsset,
+        asset_kind: profile.asset.kind,
+        meter_unit: profile.asset.meterUnit,
       },
     });
     if (error || !id) {
@@ -169,19 +247,80 @@ export default function IntakeForm({ clients, prefill, onCancel }: { clients: Re
       </fieldset>
 
       <fieldset className="space-y-3">
-        <legend className="text-base font-semibold">Machine</legend>
+        <legend className="text-base font-semibold">{profile.intake.section}</legend>
+        {assetsOn && (
+          <div className="space-y-2 rounded-lg border bg-muted/30 p-3">
+            {asset ? (
+              <div className="flex flex-wrap items-center gap-2 text-sm">
+                <Link2 className="h-4 w-4 text-primary" aria-hidden />
+                <span>
+                  Linked to <strong>{assetSummary(asset)}</strong>. This project joins its service history.
+                </span>
+                <Button type="button" variant="ghost" size="sm" onClick={() => setAsset(null)}>Change</Button>
+              </div>
+            ) : (
+              <>
+                {clientAssets.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-xs text-muted-foreground">Their {profile.asset.plural}:</span>
+                    {clientAssets.slice(0, 8).map((a) => (
+                      <button key={a.id} type="button" onClick={() => pickAsset(a)} className="rounded-full border bg-card px-3 py-1 text-sm hover:bg-secondary">
+                        {assetSummary(a)}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <div className="relative">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
+                  <Input
+                    aria-label={profile.intake.findPlaceholder}
+                    value={assetQuery}
+                    onChange={(e) => setAssetQuery(e.target.value)}
+                    placeholder={`${profile.intake.findPlaceholder} (been in before?)`}
+                    className="pl-9"
+                    autoComplete="off"
+                  />
+                </div>
+                {matches.length > 0 && (
+                  <ul className="divide-y rounded-md border bg-card">
+                    {matches.map((a) => (
+                      <li key={a.id}>
+                        <button type="button" onClick={() => pickAsset(a)} className="w-full px-3 py-2 text-left text-sm hover:bg-secondary">
+                          <span className="font-medium">{assetSummary(a)}</span>
+                          {a.make_model && <span className="text-muted-foreground"> · {a.make_model}</span>}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </>
+            )}
+          </div>
+        )}
         <div>
           <Label htmlFor="f-intake-title">What's come in</Label>
-          <Input id="f-intake-title" value={form.title} onChange={(e) => set("title", e.target.value)} placeholder="e.g. Lathe, spindle noisy under load" maxLength={200} />
+          <Input id="f-intake-title" value={form.title} onChange={(e) => set("title", e.target.value)} placeholder={profile.intake.titlePlaceholder} maxLength={200} />
         </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {(profile.intake.showRegistration || asset?.kind === "vehicle") && (
+            <div>
+              <Label htmlFor="f-intake-reg">Registration</Label>
+              <Input id="f-intake-reg" value={form.registration} onChange={(e) => set("registration", e.target.value)} className="font-mono uppercase" autoComplete="off" />
+            </div>
+          )}
           <div>
             <Label htmlFor="f-intake-make">Make and model</Label>
-            <Input id="f-intake-make" value={form.make_model} onChange={(e) => set("make_model", e.target.value)} placeholder="e.g. Colchester Student 1800" />
+            <Input id="f-intake-make" value={form.make_model} onChange={(e) => set("make_model", e.target.value)} placeholder={profile.intake.makePlaceholder} />
           </div>
+          {(profile.intake.showSerial || (asset && asset.kind !== "vehicle")) && (
+            <div>
+              <Label htmlFor="f-intake-serial">{profile.intake.serialLabel}</Label>
+              <Input id="f-intake-serial" value={form.serial_number} onChange={(e) => set("serial_number", e.target.value)} />
+            </div>
+          )}
           <div>
-            <Label htmlFor="f-intake-serial">Serial or asset number</Label>
-            <Input id="f-intake-serial" value={form.serial_number} onChange={(e) => set("serial_number", e.target.value)} />
+            <Label htmlFor="f-intake-meter">{profile.intake.meterLabel}</Label>
+            <Input id="f-intake-meter" inputMode="decimal" value={form.meter_reading} onChange={(e) => set("meter_reading", e.target.value)} placeholder={asset?.meter_reading != null ? `Last: ${Math.round(asset.meter_reading).toLocaleString()}` : undefined} />
           </div>
         </div>
         <div>
@@ -211,7 +350,7 @@ export default function IntakeForm({ clients, prefill, onCancel }: { clients: Re
           />
           <Button type="button" variant="outline" onClick={() => photoInput.current?.click()}>
             <Camera className="mr-1.5 h-4 w-4" aria-hidden />
-            Add photos of the machine
+            Add photos of the {profile.asset.singular}
           </Button>
           {previews.length > 0 && (
             <ul className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-5">
@@ -234,6 +373,14 @@ export default function IntakeForm({ clients, prefill, onCancel }: { clients: Re
           )}
           <p className="mt-1 text-xs text-muted-foreground">Arrival photos are locked once saved and the client can see them.</p>
         </div>
+        {assetsOn && !asset && (
+          <label className="flex items-start gap-2 text-sm">
+            <Checkbox checked={saveAsset} onCheckedChange={(v) => setSaveAsset(v === true)} className="mt-0.5" />
+            <span>
+              Save to the customer's {profile.asset.plural}, so its service history and reminders build up
+            </span>
+          </label>
+        )}
       </fieldset>
 
       <fieldset className="space-y-3">

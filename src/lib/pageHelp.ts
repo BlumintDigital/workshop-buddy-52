@@ -56,6 +56,19 @@ const todayForManagers: Omit<RoleHelp, "guideHeading"> = {
   workflowNote: "Today looks across every stage, so you can spot work that's stuck.",
 };
 
+const assetsForWorkshop: RoleHelp = {
+  purpose: "Your customers' machines, vehicles or equipment, each with its service history and the services and inspections that come round again.",
+  actions: [
+    "Filter by Due soon or Overdue to see what to book in, or search by registration, serial or owner.",
+    "Open one to see every project it came in for, and use New project to log its next visit at Reception.",
+    "Add reminders (MOT, annual service, inspections, every so many hours or miles) and Mark done when the work is finished; the next one sets itself.",
+    "Update the reading (hours or mileage) so reminders by reading stay accurate.",
+  ],
+  stages: [],
+  workflowNote: "Owners and your team are told each morning when a service is coming due.",
+  guideHeading: "5.11 Assets and service reminders",
+};
+
 const projectsForManagers: RoleHelp = {
     purpose: "Every project, each with its permanent ID, from the moment it's logged to the moment it's shipped.",
     actions: [
@@ -193,7 +206,8 @@ export const PAGE_HELP: PageHelpEntry[] = [
       staff: {
         purpose: "Where every project starts: log a machine as it arrives, or receive a request a client sent from their portal.",
         actions: [
-          "In Log a machine, pick a portal client or enter a walk-in customer, then describe the machine, the reported problem and its condition on arrival.",
+          "In Log a machine, pick a portal client or enter a walk-in customer. Been in before? Pick it from their assets or find it by registration or serial, and the project joins its service history.",
+          "Describe what's come in, the reported problem, its reading and its condition on arrival.",
           "Add arrival photos; the client can see them.",
           "Choose how it came in: Evaluation (assess it first), Quote (price it before work) or Approved job (start work).",
           "In Client requests, receive a request when the machine arrives, or decline it with a reason.",
@@ -226,6 +240,26 @@ export const PAGE_HELP: PageHelpEntry[] = [
         actions: ["Open an invoice to view it, pay online or download it as a PDF."],
         stages: ["Shipped"],
         guideHeading: "7.4 Appointments and invoices",
+      },
+    },
+  },
+  {
+    key: "assets",
+    title: "Assets",
+    routes: ["/assets", "/assets/:id", "/client/assets"],
+    roles: {
+      admin: assetsForWorkshop,
+      manager: assetsForWorkshop,
+      staff: assetsForWorkshop,
+      client: {
+        purpose: "Everything of yours the workshop looks after, with what's coming due and every job done on it.",
+        actions: [
+          "Open one to see its service reminders and its full service history.",
+          "Use Request a service to ask the workshop to book it in.",
+        ],
+        stages: [],
+        workflowNote: "You're notified in the portal when a service is coming due.",
+        guideHeading: "7.7 Your machines and vehicles",
       },
     },
   },

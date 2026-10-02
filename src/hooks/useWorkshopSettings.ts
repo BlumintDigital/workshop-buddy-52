@@ -13,6 +13,8 @@ export type WorkshopSettings = {
   contact_email: string | null;
   brand_primary_hsl: string | null;
   brand_accent_hsl: string | null;
+  /** Industry profile (src/lib/industry.ts). */
+  industry: string | null;
   /** "full" when the caller can read workshop_settings (admins, managers); "public" for everyone else. */
   source: "full" | "public";
 };
@@ -20,7 +22,7 @@ export type WorkshopSettings = {
 export const WORKSHOP_SETTINGS_KEY = ["workshop-settings"] as const;
 
 const FULL_COLUMNS =
-  "workshop_name, logo_url, currency, enabled_currencies, address, phone, contact_email, brand_primary_hsl, brand_accent_hsl";
+  "workshop_name, logo_url, currency, enabled_currencies, address, phone, contact_email, brand_primary_hsl, brand_accent_hsl, industry";
 
 async function fetchWorkshopSettings(signedIn: boolean): Promise<WorkshopSettings> {
   // Admins and managers can read the table; skip the attempt for signed-out visitors.
@@ -38,6 +40,7 @@ async function fetchWorkshopSettings(signedIn: boolean): Promise<WorkshopSetting
       contact_email: data.contact_email ?? null,
       brand_primary_hsl: data.brand_primary_hsl ?? null,
       brand_accent_hsl: data.brand_accent_hsl ?? null,
+      industry: data.industry ?? null,
       source: "full",
     };
   }
@@ -45,7 +48,7 @@ async function fetchWorkshopSettings(signedIn: boolean): Promise<WorkshopSetting
   // contact details for anyone signed in (see get_public_workshop_settings).
   const { data: pub } = await supabase
     .from("workshop_settings_public")
-    .select("workshop_name, logo_url, currency, enabled_currencies, address, phone, contact_email, brand_primary_hsl, brand_accent_hsl")
+    .select("workshop_name, logo_url, currency, enabled_currencies, address, phone, contact_email, brand_primary_hsl, brand_accent_hsl, industry")
     .eq("id", 1)
     .maybeSingle();
   return {
@@ -58,6 +61,7 @@ async function fetchWorkshopSettings(signedIn: boolean): Promise<WorkshopSetting
     contact_email: pub?.contact_email ?? null,
     brand_primary_hsl: pub?.brand_primary_hsl ?? null,
     brand_accent_hsl: pub?.brand_accent_hsl ?? null,
+    industry: pub?.industry ?? null,
     source: "public",
   };
 }

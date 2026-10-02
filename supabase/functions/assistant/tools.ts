@@ -184,6 +184,49 @@ export async function runTool(name: string, input: Record<string, unknown>, ctx:
       return { content: { items: items.map((i: any) => ({ ...i, supplier_id: undefined, supplier: supplier[i.supplier_id] ?? null })) } };
     }
 
+    case "find_assets": {
+      let q = db.from("assets")
+        .select("id, name, kind, make_model, serial_number, registration, fleet_number, meter_reading, meter_unit, client_id, owner_name")
+        .is("archived_at", null).order("name").limit(input.due_only ? 200 : limitOf(input.limit));
+      const s = clean(input.search);
+      if (s) {
+        const compact = s.replace(/\s+/g, "");
+        q = q.or(`registration.ilike.%${s}%,registration.ilike.%${compact}%,serial_number.ilike.%${s}%,fleet_number.ilike.%${s}%,name.ilike.%${s}%`);
+      }
+      const { data: assets, error } = await q;
+      if (error) return { content: { error: error.message } };
+      const ids = (assets ?? []).map((a: any) => a.id);
+      const [{ data: reminders }, { data: jobs }] = ids.length
+        ? await Promise.all([
+          db.from("asset_reminders").select("asset_id, title, due_date, due_meter, interval_months, interval_meter, last_done_on").in("asset_id", ids).eq("active", true),
+          db.from("jobs").select("id, ref, title, status, asset_id, created_at").in("asset_id", ids).order("created_at", { ascending: false }).limit(60),
+        ])
+        : [{ data: [] }, { data: [] }];
+      const today = new Date().toISOString().slice(0, 10);
+      const soon = new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10);
+      const who = staffSide ? await names(db, (assets ?? []).map((a: any) => a.client_id)) : {};
+      let rows = (assets ?? []).map((a: any) => {
+        const rs = (reminders ?? []).filter((r: any) => r.asset_id === a.id).map((r: any) => {
+          const meterDue = r.due_meter != null && a.meter_reading != null;
+          const overdue = (r.due_date && r.due_date < today) || (meterDue && a.meter_reading >= r.due_meter);
+          const dueSoon = !overdue && ((r.due_date && r.due_date <= soon) ||
+            (meterDue && a.meter_reading >= r.due_meter - Math.max((r.interval_meter ?? r.due_meter) * 0.1, 1)));
+          return { title: r.title, due_date: r.due_date, due_reading: r.due_meter, last_done: r.last_done_on, state: overdue ? "overdue" : dueSoon ? "due soon" : "scheduled" };
+        });
+        return {
+          name: a.name, make_model: a.make_model, registration: a.registration, serial_number: a.serial_number, fleet_number: a.fleet_number,
+          reading: a.meter_reading != null ? `${Math.round(a.meter_reading)} ${a.meter_unit ?? ""}`.trim() : null,
+          link: `/assets/${a.id}`,
+          ...(staffSide ? { owner: who[a.client_id] ?? a.owner_name ?? null } : {}),
+          reminders: rs,
+          recent_projects: (jobs ?? []).filter((j: any) => j.asset_id === a.id).slice(0, 5)
+            .map((j: any) => ({ ref: j.ref, title: j.title, status: STATUS_LABEL[j.status] ?? j.status, link: `/projects/${j.id}` })),
+        };
+      });
+      if (input.due_only) rows = rows.filter((r: any) => r.reminders.some((m: any) => m.state !== "scheduled")).slice(0, limitOf(input.limit));
+      return { content: { assets: rows } };
+    }
+
     case "get_workshop_contact": {
       const { data } = await db.from("workshop_settings_public").select("workshop_name, contact_email, phone, address").eq("id", 1).maybeSingle();
       return { content: data ?? notFound("workshop details") };

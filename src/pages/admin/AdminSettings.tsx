@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { INDUSTRIES, INDUSTRY_KEYS } from "@/lib/industry";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -37,6 +38,7 @@ const currencies = CURRENCIES;
 
 const defaultSettings = {
   workshop_name: "",
+  industry: "industrial",
   contact_email: "",
   phone: "",
   address: "",
@@ -116,6 +118,7 @@ export default function AdminSettings() {
       if (data) {
         const loaded: Settings = {
           workshop_name: data.workshop_name ?? "",
+          industry: (data as { industry?: string }).industry ?? "industrial",
           contact_email: data.contact_email ?? "",
           phone: data.phone ?? "",
           address: data.address ?? "",
@@ -212,6 +215,7 @@ export default function AdminSettings() {
     const { error } = await (supabase.from("workshop_settings") as any).upsert({
       id: 1,
       workshop_name: settings.workshop_name || null,
+      industry: settings.industry || "industrial",
       contact_email: settings.contact_email || null,
       phone: settings.phone || null,
       address: settings.address || null,
@@ -632,6 +636,16 @@ export default function AdminSettings() {
                     <div>
                       <Label htmlFor="workshop_name">Workshop Name</Label>
                       <Input id="workshop_name" value={settings.workshop_name} onChange={(e) => set("workshop_name", e.target.value)} placeholder="My Workshop" className="mt-1" />
+                    </div>
+                    <div>
+                      <Label htmlFor="industry">Type of workshop</Label>
+                      <Select value={settings.industry} onValueChange={(v) => set("industry", v)}>
+                        <SelectTrigger id="industry" className="mt-1"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {INDUSTRY_KEYS.map((k) => <SelectItem key={k} value={k}>{INDUSTRIES[k].label}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                      <p className="mt-1 text-xs text-muted-foreground">{INDUSTRIES[settings.industry as keyof typeof INDUSTRIES]?.description} Sets the wording and the reception form, for example machines and serial numbers or vehicles and registrations.</p>
                     </div>
                     <div>
                       <Label htmlFor="contact_email">Contact Email</Label>

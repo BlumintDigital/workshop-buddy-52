@@ -16,22 +16,25 @@ interface Props {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   onCreated: () => void;
+  /** Asking for work on one of the client's assets (from its page). */
+  asset?: { id: string; name: string };
+  initialTitle?: string;
 }
 
 type RequestType = "quote" | "job";
 
-export default function NewRequestDialog({ open, onOpenChange, onCreated }: Props) {
+export default function NewRequestDialog({ open, onOpenChange, onCreated, asset, initialTitle }: Props) {
   const { user } = useAuth();
-  const [type, setType] = useState<RequestType>("quote");
-  const [title, setTitle] = useState("");
+  const [type, setType] = useState<RequestType>(asset ? "job" : "quote");
+  const [title, setTitle] = useState(initialTitle ?? "");
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState("medium");
   const [preferredDate, setPreferredDate] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   const reset = () => {
-    setType("quote");
-    setTitle("");
+    setType(asset ? "job" : "quote");
+    setTitle(initialTitle ?? "");
     setDescription("");
     setPriority("medium");
     setPreferredDate("");
@@ -51,6 +54,7 @@ export default function NewRequestDialog({ open, onOpenChange, onCreated }: Prop
       description: description.trim() || null,
       priority,
       preferred_date: preferredDate || null,
+      asset_id: asset?.id ?? null,
     });
     setSubmitting(false);
     if (error) {

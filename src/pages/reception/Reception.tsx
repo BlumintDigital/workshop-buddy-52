@@ -27,6 +27,7 @@ type Request = {
   description: string | null;
   priority: string;
   preferred_date: string | null;
+  asset_id?: string | null;
   created_at: string;
 };
 type Recent = { id: string; ref: string; title: string; status: string; intake_type: string; received_at: string | null; contact_name: string | null; client_id: string | null };
@@ -51,7 +52,7 @@ export default function Reception() {
     const since = new Date(Date.now() - 7 * 86400000).toISOString();
     const [c, r, j] = await Promise.all([
       supabase.rpc("reception_clients"),
-      supabase.from("client_requests").select("id, client_id, request_type, title, description, priority, preferred_date, created_at").eq("status", "pending").order("created_at"),
+      supabase.from("client_requests").select("id, client_id, request_type, title, description, priority, preferred_date, created_at, asset_id").eq("status", "pending").order("created_at"),
       supabase.from("jobs").select("id, ref, title, status, intake_type, received_at, contact_name, client_id").gte("received_at", since).order("received_at", { ascending: false }).limit(10),
     ]);
     setClients((c.data ?? []) as ReceptionClient[]);
@@ -68,6 +69,7 @@ export default function Reception() {
   // the intake with what's already known.
   const fromAppointment = params.get("appointment");
   const dueFromCalendar = params.get("due");
+  const fromAsset = params.get("asset");
   useEffect(() => {
     if (fromAppointment) {
       void supabase
@@ -87,8 +89,12 @@ export default function Reception() {
     } else if (dueFromCalendar) {
       setPrefill({ dueDate: dueFromCalendar });
       setFormKey((k) => k + 1);
+    } else if (fromAsset) {
+      // "New project" on an asset's page: start the intake linked to it.
+      setPrefill({ assetId: fromAsset });
+      setFormKey((k) => k + 1);
     }
-  }, [fromAppointment, dueFromCalendar]);
+  }, [fromAppointment, dueFromCalendar, fromAsset]);
 
   const clientName = useMemo(() => Object.fromEntries(clients.map((c) => [c.id, clientLabel(c)])), [clients]);
   const setTab = (t: string) => setParams(t === "requests" ? { tab: "requests" } : {}, { replace: true });
@@ -102,6 +108,7 @@ export default function Reception() {
       intakeType: r.request_type === "quote" ? "quote" : "approved",
       dueDate: r.preferred_date,
       priority: r.priority,
+      assetId: r.asset_id ?? null,
     });
     setFormKey((k) => k + 1);
     setTab("log");

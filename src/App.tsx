@@ -44,6 +44,9 @@ const AdminFeedback = lazy(() => import("@/pages/admin/AdminFeedback"));
 const AdminSignupCodes = lazy(() => import("@/pages/admin/AdminSignupCodes"));
 const AdminAccessReview = lazy(() => import("@/pages/admin/AdminAccessReview"));
 const Privacy = lazy(() => import("@/pages/Privacy"));
+const AssetsPage = lazy(() => import("@/pages/assets/AssetsPage"));
+const AssetDetail = lazy(() => import("@/pages/assets/AssetDetail"));
+const ClientAssets = lazy(() => import("@/pages/client/ClientAssets"));
 const Terms = lazy(() => import("@/pages/Terms"));
 
 // Manager pages
@@ -187,9 +190,12 @@ function AppRoutes() {
         <Route path="/client/dashboard" element={<ProtectedRoute allowedRoles={["client"]}><FeatureRoute feature="client_portal"><ClientDashboard /></FeatureRoute></ProtectedRoute>} />
         <Route path="/client/projects" element={<ProtectedRoute allowedRoles={["client"]}><FeatureRoute feature="client_portal"><ClientJobs /></FeatureRoute></ProtectedRoute>} />
         <Route path="/client/appointments" element={<ProtectedRoute allowedRoles={["client"]}><FeatureRoute feature="client_portal"><FeatureRoute feature="appointments"><ClientAppointments /></FeatureRoute></FeatureRoute></ProtectedRoute>} />
+        <Route path="/client/assets" element={<ProtectedRoute allowedRoles={["client"]}><FeatureRoute feature="client_portal"><FeatureRoute feature="assets"><ClientAssets /></FeatureRoute></FeatureRoute></ProtectedRoute>} />
         <Route path="/client/invoices" element={<ProtectedRoute allowedRoles={["client"]}><FeatureRoute feature="client_portal"><ClientInvoices /></FeatureRoute></ProtectedRoute>} />
         {/* Requests now sit at the top of the client's Projects list. */}
         <Route path="/client/requests" element={<LegacyListRedirect to="/client/projects" />} />
+        <Route path="/assets" element={<ProtectedRoute allowedRoles={["admin", "manager", "staff"]}><FeatureRoute feature="assets"><AssetsPage /></FeatureRoute></ProtectedRoute>} />
+        <Route path="/assets/:id" element={<ProtectedRoute allowedRoles={["admin", "manager", "staff", "client"]}><ClientPortalRoute><FeatureRoute feature="assets"><AssetDetail /></FeatureRoute></ClientPortalRoute></ProtectedRoute>} />
         <Route path="/reception" element={<ProtectedRoute allowedRoles={["admin", "manager", "staff"]}><Reception /></ProtectedRoute>} />
         <Route path="/shipping" element={<ProtectedRoute allowedRoles={["admin", "manager", "staff"]}><FeatureRoute feature="shipping"><ShippingPortal /></FeatureRoute></ProtectedRoute>} />
         <Route path="/inventory/*" element={<ProtectedRoute allowedRoles={["admin", "manager", "staff"]}><FeatureRoute feature="inventory"><InventoryPortal /></FeatureRoute></ProtectedRoute>} />

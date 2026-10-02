@@ -18,6 +18,7 @@ const LABELS: Record<FeatureKey, string> = {
   accounting_sync: "Accounting sync",
   backup_restore: "Backup & Restore",
   assistant: "Assistant",
+  assets: "Asset register",
   generate_sample_data: "Sample data generation",
   setup_demo_users: "Demo user setup",
 };
