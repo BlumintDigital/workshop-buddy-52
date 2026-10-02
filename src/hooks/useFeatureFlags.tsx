@@ -21,7 +21,8 @@ export type FeatureKey =
   | "generate_sample_data"
   | "setup_demo_users"
   | "backup_restore"
-  | "assistant";
+  | "assistant"
+  | "assets";
 
 export type FeatureFlags = Record<FeatureKey, boolean>;
 
@@ -44,6 +45,7 @@ export const FEATURE_DEFAULTS: FeatureFlags = {
   setup_demo_users: false,
   backup_restore: false,
   assistant: false,
+  assets: true,
 };
 
 const FEATURE_KEYS = Object.keys(FEATURE_DEFAULTS) as FeatureKey[];

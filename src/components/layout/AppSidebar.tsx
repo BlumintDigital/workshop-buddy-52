@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useIndustry } from "@/lib/industry";
 import { ChevronDown, ChevronRight, LogOut, Monitor, Moon, Sun, User } from "lucide-react";
 import { useTheme } from "next-themes";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -44,13 +45,15 @@ function NavItems({
   counts: NavCounts;
   onNavigate: () => void;
 }) {
+  const industry = useIndustry();
   return (
     <SidebarMenu>
       {items.map((item) => {
         const count = item.count ? counts[item.count] ?? 0 : 0;
+        const title = item.industryLabel ? industry.asset.navLabel : item.title;
         return (
           <SidebarMenuItem key={item.url}>
-            <SidebarMenuButton asChild isActive={isItemActive(item, pathname)} tooltip={item.title}>
+            <SidebarMenuButton asChild isActive={isItemActive(item, pathname)} tooltip={title}>
               <NavLink
                 to={item.url}
                 end={item.exact}
@@ -58,7 +61,7 @@ function NavItems({
                 onClick={onNavigate}
               >
                 <item.icon className="h-5 w-5" />
-                {!collapsed && <span>{item.title}</span>}
+                {!collapsed && <span>{title}</span>}
               </NavLink>
             </SidebarMenuButton>
             {count > 0 && !collapsed && (

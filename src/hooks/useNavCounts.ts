@@ -4,9 +4,10 @@ import { useAuth } from "@/hooks/useAuth";
 import { usePendingRequestCount } from "@/hooks/usePendingRequestCount";
 import { useSharedDashboardFetchers } from "@/hooks/useDashboardQueries";
 import { useVisibleInterval } from "@/hooks/useVisibleInterval";
+import { fetchDueReminders } from "@/hooks/useAssets";
 
 /** Keys a nav item can show a live count for. */
-export type NavCountKey = "requests" | "reviewJobs" | "overdueInvoices" | "lowStock" | "quotesToDecide" | "myOpenJobs" | "toShip";
+export type NavCountKey = "requests" | "reviewJobs" | "overdueInvoices" | "lowStock" | "quotesToDecide" | "myOpenJobs" | "toShip" | "assetsDue";
 
 export type NavCounts = Partial<Record<NavCountKey, number>>;
 
@@ -28,6 +29,8 @@ function useLoadNavCounts(): NavCounts {
         shared.lowStockItems().then((r) => r.length).catch(() => 0),
       ]);
       Object.assign(next, { reviewJobs: review, overdueInvoices: overdue, lowStock });
+      // Services due soon or overdue (none when the asset register is off: the table refuses reads).
+      next.assetsDue = await fetchDueReminders().then((r) => r.length).catch(() => 0);
     } else if (role === "staff") {
       // Open tasks assigned to me (the work, not the projects).
       const { count } = await supabase

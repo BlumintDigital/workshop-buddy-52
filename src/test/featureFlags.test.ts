@@ -28,6 +28,7 @@ describe("normalizeFeatureFlags", () => {
       setup_demo_users: false,
       backup_restore: false,
       assistant: false,
+      assets: true,
     });
   });
 

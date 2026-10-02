@@ -4,6 +4,7 @@ import { useAuth, type AppRole } from "@/hooks/useAuth";
 import { useCurrency } from "@/hooks/useCurrency";
 import { DASHBOARD_KEY, DASHBOARD_STALE_MS, useDashboardSnapshotFetcher } from "@/hooks/useDashboardQueries";
 import { todayIso, type DashboardSnapshot } from "@/lib/dashboardQueries";
+import { fetchDueReminders } from "@/hooks/useAssets";
 
 export type AttentionSeverity = "danger" | "warning" | "info";
 
@@ -45,7 +46,22 @@ export function useAttentionItems() {
       const privileged = role === "admin" || role === "manager";
       // One dashboard_today call, shared with the Today cards. If it fails, still show what we can.
       const snapshot = privileged ? await fetchSnapshot().catch(() => null) : null;
-      return buildAttentionItems(role as AppRole, mfaEnabled, format, snapshot);
+      const items = buildAttentionItems(role as AppRole, mfaEnabled, format, snapshot);
+      // Services coming due on customers' assets (nothing when the asset register is off).
+      const due = privileged ? await fetchDueReminders().catch(() => []) : [];
+      if (due.length > 0) {
+        const overdue = due.filter((d) => d.overdue).length;
+        items.push({
+          id: "assets-due",
+          severity: overdue ? "warning" : "info",
+          label: overdue ? "Service overdue" : "Service due",
+          title: `${due.length} ${due.length === 1 ? "service" : "services"} due on customers' ${due.length === 1 ? "equipment" : "equipment"}`,
+          meta: listPreview(due.map((d) => `${d.title}: ${d.asset}`)),
+          action: { label: "View", to: "/assets?filter=due" },
+        });
+        items.sort((a, b) => SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity]);
+      }
+      return items;
     },
     enabled: !authLoading && !!role,
     staleTime: DASHBOARD_STALE_MS,

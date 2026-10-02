@@ -8,6 +8,7 @@ import {
   Briefcase,
   Calendar,
   CalendarDays,
+  Cog,
   FileText,
   Home,
   Inbox,
@@ -41,6 +42,8 @@ export type NavItem = {
   exact?: boolean;
   /** Shown only to people who hold this permission (admins hold every one). */
   permission?: Permission;
+  /** Title comes from the workshop's industry profile (Machines, Vehicles, Fleet, Equipment). */
+  industryLabel?: boolean;
 };
 
 export type NavGroup = {
@@ -69,6 +72,7 @@ export const NAV_GROUPS: Record<AppRole, NavGroup[]> = {
         TODAY_ADMIN,
         { title: "Projects", url: "/admin/projects", icon: Briefcase, count: "reviewJobs" },
         { title: "Reception", url: "/reception", icon: Inbox, count: "requests" },
+        { title: "Assets", url: "/assets", icon: Cog, features: ["assets"], count: "assetsDue", industryLabel: true },
         { title: "Appointments", short: "Bookings", url: "/admin/appointments", icon: Calendar, features: ["appointments"] },
         { title: "Calendar", url: "/admin/calendar", icon: CalendarDays, features: ["appointments"] },
         { title: "Invoices", url: "/admin/invoices", icon: FileText, count: "overdueInvoices" },
@@ -105,6 +109,7 @@ export const NAV_GROUPS: Record<AppRole, NavGroup[]> = {
         TODAY_MANAGER,
         { title: "Projects", url: "/manager/projects", icon: Briefcase, count: "reviewJobs" },
         { title: "Reception", url: "/reception", icon: Inbox, count: "requests" },
+        { title: "Assets", url: "/assets", icon: Cog, features: ["assets"], count: "assetsDue", industryLabel: true },
         { title: "Appointments", short: "Bookings", url: "/manager/appointments", icon: Calendar, features: ["appointments"] },
         { title: "Calendar", url: "/manager/calendar", icon: CalendarDays, features: ["appointments"] },
         { title: "Invoices", url: "/manager/invoices", icon: FileText, count: "overdueInvoices" },
@@ -124,6 +129,7 @@ export const NAV_GROUPS: Record<AppRole, NavGroup[]> = {
         { title: "My day", url: "/staff/dashboard", icon: Home, exact: true },
         { title: "My projects", short: "Projects", url: "/staff/projects", icon: Briefcase, count: "myOpenJobs" },
         { title: "Reception", url: "/reception", icon: Inbox, count: "requests", permission: "reception" },
+        { title: "Assets", url: "/assets", icon: Cog, features: ["assets"], industryLabel: true },
         { title: "Schedule", url: "/staff/schedule", icon: Calendar, features: ["appointments"] },
         { title: "Inventory", short: "Stock", url: "/inventory", icon: Package, features: ["inventory"] },
         { title: "Shipping", url: "/shipping", icon: Truck, features: ["shipping"], count: "toShip", permission: "shipping" },
@@ -139,6 +145,7 @@ export const NAV_GROUPS: Record<AppRole, NavGroup[]> = {
       items: [
         { title: "Your orders", short: "Orders", url: "/client/dashboard", icon: Home, exact: true, features: ["client_portal"] },
         { title: "Projects", url: "/client/projects", icon: Briefcase, count: "quotesToDecide", features: ["client_portal"] },
+        { title: "Assets", url: "/client/assets", icon: Cog, features: ["client_portal", "assets"], industryLabel: true },
         { title: "Appointments", short: "Bookings", url: "/client/appointments", icon: Calendar, features: ["client_portal", "appointments"] },
         { title: "Invoices", url: "/client/invoices", icon: FileText, features: ["client_portal"] },
       ],

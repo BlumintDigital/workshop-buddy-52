@@ -440,7 +440,7 @@ Deno.serve(async (req) => {
           "workshop_name", "address", "phone", "contact_email", "logo_url",
           "login_image_url", "currency", "default_tax_rate", "from_email",
           "email_notifications_enabled", "notify_job_status",
-          "notify_low_inventory", "notify_new_appointment",
+          "notify_low_inventory", "notify_new_appointment", "industry",
         ];
         const updates: Record<string, unknown> = {};
         for (const key of allowed) {
@@ -1274,12 +1274,12 @@ Deno.serve(async (req) => {
       //     → toggle a flag (flip its current value); returns { key, enabled } with new state
       //
       // Valid keys: appointments | client_portal | goals | reports | job_chat | inventory | shipping |
-      //             accounting_sync | generate_sample_data | setup_demo_users | backup_restore | assistant
+      //             accounting_sync | generate_sample_data | setup_demo_users | backup_restore | assistant | assets
       case "feature_flags": {
         const VALID_KEYS = [
           "appointments", "client_portal", "goals", "reports", "job_chat",
           "inventory", "shipping", "accounting_sync",
-          "generate_sample_data", "setup_demo_users", "backup_restore", "assistant",
+          "generate_sample_data", "setup_demo_users", "backup_restore", "assistant", "assets",
         ];
 
         if (req.method === "GET") {
