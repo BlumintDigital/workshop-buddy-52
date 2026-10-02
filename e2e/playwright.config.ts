@@ -39,9 +39,9 @@ export default defineConfig({
     { name: "setup", testMatch: /global\.setup\.ts/ },
     {
       name: "chromium",
-      // channel: "chrome" uses the locally installed Google Chrome, so no
-      // Playwright browser download is required (CI uses Playwright's own Chromium).
-      use: { browserName: "chromium", ...(process.env.CI ? {} : { channel: "chrome" }) },
+      // channel: "chrome" uses the installed Google Chrome (GitHub's runners have it too), so no
+      // Playwright browser download is required.
+      use: { browserName: "chromium", channel: "chrome" },
       dependencies: ["setup"],
       testIgnore: /global\.setup\.ts/,
       // Production gets only the specs that don't create or change data.

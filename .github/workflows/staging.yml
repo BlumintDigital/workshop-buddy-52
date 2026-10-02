@@ -37,7 +37,6 @@ jobs:
       - name: Install test tools
         run: |
           npm ci
-          npx playwright install --with-deps chromium
 
       - name: Write the staging test accounts
         run: |
