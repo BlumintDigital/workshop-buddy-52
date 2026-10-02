@@ -28,6 +28,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { FeatureGate } from "@/hooks/useFeatureFlags";
 import ProjectActivity from "@/components/project/ProjectActivity";
 import ProjectFiles from "@/components/project/ProjectFiles";
+import { PrintMenu } from "@/components/print/PrintMenu";
 import ClientProjectView from "@/components/project/ClientProjectView";
 import { JobStatusPill } from "@/components/dashboard/StatusPill";
 import { manualStatusOptions, projectPath, projectsListPath, projectStatusLabel } from "@/lib/projects";
@@ -336,6 +337,8 @@ export default function JobDetail() {
             <h1 className="text-2xl font-semibold tracking-tight">{job.title}</h1>
             <p className="max-w-prose whitespace-pre-line text-sm text-muted-foreground">{job.description || "No description"}</p>
           </div>
+          <div className="flex shrink-0 flex-wrap items-start gap-2">
+          {canAddUpdate && <PrintMenu projectId={job.id} />}
           {canEdit && (
             <div className="flex gap-2 shrink-0 flex-wrap">
               <Button variant="outline" size="sm" disabled={generatingReport} onClick={async () => {
@@ -363,6 +366,7 @@ export default function JobDetail() {
               <Link to={`/invoices/new?jobId=${job.id}`}>Create invoice</Link>
             </Button>
           )}
+          </div>
         </div>
 
         <ProjectStageActions

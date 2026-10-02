@@ -8,7 +8,9 @@ loadEnvFiles();
 // writes test data to production. `npm run test:e2e:prod` runs only the
 // read-only checks against the live app.
 const target = e2eTarget();
-const LOCAL_URL = "http://localhost:8081";
+// E2E_PORT moves the local dev server off 8081 when another app is using it.
+const LOCAL_PORT = process.env.E2E_PORT ?? "8081";
+const LOCAL_URL = `http://localhost:${LOCAL_PORT}`;
 if (target === "local" && !/^http:\/\/(127\.0\.0\.1|localhost)[:/]/.test(process.env.VITE_SUPABASE_URL ?? "")) {
   throw new Error(
     "The local test database isn't set up. Run `npm run test-db:start` and `npm run test-db:reset` first, " +
@@ -49,6 +51,6 @@ export default defineConfig({
   // Starts the app against the test database unless it's already running.
   webServer:
     target === "local"
-      ? { command: "npm run dev:test", url: LOCAL_URL, reuseExistingServer: true, timeout: 120_000 }
+      ? { command: `npx vite --mode testdb --port ${LOCAL_PORT} --strictPort`, cwd: "..", url: LOCAL_URL, reuseExistingServer: true, timeout: 120_000 }
       : undefined,
 });

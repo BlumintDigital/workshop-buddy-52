@@ -376,6 +376,19 @@ Each card shows whether the project is **paid**, **invoiced but unpaid**, **not 
 
 Staff need the Reception permission to use this page.
 
+**Job cards and labels.** On any project page, **Print** gives you two choices. Each opens in a new tab with the print dialog ready.
+
+- **Job card (A4)** is a sheet that travels with the machine. It has:
+  - your logo and the project ID, with a QR code
+  - the customer, the item's details and its reading
+  - the reported problem, what it came with and its condition on arrival
+  - the tasks, with boxes to tick and spaces for hours and initials
+  - blank lines for parts used and technician notes
+  - quality check and customer signature lines
+- **QR label (62 mm)** is a sticker for the machine or its tag. It shows the QR code, the project ID, what it is, the customer and the date it came in. Pick **62 × 40 mm** for a continuous 62 mm roll, or **62 × 29 mm** for Brother DK-11209 labels. In the print dialog, choose your label printer, set the paper to the same size and set the margins to none.
+
+Scanning a project's code with a phone opens that project in Shoplane, for anyone on the team who is signed in.
+
 ### 5.10 Appointments and calendar
 
 - **Appointments** — every booking, in **Upcoming**, **Today** and **Past** tabs. **New appointment**: title, client, date, time, type, duration in minutes and notes. Change an appointment's status with **Mark as** (for example Confirmed, Completed or Cancelled), or **Edit** or **Delete** it. **Export to calendar** downloads the bookings for Outlook, Google or Apple Calendar.
@@ -397,6 +410,7 @@ The asset register is every machine, vehicle or piece of equipment your customer
 - **When it comes due** — a reminder is **Due soon** within 14 days of its date, or within 10% of its reading; then **Overdue**. Each morning Shoplane tells the owner (if they have a portal login) and your admins, managers and reception that it's coming due. Today's **Needs attention** shows the services due, and the menu item shows a count.
 - **Mark done** — record the date and reading, and the project it was done on. The next one is set from the interval, so the cycle carries on by itself.
 - **Readings** — every project logged with a reading updates the asset's reading. You can also use **Update reading** at any time.
+- **Print label** on an asset's page prints a QR sticker with its registration, fleet or serial number, its name and owner. Stick it on the machine: scanning it opens its service history, so whoever is standing next to it can see what was done last and what's due.
 
 ---
 

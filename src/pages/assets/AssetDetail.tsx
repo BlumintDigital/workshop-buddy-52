@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, CalendarClock, Check, Gauge, MoreHorizontal, Pencil, Plus, Trash2, Wrench } from "lucide-react";
+import { ArrowLeft, CalendarClock, Check, Gauge, MoreHorizontal, Pencil, Plus, Printer, Trash2, Wrench } from "lucide-react";
 import { toast } from "sonner";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
@@ -116,6 +116,9 @@ export default function AssetDetail() {
                 {has("reception") && (
                   <Button onClick={() => navigate(`/reception?asset=${asset.id}`)}><Plus className="mr-1.5 h-4 w-4" aria-hidden />New project</Button>
                 )}
+                <Button variant="outline" asChild>
+                  <a href={`/print/asset-label/${asset.id}`} target="_blank" rel="noopener"><Printer className="mr-1.5 h-4 w-4" aria-hidden />Print label</a>
+                </Button>
                 {canManage && (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
