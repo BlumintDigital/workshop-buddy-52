@@ -240,6 +240,25 @@ Each code shows its uses and status: **Active**, **Disabled**, **Expired** or **
 - **Issue Reports** — problems people sent with **Report Issue**, with who sent them, the page they were on and their browser. Switch between **Open** and **Resolved**, and mark each one resolved when it's dealt with.
 - **Access Review** — every user with their role, status and last sign-in, marked **Active**, **Stale** (not signed in for a long time) or **Inactive**. **Deactivate**, **Activate** or **Remove role** from each row, and **Export CSV** to keep a record. Do this review every quarter and keep the export.
 
+### 4.9 Import and export
+
+**Import and export** (in the Admin menu, for admins and managers) brings your existing records into Shoplane from spreadsheets, and gives you a copy of what's there.
+
+There's a section for each kind of data: **Clients** (called Customers in a garage), **Stock**, and your **Machines**, **Vehicles**, **Fleet** or **Equipment**. Each section has:
+
+- **Sample file** — a CSV with the columns for your type of workshop and two example rows. Garages get registration, mileage and MOT due; machine shops get serial number and running hours; fleets also get fleet number.
+- **Export** — what's already in Shoplane, in the same columns, so you can edit and re-import, or keep a copy.
+- **Upload CSV** — choose your file. Shoplane matches your column names to its own (for example "Reg No" to Registration, "Qty" to Quantity), shows which columns it will ignore, and checks every row before anything is saved: a preview, how many rows are ready, and each problem by line. Dates can be written 2027-03-14 or 14/03/2027.
+- **Import** — saves the rows that are ready, then shows how many were imported, skipped and not imported, with **Download results** listing each line.
+
+Good to know:
+
+- Import clients first, then assets: an asset's **Owner email** links it to that client. Leave it empty for a walk-in owner and give their name instead.
+- Imported clients get a portal login but **aren't emailed**. Invite them when you're ready with **Send sign-in link** on the Clients page.
+- Rows already in Shoplane (same email, same SKU or item name, same registration or serial) are skipped, never changed. Running the same file twice is safe.
+- Stock suppliers are matched by name, or added. An asset row can add a service reminder (Service, Service due, Service every months) and, for vehicles, a yearly MOT reminder from MOT due.
+- Save spreadsheets as **CSV (comma separated)**. Up to 2,000 rows a file.
+
 ---
 
 ## 5. Manager Guide
@@ -619,6 +638,9 @@ Open the sent quote on the project and click **Share link**. Email it or copy th
 
 **A client accepted a quote by phone. How do I record it?**
 Open the quote on the project and click **Record acceptance**. {roles: admin,manager}
+
+**How do I bring in our existing customers, stock and equipment?**
+Use **Import and export** in the Admin menu: download the sample file, fill it in or match your columns to it, and upload it. See 4.9. {roles: admin,manager}
 
 **How do I set up a service reminder?**
 Open the machine or vehicle from the asset register (Machines, Vehicles, Fleet or Equipment in the menu), click **Add reminder**, and pick a common service or type your own. See 5.11. {roles: admin,manager,staff}

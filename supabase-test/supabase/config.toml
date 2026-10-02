@@ -157,3 +157,6 @@ verify_jwt = false
 
 [functions.quote-link]
 verify_jwt = false
+
+[functions.import-data]
+verify_jwt = false
