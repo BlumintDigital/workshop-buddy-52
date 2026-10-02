@@ -49,7 +49,7 @@ test.describe.serial("settings and goals", () => {
   test("goals page renders the monthly goal for admin", async ({ page }) => {
     await login(page, "ADMIN");
     await page.goto("/goals");
-    await expect(page.getByText("This Month", { exact: true })).toBeVisible({ timeout: 15_000 });
-    await expect(page.getByText(/% of monthly goal|Goal reached!/).first()).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Goals", level: 1 })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText(/% of the monthly goal|Goal reached/).first()).toBeVisible();
   });
 });
