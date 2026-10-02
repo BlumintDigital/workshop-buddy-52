@@ -12,6 +12,7 @@ const SRC = join(__dirname, "..");
 const EXEMPT = [
   `components${sep}ui${sep}`, // shadcn base kit, themed through tokens
   `test${sep}`,
+  `pages${sep}PrintPage.tsx`, // paper: fixed black-on-white at printed sizes, not the screen theme
 ];
 
 function sourceFiles(dir: string): string[] {

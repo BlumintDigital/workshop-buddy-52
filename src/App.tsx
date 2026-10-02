@@ -50,6 +50,7 @@ const ImportData = lazy(() => import("@/pages/admin/ImportData"));
 const AssetDetail = lazy(() => import("@/pages/assets/AssetDetail"));
 const ClientAssets = lazy(() => import("@/pages/client/ClientAssets"));
 const Terms = lazy(() => import("@/pages/Terms"));
+const PrintPage = lazy(() => import("@/pages/PrintPage"));
 
 // Manager pages
 const ManagerDashboard = lazy(() => import("@/pages/manager/ManagerDashboard"));
@@ -234,6 +235,8 @@ function AppRoutes() {
       {/* Standalone pages (no app shell) */}
       {/* Goals is shown on a screen on the workshop floor, so it has no app menu. */}
       <Route path="/goals" element={<ProtectedRoute allowedRoles={["admin", "manager", "staff"]}><FeatureRoute feature="goals"><GoalsPage /></FeatureRoute></ProtectedRoute>} />
+      {/* Job cards and QR labels print on their own page, without the app menu. */}
+      <Route path="/print/:kind/:id" element={<ProtectedRoute allowedRoles={["admin", "manager", "staff"]}><PrintPage /></ProtectedRoute>} />
       <Route path="/privacy" element={<Privacy />} />
       {/* Quote approval by link: public, no account. */}
       <Route path="/q/:token" element={<QuoteApproval />} />
