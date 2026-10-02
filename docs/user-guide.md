@@ -203,7 +203,7 @@ Each code shows its uses and status: **Active**, **Disabled**, **Expired** or **
 
 **Settings** is organised into sections. Changes are saved with **Save**; a bar warns you if you have unsaved changes, with **Discard** to undo them.
 
-- **General** — workshop name, **Type of workshop** (Industrial machine repair, Garage, Service fleet, or Marine & plant service; it sets the wording and the reception form, for example serial numbers and hours or registrations and mileage), contact email, phone and address. These appear on invoices, PDFs, emails and the client portal. **Onboarding** brings back the admin setup checklist on Today.
+- **General** — workshop name, **Type of workshop** (Industrial machine repair, Garage, Service fleet, or Marine & plant service; it sets the wording and the reception form for everyone, for example serial numbers and hours or registrations and mileage. You can switch between the types included in your plan; to add another, contact Shoplane), contact email, phone and address. These appear on invoices, PDFs, emails and the client portal. **Onboarding** brings back the admin setup checklist on Today.
 - **Billing**:
   - **Default Tax Rate (%)** for new invoices.
   - **Project ID prefix** — 2 to 6 letters or numbers. EDL gives project IDs like EDL-202609-001 (prefix, year and month, then a number).

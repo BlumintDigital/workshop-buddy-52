@@ -446,6 +446,19 @@ Deno.serve(async (req) => {
         for (const key of allowed) {
           if (key in body) updates[key] = body[key];
         }
+        // Which workshop types the customer may switch between; only Shoplane Control sets this.
+        if ("enabled_industries" in body) {
+          const known = ["industrial", "garage", "fleet", "marine_plant"];
+          const list = Array.isArray(body.enabled_industries)
+            ? [...new Set((body.enabled_industries as unknown[]).map(String))].filter((k) => known.includes(k))
+            : [];
+          if (!list.length) return err("Choose at least one workshop type");
+          updates.enabled_industries = list;
+          // If the type in use is no longer allowed, switch to the first allowed one.
+          const current = (updates.industry as string | undefined)
+            ?? (await supabase.from("workshop_settings").select("industry").eq("id", body.id ?? 1).maybeSingle()).data?.industry;
+          if (!current || !list.includes(current)) updates.industry = list[0];
+        }
         if (Object.keys(updates).length === 0) return err("No valid fields provided");
         const { error } = await supabase
           .from("workshop_settings").update(updates).eq("id", body.id ?? 1);

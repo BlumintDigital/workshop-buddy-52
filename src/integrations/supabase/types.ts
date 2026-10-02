@@ -2710,6 +2710,7 @@ export type Database = {
           default_tax_rate: number | null;
           email_notifications_enabled: boolean | null;
           enabled_currencies: string[];
+          enabled_industries: string[];
           feature_flags: Json | null;
           from_email: string | null;
           id: number;
@@ -2737,6 +2738,7 @@ export type Database = {
           default_tax_rate?: number | null;
           email_notifications_enabled?: boolean | null;
           enabled_currencies?: string[];
+          enabled_industries?: string[];
           feature_flags?: Json | null;
           from_email?: string | null;
           id?: number;
@@ -2764,6 +2766,7 @@ export type Database = {
           default_tax_rate?: number | null;
           email_notifications_enabled?: boolean | null;
           enabled_currencies?: string[];
+          enabled_industries?: string[];
           feature_flags?: Json | null;
           from_email?: string | null;
           id?: number;
