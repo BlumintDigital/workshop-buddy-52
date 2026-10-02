@@ -37,6 +37,8 @@ export default function ResetPassword() {
   const [confirm, setConfirm] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [ready, setReady] = useState(false);
+  /** Why the link can't be used (expired, already used, opened by an email scanner…). */
+  const [linkError, setLinkError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -60,6 +62,16 @@ export default function ResetPassword() {
 
   useEffect(() => {
     const hashParams = new URLSearchParams(window.location.hash.substring(1));
+    const queryParams = new URLSearchParams(window.location.search);
+    // Supabase reports a link it can't accept in the address instead of signing in.
+    const error = hashParams.get("error_description") ?? queryParams.get("error_description") ?? hashParams.get("error") ?? queryParams.get("error");
+    if (error) {
+      const code = hashParams.get("error_code") ?? queryParams.get("error_code");
+      setLinkError(code === "otp_expired" || /expired|invalid/i.test(error)
+        ? "This link has expired or has already been used. Links work once, and some email programs open them to check them first."
+        : error.replace(/\+/g, " "));
+      return;
+    }
     const type = hashParams.get("type");
     if (type === "recovery" || type === "invite" || type === "signup") {
       if (type === "invite" || type === "signup") setIsInvite(true);
@@ -67,13 +79,33 @@ export default function ResetPassword() {
       return;
     }
 
+    let done = false;
+    const markReady = () => {
+      done = true;
+      setReady(true);
+    };
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "PASSWORD_RECOVERY" || event === "SIGNED_IN") setReady(true);
+      if (event === "PASSWORD_RECOVERY" || event === "SIGNED_IN") markReady();
     });
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) setReady(true);
+      if (session) markReady();
     });
-    return () => subscription.unsubscribe();
+    // Newer links carry a one-time code to swap for a session.
+    const code = queryParams.get("code");
+    if (code) {
+      supabase.auth.exchangeCodeForSession(code).then(({ error: exErr }) => {
+        if (!exErr) markReady();
+        else setLinkError("This link has expired or has already been used. Ask for a new one below.");
+      });
+    }
+    // Never leave someone looking at "Verifying" forever.
+    const timer = window.setTimeout(() => {
+      if (!done) setLinkError("This link couldn't be checked. It may have expired or already been used.");
+    }, 10_000);
+    return () => {
+      subscription.unsubscribe();
+      window.clearTimeout(timer);
+    };
   }, []);
 
   const strength = useMemo(() => evaluateStrength(password), [password]);
@@ -178,7 +210,15 @@ export default function ResetPassword() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                {!ready ? (
+                {linkError && !ready ? (
+                  <div className="space-y-4 py-2 text-center" role="alert">
+                    <p className="text-sm text-muted-foreground">{linkError}</p>
+                    <Button asChild className="w-full">
+                      <Link to="/forgot-password">Email me a new link</Link>
+                    </Button>
+                    <p className="text-xs text-muted-foreground">Use the new link soon after it arrives.</p>
+                  </div>
+                ) : !ready ? (
                   <p className="text-center text-sm text-muted-foreground py-4">Verifying reset link...</p>
                 ) : (
                   <form onSubmit={handleSubmit} className="space-y-4">
