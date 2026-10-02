@@ -40,12 +40,14 @@ export default defineConfig({
     {
       name: "chromium",
       // channel: "chrome" uses the locally installed Google Chrome, so no
-      // Playwright browser download is required.
-      use: { browserName: "chromium", channel: "chrome" },
+      // Playwright browser download is required (CI uses Playwright's own Chromium).
+      use: { browserName: "chromium", ...(process.env.CI ? {} : { channel: "chrome" }) },
       dependencies: ["setup"],
       testIgnore: /global\.setup\.ts/,
       // Production gets only the specs that don't create or change data.
       ...(target === "prod" ? { testMatch: /(auth|a11y)\.spec\.ts$/ } : {}),
+      // Staging gets the smoke checks run after each release to it.
+      ...(target === "staging" ? { testMatch: /(auth|staging-smoke)\.spec\.ts$/ } : {}),
     },
   ],
   // Starts the app against the test database unless it's already running.
