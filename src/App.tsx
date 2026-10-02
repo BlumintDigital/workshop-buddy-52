@@ -46,6 +46,7 @@ const AdminAccessReview = lazy(() => import("@/pages/admin/AdminAccessReview"));
 const Privacy = lazy(() => import("@/pages/Privacy"));
 const QuoteApproval = lazy(() => import("@/pages/QuoteApproval"));
 const AssetsPage = lazy(() => import("@/pages/assets/AssetsPage"));
+const ImportData = lazy(() => import("@/pages/admin/ImportData"));
 const AssetDetail = lazy(() => import("@/pages/assets/AssetDetail"));
 const ClientAssets = lazy(() => import("@/pages/client/ClientAssets"));
 const Terms = lazy(() => import("@/pages/Terms"));
@@ -218,6 +219,7 @@ function AppRoutes() {
         <Route path="/report-issue" element={<ProtectedRoute allowedRoles={["admin", "manager", "staff", "client"]}><ReportIssue /></ProtectedRoute>} />
         <Route path="/help" element={<ProtectedRoute allowedRoles={["admin", "manager", "staff", "client"]}><Help /></ProtectedRoute>} />
         <Route path="/admin/feedback" element={<ProtectedRoute allowedRoles={["admin"]}><AdminFeedback /></ProtectedRoute>} />
+        <Route path="/admin/import" element={<ProtectedRoute allowedRoles={["admin", "manager"]}><ImportData /></ProtectedRoute>} />
         <Route path="/admin/signup-codes" element={<ProtectedRoute allowedRoles={["admin", "manager"]}><AdminSignupCodes /></ProtectedRoute>} />
         <Route path="/admin/access-review" element={<ProtectedRoute allowedRoles={["admin"]}><AdminAccessReview /></ProtectedRoute>} />
         <Route path="/profile" element={<ProtectedRoute allowedRoles={["admin", "manager", "staff", "client"]}><UserProfile /></ProtectedRoute>} />

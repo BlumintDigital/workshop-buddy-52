@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { NotificationBell } from "@/components/NotificationBell";
 import { PageHelp } from "@/components/help/PageHelp";
+import { useIndustry } from "@/lib/industry";
 import { AssistantPanel } from "@/components/assistant/AssistantPanel";
 import { SessionIndicator } from "@/components/SessionIndicator";
 import { GlobalSearch } from "./GlobalSearch";
@@ -49,8 +50,9 @@ const LABELS: Record<string, string> = {
 
 const HOME_LABEL: Record<string, string> = { admin: "Today", manager: "Today", staff: "My day", client: "Your orders" };
 
-function toLabel(segment: string, role: string | null) {
+function toLabel(segment: string, role: string | null, assetsLabel = "Assets") {
   if (segment === "dashboard" && role) return HOME_LABEL[role] ?? LABELS.dashboard;
+  if (segment === "assets") return assetsLabel;
   if (isIdSegment(segment)) return "Details";
   return LABELS[segment] ?? segment.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
@@ -59,6 +61,7 @@ export function AppHeader() {
   const location = useLocation();
   const { role } = useAuth();
   const pageLabel = useRegisteredLabel(location.pathname);
+  const assetsLabel = useIndustry().asset.navLabel;
 
   const rawSegments = location.pathname.split("/").filter(Boolean);
   const hasRolePrefix = rawSegments[0] === "admin" || rawSegments[0] === "manager" || rawSegments[0] === "staff" || rawSegments[0] === "client";
@@ -71,7 +74,7 @@ export function AppHeader() {
       href = `/${role}/${seg}`;
     }
     const isLast = i === rawSegments.length - 1;
-    return [...acc, { label: isLast && pageLabel ? pageLabel : toLabel(seg, role), href }];
+    return [...acc, { label: isLast && pageLabel ? pageLabel : toLabel(seg, role, assetsLabel), href }];
   }, []);
 
   return (
