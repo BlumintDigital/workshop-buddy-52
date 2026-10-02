@@ -77,6 +77,8 @@ export default function AdminSettings() {
   const canBackupRestore = useFeature("backup_restore");
   const { resetOnboarding, updating: onboardingUpdating } = useAdminOnboarding();
   const [settings, setSettings] = useState<Settings>({ ...defaultSettings });
+  // Workshop types Shoplane has switched on for this workshop (set from Shoplane Control).
+  const [enabledIndustries, setEnabledIndustries] = useState<string[]>(["industrial"]);
   // Snapshot of last loaded/saved settings — used to detect unsaved edits.
   const [savedSnapshot, setSavedSnapshot] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -118,6 +120,8 @@ export default function AdminSettings() {
         .select("super_admin_email").eq("id", 1).maybeSingle(),
     ]).then(([{ data }, { data: adminData }]) => {
       if (data) {
+        const enabled = (data as { enabled_industries?: string[] }).enabled_industries;
+        if (enabled?.length) setEnabledIndustries(enabled);
         const loaded: Settings = {
           workshop_name: data.workshop_name ?? "",
           industry: (data as { industry?: string }).industry ?? "industrial",
@@ -641,13 +645,22 @@ export default function AdminSettings() {
                     </div>
                     <div>
                       <Label htmlFor="industry">Type of workshop</Label>
-                      <Select value={settings.industry} onValueChange={(v) => set("industry", v)}>
-                        <SelectTrigger id="industry" className="mt-1"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          {INDUSTRY_KEYS.map((k) => <SelectItem key={k} value={k}>{INDUSTRIES[k].label}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                      <p className="mt-1 text-xs text-muted-foreground">{INDUSTRIES[settings.industry as keyof typeof INDUSTRIES]?.description} Sets the wording and the reception form, for example machines and serial numbers or vehicles and registrations.</p>
+                      {enabledIndustries.length > 1 ? (
+                        <Select value={settings.industry} onValueChange={(v) => set("industry", v)}>
+                          <SelectTrigger id="industry" className="mt-1"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {INDUSTRY_KEYS.filter((k) => enabledIndustries.includes(k)).map((k) => <SelectItem key={k} value={k}>{INDUSTRIES[k].label}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <p id="industry" className="mt-1 rounded-md border bg-muted/40 px-3 py-2 text-sm">{INDUSTRIES[settings.industry as keyof typeof INDUSTRIES]?.label ?? settings.industry}</p>
+                      )}
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {INDUSTRIES[settings.industry as keyof typeof INDUSTRIES]?.description} Sets the wording and the reception form for everyone.{" "}
+                        {enabledIndustries.length > 1
+                          ? "Switch between the types included in your plan."
+                          : "To add another type (for example vehicles as well as machines), contact Shoplane."}
+                      </p>
                     </div>
                     <div>
                       <Label htmlFor="contact_email">Contact Email</Label>
