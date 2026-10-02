@@ -813,12 +813,13 @@ Deno.serve(async (req) => {
           .from("user_roles").select("user_id").eq("role", "admin").limit(1);
         if (!adminRoles?.length) return err("No admin user found in this instance", 500);
         // The function trusts the service key and records the named admin as the actor.
+        // Send only the service key: projects on Supabase's newer API keys refuse a request that
+        // also carries an apikey header with a different key ("Conflicting API keys").
         const resp = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/seed-data`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
-            apikey: Deno.env.get("SUPABASE_ANON_KEY")!,
             "x-acting-user": adminRoles[0].user_id,
           },
         });
@@ -838,7 +839,6 @@ Deno.serve(async (req) => {
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
-            apikey: Deno.env.get("SUPABASE_ANON_KEY")!,
             "x-acting-user": adminRoles2[0].user_id,
           },
         });
@@ -912,8 +912,7 @@ Deno.serve(async (req) => {
           const selfResp = await fetch(selfUrl, {
             headers: {
               Authorization: `Bearer ${secret}`,
-              apikey: Deno.env.get("SUPABASE_ANON_KEY")!,
-            },
+              },
           });
           if (!selfResp.ok) edgeFunctionStatus = `error: status ${selfResp.status}`;
         } catch (e) {
