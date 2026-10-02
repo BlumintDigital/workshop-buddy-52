@@ -44,6 +44,7 @@ const AdminFeedback = lazy(() => import("@/pages/admin/AdminFeedback"));
 const AdminSignupCodes = lazy(() => import("@/pages/admin/AdminSignupCodes"));
 const AdminAccessReview = lazy(() => import("@/pages/admin/AdminAccessReview"));
 const Privacy = lazy(() => import("@/pages/Privacy"));
+const QuoteApproval = lazy(() => import("@/pages/QuoteApproval"));
 const AssetsPage = lazy(() => import("@/pages/assets/AssetsPage"));
 const AssetDetail = lazy(() => import("@/pages/assets/AssetDetail"));
 const ClientAssets = lazy(() => import("@/pages/client/ClientAssets"));
@@ -232,6 +233,8 @@ function AppRoutes() {
       {/* Goals is shown on a screen on the workshop floor, so it has no app menu. */}
       <Route path="/goals" element={<ProtectedRoute allowedRoles={["admin", "manager", "staff"]}><FeatureRoute feature="goals"><GoalsPage /></FeatureRoute></ProtectedRoute>} />
       <Route path="/privacy" element={<Privacy />} />
+      {/* Quote approval by link: public, no account. */}
+      <Route path="/q/:token" element={<QuoteApproval />} />
       <Route path="/terms" element={<Terms />} />
 
       <Route path="*" element={<NotFound />} />

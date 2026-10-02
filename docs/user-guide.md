@@ -277,6 +277,7 @@ Things to know:
 
 - From a project in **Evaluation**, click **New quote**. Add lines (work or part, quantity and price), choose the currency, and optionally a discount (percentage or fixed, before tax, with a reason), a **Valid until** date and **Notes for the client**. Evaluation itself is free.
 - Save it as a draft, check it, then send it. The client accepts or declines in their portal. Accepting moves the project to **Approved**.
+- **Share link** — for a customer without a portal account (a walk-in or phone customer), share the sent quote by secure link. **Email it** to their address, or **Copy a link** to send by WhatsApp or text. They open it, see the lines and total, type their name and press **Approve** or **Decline**; no account needed. You're notified straight away, the project moves on, and the activity shows who decided by link. The link works until the quote's valid-until date (or 30 days), can only be used once, and making a new one stops the old one.
 - If the client tells you their decision by phone or email, use **Record acceptance** or **Record decline** so the project moves on. **Withdraw** takes back a quote you no longer stand by.
 - If the client agreed without a written quote, **Approve without a quote** moves the project straight to Approved.
 - If the work changes after it has started, add a **Change request**: say **Why it's needed**, add the lines and any **Extra days needed**. An admin signs it off (**Sign off and send**, or **Don't approve**), then the client accepts or declines it, and the agreed total updates.
@@ -612,6 +613,9 @@ Ask them to check spam, then use **Resend invite** in Users (staff) or **Send si
 
 **How do I move a project forward?**
 Use the button in the project's next step panel, for example New quote, Start quality check or Pass quality check. The Status menu only moves projects back or cancels them. {roles: admin,manager,staff}
+
+**A walk-in customer wants to approve a quote. They don't have an account.**
+Open the sent quote on the project and click **Share link**. Email it or copy the link and send it by WhatsApp or text; they approve it from their phone. See 5.3. {roles: admin,manager,staff}
 
 **A client accepted a quote by phone. How do I record it?**
 Open the quote on the project and click **Record acceptance**. {roles: admin,manager}

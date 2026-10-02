@@ -77,3 +77,6 @@ verify_jwt = false
 
 [functions.assistant]
 verify_jwt = false
+
+[functions.quote-link]
+verify_jwt = false

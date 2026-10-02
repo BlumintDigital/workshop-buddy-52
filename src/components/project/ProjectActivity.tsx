@@ -43,9 +43,13 @@ function describe(e: EventRow, names: Record<string, string>): { label: string; 
     case "quote_sent":
       return { label: `${str(d.label) ?? "Quote"} sent to client`, sub: str(d.total) ?? undefined, tone: "status" };
     case "quote_accepted":
-      return { label: `${str(d.label) ?? "Quote"} accepted by client`, tone: "good" };
+      return { label: `${str(d.label) ?? "Quote"} accepted${d.via_link ? ` by link: ${str(d.name) ?? "customer"}` : " by client"}`, tone: "good" };
     case "quote_declined":
-      return { label: `${str(d.label) ?? "Quote"} declined by client`, sub: str(d.reason) ?? undefined, tone: "warn" };
+      return { label: `${str(d.label) ?? "Quote"} declined${d.via_link ? ` by link: ${str(d.name) ?? "customer"}` : " by client"}`, sub: str(d.reason) ?? undefined, tone: "warn" };
+    case "quote_link_shared":
+      return { label: `${str(d.label) ?? "Quote"} shared by link`, sub: str(d.sent_to) ? `emailed to ${d.sent_to}` : undefined, tone: "neutral" };
+    case "quote_link_opened":
+      return { label: `${str(d.label) ?? "Quote"} link opened by the customer`, tone: "neutral" };
     case "change_request":
       return { label: `Change request ${str(d.label) ?? ""} ${str(d.action) ?? "updated"}`.trim(), tone: "neutral" };
     case "qc_passed":
