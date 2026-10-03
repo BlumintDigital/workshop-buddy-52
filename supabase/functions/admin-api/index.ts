@@ -444,7 +444,7 @@ Deno.serve(async (req) => {
         ];
         const updates: Record<string, unknown> = {};
         for (const key of allowed) {
-          if (key in body) updates[key] = body[key];
+          if (key in body) updates[key] = typeof body[key] === "string" ? body[key].trim() : body[key];
         }
         // Which workshop types the customer may switch between; only Shoplane Control sets this.
         if ("enabled_industries" in body) {

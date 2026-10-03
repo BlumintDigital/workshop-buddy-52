@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useFeature } from "@/hooks/useFeatureFlags";
@@ -35,6 +35,7 @@ import { friendlyErrorMessage } from "@/lib/friendlyError";
 import { CURRENCIES } from "@/lib/currencies";
 import { PRESETS, hexToHslString, hslStringToHex, applyBrandColors, DEFAULT_BRAND, contrastWithWhite, ensureReadablePrimary } from "@/lib/brand-colors";
 import { AddressInput } from "@/components/lookup/AddressInput";
+import { useWorkshopSettings } from "@/hooks/useWorkshopSettings";
 import { versionLabel } from "@/lib/version";
 const currencies = CURRENCIES;
 
@@ -113,8 +114,8 @@ export default function AdminSettings() {
   const backupFileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
 
-  useEffect(() => {
-    Promise.all([
+  const load = useCallback(() => {
+    return Promise.all([
       supabase.from("workshop_settings").select("*").eq("id", 1).maybeSingle(),
       (supabase.from("workshop_admin_contacts" as any) as any)
         .select("super_admin_email").eq("id", 1).maybeSingle(),
@@ -156,8 +157,31 @@ export default function AdminSettings() {
       setLoading(false);
     });
   }, []);
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   const isDirty = savedSnapshot !== null && JSON.stringify(settings) !== savedSnapshot;
+
+  // Settings can change while this page is open (Shoplane Control, another admin). The shared
+  // settings query is kept live; when it changes, show the new values, unless there are unsaved
+  // edits, in which case say so rather than let Save quietly overwrite the other change.
+  const { dataUpdatedAt } = useWorkshopSettings();
+  const firstUpdate = useRef<number | null>(null);
+  const dirtyRef = useRef(isDirty);
+  dirtyRef.current = isDirty;
+  const [changedElsewhere, setChangedElsewhere] = useState(false);
+  useEffect(() => {
+    if (!dataUpdatedAt) return;
+    if (firstUpdate.current === null) {
+      firstUpdate.current = dataUpdatedAt;
+      return;
+    }
+    if (dataUpdatedAt === firstUpdate.current) return;
+    firstUpdate.current = dataUpdatedAt;
+    if (dirtyRef.current) setChangedElsewhere(true);
+    else void load();
+  }, [dataUpdatedAt, load]);
 
   // Warn before leaving the page with unsaved settings edits.
   useEffect(() => {
@@ -608,6 +632,15 @@ export default function AdminSettings() {
     <DashboardLayout>
       <div className="mx-auto max-w-6xl space-y-4 pb-24">
         <PageBar title="Settings" subtitle="Workshop details, billing, notifications, branding and data" />
+        {changedElsewhere && (
+          <Alert className="mb-4" role="status">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription className="flex flex-wrap items-center justify-between gap-3">
+              <span>These settings were changed somewhere else while you were editing. Reload to see the latest; your unsaved edits will be lost.</span>
+              <Button size="sm" variant="outline" onClick={() => { setChangedElsewhere(false); void load(); }}>Reload settings</Button>
+            </AlertDescription>
+          </Alert>
+        )}
 
         <Tabs value={activeTab} onValueChange={setActiveTab} orientation="vertical" className="grid gap-6 md:grid-cols-[220px_minmax(0,1fr)]">
           <TabsList
