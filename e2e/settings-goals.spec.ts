@@ -1,5 +1,15 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 import { login } from "./helpers/auth";
+
+// Saves the settings form. If the save is refused, fails with the error toast's text rather
+// than a bare timeout, so a CI failure says why.
+async function save(page: Page) {
+  await page.getByRole("button", { name: "Save changes" }).click();
+  const saved = page.getByText("Settings saved — invoices and PDFs will refresh");
+  const refused = page.locator('[data-sonner-toast][data-type="error"]');
+  await expect(saved.or(refused)).toBeVisible({ timeout: 15_000 });
+  if (await refused.isVisible()) throw new Error(`Settings save failed: ${await refused.innerText()}`);
+}
 
 test.describe.serial("settings and goals", () => {
   test("admin edits and saves a settings field, then restores it", async ({ page }) => {
@@ -11,8 +21,7 @@ test.describe.serial("settings and goals", () => {
     const original = await phone.inputValue();
 
     await phone.fill("+44 700 900 1234");
-    await page.getByRole("button", { name: "Save changes" }).click();
-    await expect(page.getByText("Settings saved — invoices and PDFs will refresh")).toBeVisible({ timeout: 15_000 });
+    await save(page);
 
     // Persisted across reload?
     await page.reload();
@@ -20,8 +29,7 @@ test.describe.serial("settings and goals", () => {
 
     // Restore the original value so the test leaves no trace.
     await page.locator("#phone").fill(original);
-    await page.getByRole("button", { name: "Save changes" }).click();
-    await expect(page.getByText("Settings saved — invoices and PDFs will refresh")).toBeVisible({ timeout: 15_000 });
+    await save(page);
   });
 
   test("monthly goal is set once and locks for the month", async ({ page }) => {
