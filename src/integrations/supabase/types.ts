@@ -3196,6 +3196,18 @@ export type Database = {
           total_cost: number;
         }[];
       };
+      project_people: {
+        Args: { _job_id: string };
+        Returns: {
+          company_name: string | null;
+          email: string | null;
+          full_name: string | null;
+          id: string;
+          person: string;
+          phone: string | null;
+          portal: boolean | null;
+        }[];
+      };
       project_quote_label: {
         Args: { _job_id: string; _kind: string; _number: number };
         Returns: string;

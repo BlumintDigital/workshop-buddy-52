@@ -48,6 +48,7 @@ export default function JobDetail() {
   const [job, setJob] = useState<any>(null);
   const [staffName, setStaffName] = useState("—");
   const [clientName, setClientName] = useState("—");
+  const [clientContact, setClientContact] = useState<{ company: string | null; phone: string | null; email: string | null } | null>(null);
   const [staffUsers, setStaffUsers] = useState<UserOption[]>([]);
   const [clientUsers, setClientUsers] = useState<UserOption[]>([]);
 
@@ -88,15 +89,16 @@ export default function JobDetail() {
       if (!jobData) return;
       setJob(jobData);
 
-      const ids = [jobData.assigned_staff_id, jobData.client_id, jobData.received_by].filter((v): v is string => !!v);
-      if (ids.length) {
-        const { data: profiles } = await supabase.from("profiles").select("id, full_name").in("id", ids);
-        profiles?.forEach((p) => {
-          if (p.id === jobData.assigned_staff_id) setStaffName(p.full_name || "—");
-          if (p.id === jobData.client_id) setClientName(p.full_name || "—");
-          if (p.id === jobData.received_by) setReceivedBy(p.full_name || undefined);
-        });
-      }
+      // Staff can't read profiles directly, so the people on this project come from an RPC.
+      const { data: people } = await supabase.rpc("project_people", { _job_id: id });
+      people?.forEach((p) => {
+        if (p.person === "lead") setStaffName(p.full_name || "—");
+        if (p.person === "client") {
+          setClientName(p.full_name || "—");
+          setClientContact({ company: p.company_name, phone: p.phone, email: p.email });
+        }
+        if (p.person === "received_by") setReceivedBy(p.full_name || undefined);
+      });
     };
     load();
     if (role === "client") return;
@@ -404,11 +406,20 @@ export default function JobDetail() {
             </div>
             <div>
               <Label className="text-xs text-muted-foreground">Project lead</Label>
-              <p className="mt-1 text-sm">{staffName}</p>
+              <p className="mt-1 text-sm" data-testid="project-lead">{staffName}</p>
             </div>
             <div>
               <Label className="text-xs text-muted-foreground">Client</Label>
-              <p className="mt-1 text-sm">{clientName}</p>
+              <p className="mt-1 text-sm" data-testid="project-client">{clientName}</p>
+              {clientContact?.company && clientContact.company !== clientName && (
+                <p className="text-xs text-muted-foreground">{clientContact.company}</p>
+              )}
+              {clientContact?.phone && (
+                <a href={`tel:${clientContact.phone}`} className="block text-xs text-muted-foreground hover:underline">{clientContact.phone}</a>
+              )}
+              {clientContact?.email && (
+                <a href={`mailto:${clientContact.email}`} className="block text-xs text-muted-foreground hover:underline break-all">{clientContact.email}</a>
+              )}
             </div>
           </CardContent>
         </Card>
