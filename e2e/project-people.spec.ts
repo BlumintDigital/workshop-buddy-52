@@ -41,6 +41,8 @@ test.describe.serial("people on a project page", () => {
     await page.getByRole("option", { name: "Demo Staff" }).click();
     await dialog.getByRole("button", { name: "Save Changes" }).click();
     await expect(page.getByText("Project updated")).toBeVisible();
+    // The new lead shows straight away, without reloading the page.
+    await expect(page.getByTestId("project-lead")).toHaveText("Demo Staff");
   });
 
   test("the technician sees themselves as project lead", async ({ page }) => {
