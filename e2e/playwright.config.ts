@@ -24,6 +24,8 @@ export default defineConfig({
   testDir: ".",
   outputDir: "./.results",
   timeout: 90_000,
+  // One retry on CI: a test that passes second time is reported as flaky, not hidden.
+  retries: process.env.CI ? 1 : 0,
   expect: { timeout: 15_000 },
   // Flows share database state (requests, invoices), so run serially.
   workers: 1,
