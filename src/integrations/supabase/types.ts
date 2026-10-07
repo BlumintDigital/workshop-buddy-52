@@ -3229,6 +3229,7 @@ export type Database = {
           full_name: string;
           id: string;
           phone: string;
+          portal: boolean;
         }[];
       };
       redeem_signup_code: {

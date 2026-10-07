@@ -47,8 +47,16 @@ serve(async (req) => {
       .eq("user_id", callerId)
       .maybeSingle();
 
-    if (!roleData || !["admin", "manager"].includes(roleData.role)) {
-      return new Response(JSON.stringify({ error: "Forbidden: admin or manager role required" }), {
+    // Admins and managers add clients from the Clients page. Reception can also register a
+    // client who walks in, but only without portal access: an admin switches the portal on later.
+    const isAdmin = !!roleData && ["admin", "manager"].includes(roleData.role);
+    let canReception = false;
+    if (!isAdmin) {
+      const { data: allowed } = await anonClient.rpc("has_permission", { _user_id: callerId, _permission: "reception" });
+      canReception = allowed === true;
+    }
+    if (!isAdmin && !canReception) {
+      return new Response(JSON.stringify({ error: "Forbidden: admin, manager or reception access required" }), {
         status: 403,
         headers: { ...cors, "Content-Type": "application/json" },
       });
@@ -62,6 +70,7 @@ serve(async (req) => {
 
     const body = await req.json();
     const { email, full_name, phone, company_name, contact_person, address } = body;
+    const portal = isAdmin ? body.portal !== false : false;
 
     if (!email || typeof email !== "string" || !email.includes("@")) {
       return new Response(JSON.stringify({ error: "Valid email is required" }), {
@@ -84,7 +93,8 @@ serve(async (req) => {
     });
 
     if (createError) {
-      return new Response(JSON.stringify({ error: createError.message }), {
+      const taken = /already (been )?registered|already exists/i.test(createError.message);
+      return new Response(JSON.stringify({ error: taken ? "Someone with this email is already registered. If they're a client, pick them from the list." : createError.message }), {
         status: 400,
         headers: { ...cors, "Content-Type": "application/json" },
       });
@@ -106,8 +116,14 @@ serve(async (req) => {
       }
     }
 
+    // No portal: the same as "Turn portal off" on the Clients page, so they can't sign in yet.
+    if (newUser.user && !portal) {
+      await adminClient.from("profiles").update({ is_active: false }).eq("id", newUser.user.id);
+      await adminClient.auth.admin.updateUserById(newUser.user.id, { ban_duration: "876600h" });
+    }
+
     return new Response(
-      JSON.stringify({ success: true, user_id: newUser.user.id }),
+      JSON.stringify({ success: true, user_id: newUser.user.id, portal }),
       { status: 200, headers: { ...cors, "Content-Type": "application/json" } }
     );
   } catch (err) {

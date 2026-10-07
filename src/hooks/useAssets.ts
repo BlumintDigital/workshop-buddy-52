@@ -210,7 +210,7 @@ export function useDueReminderCount(enabled: boolean) {
   });
 }
 
-/** Portal clients reception can pick as an owner (empty for people without Reception). */
+/** Registered clients reception can pick as an owner, with or without portal access (empty for people without Reception). */
 export function useReceptionClients(enabled: boolean) {
   return useQuery({
     queryKey: ["reception-clients"],
@@ -218,7 +218,7 @@ export function useReceptionClients(enabled: boolean) {
     staleTime: 5 * 60_000,
     queryFn: async () => {
       const { data } = await supabase.rpc("reception_clients");
-      return (data ?? []) as { id: string; full_name: string | null; company_name: string | null; phone: string | null; email: string | null }[];
+      return (data ?? []) as { id: string; full_name: string | null; company_name: string | null; phone: string | null; email: string | null; portal: boolean }[];
     },
   });
 }
