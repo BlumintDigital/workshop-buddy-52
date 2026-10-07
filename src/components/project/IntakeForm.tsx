@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Camera, Link2, Search, X } from "lucide-react";
+import { Camera, Check, ChevronsUpDown, Link2, Search, X } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -11,6 +11,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DatePickerInput } from "@/components/ui/date-picker-input";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { projectPath } from "@/lib/projects";
 import { useFeature } from "@/hooks/useFeatureFlags";
 import { ensureMotReminder, fillAssetDetails, findAssets, type Asset } from "@/hooks/useAssets";
@@ -35,7 +37,8 @@ export interface IntakePrefill {
   priority?: string;
 }
 
-export type ReceptionClient = { id: string; full_name: string | null; company_name: string | null; phone: string | null; email: string | null };
+/** A registered client. `portal` is false when they have no portal access (they can still have projects). */
+export type ReceptionClient = { id: string; full_name: string | null; company_name: string | null; phone: string | null; email: string | null; portal?: boolean };
 
 /** "Company · person", or "Person · company" for workshops that deal with people (garages). */
 export const clientLabel = (c: ReceptionClient, personFirst = false) => {
@@ -49,7 +52,18 @@ const INTAKE_OPTIONS: { value: IntakeType; label: string; description: string }[
   { value: "approved", label: "Approved job", description: "The client has already agreed. Plan the work straight away." },
 ];
 
+// Who the project is for: a registered client (their id, or "" until one is picked), a new
+// client saved as we log it, or a one-off customer kept only on this project.
 const WALK_IN = "__walk_in__";
+const NEW_CLIENT = "__new_client__";
+
+const digits = (v: string | null | undefined) => (v ?? "").replace(/\D/g, "");
+/** A registered client with the same email, or the same phone number (last 9 digits), if any. */
+export function findExistingClient(clients: ReceptionClient[], email: string, phone: string): ReceptionClient | undefined {
+  const e = email.trim().toLowerCase();
+  const p = digits(phone).slice(-9);
+  return clients.find((c) => (e && c.email?.toLowerCase() === e) || (p.length === 9 && digits(c.phone).slice(-9) === p));
+}
 
 /**
  * Everything reception records when a machine comes in. Creates the project
@@ -61,7 +75,7 @@ export default function IntakeForm({ clients, prefill, onCancel }: { clients: Re
   const profile = useIndustry();
   const assetsOn = useFeature("assets");
   const [form, setForm] = useState({
-    client: prefill?.clientId ?? WALK_IN,
+    client: prefill?.clientId ?? (clients.length ? "" : NEW_CLIENT),
     contact_name: "",
     contact_phone: "",
     contact_email: "",
@@ -78,6 +92,11 @@ export default function IntakeForm({ clients, prefill, onCancel }: { clients: Re
     priority: prefill?.priority ?? "medium",
     due_date: prefill?.dueDate ?? "",
   });
+  const [newClient, setNewClient] = useState({ name: "", company: "", phone: "", email: "" });
+  // Clients registered from this form, so the picker can show them if logging the project fails.
+  const [added, setAdded] = useState<ReceptionClient[]>([]);
+  const allClients = [...clients, ...added];
+  const [pickerOpen, setPickerOpen] = useState(false);
   const [photos, setPhotos] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
@@ -91,6 +110,16 @@ export default function IntakeForm({ clients, prefill, onCancel }: { clients: Re
 
   const set = <K extends keyof typeof form>(key: K, value: (typeof form)[K]) => setForm((f) => ({ ...f, [key]: value }));
   const walkIn = form.client === WALK_IN;
+  const isNewClient = form.client === NEW_CLIENT;
+  const existing = !walkIn && !isNewClient;
+  const personFirst = profile.customer.personFirst;
+  const picked = existing ? allClients.find((c) => c.id === form.client) : undefined;
+  // Typing the details of someone who's already a client: offer to use their record instead.
+  const duplicate = walkIn
+    ? findExistingClient(allClients, form.contact_email, form.contact_phone)
+    : isNewClient
+      ? findExistingClient(allClients, newClient.email, newClient.phone)
+      : undefined;
 
   // ---- Registration lookup: fills make and model and the mileage, and remembers the MOT date
   // so the asset gets an MOT reminder when the project is saved.
@@ -141,7 +170,7 @@ export default function IntakeForm({ clients, prefill, onCancel }: { clients: Re
   }, [assetsOn, prefill?.assetId]);
 
   useEffect(() => {
-    if (!assetsOn || walkIn) {
+    if (!assetsOn || !existing || !form.client) {
       setClientAssets([]);
       return;
     }
@@ -150,7 +179,7 @@ export default function IntakeForm({ clients, prefill, onCancel }: { clients: Re
     return () => {
       cancelled = true;
     };
-  }, [assetsOn, walkIn, form.client]);
+  }, [assetsOn, existing, form.client]);
 
   useEffect(() => {
     const q = assetQuery.trim();
@@ -171,17 +200,53 @@ export default function IntakeForm({ clients, prefill, onCancel }: { clients: Re
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.title.trim()) return toast.error("Say what the machine is or what the work is");
+    if (existing && !form.client) return toast.error("Pick the client, or choose New client");
     if (walkIn && !form.contact_name.trim() && !form.contact_phone.trim()) return toast.error("Add the customer's name or phone number");
+    const newName = (personFirst ? newClient.name : newClient.company).trim();
+    if (isNewClient && !newName) return toast.error(personFirst ? "Add the client's name" : "Add the company name");
+    if (isNewClient && !/^\S+@\S+\.\S+$/.test(newClient.email.trim())) return toast.error("Add the client's email to save them. No email? Choose One-off.");
     const reading = form.meter_reading.trim() === "" ? null : Number(form.meter_reading);
     if (reading != null && (Number.isNaN(reading) || reading < 0)) return toast.error("The reading must be a number of 0 or more");
     const year = !isVehicle || form.year.trim() === "" ? null : Number(form.year);
     if (year != null && (!Number.isInteger(year) || year < 1900 || year > new Date().getFullYear() + 1)) return toast.error("Enter the year as four digits, e.g. 2019");
     setSaving(true);
+    let clientId: string | null = existing ? form.client : null;
+    if (isNewClient) {
+      const { data, error: addErr } = await supabase.functions.invoke("create-client", {
+        body: {
+          email: newClient.email.trim(),
+          full_name: newName,
+          phone: newClient.phone.trim() || undefined,
+          company_name: personFirst ? newClient.company.trim() || undefined : newName,
+          contact_person: personFirst ? undefined : newClient.name.trim() || undefined,
+          portal: false,
+        },
+      });
+      const addMsg = (data as { error?: string } | null)?.error;
+      if (addErr || addMsg || !data?.user_id) {
+        setSaving(false);
+        return toast.error(addMsg ?? "Couldn't save the new client. Try again.");
+      }
+      clientId = data.user_id as string;
+      // From here on they're a registered client: if logging the project fails, a retry uses them.
+      setAdded((a) => [
+        ...a,
+        {
+          id: clientId!,
+          full_name: newName,
+          company_name: personFirst ? newClient.company.trim() || null : newName,
+          phone: newClient.phone.trim() || null,
+          email: newClient.email.trim(),
+          portal: false,
+        },
+      ]);
+      set("client", clientId);
+    }
     const { data: id, error } = await supabase.rpc("create_project", {
       _p: {
         title: form.title,
         description: form.description,
-        client_id: walkIn ? null : form.client,
+        client_id: clientId,
         contact_name: walkIn ? form.contact_name : "",
         contact_phone: walkIn ? form.contact_phone : "",
         contact_email: walkIn ? form.contact_email : "",
@@ -242,7 +307,7 @@ export default function IntakeForm({ clients, prefill, onCancel }: { clients: Re
     }
     const { data: job } = await supabase.from("jobs").select("ref").eq("id", id).single();
     setSaving(false);
-    toast.success(`${job?.ref ?? "Project"} logged${motNote}${failed ? `. ${failed} photo${failed > 1 ? "s" : ""} didn't upload; add them on the project page.` : ""}`);
+    toast.success(`${job?.ref ?? "Project"} logged${isNewClient ? ` and ${newName} saved to your clients` : ""}${motNote}${failed ? `. ${failed} photo${failed > 1 ? "s" : ""} didn't upload; add them on the project page.` : ""}`);
     navigate(projectPath(id));
   };
 
@@ -250,22 +315,118 @@ export default function IntakeForm({ clients, prefill, onCancel }: { clients: Re
     <form onSubmit={submit} className="space-y-6">
       <fieldset className="space-y-3">
         <legend className="text-base font-semibold">Customer</legend>
-        <div>
-          <Label htmlFor="f-intake-client">Client</Label>
-          <Select value={form.client} onValueChange={(v) => set("client", v)}>
-            <SelectTrigger id="f-intake-client">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={WALK_IN}>Walk-in or phone customer (no portal account)</SelectItem>
-              {clients.map((c) => (
-                <SelectItem key={c.id} value={c.id}>
-                  {clientLabel(c, profile.customer.personFirst)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <div role="radiogroup" aria-label="Who it's for" className="grid grid-cols-3 gap-2">
+          {[
+            { value: "existing", label: "Existing client", on: existing, pick: () => set("client", picked?.id ?? "") },
+            { value: "new", label: "New client", on: isNewClient, pick: () => set("client", NEW_CLIENT) },
+            { value: "oneoff", label: "One-off", on: walkIn, pick: () => set("client", WALK_IN) },
+          ].map((o) => (
+            <button
+              key={o.value}
+              type="button"
+              role="radio"
+              aria-checked={o.on}
+              onClick={o.pick}
+              className={cn(
+                "rounded-lg border px-3 py-2 text-sm font-medium transition-colors",
+                o.on ? "border-primary bg-primary-soft" : "border-input bg-card hover:bg-secondary",
+              )}
+            >
+              {o.label}
+            </button>
+          ))}
         </div>
+        {existing && (
+          <div>
+            <Label htmlFor="f-intake-client">Client</Label>
+            <Popover open={pickerOpen} onOpenChange={setPickerOpen}>
+              <PopoverTrigger asChild>
+                <Button id="f-intake-client" type="button" variant="outline" role="combobox" aria-expanded={pickerOpen} className="w-full justify-between font-normal">
+                  <span className={cn("truncate", !picked && "text-muted-foreground")}>
+                    {picked ? clientLabel(picked, personFirst) : allClients.length ? "Search by name, phone or email" : "No clients registered yet"}
+                  </span>
+                  <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" aria-hidden />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                <Command>
+                  <CommandInput placeholder="Search by name, phone or email" />
+                  <CommandList>
+                    <CommandEmpty>
+                      No client found.{" "}
+                      <button type="button" className="text-primary underline" onClick={() => { setPickerOpen(false); set("client", NEW_CLIENT); }}>
+                        Add a new client
+                      </button>
+                    </CommandEmpty>
+                    <CommandGroup>
+                      {allClients.map((c) => (
+                        <CommandItem
+                          key={c.id}
+                          value={`${clientLabel(c, personFirst)} ${c.phone ?? ""} ${c.email ?? ""} ${c.id}`}
+                          onSelect={() => { set("client", c.id); setPickerOpen(false); }}
+                        >
+                          <Check className={cn("mr-2 h-4 w-4 shrink-0", form.client === c.id ? "opacity-100" : "opacity-0")} aria-hidden />
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate">{clientLabel(c, personFirst)}</span>
+                            <span className="block truncate text-xs text-muted-foreground">
+                              {[c.phone, c.email].filter(Boolean).join(" · ") || "No contact details"}
+                              {c.portal === false && " · No portal"}
+                            </span>
+                          </span>
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+            {picked && (
+              <p className="mt-1 text-xs text-muted-foreground">
+                {picked.portal === false
+                  ? "This client doesn't use the portal. The project is still saved under their name."
+                  : "They'll see this project in their portal."}
+              </p>
+            )}
+          </div>
+        )}
+        {isNewClient && (
+          <div className="space-y-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div>
+                <Label htmlFor="f-new-client-primary">{personFirst ? "Name" : "Company"}</Label>
+                <Input
+                  id="f-new-client-primary"
+                  value={personFirst ? newClient.name : newClient.company}
+                  onChange={(e) => setNewClient((c) => ({ ...c, [personFirst ? "name" : "company"]: e.target.value }))}
+                  autoComplete="off"
+                />
+              </div>
+              <div>
+                <Label htmlFor="f-new-client-secondary">{personFirst ? "Company (optional)" : "Contact person (optional)"}</Label>
+                <Input
+                  id="f-new-client-secondary"
+                  value={personFirst ? newClient.company : newClient.name}
+                  onChange={(e) => setNewClient((c) => ({ ...c, [personFirst ? "company" : "name"]: e.target.value }))}
+                  autoComplete="off"
+                />
+              </div>
+              <div>
+                <Label htmlFor="f-new-client-phone">Phone</Label>
+                <Input id="f-new-client-phone" type="tel" value={newClient.phone} onChange={(e) => setNewClient((c) => ({ ...c, phone: e.target.value }))} autoComplete="off" />
+              </div>
+              <div>
+                <Label htmlFor="f-new-client-email">Email</Label>
+                <Input id="f-new-client-email" type="email" value={newClient.email} onChange={(e) => setNewClient((c) => ({ ...c, email: e.target.value }))} autoComplete="off" />
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Saved to your clients so you can pick them next time. They won't get portal access until an admin turns it on in Clients. No email? Choose One-off.
+            </p>
+          </div>
+        )}
+        {walkIn && (
+          <p className="text-xs text-muted-foreground">Kept on this project only, not saved to your clients.</p>
+        )}
         {walkIn && (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <div>
@@ -280,6 +441,16 @@ export default function IntakeForm({ clients, prefill, onCancel }: { clients: Re
               <Label htmlFor="f-intake-contact-email">Email (optional)</Label>
               <Input id="f-intake-contact-email" type="email" value={form.contact_email} onChange={(e) => set("contact_email", e.target.value)} autoComplete="off" />
             </div>
+          </div>
+        )}
+        {duplicate && (
+          <div className="flex flex-wrap items-center gap-2 rounded-lg border border-primary/40 bg-primary-soft px-3 py-2 text-sm">
+            <span className="min-w-0 flex-1">
+              <strong>{clientLabel(duplicate, personFirst)}</strong> is already a client with these details.
+            </span>
+            <Button type="button" size="sm" variant="outline" onClick={() => set("client", duplicate.id)}>
+              Use their record
+            </Button>
           </div>
         )}
       </fieldset>

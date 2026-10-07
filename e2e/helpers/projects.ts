@@ -18,6 +18,7 @@ export async function logProjectAtReception(page: Page, title: string, opts: { c
     await page.getByLabel("Client", { exact: true }).click();
     await page.getByRole("option", { name: new RegExp(opts.client) }).first().click();
   } else {
+    await page.getByRole("radio", { name: "One-off" }).click();
     await page.getByLabel("Name", { exact: true }).fill("E2E walk-in");
   }
   await page.getByLabel("What's come in").fill(title);
