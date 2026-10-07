@@ -88,23 +88,33 @@ export default function JobDetail() {
       const { data: jobData } = await supabase.from("jobs").select("*").eq("id", id).single();
       if (!jobData) return;
       setJob(jobData);
-
-      // Staff can't read profiles directly, so the people on this project come from an RPC.
-      const { data: people } = await supabase.rpc("project_people", { _job_id: id });
-      people?.forEach((p) => {
-        if (p.person === "lead") setStaffName(p.full_name || "—");
-        if (p.person === "client") {
-          setClientName(p.full_name || "—");
-          setClientContact({ company: p.company_name, phone: p.phone, email: p.email });
-        }
-        if (p.person === "received_by") setReceivedBy(p.full_name || undefined);
-      });
     };
     load();
     if (role === "client") return;
     fetchTasks();
     fetchUsers();
   }, [id, role]);
+
+  // Staff can't read profiles directly, so the people on this project come from an RPC.
+  // Reloaded whenever they change: after an edit, a reload, or someone else's update.
+  const hasJob = !!job;
+  const clientId = job?.client_id ?? null;
+  const leadId = job?.assigned_staff_id ?? null;
+  const receivedById = job?.received_by ?? null;
+  useEffect(() => {
+    if (!id || !hasJob) return;
+    let cancelled = false;
+    void supabase.rpc("project_people", { _job_id: id }).then(({ data: people }) => {
+      if (cancelled) return;
+      const find = (person: string) => people?.find((p) => p.person === person);
+      const client = find("client");
+      setStaffName(find("lead")?.full_name || "—");
+      setClientName(client?.full_name || "—");
+      setClientContact(client ? { company: client.company_name, phone: client.phone, email: client.email } : null);
+      setReceivedBy(find("received_by")?.full_name || undefined);
+    });
+    return () => { cancelled = true; };
+  }, [id, hasJob, clientId, leadId, receivedById]);
 
   useBreadcrumbLabel(projectPath(id ?? ""), job?.ref);
 
