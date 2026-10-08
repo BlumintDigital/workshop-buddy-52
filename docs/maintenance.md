@@ -19,7 +19,7 @@ The version lives in `.nvmrc` (currently **24**, long-term support until April 2
 Actions read it from there, `package.json` `engines` enforces it, and Vercel projects use the
 same major version (Control sets it on new customers). To move to a new Node version:
 
-1. Change `.nvmrc` and `engines` in both repositories.
+1. Change `.nvmrc` and `engines` in both repositories, and move `@types/node` to the same major version (Dependabot leaves its majors alone for this reason).
 2. Change `NODE_VERSION` in Control's `supabase/functions/operations/provision.ts` (new customers).
 3. Update existing Vercel projects (each customer, staging, Control) to the same version.
 4. Merge; check staging passes; release.

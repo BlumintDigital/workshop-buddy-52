@@ -114,13 +114,12 @@ test.describe("trusted browser", () => {
     await page.evaluate(() => Object.keys(localStorage).filter((k) => k.startsWith("sb-")).forEach((k) => localStorage.removeItem(k)));
 
     // Second sign-in: straight to the dashboard, no code.
-    let askedForCode = false;
     await signInWithPassword();
     const outcome = await Promise.race([
       page.waitForURL(/\/admin\/dashboard/, { timeout: 20_000 }).then(() => "dashboard"),
       otpInput.waitFor({ state: "visible", timeout: 20_000 }).then(() => "code"),
     ]);
-    askedForCode = outcome === "code";
+    const askedForCode = outcome === "code";
     expect(askedForCode, "asked for a 2FA code on a trusted browser").toBe(false);
 
     // The database accepts the session: admin-only rows are readable.

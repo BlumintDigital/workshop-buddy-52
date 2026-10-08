@@ -29,7 +29,7 @@ export const round2 = (n: number) => Math.round(n * 100) / 100;
 /** Reads a JSON response, turning the other system's error into a readable one. */
 export async function readJson(res: Response, what: string): Promise<any> {
   const text = await res.text();
-  let body: any = null;
+  let body: any;
   try {
     body = text ? JSON.parse(text) : null;
   } catch {

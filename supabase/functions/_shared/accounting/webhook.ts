@@ -39,7 +39,7 @@ async function post(ctx: ProviderContext, event: string, data: unknown, fallback
   });
   const text = await res.text();
   if (!res.ok) throw new ProviderError(`The webhook answered ${res.status}: ${text.slice(0, 200)}`, res.status === 429 || res.status >= 500);
-  let reply: any = null;
+  let reply: any;
   try {
     reply = text ? JSON.parse(text) : null;
   } catch {

@@ -168,7 +168,6 @@ export default function AdminActivityLogs() {
 
   useEffect(() => {
     fetchAnomalies();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Auto-refresh logs every 20s while the tab is visible, and straight away when it comes back.
