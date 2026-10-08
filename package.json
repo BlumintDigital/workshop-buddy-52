@@ -79,7 +79,7 @@
     "react-hook-form": "^7.89.0",
     "react-resizable-panels": "^2.1.9",
     "react-router-dom": "^7",
-    "recharts": "2.12.7",
+    "recharts": "3.10.1",
     "remotion": "^4.0.446",
     "sonner": "^1.7.4",
     "tailwind-merge": "^2.6.0",
