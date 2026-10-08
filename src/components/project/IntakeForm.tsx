@@ -20,6 +20,7 @@ import { VehicleLookupButton } from "@/components/lookup/VehicleLookupButton";
 import { describeMotHistory, describeVehicle, vehicleMakeModel, type VehicleLookup } from "@/lib/lookup";
 import { assetSummary, normaliseRegistration, useIndustry } from "@/lib/industry";
 import { cn } from "@/lib/utils";
+import { friendlyErrorMessage } from "@/lib/friendlyError";
 
 export type IntakeType = "evaluation" | "quote" | "approved";
 
@@ -225,7 +226,8 @@ export default function IntakeForm({ clients, prefill, onCancel }: { clients: Re
       const addMsg = (data as { error?: string } | null)?.error;
       if (addErr || addMsg || !data?.user_id) {
         setSaving(false);
-        return toast.error(addMsg ?? "Couldn't save the new client. Try again.");
+        // Show the server's reason (for example "Enter your 2FA code to continue"), not a generic line.
+        return toast.error(addMsg ?? (await friendlyErrorMessage(addErr, "Couldn't save the new client. Try again.")));
       }
       clientId = data.user_id as string;
       // From here on they're a registered client: if logging the project fails, a retry uses them.
