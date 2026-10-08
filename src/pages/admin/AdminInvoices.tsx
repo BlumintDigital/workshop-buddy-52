@@ -109,7 +109,6 @@ export default function AdminInvoices() {
 
   useEffect(() => {
     fetchInvoices(page, filter, debouncedSearch);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, filter, debouncedSearch]);
 
   const refresh = () => fetchInvoices(page, filter, debouncedSearch);

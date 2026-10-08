@@ -123,7 +123,6 @@ export default function AdminClients() {
 
   useEffect(() => {
     fetchClients(page, filter, debouncedSearch);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, filter, debouncedSearch]);
 
   const refresh = () => fetchClients(page, filter, debouncedSearch);
