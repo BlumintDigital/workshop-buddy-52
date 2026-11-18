@@ -134,6 +134,28 @@ export const PAGE_HELP: PageHelpEntry[] = [
     },
   },
   {
+    key: "my-day",
+    title: "My day",
+    routes: ["/staff/dashboard"],
+    roles: {
+      staff: {
+        purpose: "Your work for today on one screen: the task in hand, your other tasks, work waiting in your teams and today's bookings.",
+        actions: [
+          "Press Start on a task to start its timer. The running time shows on the task and at the top of the page.",
+          "Press Pause when you stop for a break or another job. The time is logged on the task, to the nearest minute.",
+          "Only one timer runs at a time. Starting another task pauses the one before and logs its time.",
+          "Press Hand off when you're done. The timer stops and its time is logged.",
+          "Use Add photo to take a picture with your phone. It goes in the project's Files, for your team only.",
+          "Use Request part to ask stores for parts for this task.",
+          "Press Take it on a task waiting in your team to make it yours.",
+        ],
+        stages: ["Approved", "In progress"],
+        workflowNote: "When every task on a project is handed off, it goes to quality check.",
+        guideHeading: "6.1 My day",
+      },
+    },
+  },
+  {
     key: "projects",
     title: "Projects",
     routes: ["/admin/projects", "/manager/projects", "/staff/projects", "/client/projects"],

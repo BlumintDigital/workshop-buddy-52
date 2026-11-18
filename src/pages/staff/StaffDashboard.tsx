@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { CheckCircle2, Clock, Hand, Play, Send } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Camera, CheckCircle2, Clock, FolderOpen, Hand, Package, Pause, Play, Send } from "lucide-react";
 import { toast } from "sonner";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { PageBar } from "@/components/dashboard/PageBar";
@@ -9,17 +10,23 @@ import { StatusPill, JobStatusPill } from "@/components/dashboard/StatusPill";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { QuickHandoff, type Task } from "@/components/project/ProjectTasks";
+import { uploadProjectFile } from "@/lib/attachments";
+import { RequestDialog } from "@/components/project/ProjectParts";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useFeature } from "@/hooks/useFeatureFlags";
+import { useRealtimeRefresh } from "@/hooks/useRealtimeRefresh";
+import { useNow } from "@/hooks/useVisibleInterval";
 import { todayIso } from "@/lib/dashboardQueries";
 import { projectPath } from "@/lib/projects";
 import { plural } from "@/lib/format";
+import { elapsedMs, formatElapsed, formatMinutes } from "@/lib/timer";
 import { cn } from "@/lib/utils";
 
 type ProjectRef = { id: string; ref: string; title: string; priority: string | null; due_date: string | null; status: string };
 type MyTask = Task & { jobs: ProjectRef | null };
 type Appointment = { id: string; title: string | null; appointment_time: string; duration_minutes: number | null };
+type Timer = { task_id: string; started_at: string };
 
 function dueLabel(due: string | null): { text: string; late: boolean } {
   if (!due) return { text: "No due date", late: false };
@@ -45,71 +52,88 @@ const byUrgency = (a: MyTask, b: MyTask) =>
   (dueOf(a) ?? "9999").localeCompare(dueOf(b) ?? "9999");
 
 /**
- * A technician's home screen, built for a phone at the bench: the task in hand,
+ * A technician's home screen, built for a phone at the bench: the task in hand with its timer,
  * the rest of their tasks, work waiting in their teams, and today's bookings.
  */
 export default function StaffDashboard() {
   const appointmentsEnabled = useFeature("appointments");
   const { user, profile } = useAuth();
-  const [mine, setMine] = useState<MyTask[]>([]);
-  const [queue, setQueue] = useState<MyTask[]>([]);
-  const [leading, setLeading] = useState<ProjectRef[]>([]);
-  const [teamNames, setTeamNames] = useState<Record<string, string>>({});
-  const [handedOff, setHandedOff] = useState(0);
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [busy, setBusy] = useState<string | null>(null);
   const [handingOff, setHandingOff] = useState<MyTask | null>(null);
+  const [requesting, setRequesting] = useState<MyTask | null>(null);
 
-  const load = useCallback(async () => {
-    if (!user) return;
-    const weekStart = new Date();
-    weekStart.setDate(weekStart.getDate() - ((weekStart.getDay() + 6) % 7));
-    weekStart.setHours(0, 0, 0, 0);
-    const select = "*, jobs(id, ref, title, priority, due_date, status)";
+  const { data, isLoading } = useQuery({
+    queryKey: ["my-day", user?.id, appointmentsEnabled],
+    enabled: !!user,
+    staleTime: 30_000,
+    queryFn: async () => {
+      if (!user) throw new Error("Signed out");
+      const weekStart = new Date();
+      weekStart.setDate(weekStart.getDate() - ((weekStart.getDay() + 6) % 7));
+      weekStart.setHours(0, 0, 0, 0);
+      const select = "*, jobs(id, ref, title, priority, due_date, status)";
 
-    const { data: memberships } = await supabase.from("department_members").select("department_id, departments(name)").eq("user_id", user.id);
-    const teamIds = (memberships ?? []).map((m) => m.department_id);
-    setTeamNames(Object.fromEntries((memberships ?? []).map((m) => [m.department_id, (m.departments as { name: string } | null)?.name ?? "Team"])));
+      const { data: memberships } = await supabase.from("department_members").select("department_id, departments(name)").eq("user_id", user.id);
+      const teamIds = (memberships ?? []).map((m) => m.department_id);
 
-    const [mineRes, queueRes, leadRes, doneRes, apptsRes] = await Promise.all([
-      supabase.from("job_tasks").select(select).eq("assigned_to", user.id).neq("status", "completed"),
-      teamIds.length
-        ? supabase.from("job_tasks").select(select).is("assigned_to", null).in("department_id", teamIds).neq("status", "completed")
-        : Promise.resolve({ data: [] as MyTask[], error: null }),
-      supabase.from("jobs").select("id, ref, title, priority, due_date, status").eq("assigned_staff_id", user.id).in("status", ["pending", "in_progress", "review"]).order("due_date", { ascending: true, nullsFirst: false }),
-      supabase.from("task_handoffs").select("id", { count: "exact", head: true }).eq("from_user", user.id).gte("created_at", weekStart.toISOString()),
-      appointmentsEnabled
-        ? supabase
-            .from("appointments")
-            .select("id, title, appointment_time, duration_minutes, status")
-            .eq("appointment_date", todayIso())
-            .not("status", "in", "(completed,cancelled)")
-            .order("appointment_time", { ascending: true })
-        : Promise.resolve({ data: [] as Appointment[] }),
-    ]);
-    if (mineRes.error) toast.error("Couldn't load your tasks. Reload the page to try again.");
-    // Work only counts once the project is approved: nothing to do on quotes or cancelled projects.
-    const live = (t: MyTask) => !!t.jobs && ["pending", "in_progress", "review"].includes(t.jobs.status);
-    setMine(((mineRes.data ?? []) as MyTask[]).filter(live).sort(byUrgency));
-    setQueue(((queueRes.data ?? []) as MyTask[]).filter(live).sort(byUrgency));
-    setLeading((leadRes.data ?? []) as ProjectRef[]);
-    setHandedOff(doneRes.count ?? 0);
-    setAppointments((apptsRes.data ?? []) as Appointment[]);
-    setIsLoading(false);
-  }, [user, appointmentsEnabled]);
+      const [mineRes, queueRes, leadRes, doneRes, apptsRes, timerRes] = await Promise.all([
+        supabase.from("job_tasks").select(select).eq("assigned_to", user.id).neq("status", "completed"),
+        teamIds.length
+          ? supabase.from("job_tasks").select(select).is("assigned_to", null).in("department_id", teamIds).neq("status", "completed")
+          : Promise.resolve({ data: [] as MyTask[], error: null }),
+        supabase.from("jobs").select("id, ref, title, priority, due_date, status").eq("assigned_staff_id", user.id).in("status", ["pending", "in_progress", "review"]).order("due_date", { ascending: true, nullsFirst: false }),
+        supabase.from("task_handoffs").select("id", { count: "exact", head: true }).eq("from_user", user.id).gte("created_at", weekStart.toISOString()),
+        appointmentsEnabled
+          ? supabase
+              .from("appointments")
+              .select("id, title, appointment_time, duration_minutes, status")
+              .eq("appointment_date", todayIso())
+              .not("status", "in", "(completed,cancelled)")
+              .order("appointment_time", { ascending: true })
+          : Promise.resolve({ data: [] as Appointment[] }),
+        supabase.from("task_timers").select("task_id, started_at").eq("user_id", user.id).maybeSingle(),
+      ]);
+      if (mineRes.error) toast.error("Couldn't load your tasks. Reload the page to try again.");
+      const timer = (timerRes.data ?? null) as Timer | null;
+      // Work only counts once the project is approved: nothing to do on quotes or cancelled projects.
+      const live = (t: MyTask) => !!t.jobs && ["pending", "in_progress", "review"].includes(t.jobs.status);
+      // The task being timed always comes first, so it's the task in hand.
+      const timedFirst = (a: MyTask, b: MyTask) => Number(b.id === timer?.task_id) - Number(a.id === timer?.task_id) || byUrgency(a, b);
+      return {
+        mine: ((mineRes.data ?? []) as MyTask[]).filter(live).sort(timedFirst),
+        queue: ((queueRes.data ?? []) as MyTask[]).filter(live).sort(byUrgency),
+        leading: (leadRes.data ?? []) as ProjectRef[],
+        teamNames: Object.fromEntries((memberships ?? []).map((m) => [m.department_id, (m.departments as { name: string } | null)?.name ?? "Team"])) as Record<string, string>,
+        handedOff: doneRes.count ?? 0,
+        appointments: (apptsRes.data ?? []) as Appointment[],
+        timer,
+      };
+    },
+  });
+  const { mine = [], queue = [], leading = [], teamNames = {}, handedOff = 0, appointments = [], timer = null } = data ?? {};
+  const load = () => void queryClient.invalidateQueries({ queryKey: ["my-day", user?.id] });
 
-  useEffect(() => {
-    void load();
-  }, [load]);
+  // Live: tasks given to you or your teams, and your timer started or stopped on another device.
+  useRealtimeRefresh(user ? `my-day-${user.id}` : null, [{ table: "job_tasks" }, { table: "task_timers", filter: `user_id=eq.${user?.id}` }], ["my-day", user?.id]);
 
   const start = async (t: MyTask) => {
     setBusy(t.id);
-    const { error } = await supabase.from("job_tasks").update({ status: "in_progress" }).eq("id", t.id);
+    const { error } = await supabase.rpc("start_task_timer", { _task_id: t.id });
     setBusy(null);
     if (error) return toast.error(`Couldn't start "${t.title}". Check your connection and try again.`);
     toast.success(`Started: ${t.title}`);
-    void load();
+    load();
+  };
+
+  const pause = async (t: MyTask) => {
+    setBusy(t.id);
+    const { data: hours, error } = await supabase.rpc("stop_task_timer");
+    setBusy(null);
+    if (error) return toast.error("Couldn't pause the timer. Check your connection and try again.");
+    const minutes = Math.round(Number(hours ?? 0) * 60);
+    toast.success(minutes > 0 ? `Paused. ${formatMinutes(minutes)} logged on "${t.title}".` : "Paused. Under a minute, so no time logged.");
+    load();
   };
 
   const take = async (t: MyTask) => {
@@ -118,18 +142,19 @@ export default function StaffDashboard() {
     setBusy(null);
     if (error) return toast.error(`Couldn't take "${t.title}". Someone may have taken it already.`);
     toast.success(`"${t.title}" is yours`);
-    void load();
+    load();
   };
 
   const [current, ...rest] = mine;
   const firstName = (profile?.full_name || "").split(" ")[0];
   const subtitle = [new Date().toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" }), firstName].filter(Boolean).join(" · ");
   const leadingOnly = useMemo(() => leading.filter((p) => !mine.some((t) => t.job_id === p.id)), [leading, mine]);
+  const timedTitle = timer ? mine.find((t) => t.id === timer.task_id)?.title : undefined;
 
   return (
     <DashboardLayout>
       <div className="mx-auto min-w-0 max-w-2xl space-y-4">
-        <PageBar title="My day" subtitle={subtitle} />
+        <PageBar title="My day" subtitle={subtitle} actions={timer && <RunningTimer timer={timer} title={timedTitle} />} />
 
         {isLoading ? (
           <>
@@ -147,20 +172,29 @@ export default function StaffDashboard() {
           </section>
         ) : (
           <>
-            <TaskInHand task={current} team={current.department_id ? teamNames[current.department_id] : undefined} busy={busy === current.id} onStart={() => void start(current)} onHandOff={() => setHandingOff(current)} />
+            <TaskInHand
+              task={current}
+              team={current.department_id ? teamNames[current.department_id] : undefined}
+              timer={timer?.task_id === current.id ? timer : null}
+              busy={busy === current.id}
+              onStart={() => void start(current)}
+              onPause={() => void pause(current)}
+              onHandOff={() => setHandingOff(current)}
+              onRequestPart={() => setRequesting(current)}
+            />
             {rest.length > 0 && (
               <Panel title="My other tasks" link={{ label: "My projects", to: "/staff/projects" }}>
                 <ul className="divide-y">
                   {rest.map((t) => (
                     <TaskRow key={t.id} task={t}>
                       {t.status === "pending" ? (
-                        <Button size="sm" variant="outline" className="h-10" disabled={busy === t.id} onClick={() => void start(t)}>
-                          <Play className="mr-1 h-3.5 w-3.5" aria-hidden />
+                        <Button size="sm" variant="outline" className="h-11" disabled={busy === t.id} onClick={() => void start(t)}>
+                          <Play className="mr-1 h-4 w-4" aria-hidden />
                           Start<span className="sr-only"> {t.title}</span>
                         </Button>
                       ) : (
-                        <Button size="sm" className="h-10" onClick={() => setHandingOff(t)}>
-                          <Send className="mr-1 h-3.5 w-3.5" aria-hidden />
+                        <Button size="sm" className="h-11" onClick={() => setHandingOff(t)}>
+                          <Send className="mr-1 h-4 w-4" aria-hidden />
                           Hand off<span className="sr-only"> {t.title}</span>
                         </Button>
                       )}
@@ -177,8 +211,8 @@ export default function StaffDashboard() {
             <ul className="divide-y">
               {queue.map((t) => (
                 <TaskRow key={t.id} task={t} team={t.department_id ? teamNames[t.department_id] : undefined}>
-                  <Button size="sm" variant="outline" className="h-10" disabled={busy === t.id} onClick={() => void take(t)}>
-                    <Hand className="mr-1 h-3.5 w-3.5" aria-hidden />
+                  <Button size="sm" variant="outline" className="h-11" disabled={busy === t.id} onClick={() => void take(t)}>
+                    <Hand className="mr-1 h-4 w-4" aria-hidden />
                     Take it<span className="sr-only">: {t.title}</span>
                   </Button>
                 </TaskRow>
@@ -239,9 +273,13 @@ export default function StaffDashboard() {
           onClose={() => setHandingOff(null)}
           onDone={() => {
             setHandingOff(null);
-            void load();
+            load();
           }}
         />
+      )}
+
+      {requesting?.jobs && (
+        <RequestDialog project={{ id: requesting.job_id, ref: requesting.jobs.ref }} taskId={requesting.id} onClose={() => setRequesting(null)} onDone={() => setRequesting(null)} />
       )}
     </DashboardLayout>
   );
@@ -269,13 +307,71 @@ function TaskRow({ task, team, children }: { task: MyTask; team?: string; childr
   );
 }
 
-function TaskInHand({ task, team, busy, onStart, onHandOff }: { task: MyTask; team?: string; busy: boolean; onStart: () => void; onHandOff: () => void }) {
+/** Running time, ticking once a second. Mounted only while a timer runs. */
+function Elapsed({ startedAt, className }: { startedAt: string; className?: string }) {
+  const now = useNow(1000);
+  return <span className={cn("tabular-nums", className)}>{formatElapsed(elapsedMs(startedAt, now))}</span>;
+}
+
+/** The header's reminder that a timer is running, and on what. */
+function RunningTimer({ timer, title }: { timer: Timer; title?: string }) {
+  return (
+    <p className="flex max-w-[16rem] items-center gap-2 rounded-full bg-success-soft py-1.5 pl-3 pr-4 text-success">
+      <Clock className="h-4 w-4 shrink-0" aria-hidden />
+      <span className="sr-only">Timer running{title ? ` on ${title}` : ""}:</span>
+      <Elapsed startedAt={timer.started_at} className="text-base font-semibold" />
+      {title && (
+        <span aria-hidden className="min-w-0 truncate text-sm">
+          {title}
+        </span>
+      )}
+    </p>
+  );
+}
+
+function TaskInHand({
+  task,
+  team,
+  timer,
+  busy,
+  onStart,
+  onPause,
+  onHandOff,
+  onRequestPart,
+}: {
+  task: MyTask;
+  team?: string;
+  timer: Timer | null;
+  busy: boolean;
+  onStart: () => void;
+  onPause: () => void;
+  onHandOff: () => void;
+  onRequestPart: () => void;
+}) {
+  const { user } = useAuth();
   const due = dueLabel(dueOf(task));
   const working = task.status === "in_progress";
+  const photoInput = useRef<HTMLInputElement>(null);
+  const [adding, setAdding] = useState(false);
+
+  const addPhotos = async (files: FileList | null) => {
+    if (!files?.length || !user) return;
+    setAdding(true);
+    let done = 0;
+    for (const file of Array.from(files)) {
+      const error = await uploadProjectFile(task.job_id, "work", file, user.id);
+      if (error) toast.error(`Couldn't add ${file.name}: ${error}`);
+      else done++;
+    }
+    setAdding(false);
+    if (photoInput.current) photoInput.current.value = "";
+    if (done) toast.success(`${done === 1 ? "Photo" : `${done} photos`} added to ${task.jobs?.ref ?? "the project"}. Your team can see it in Files.`);
+  };
+
   return (
-    <section aria-label="Task in hand" className="space-y-3 rounded-lg border bg-card p-4">
+    <section aria-label="Task in hand" className="space-y-4 rounded-lg border bg-card p-4">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-sm text-muted-foreground">{working ? "Working on" : "Up first"}</span>
+        <span className="text-sm text-muted-foreground">{timer ? "Working on" : working ? "Paused" : "Up first"}</span>
         <PriorityPill priority={task.jobs?.priority} />
         {due.late && <StatusPill tone="danger">Late</StatusPill>}
         {task.rework_of && <StatusPill tone="warning">Rework</StatusPill>}
@@ -284,7 +380,7 @@ function TaskInHand({ task, team, busy, onStart, onHandOff }: { task: MyTask; te
         <p className="font-mono text-xs text-muted-foreground">
           {task.jobs?.ref} · {task.jobs?.title}
         </p>
-        <h2 className="font-sans text-lg font-semibold leading-snug">{task.title}</h2>
+        <h2 className="font-sans text-xl font-semibold leading-snug">{task.title}</h2>
         {task.description && <p className="mt-0.5 text-sm text-muted-foreground">{task.description}</p>}
         <p className={cn("mt-0.5 text-sm", due.late ? "font-medium text-destructive" : "text-muted-foreground")}>
           {due.text}
@@ -292,19 +388,67 @@ function TaskInHand({ task, team, busy, onStart, onHandOff }: { task: MyTask; te
           {team ? ` · ${team}` : ""}
         </p>
       </div>
+
+      {timer && (
+        <div className="rounded-md bg-success-soft px-4 py-3 text-success">
+          <p className="text-sm font-medium">Time on this task</p>
+          <Elapsed startedAt={timer.started_at} className="block text-5xl font-semibold leading-tight tracking-tight" />
+        </div>
+      )}
+
       <div className="grid grid-cols-2 gap-2">
-        <Button asChild variant="outline" className="h-12">
-          <Link to={projectPath(task.job_id)}>Open project</Link>
-        </Button>
+        {timer ? (
+          <Button variant="outline" className="h-14 text-base [&_svg]:size-5" onClick={onPause} disabled={busy}>
+            <Pause aria-hidden />
+            {busy ? "Pausing…" : "Pause"}
+          </Button>
+        ) : (
+          <Button variant={working ? "outline" : "default"} className="h-14 text-base [&_svg]:size-5" onClick={onStart} disabled={busy}>
+            <Play aria-hidden />
+            {busy ? "Starting…" : working ? "Resume" : "Start"}
+          </Button>
+        )}
         {working ? (
-          <Button className="h-12" onClick={onHandOff}>
-            <Send className="mr-1.5 h-4 w-4" aria-hidden />
+          <Button className="h-14 text-base [&_svg]:size-5" onClick={onHandOff}>
+            <Send aria-hidden />
             Hand off
           </Button>
         ) : (
-          <Button className="h-12" onClick={onStart} disabled={busy}>
-            <Play className="mr-1.5 h-4 w-4" aria-hidden />
-            {busy ? "Starting…" : "Start"}
+          <Button asChild variant="outline" className="h-14 text-base [&_svg]:size-5">
+            <Link to={projectPath(task.job_id)}>
+              <FolderOpen aria-hidden />
+              Open project
+            </Link>
+          </Button>
+        )}
+      </div>
+
+      <div className={cn("grid gap-2", working ? "grid-cols-3" : "grid-cols-2")}>
+        <input
+          ref={photoInput}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          multiple
+          className="sr-only"
+          tabIndex={-1}
+          aria-hidden
+          onChange={(e) => void addPhotos(e.target.files)}
+        />
+        <Button variant="outline" className="h-16 flex-col gap-1 px-1 text-sm [&_svg]:size-5" onClick={() => photoInput.current?.click()} disabled={adding}>
+          <Camera aria-hidden />
+          {adding ? "Adding…" : "Add photo"}
+        </Button>
+        <Button variant="outline" className="h-16 flex-col gap-1 px-1 text-sm [&_svg]:size-5" onClick={onRequestPart}>
+          <Package aria-hidden />
+          Request part
+        </Button>
+        {working && (
+          <Button asChild variant="outline" className="h-16 flex-col gap-1 px-1 text-sm [&_svg]:size-5">
+            <Link to={projectPath(task.job_id)}>
+              <FolderOpen aria-hidden />
+              Open project
+            </Link>
           </Button>
         )}
       </div>

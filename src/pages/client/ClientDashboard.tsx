@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { Clock, FileText, Plus } from "lucide-react";
 import { toast } from "sonner";
@@ -24,6 +25,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useCurrency } from "@/hooks/useCurrency";
 import { useFeature } from "@/hooks/useFeatureFlags";
+import { useRealtimeRefresh } from "@/hooks/useRealtimeRefresh";
 import { todayIso } from "@/lib/dashboardQueries";
 
 type Quote = {
@@ -63,11 +65,6 @@ export default function ClientDashboard() {
   const { user, profile, refreshProfile } = useAuth();
   const { format } = useCurrency();
 
-  const [quotes, setQuotes] = useState<Quote[]>([]);
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [deciding, setDeciding] = useState<string | null>(null);
   const [declineFor, setDeclineFor] = useState<Quote | null>(null);
   const [declineReason, setDeclineReason] = useState("");
@@ -99,51 +96,67 @@ export default function ClientDashboard() {
     return missing;
   }, [profile, profileChecked]);
 
-  const load = useCallback(async () => {
-    if (!user) return;
-    const recent = new Date(Date.now() - 14 * 86_400_000).toISOString();
-    const [quotesRes, ordersRes, invoicesRes, apptsRes] = await Promise.all([
-      supabase
-        .from("project_quotes")
-        .select("id, job_id, kind, number, title, subtotal, currency, valid_until, sent_at, jobs(ref, title)")
-        .eq("status", "sent")
-        .order("sent_at", { ascending: true }),
-      supabase
-        .from("jobs")
-        .select("id, ref, title, status, due_date, updated_at")
-        .eq("client_id", user.id)
-        .or(`status.in.(received,evaluation,quote,pending,in_progress,review,completed),and(status.eq.shipped,updated_at.gte.${recent})`)
-        .order("due_date", { ascending: true, nullsFirst: false }),
-      supabase
-        .from("invoices")
-        .select("id, invoice_number, total, base_total, currency, status, due_date")
-        .eq("client_id", user.id)
-        .in("status", ["sent", "overdue"])
-        .order("due_date", { ascending: true }),
-      appointmentsEnabled
-        ? supabase
-            .from("appointments")
-            .select("id, title, appointment_date, appointment_time")
-            .eq("client_id", user.id)
-            .gte("appointment_date", todayIso())
-            .order("appointment_date", { ascending: true })
-            .order("appointment_time", { ascending: true })
-            .limit(3)
-        : Promise.resolve({ data: [] as any[] }),
-    ]);
-    if (quotesRes.error || ordersRes.error || invoicesRes.error) {
-      toast.error("Some of your information didn't load. Reload the page to try again.");
-    }
-    setQuotes((quotesRes.data || []) as Quote[]);
-    setOrders((ordersRes.data || []) as Order[]);
-    setInvoices((invoicesRes.data || []) as Invoice[]);
-    setAppointments((apptsRes.data || []) as Appointment[]);
-    setIsLoading(false);
-  }, [user, appointmentsEnabled]);
+  const queryClient = useQueryClient();
+  const load = () => void queryClient.invalidateQueries({ queryKey: ["client-home", user?.id] });
+  const { data, isLoading } = useQuery({
+    queryKey: ["client-home", user?.id, appointmentsEnabled],
+    enabled: !!user,
+    staleTime: 30_000,
+    queryFn: async () => {
+      if (!user) throw new Error("Signed out");
+      const recent = new Date(Date.now() - 14 * 86_400_000).toISOString();
+      const [quotesRes, ordersRes, invoicesRes, apptsRes] = await Promise.all([
+        supabase
+          .from("project_quotes")
+          .select("id, job_id, kind, number, title, subtotal, currency, valid_until, sent_at, jobs(ref, title)")
+          .eq("status", "sent")
+          .order("sent_at", { ascending: true }),
+        supabase
+          .from("jobs")
+          .select("id, ref, title, status, due_date, updated_at")
+          .eq("client_id", user.id)
+          .or(`status.in.(received,evaluation,quote,pending,in_progress,review,completed),and(status.eq.shipped,updated_at.gte.${recent})`)
+          .order("due_date", { ascending: true, nullsFirst: false }),
+        supabase
+          .from("invoices")
+          .select("id, invoice_number, total, base_total, currency, status, due_date")
+          .eq("client_id", user.id)
+          .in("status", ["sent", "overdue"])
+          .order("due_date", { ascending: true }),
+        appointmentsEnabled
+          ? supabase
+              .from("appointments")
+              .select("id, title, appointment_date, appointment_time")
+              .eq("client_id", user.id)
+              .gte("appointment_date", todayIso())
+              .order("appointment_date", { ascending: true })
+              .order("appointment_time", { ascending: true })
+              .limit(3)
+          : Promise.resolve({ data: [] as any[] }),
+      ]);
+      if (quotesRes.error || ordersRes.error || invoicesRes.error) {
+        toast.error("Some of your information didn't load. Reload the page to try again.");
+      }
+      return {
+        quotes: (quotesRes.data || []) as Quote[],
+        orders: (ordersRes.data || []) as Order[],
+        invoices: (invoicesRes.data || []) as Invoice[],
+        appointments: (apptsRes.data || []) as Appointment[],
+      };
+    },
+  });
+  const { quotes = [], orders = [], invoices = [], appointments = [] } = data ?? {};
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  // Live: a quote sent, a project moving on or an invoice raised shows up without a reload.
+  useRealtimeRefresh(
+    user ? `client-home-${user.id}` : null,
+    [
+      { table: "jobs", filter: `client_id=eq.${user?.id}` },
+      { table: "invoices", filter: `client_id=eq.${user?.id}` },
+      { table: "project_quotes" },
+    ],
+    ["client-home", user?.id],
+  );
 
   const decide = async (quote: Quote, approve: boolean, reason?: string) => {
     if (deciding) return;

@@ -2592,6 +2592,27 @@ export type Database = {
           },
         ];
       };
+      task_timers: {
+        Row: {
+          job_id: string;
+          started_at: string;
+          task_id: string;
+          user_id: string;
+        };
+        Insert: {
+          job_id: string;
+          started_at?: string;
+          task_id: string;
+          user_id: string;
+        };
+        Update: {
+          job_id?: string;
+          started_at?: string;
+          task_id?: string;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
       time_entries: {
         Row: {
           created_at: string;
@@ -3307,6 +3328,8 @@ export type Database = {
           isSetofReturn: false;
         };
       };
+      start_task_timer: { Args: { _task_id: string }; Returns: string };
+      stop_task_timer: { Args: Record<PropertyKey, never>; Returns: number };
       submit_purchase_order: { Args: { _po_id: string }; Returns: string };
       submit_quote: {
         Args: {
