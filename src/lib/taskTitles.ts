@@ -2,7 +2,7 @@
 // these names would never be handed off, so the project would never reach QC.
 // Keep in step with public.is_reserved_task_title() in the database.
 
-const RESERVED = new Set(["quality check", "qc", "final inspection", "shipping", "ship", "collection", "hand over", "handover", "delivery"]);
+const RESERVED = new Set(["quality check", "qc", "final inspection", "shipping", "ship", "hand over", "handover"]);
 
 export const RESERVED_TASK_TITLE_MESSAGE = "Quality check and shipping are stages, not tasks. They start automatically when every task is handed off.";
 

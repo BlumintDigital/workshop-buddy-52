@@ -3297,6 +3297,15 @@ export type Database = {
         Args: Record<PropertyKey, never>;
         Returns: number;
       };
+      seed_demo_projects: {
+        Args: { _rows: Json };
+        Returns: {
+          assigned_staff_id: string | null;
+          client_id: string | null;
+          id: string;
+          status: string;
+        }[];
+      };
       send_project_quote: { Args: { _quote_id: string }; Returns: string };
       session_verified: { Args: Record<PropertyKey, never>; Returns: boolean };
       set_feature_flag: {

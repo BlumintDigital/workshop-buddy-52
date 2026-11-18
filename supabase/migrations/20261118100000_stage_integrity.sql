@@ -25,7 +25,7 @@ SET search_path TO 'public'
 AS $$
   SELECT trim(regexp_replace(replace(lower(COALESCE(_title, '')), '.', ''), '[^a-z0-9]+', ' ', 'g')) IN (
     'quality check', 'qc', 'final inspection',
-    'shipping', 'ship', 'collection', 'hand over', 'handover', 'delivery'
+    'shipping', 'ship', 'hand over', 'handover'
   );
 $$;
 REVOKE ALL ON FUNCTION public.is_reserved_task_title(text) FROM PUBLIC, anon;
@@ -66,6 +66,25 @@ REVOKE EXECUTE ON FUNCTION public.jobs_guard_stage() FROM PUBLIC, anon, authenti
 DROP TRIGGER IF EXISTS jobs_guard_stage ON public.jobs;
 CREATE TRIGGER jobs_guard_stage BEFORE UPDATE ON public.jobs
   FOR EACH ROW EXECUTE FUNCTION public.jobs_guard_stage();
+
+-- A new project starts at an early stage. Later stages are reached through the stage functions.
+-- (Restores run with triggers off, so backups keep their stages.)
+CREATE OR REPLACE FUNCTION public.jobs_guard_new_stage()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path TO 'public'
+AS $$
+BEGIN
+  IF NEW.status NOT IN ('received', 'evaluation', 'quote', 'pending') AND COALESCE(current_setting('shoplane.stage_rpc', true), '') <> 'on' THEN
+    RAISE EXCEPTION 'A new project starts at Received, Evaluating, Quote sent or Approved' USING ERRCODE = '42501';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+REVOKE EXECUTE ON FUNCTION public.jobs_guard_new_stage() FROM PUBLIC, anon, authenticated;
+DROP TRIGGER IF EXISTS jobs_guard_new_stage ON public.jobs;
+CREATE TRIGGER jobs_guard_new_stage BEFORE INSERT ON public.jobs
+  FOR EACH ROW EXECUTE FUNCTION public.jobs_guard_new_stage();
 
 -- Moves a project from one of _from to _to, or fails if it has moved on meanwhile.
 -- Internal: called by the stage functions, never from the API.
@@ -561,13 +580,18 @@ BEGIN
     RAISE EXCEPTION 'Only an admin or manager can move a project back' USING ERRCODE = '42501';
   END IF;
   IF _why IS NULL THEN RAISE EXCEPTION 'Say why it''s moving back' USING ERRCODE = '22023'; END IF;
+  -- Only stages before shipping are targets; Cancelled goes through close_project.
+  IF NOT (COALESCE(_to, '') = ANY (_order)) THEN
+    RAISE EXCEPTION 'Choose an earlier stage to move the project back to' USING ERRCODE = '22023';
+  END IF;
   SELECT * INTO _job FROM public.jobs WHERE id = _job_id FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'Project not found' USING ERRCODE = 'P0002'; END IF;
   IF _job.status = _to THEN RETURN _to; END IF;
-  IF NOT (
-    (_job.status = 'cancelled' AND _to = 'received')
-    OR (array_position(_order, _to) IS NOT NULL AND array_position(_order, _to) < array_position(_order, _job.status))
-  ) THEN
+  IF _job.status = 'shipped' THEN RAISE EXCEPTION 'A shipped project can''t be moved back' USING ERRCODE = '22023'; END IF;
+  IF _job.status = 'cancelled' THEN
+    -- The one move out of Cancelled: reopen at the very start.
+    IF _to <> 'received' THEN RAISE EXCEPTION 'A closed project can only be reopened at Received' USING ERRCODE = '22023'; END IF;
+  ELSIF COALESCE(array_position(_order, _to), 0) >= COALESCE(array_position(_order, _job.status), 0) THEN
     RAISE EXCEPTION 'A project can only move back a stage here. Use the stage buttons to move it forward' USING ERRCODE = '22023';
   END IF;
   PERFORM public.set_project_stage(_job_id, ARRAY[_job.status], _to);
@@ -578,6 +602,40 @@ END;
 $$;
 REVOKE ALL ON FUNCTION public.move_project_back(uuid, text, text) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.move_project_back(uuid, text, text) TO authenticated;
+
+-- Demo and sample data: projects at any stage, for an admin or the server (seed-data).
+CREATE OR REPLACE FUNCTION public.seed_demo_projects(_rows jsonb)
+RETURNS TABLE (id uuid, status text, client_id uuid, assigned_staff_id uuid)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public'
+AS $$
+#variable_conflict use_column
+BEGIN
+  IF auth.uid() IS NOT NULL THEN
+    PERFORM public.assert_verified_session();
+    IF NOT public.has_role(auth.uid(), 'admin'::public.app_role) THEN
+      RAISE EXCEPTION 'Only an admin can add demo data' USING ERRCODE = '42501';
+    END IF;
+  ELSIF COALESCE(auth.jwt()->>'role', '') <> 'service_role' THEN
+    RAISE EXCEPTION 'Only an admin can add demo data' USING ERRCODE = '42501';
+  END IF;
+  PERFORM set_config('shoplane.stage_rpc', 'on', true);
+  RETURN QUERY
+    WITH ins AS (
+    INSERT INTO public.jobs AS j (title, description, status, priority, client_id, assigned_staff_id, estimated_hours, actual_hours, due_date)
+    SELECT r.title, r.description, COALESCE(r.status, 'pending'), COALESCE(r.priority, 'medium'), r.client_id, r.assigned_staff_id,
+           r.estimated_hours, r.actual_hours, r.due_date
+    FROM jsonb_to_recordset(COALESCE(_rows, '[]'::jsonb)) AS r(title text, description text, status text, priority text, client_id uuid,
+         assigned_staff_id uuid, estimated_hours numeric, actual_hours numeric, due_date date)
+    RETURNING j.id, j.status, j.client_id, j.assigned_staff_id
+    )
+    SELECT ins.id, ins.status, ins.client_id, ins.assigned_staff_id FROM ins;
+  PERFORM set_config('shoplane.stage_rpc', 'off', true);
+END;
+$$;
+REVOKE ALL ON FUNCTION public.seed_demo_projects(jsonb) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.seed_demo_projects(jsonb) TO authenticated, service_role;
 
 -- ============================================================ 5. Deleting the last open task
 -- Same rule as handing it off: with nothing left to do, the project goes to its quality check.
@@ -613,7 +671,8 @@ CREATE TRIGGER job_tasks_after_delete AFTER DELETE ON public.job_tasks
   FOR EACH ROW EXECUTE FUNCTION public.job_tasks_after_delete();
 
 -- ============================================================ 6. Clean up stage-named tasks already saved
--- Close them, leave a team note, and send any project they were holding up to its quality check.
+-- Only on projects in progress or at QC, where they hold things up. Close them, leave a team
+-- note, and send any project they were holding up to its quality check.
 DO $$
 DECLARE
   _r record;
@@ -623,7 +682,7 @@ BEGIN
            COALESCE(j.assigned_staff_id, j.received_by,
                     (SELECT ur.user_id FROM public.user_roles ur WHERE ur.role = 'admin' ORDER BY ur.user_id LIMIT 1)) AS author
     FROM public.job_tasks t JOIN public.jobs j ON j.id = t.job_id
-    WHERE t.status <> 'completed' AND public.is_reserved_task_title(t.title)
+    WHERE t.status <> 'completed' AND public.is_reserved_task_title(t.title) AND j.status IN ('in_progress', 'review')
     GROUP BY t.job_id, j.assigned_staff_id, j.received_by
   LOOP
     UPDATE public.job_tasks SET status = 'completed', completed_at = now()
