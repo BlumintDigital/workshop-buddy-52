@@ -46,9 +46,9 @@ export type PageHelpEntry = {
 const todayForManagers: Omit<RoleHelp, "guideHeading"> = {
   purpose: "Start the day here. It lists what needs someone's action now and shows how the workshop is doing.",
   actions: [
-    "Work down Needs attention: overdue invoices, finished projects with no invoice, projects waiting for quality check, low stock and quotes waiting on the client. Each line has the button that fixes it.",
-    "Check the figures: revenue this month, open projects, money awaiting payment and today's appointments.",
-    "See projects in progress and who is carrying the most work.",
+    "Work down To do: overdue invoices, projects at risk, finished projects with no invoice, quality checks, purchase orders to approve, projects stuck in a stage, low stock and more. The number is the exact count, and each line opens the list behind it.",
+    "Check the figures: open projects, intake, money awaiting payment, revenue this month and today's appointments.",
+    "See projects in progress, labour efficiency, quote conversion and who is carrying the most work.",
     "Use New → Project to log a machine at Reception.",
     "Use Customise to choose and order the cards, and Refresh to reload the figures.",
   ],
