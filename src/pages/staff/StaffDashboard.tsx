@@ -20,7 +20,7 @@ import { useNow } from "@/hooks/useVisibleInterval";
 import { todayIso } from "@/lib/dashboardQueries";
 import { projectPath } from "@/lib/projects";
 import { plural } from "@/lib/format";
-import { elapsedMs, formatElapsed, formatMinutes } from "@/lib/timer";
+import { elapsedMs, formatElapsed, formatMinutes, isForgotten } from "@/lib/timer";
 import { cn } from "@/lib/utils";
 
 type ProjectRef = { id: string; ref: string; title: string; priority: string | null; due_date: string | null; status: string };
@@ -114,8 +114,9 @@ export default function StaffDashboard() {
   const { mine = [], queue = [], leading = [], teamNames = {}, handedOff = 0, appointments = [], timer = null } = data ?? {};
   const load = () => void queryClient.invalidateQueries({ queryKey: ["my-day", user?.id] });
 
-  // Live: tasks given to you or your teams, and your timer started or stopped on another device.
-  useRealtimeRefresh(user ? `my-day-${user.id}` : null, [{ table: "job_tasks" }, { table: "task_timers", filter: `user_id=eq.${user?.id}` }], ["my-day", user?.id]);
+  // Live: tasks given to you or your teams. Timers aren't broadcast (their delete events would
+  // reach everyone), so start and pause refetch here instead.
+  useRealtimeRefresh(user ? `my-day-${user.id}` : null, [{ table: "job_tasks" }], ["my-day", user?.id]);
 
   const start = async (t: MyTask) => {
     setBusy(t.id);
@@ -313,6 +314,18 @@ function Elapsed({ startedAt, className }: { startedAt: string; className?: stri
   return <span className={cn("tabular-nums", className)}>{formatElapsed(elapsedMs(startedAt, now))}</span>;
 }
 
+/** A nudge when the timer has run past a working day, probably left on by mistake. */
+function ForgottenTimer({ startedAt }: { startedAt: string }) {
+  const now = useNow(60_000);
+  if (!isForgotten(startedAt, now)) return null;
+  const since = new Date(startedAt).toLocaleString(undefined, { weekday: "short", hour: "2-digit", minute: "2-digit" });
+  return (
+    <p role="status" className="rounded-md bg-warning-soft px-4 py-3 text-sm font-medium text-warning">
+      Your timer has been running since {since}. Pause it and fix the hours on the project if needed.
+    </p>
+  );
+}
+
 /** The header's reminder that a timer is running, and on what. */
 function RunningTimer({ timer, title }: { timer: Timer; title?: string }) {
   return (
@@ -395,6 +408,7 @@ function TaskInHand({
           <Elapsed startedAt={timer.started_at} className="block text-5xl font-semibold leading-tight tracking-tight" />
         </div>
       )}
+      {timer && <ForgottenTimer startedAt={timer.started_at} />}
 
       <div className="grid grid-cols-2 gap-2">
         {timer ? (

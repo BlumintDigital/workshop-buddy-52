@@ -18,6 +18,7 @@ import { DatePickerInput } from "@/components/ui/date-picker-input";
 import { StatusPill, type StatusTone } from "@/components/dashboard/StatusPill";
 import { fetchProfileNames, relativeTime } from "@/lib/profileNames";
 import { formatDate } from "@/lib/format";
+import { formatMinutes, minutesToLog } from "@/lib/timer";
 import { cn } from "@/lib/utils";
 
 export type Task = {
@@ -512,10 +513,15 @@ function HandoffDialog({
   const [saving, setSaving] = useState(false);
   const photoInput = useRef<HTMLInputElement>(null);
   const remainingAfter = nextOptions.length;
+  // A running timer logs the time at hand-off, so there are no hours to type.
+  const [timerStart, setTimerStart] = useState<string | null>(null);
+  useEffect(() => {
+    void supabase.rpc("task_timer_started", { _task_id: task.id }).then(({ data }) => setTimerStart(data ?? null));
+  }, [task.id]);
 
   const submit = async () => {
     if (!note.trim()) return toast.error("Say what you did and anything the next person should know");
-    const h = hours ? Number(hours) : null;
+    const h = hours && !timerStart ? Number(hours) : null;
     if (h !== null && (!(h > 0) || h > 24)) return toast.error("Hours must be between 0 and 24");
     setSaving(true);
     const { error } = await supabase.rpc("handoff_task", {
@@ -574,10 +580,16 @@ function HandoffDialog({
             />
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div>
-              <Label htmlFor="f-handoff-hours">Hours spent (optional)</Label>
-              <Input id="f-handoff-hours" type="number" min={0} max={24} step={0.25} value={hours} onChange={(e) => setHours(e.target.value)} />
-            </div>
+            {timerStart ? (
+              <p className="self-end text-sm text-muted-foreground">
+                The timer has {formatMinutes(minutesToLog(timerStart, Date.now()))} on this task. It's logged when you hand off.
+              </p>
+            ) : (
+              <div>
+                <Label htmlFor="f-handoff-hours">Hours spent (optional)</Label>
+                <Input id="f-handoff-hours" type="number" min={0} max={24} step={0.25} value={hours} onChange={(e) => setHours(e.target.value)} />
+              </div>
+            )}
             <div>
               <Label htmlFor="f-handoff-next">Next step</Label>
               <Select value={next} onValueChange={setNext}>

@@ -3330,6 +3330,7 @@ export type Database = {
       };
       start_task_timer: { Args: { _task_id: string }; Returns: string };
       stop_task_timer: { Args: Record<PropertyKey, never>; Returns: number };
+      task_timer_started: { Args: { _task_id: string }; Returns: string | null };
       submit_purchase_order: { Args: { _po_id: string }; Returns: string };
       submit_quote: {
         Args: {

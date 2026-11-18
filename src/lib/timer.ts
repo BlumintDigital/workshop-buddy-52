@@ -18,6 +18,10 @@ export function minutesToLog(startedAt: string | null | undefined, stoppedAt: nu
   return Math.min(Math.round(elapsedMs(startedAt, stoppedAt) / 60_000), MAX_MINUTES);
 }
 
+/** A timer running longer than a working day was probably left on by mistake. */
+export const FORGOTTEN_AFTER_MS = 10 * 3_600_000;
+export const isForgotten = (startedAt: string | null | undefined, now: number) => elapsedMs(startedAt, now) > FORGOTTEN_AFTER_MS;
+
 /** Running time for display: "4:07" under an hour, "1:04:07" after. */
 export function formatElapsed(ms: number): string {
   const total = Math.floor(ms / 1000);

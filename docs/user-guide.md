@@ -445,7 +445,7 @@ Staff focus on the tasks given to them and their teams.
 - **Projects you lead** — projects where you're the person the client deals with.
 - **Today's bookings** — your appointments today.
 
-**Start** starts a timer on the task. The running time shows on the task and at the top of the page, and it keeps running if you reload or switch phones. **Pause** stops it and logs the time on the task, to the nearest minute. Only one timer runs at a time: starting another task pauses the first. **Hand off** stops the timer too, so you don't need to type the hours. A timer left running logs at most 24 hours.
+**Start** starts a timer on the task. The running time shows on the task and at the top of the page, and it keeps running if you reload or switch phones. **Pause** stops it and logs the time on the task, to the nearest minute. Only one timer runs at a time: starting another task pauses the first. **Hand off** stops the timer too and logs its time, so the hand-off form doesn't ask for hours. If the task is given to someone else, your timer on it stops and logs your time. After 10 hours, My day reminds you that the timer is still running. A timer left running logs at most 24 hours.
 
 **Add photo** opens your phone's camera. The photo goes in the project's **Files**, for your team only. **Request part** asks stores for parts for the task, as on the project page.
 

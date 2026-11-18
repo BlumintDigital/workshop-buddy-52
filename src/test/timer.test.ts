@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { elapsedMs, formatElapsed, formatMinutes, minutesToLog } from "@/lib/timer";
+import { elapsedMs, formatElapsed, formatMinutes, isForgotten, minutesToLog } from "@/lib/timer";
 
 const start = "2026-11-18T09:00:00.000Z";
 const at = (iso: string) => Date.parse(iso);
@@ -21,6 +21,12 @@ describe("task timer", () => {
 
   it("caps a forgotten timer at 24 hours", () => {
     expect(minutesToLog(start, at("2026-11-20T09:00:00.000Z"))).toBe(24 * 60);
+  });
+
+  it("flags a timer running more than 10 hours", () => {
+    expect(isForgotten(start, at("2026-11-18T19:00:00.000Z"))).toBe(false);
+    expect(isForgotten(start, at("2026-11-18T19:00:01.000Z"))).toBe(true);
+    expect(isForgotten(null, Date.now())).toBe(false);
   });
 
   it("logs nothing for a stop with no start", () => {

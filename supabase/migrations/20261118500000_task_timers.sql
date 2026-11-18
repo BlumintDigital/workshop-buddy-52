@@ -53,7 +53,8 @@ BEGIN
   _hours := round(_minutes / 60, 2);
 
   INSERT INTO public.time_entries (job_id, task_id, user_id, hours, work_date, note)
-  VALUES (_t.job_id, _t.task_id, _t.user_id, _hours, _t.started_at::date, 'Timer');
+  -- The workshop's day, not UTC's: a timer started at 00:30 in summer belongs to that day.
+  VALUES (_t.job_id, _t.task_id, _t.user_id, _hours, (_t.started_at AT TIME ZONE 'Europe/London')::date, 'Timer');
   RETURN _hours;
 END;
 $$;
@@ -113,9 +114,11 @@ $$;
 REVOKE ALL ON FUNCTION public.stop_task_timer() FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.stop_task_timer() TO authenticated;
 
--- A task that stops being in progress (handed off on any page, or put back)
--- stops whoever's timer is running on it. Writes time_entries only; never
--- touches jobs.status.
+-- When the task in someone's hands changes, their timer stops and logs its time:
+--  * the task stops being in progress (handed off on any page, or put back):
+--    every timer on it stops;
+--  * the task is given to someone else: the previous person's timer stops.
+-- Writes time_entries only; never touches jobs.status.
 CREATE OR REPLACE FUNCTION public.job_tasks_stop_timer()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -124,8 +127,12 @@ SET search_path = public
 AS $$
 DECLARE
   _u uuid;
+  _left boolean := OLD.status = 'in_progress' AND NEW.status IS DISTINCT FROM 'in_progress';
 BEGIN
-  FOR _u IN SELECT user_id FROM public.task_timers WHERE task_id = NEW.id LOOP
+  FOR _u IN
+    SELECT user_id FROM public.task_timers
+    WHERE task_id = NEW.id AND (_left OR user_id IS DISTINCT FROM NEW.assigned_to)
+  LOOP
     PERFORM public._stop_task_timer(_u, NEW.id);
   END LOOP;
   RETURN NULL;
@@ -134,17 +141,127 @@ $$;
 REVOKE EXECUTE ON FUNCTION public.job_tasks_stop_timer() FROM PUBLIC, anon, authenticated;
 
 DROP TRIGGER IF EXISTS job_tasks_stop_timer ON public.job_tasks;
-CREATE TRIGGER job_tasks_stop_timer AFTER UPDATE OF status ON public.job_tasks
-  FOR EACH ROW WHEN (OLD.status = 'in_progress' AND NEW.status IS DISTINCT FROM 'in_progress')
+CREATE TRIGGER job_tasks_stop_timer AFTER UPDATE OF status, assigned_to ON public.job_tasks
+  FOR EACH ROW WHEN (
+    (OLD.status = 'in_progress' AND NEW.status IS DISTINCT FROM 'in_progress')
+    OR OLD.assigned_to IS DISTINCT FROM NEW.assigned_to
+  )
   EXECUTE FUNCTION public.job_tasks_stop_timer();
+
+-- No double counting at hand-off. handoff_task completes the task first (the
+-- trigger above logs the running timer as a 'Timer' entry), then logs any
+-- hours typed in the hand-off dialog as 'Logged at handoff'. When a timer entry
+-- for the same task was written in the same transaction, the timer wins and the
+-- typed hours are dropped. This holds whoever hands off: the assignee, or a
+-- planner handing off someone else's running task. If the timer logged nothing
+-- (under half a minute), the typed hours are kept.
+CREATE OR REPLACE FUNCTION public.time_entries_skip_handoff_after_timer()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  IF NEW.note = 'Logged at handoff' AND NEW.task_id IS NOT NULL AND EXISTS (
+    -- now() is the transaction's start time, so this only matches rows written in this transaction.
+    SELECT 1 FROM public.time_entries e
+    WHERE e.task_id = NEW.task_id AND e.note = 'Timer' AND e.created_at = now()
+  ) THEN
+    RETURN NULL;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+REVOKE EXECUTE ON FUNCTION public.time_entries_skip_handoff_after_timer() FROM PUBLIC, anon, authenticated;
+
+DROP TRIGGER IF EXISTS time_entries_skip_handoff_after_timer ON public.time_entries;
+CREATE TRIGGER time_entries_skip_handoff_after_timer BEFORE INSERT ON public.time_entries
+  FOR EACH ROW EXECUTE FUNCTION public.time_entries_skip_handoff_after_timer();
+
+-- When a timer is running on a task, whoever's it is. The hand-off dialog uses
+-- this to hide its hours field. Staff who can see the project only; the timer's
+-- owner stays private (task_timers rows are readable only by their owner).
+CREATE OR REPLACE FUNCTION public.task_timer_started(_task_id uuid)
+RETURNS timestamptz
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  _uid uuid := auth.uid();
+  _job uuid;
+BEGIN
+  PERFORM public.assert_verified_session();
+  SELECT job_id INTO _job FROM public.job_tasks WHERE id = _task_id;
+  IF _uid IS NULL OR _job IS NULL OR public.has_role(_uid, 'client'::public.app_role) OR NOT public.can_view_job(_uid, _job) THEN
+    RETURN NULL;
+  END IF;
+  RETURN (SELECT min(started_at) FROM public.task_timers WHERE task_id = _task_id);
+END;
+$$;
+REVOKE ALL ON FUNCTION public.task_timer_started(uuid) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.task_timer_started(uuid) TO authenticated;
+
+-- request_parts, unchanged from phase D (with the 2FA check added in security
+-- hardening), except that a task given with the request must be on this project.
+CREATE OR REPLACE FUNCTION public.request_parts(_job_id uuid, _items jsonb, _notes text DEFAULT NULL, _needed_by date DEFAULT NULL, _task_id uuid DEFAULT NULL)
+RETURNS uuid
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public'
+AS $$
+DECLARE
+  _uid uuid := auth.uid();
+  _id uuid;
+  _item jsonb;
+  _job public.jobs%ROWTYPE;
+  _summary text;
+BEGIN
+  PERFORM public.assert_verified_session();
+  IF _uid IS NULL OR public.has_role(_uid, 'client'::public.app_role) OR NOT public.can_view_job(_uid, _job_id) THEN
+    RAISE EXCEPTION 'You can''t request parts for this project' USING ERRCODE = '42501';
+  END IF;
+  IF _items IS NULL OR jsonb_array_length(_items) = 0 THEN RAISE EXCEPTION 'Add at least one part' USING ERRCODE = '22023'; END IF;
+  IF _task_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM public.job_tasks WHERE id = _task_id AND job_id = _job_id) THEN
+    RAISE EXCEPTION 'That task isn''t on this project' USING ERRCODE = '22023';
+  END IF;
+  SELECT * INTO _job FROM public.jobs WHERE id = _job_id;
+
+  INSERT INTO public.stock_requests (job_id, task_id, requested_by, needed_by, notes)
+  VALUES (_job_id, _task_id, _uid, _needed_by, NULLIF(trim(COALESCE(_notes, '')), ''))
+  RETURNING id INTO _id;
+
+  FOR _item IN SELECT * FROM jsonb_array_elements(_items) LOOP
+    INSERT INTO public.stock_request_items (request_id, item_id, description, quantity)
+    VALUES (
+      _id,
+      NULLIF(_item->>'item_id', '')::uuid,
+      COALESCE(NULLIF(trim(_item->>'description'), ''), (SELECT name FROM public.inventory_items WHERE id = NULLIF(_item->>'item_id', '')::uuid), 'Part'),
+      COALESCE((_item->>'quantity')::numeric, 1)
+    );
+  END LOOP;
+
+  SELECT string_agg(description || ' × ' || trim(to_char(quantity, 'FM999999990.##')), ', ') INTO _summary FROM public.stock_request_items WHERE request_id = _id;
+  PERFORM public.add_project_event(_job_id, 'parts_requested', jsonb_build_object('summary', left(_summary, 200)));
+  PERFORM public.notify_users(ARRAY(SELECT public.permission_holders('inventory')),
+    'Parts requested for ' || _job.ref, left(_summary, 160), '/inventory');
+  RETURN _id;
+END;
+$$;
+REVOKE ALL ON FUNCTION public.request_parts(uuid, jsonb, text, date, uuid) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.request_parts(uuid, jsonb, text, date, uuid) TO authenticated;
 
 -- Live updates for My day and the client home. Realtime applies each table's
 -- row rules, so people only hear about rows they can already read.
+-- task_timers is left out on purpose: delete events carry only the key
+-- (user_id) and would reach every subscriber. My day refetches after its own
+-- start and pause instead.
 DO $$
 DECLARE
   _t text;
 BEGIN
-  FOREACH _t IN ARRAY ARRAY['task_timers', 'job_tasks', 'jobs', 'project_quotes', 'invoices'] LOOP
+  FOREACH _t IN ARRAY ARRAY['job_tasks', 'jobs', 'project_quotes', 'invoices'] LOOP
     IF NOT EXISTS (
       SELECT 1 FROM pg_publication_tables
       WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = _t
