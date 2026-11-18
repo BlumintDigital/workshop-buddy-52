@@ -2,7 +2,7 @@ import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { checkRateLimit } from "../_shared/rate-limit.ts";
 import { buildCorsHeaders } from "../_shared/mfa-cors.ts";
-import { MFA_REQUIRED, sessionVerified } from "../_shared/session.ts";
+import { MFA_REQUIRED, isServiceCall, sessionVerified } from "../_shared/session.ts";
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
@@ -26,29 +26,44 @@ serve(async (req) => {
   const token = authHeader.replace("Bearer ", "");
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-  const { data: { user }, error: userError } = await supabase.auth.getUser(token);
-  if (userError || !user) {
-    return new Response(JSON.stringify({ error: "Unauthorized" }), {
-      status: 401,
-      headers: { ...cors, "Content-Type": "application/json" },
-    });
-  }
+  // The server itself (automatic-reminders) calls with the service role key: there is no
+  // user, 2FA or per-user rate limit, but the workshop's email switch still applies.
+  const internal = isServiceCall(authHeader);
+  let user: any = null;
+  let roleRow: { role: string } | null = null;
+  if (!internal) {
+    const { data: { user: caller }, error: userError } = await supabase.auth.getUser(token);
+    if (userError || !caller) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...cors, "Content-Type": "application/json" },
+      });
+    }
+    user = caller;
 
-  const { data: roleRow } = await supabase
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", user.id)
-    .maybeSingle();
+    const { data } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    roleRow = data;
 
-  if (!(await sessionVerified(authHeader))) {
-    return new Response(JSON.stringify({ error: MFA_REQUIRED }), {
-      status: 403,
-      headers: { ...cors, "Content-Type": "application/json" },
-    });
+    if (!(await sessionVerified(authHeader))) {
+      return new Response(JSON.stringify({ error: MFA_REQUIRED }), {
+        status: 403,
+        headers: { ...cors, "Content-Type": "application/json" },
+      });
+    }
   }
 
   const body = await req.json();
   const { to_user_id, mode } = body;
+  if (internal && mode) {
+    return new Response(JSON.stringify({ error: "Not available to the server" }), {
+      status: 400,
+      headers: { ...cors, "Content-Type": "application/json" },
+    });
+  }
   let { subject, html } = body as { subject?: string; html?: string };
   let { to } = body;
   let from: string;
@@ -195,7 +210,7 @@ serve(async (req) => {
     // All other emails: admins and managers, and respect the notification toggle.
     // Staff with the shipping permission may also email a client (by user id only,
     // never a typed address), so "ready to collect" reaches the client.
-    let allowed = !!roleRow && ["admin", "manager"].includes(roleRow.role);
+    let allowed = internal || (!!roleRow && ["admin", "manager"].includes(roleRow.role));
     if (!allowed && roleRow?.role === "staff" && !to && to_user_id) {
       const [{ data: canShip }, { data: target }] = await Promise.all([
         supabase.rpc("has_permission", { _user_id: user.id, _permission: "shipping" }),
@@ -211,7 +226,7 @@ serve(async (req) => {
     }
 
     // Per-user rate limit: 60 transactional emails per hour, 15-min lockout on overflow.
-    const rl = await checkRateLimit(user.id, "send_email", {
+    const rl = internal ? { allowed: true, retryAfterSec: 0 } : await checkRateLimit(user.id, "send_email", {
       limit: 60,
       windowSec: 3600,
       lockoutSec: 900,

@@ -19,6 +19,7 @@ import { toast } from "sonner";
 import { Bell, Building2, Database, Trash2, Loader2, Upload, ImageIcon, X, Users, AlertTriangle, Lock, Mail, Palette, Receipt, Send, Download, Plug } from "lucide-react";
 import IntegrationsPanel from "@/components/settings/IntegrationsPanel";
 import HandoverPaymentSetting from "@/components/settings/HandoverPaymentSetting";
+import AutomaticReminders from "@/components/settings/AutomaticReminders";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
@@ -928,6 +929,7 @@ export default function AdminSettings() {
                 </div>
               </CardContent>
             </Card>
+            <AutomaticReminders />
           </TabsContent>
 
           <TabsContent value="branding" className="mt-0 max-w-3xl space-y-4">
