@@ -6,6 +6,16 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { notifyJobStatusChange } from "@/lib/jobNotifications";
 
@@ -25,27 +35,23 @@ interface Props {
 export default function ProjectStageActions({ project, tasks, can, onChanged }: Props) {
   const [closing, setClosing] = useState(false);
   const [sendingBack, setSendingBack] = useState(false);
+  const [passing, setPassing] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  const setStatus = async (status: string, success: string) => {
+  // Every stage move goes through a server function that checks the current stage first.
+  const move = async (call: PromiseLike<{ error: { message: string } | null }>, status: string, success: string) => {
     setBusy(true);
-    const { error } = await supabase.from("jobs").update({ status }).eq("id", project.id);
+    const { error } = await call;
     setBusy(false);
     if (error) return toast.error(error.message);
     toast.success(success);
     notifyJobStatusChange(project, status);
     onChanged();
   };
-
-  const pass = async () => {
-    setBusy(true);
-    const { error } = await supabase.rpc("quality_check", { _job_id: project.id, _pass: true });
-    setBusy(false);
-    if (error) return toast.error(error.message);
-    toast.success("Passed. Shipping has been told it's ready.");
-    notifyJobStatusChange(project, "completed");
-    onChanged();
-  };
+  const approve = () => move(supabase.rpc("approve_project_without_quote", { _job_id: project.id }), "pending", "Approved. It's ready to plan.");
+  const startQc = () => move(supabase.rpc("start_quality_check", { _job_id: project.id }), "review", "Moved to the quality check");
+  const pass = () => move(supabase.rpc("quality_check", { _job_id: project.id, _pass: true }), "completed", "Passed. Shipping has been told it's ready.");
+  const close = (reason: string) => move(supabase.rpc("close_project", { _job_id: project.id, _reason: reason || undefined }), "cancelled", "Project closed");
 
   const stage = project.status;
   const early = stage === "received" || stage === "evaluation" || stage === "quote";
@@ -59,7 +65,7 @@ export default function ProjectStageActions({ project, tasks, can, onChanged }: 
           {stage === "quote" ? "Waiting for the client to decide on the quote." : "Assess the machine, then send a quote, or approve it straight away if the client has agreed."}
         </p>
         <div className="flex flex-wrap gap-2">
-          <Button size="sm" variant="outline" disabled={busy} onClick={() => void setStatus("pending", "Approved. It's ready to plan.")}>
+          <Button size="sm" variant="outline" disabled={busy} onClick={() => void approve()}>
             <CheckCircle2 className="mr-1.5 h-4 w-4" aria-hidden />
             Approve without a quote
           </Button>
@@ -76,7 +82,7 @@ export default function ProjectStageActions({ project, tasks, can, onChanged }: 
     content = (
       <>
         <p className="text-sm">Every task is handed off.</p>
-        <Button size="sm" disabled={busy} onClick={() => void setStatus("review", "Moved to the quality check")}>
+        <Button size="sm" disabled={busy} onClick={() => void startQc()}>
           Start quality check
         </Button>
       </>
@@ -88,7 +94,7 @@ export default function ProjectStageActions({ project, tasks, can, onChanged }: 
       <>
         <p className="text-sm">Check the finished work. Passing it tells shipping it's ready; sending it back creates rework tasks.</p>
         <div className="flex flex-wrap gap-2">
-          <Button size="sm" disabled={busy} onClick={() => void pass()}>
+          <Button size="sm" disabled={busy} onClick={() => setPassing(true)}>
             <CheckCircle2 className="mr-1.5 h-4 w-4" aria-hidden />
             Pass quality check
           </Button>
@@ -110,13 +116,24 @@ export default function ProjectStageActions({ project, tasks, can, onChanged }: 
       {closing && (
         <CloseDialog
           onClose={() => setClosing(false)}
-          onConfirm={async (reason) => {
+          onConfirm={(reason) => {
             setClosing(false);
-            if (reason) await supabase.from("job_comments").insert({ job_id: project.id, user_id: (await supabase.auth.getUser()).data.user!.id, body: `Closed: ${reason}`, is_internal: true });
-            await setStatus("cancelled", "Project closed");
+            void close(reason);
           }}
         />
       )}
+      <AlertDialog open={passing} onOpenChange={setPassing}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Pass the quality check?</AlertDialogTitle>
+            <AlertDialogDescription>Shipping is told it's ready to go. Any task still open is closed.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Not yet</AlertDialogCancel>
+            <AlertDialogAction onClick={() => void pass()}>Pass quality check</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       {sendingBack && (
         <SendBackDialog
           tasks={tasks}
