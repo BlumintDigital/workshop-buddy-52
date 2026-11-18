@@ -53,9 +53,12 @@ test.describe.serial("teams and handoffs", () => {
     await startButton.click();
     await expect(page.getByText(`Started: ${TASK}`)).toBeVisible({ timeout: 15_000 });
 
-    const stillInHand = (await inHand.getByText(TASK, { exact: true }).count()) > 0;
-    const handOffButton = stillInHand ? inHand.getByRole("button", { name: "Hand off" }) : page.getByRole("button", { name: `Hand off ${TASK}` });
-    await handOffButton.click();
+    // The task being timed moves into the task in hand.
+    await expect(inHand.getByText(TASK, { exact: true })).toBeVisible({ timeout: 15_000 });
+    // Pause straight away (under a minute logs nothing), so the hours can be typed at hand-off.
+    await inHand.getByRole("button", { name: "Pause" }).click();
+    await expect(page.getByText("Paused. Under a minute, so no time logged.")).toBeVisible({ timeout: 15_000 });
+    await inHand.getByRole("button", { name: "Hand off" }).click();
     const dialog = page.getByRole("dialog");
     await dialog.getByLabel("What was done").fill("E2E: bracket welded and ground flush.");
     await dialog.getByLabel("Hours spent (optional)").fill("1.5");
