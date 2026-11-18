@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { StatusPill } from "@/components/dashboard/StatusPill";
 import { ChoiceDialog, NotifyDialog, SHIPMENT_STATE, ShipDialog, type Shipment } from "@/components/shipping/ShipmentDialogs";
 import { formatDate } from "@/lib/format";
+import { billingState, fetchBillingStatus, fetchHandoverPayment, type BillingState } from "@/lib/billing";
 
 type Project = { id: string; ref: string; title: string; client_id: string | null; status: string };
 
@@ -17,11 +18,17 @@ type Project = { id: string; ref: string; title: string; client_id: string | nul
 export default function ShipmentPanel({ project, forClient, canShip, onChanged }: { project: Project; forClient?: boolean; canShip?: boolean; onChanged?: () => void }) {
   const [shipment, setShipment] = useState<Shipment | null>(null);
   const [dialog, setDialog] = useState<"notify" | "choice" | "ship" | null>(null);
+  const [pay, setPay] = useState<BillingState | null>(null);
 
   const load = useCallback(async () => {
     const { data } = await supabase.from("shipments").select("*").eq("job_id", project.id).maybeSingle();
     setShipment(data as Shipment | null);
-  }, [project.id]);
+    // Payment status is for shipping staff only (project_billing_status returns nothing to others).
+    if (data && data.status !== "shipped" && canShip && !forClient) {
+      const [billing, policy] = await Promise.all([fetchBillingStatus([project.id]), fetchHandoverPayment()]);
+      setPay(billingState(billing[project.id], !project.client_id, policy));
+    }
+  }, [project.id, project.client_id, canShip, forClient]);
   useEffect(() => {
     void load();
   }, [load, project.status]);
@@ -96,7 +103,7 @@ export default function ShipmentPanel({ project, forClient, canShip, onChanged }
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          {s.status === "ready" && <p className="text-sm text-muted-foreground">It passed its final checks. The workshop will tell you when it's ready to go.</p>}
+          {s.status === "ready" && <p className="text-sm text-muted-foreground">It passed its final checks. The workshop will message you soon to arrange collection or delivery.</p>}
           {s.status === "awaiting_client" && <p className="text-sm">Tell the workshop whether you'll collect it or want it delivered.</p>}
           {details}
           {canChoose && (
@@ -117,7 +124,10 @@ export default function ShipmentPanel({ project, forClient, canShip, onChanged }
           <Truck className="h-4 w-4" aria-hidden />
           Shipping
         </CardTitle>
-        <StatusPill tone={s.status === "shipped" ? "success" : s.status === "ready" ? "warning" : "info"}>{SHIPMENT_STATE[s.status]}</StatusPill>
+        <div className="flex flex-wrap gap-2">
+          <StatusPill tone={s.status === "shipped" ? "success" : s.status === "ready" ? "warning" : "info"}>{SHIPMENT_STATE[s.status]}</StatusPill>
+          {pay && s.status !== "shipped" && <StatusPill tone={pay.tone}>{pay.label}</StatusPill>}
+        </div>
       </CardHeader>
       <CardContent className="space-y-3">
         {details}
