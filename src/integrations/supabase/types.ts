@@ -2713,6 +2713,7 @@ export type Database = {
           enabled_industries: string[];
           feature_flags: Json | null;
           from_email: string | null;
+          handover_payment: string;
           id: number;
           industry: string;
           instance_version: string | null;
@@ -2741,6 +2742,7 @@ export type Database = {
           enabled_industries?: string[];
           feature_flags?: Json | null;
           from_email?: string | null;
+          handover_payment?: string;
           id?: number;
           industry?: string;
           instance_version?: string | null;
@@ -2769,6 +2771,7 @@ export type Database = {
           enabled_industries?: string[];
           feature_flags?: Json | null;
           from_email?: string | null;
+          handover_payment?: string;
           id?: number;
           industry?: string;
           instance_version?: string | null;
@@ -3087,6 +3090,10 @@ export type Database = {
         };
         Returns: string;
       };
+      handover_payment_policy: {
+        Args: Record<PropertyKey, never>;
+        Returns: string;
+      };
       has_permission: {
         Args: { _permission: string; _user_id: string };
         Returns: boolean;
@@ -3117,14 +3124,13 @@ export type Database = {
         Args: { _expected?: string; _po_id: string };
         Returns: undefined;
       };
-      mark_shipped: { Args: { _d: Json; _job_id: string }; Returns: undefined };
+      mark_shipped: {
+        Args: { _d: Json; _job_id: string; _reason?: string };
+        Returns: boolean;
+      };
       mfa_satisfied: { Args: Record<PropertyKey, never>; Returns: boolean };
       my_permissions: { Args: Record<PropertyKey, never>; Returns: string[] };
       next_project_ref: { Args: { _at?: string }; Returns: string };
-      note_unpaid_handover: {
-        Args: { _job_id: string; _reason: string };
-        Returns: undefined;
-      };
       notify_ready_to_ship: {
         Args: { _job_id: string; _message?: string };
         Returns: undefined;
