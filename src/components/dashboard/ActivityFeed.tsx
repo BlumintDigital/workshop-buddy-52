@@ -1,11 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Link } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
-import { Activity } from "lucide-react";
+import { Panel } from "./Panel";
 import { useFeature } from "@/hooks/useFeatureFlags";
 import { useVisibleInterval } from "@/hooks/useVisibleInterval";
 
@@ -17,11 +14,7 @@ type LogEntry = {
   created_at: string;
 };
 
-const actionColors: Record<string, string> = {
-  created: "bg-accent/15 text-accent border-accent/30",
-  updated: "bg-primary/15 text-primary border-primary/30",
-  deleted: "bg-destructive/15 text-destructive border-destructive/30",
-};
+const ACTION_LABEL: Record<string, string> = { created: "Created", updated: "Updated", deleted: "Deleted" };
 
 const tableLabels: Record<string, string> = {
   jobs: "Projects",
@@ -56,48 +49,31 @@ export function ActivityFeed() {
   useVisibleInterval(() => void fetchEntries(), 60_000);
 
   return (
-    <Card className="min-w-0 max-w-full overflow-hidden">
-      <CardHeader className="pb-3">
-        <CardTitle className="text-lg flex items-center gap-2">
-          <Activity className="h-5 w-5" />
-          Live Activity Feed
-        </CardTitle>
-        <CardDescription>Real-time platform changes</CardDescription>
-      </CardHeader>
-      <CardContent>
-        {loading ? (
-          <div className="space-y-3">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="flex min-w-0 items-center gap-3">
-                <Skeleton className="h-5 w-16 rounded-full" />
-                <Skeleton className="h-4 flex-1" />
-                <Skeleton className="h-3 w-16" />
-              </div>
-            ))}
-          </div>
-        ) : entries.length === 0 ? (
-          <p className="text-sm text-muted-foreground py-4 text-center">No activity yet</p>
-        ) : (
-          <div className="space-y-3">
-            {entries.map((e) => (
-              <div key={e.id} className="flex min-w-0 items-start gap-3">
-                <Badge variant="secondary" className={`shrink-0 text-xs ${actionColors[e.action] || ""}`}>
-                  {e.action}
-                </Badge>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm truncate">{e.summary || "—"}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {tableLabels[e.table_name] || e.table_name} · {formatDistanceToNow(new Date(e.created_at), { addSuffix: true })}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-        <Link to="/admin/activity-logs" className="block text-sm text-primary hover:underline text-center mt-4">
-          View all activity →
-        </Link>
-      </CardContent>
-    </Card>
+    <Panel title="Recent activity" description="The last five changes across the workshop" link={{ label: "View all", to: "/admin/activity-logs" }}>
+      {loading ? (
+        <div className="space-y-3 p-5" aria-busy="true" aria-label="Loading activity">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={i} className="h-10 w-full" />
+          ))}
+        </div>
+      ) : entries.length === 0 ? (
+        <p className="px-5 py-5 text-sm text-muted-foreground">No activity yet. Changes to projects, invoices and stock show here.</p>
+      ) : (
+        <ul className="divide-y">
+          {entries.map((e) => (
+            <li key={e.id} className="grid min-h-[56px] grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-0.5 px-5 py-2.5 sm:grid-cols-[6rem_minmax(0,1fr)_auto]">
+              <span className="hidden text-sm text-muted-foreground sm:block">{tableLabels[e.table_name] || e.table_name}</span>
+              <span className="min-w-0 truncate text-sm">
+                <span className="font-medium">{ACTION_LABEL[e.action] ?? e.action}</span>
+                {e.summary ? <span className="text-muted-foreground"> · {e.summary}</span> : null}
+              </span>
+              <span className="whitespace-nowrap text-right text-xs tabular-nums text-muted-foreground">
+                {formatDistanceToNow(new Date(e.created_at), { addSuffix: true })}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Panel>
   );
 }
