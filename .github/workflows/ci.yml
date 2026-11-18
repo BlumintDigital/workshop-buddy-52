@@ -90,7 +90,7 @@ jobs:
       - run: npm ci
       - uses: supabase/setup-cli@v3
         with:
-          version: latest
+          version: 2.122.1
 
       # Throwaway accounts for a throwaway database: made up per run, no secrets needed.
       - name: Make test accounts
