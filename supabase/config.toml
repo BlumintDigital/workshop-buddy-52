@@ -78,6 +78,10 @@ verify_jwt = false
 [functions.assistant]
 verify_jwt = false
 
+# Woken by pg_cron with AUTOMATION_SECRET (not a JWT); the function checks it itself.
+[functions.automatic-reminders]
+verify_jwt = false
+
 [functions.quote-link]
 verify_jwt = false
 
