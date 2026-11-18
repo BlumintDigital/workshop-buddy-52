@@ -10,10 +10,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DatePickerInput } from "@/components/ui/date-picker-input";
-import { sendEmail, readyToShipEmailHtml } from "@/lib/email";
+import { sendEmail, readyToShipEmailHtml, shippedEmailHtml } from "@/lib/email";
 import { projectPath } from "@/lib/projects";
 import { cn } from "@/lib/utils";
-import { billingState, fetchBillingStatus, type BillingStatus } from "@/lib/billing";
+import { billingState, fetchBillingStatus, fetchHandoverPayment, type BillingStatus, type HandoverPayment } from "@/lib/billing";
 
 export type Shipment = {
   id: string;
@@ -167,7 +167,7 @@ export function ChoiceDialog({ projectId, current, byStaff, onClose, onDone }: {
 
 /** Record the handover: who collected it (and the signed ticket), or the courier and tracking. */
 export function ShipDialog({ project, shipment, onClose, onDone }: { project: ProjectRef; shipment: Shipment; onClose: () => void; onDone: () => void }) {
-  const { user } = useAuth();
+  const { user, role } = useAuth();
   const { currency } = useCurrency();
   const [method, setMethod] = useState<"pickup" | "courier">(shipment.method ?? "pickup");
   const [f, setF] = useState({ collector_name: "", collector_id_number: "", collector_phone: "", vehicle_make: "", vehicle_registration: "", carrier: "", tracking_number: "", tracking_url: "", shipping_cost: "" });
@@ -175,25 +175,34 @@ export function ShipDialog({ project, shipment, onClose, onDone }: { project: Pr
   const [saving, setSaving] = useState(false);
   const input = useRef<HTMLInputElement>(null);
   const set = (k: keyof typeof f, v: string) => setF((x) => ({ ...x, [k]: v }));
-  // Payment check: a machine leaving unpaid needs a reason on record.
-  const [billing, setBilling] = useState<BillingStatus | undefined | null>(null);
+  // Payment before hand-over, as the workshop has set it. mark_shipped checks it again.
+  const [billing, setBilling] = useState<{ status: BillingStatus | undefined; policy: HandoverPayment } | null>(null);
   const [unpaidReason, setUnpaidReason] = useState("");
   useEffect(() => {
-    void fetchBillingStatus([project.id]).then((m) => setBilling(m[project.id]));
+    void Promise.all([fetchBillingStatus([project.id]), fetchHandoverPayment()]).then(([m, policy]) => setBilling({ status: m[project.id], policy }));
   }, [project.id]);
-  const pay = billing === null ? null : billingState(billing, !project.client_id);
-  const needsReason = pay !== null && !pay.paid;
+  const pay = billing === null ? null : billingState(billing.status, !project.client_id, billing.policy);
+  const override = !!pay?.blocked && role === "admin";
+  const refused = !!pay?.blocked && !override;
+  const needsReason = !!pay?.needsReason || override;
 
   const save = async () => {
     if (method === "courier" && f.tracking_url && !/^https?:\/\//i.test(f.tracking_url)) return toast.error("The tracking link must start with https://");
     if (needsReason && !unpaidReason.trim()) return toast.error("Say why it's leaving before it's paid for");
     setSaving(true);
-    const { error } = await supabase.rpc("mark_shipped", { _job_id: project.id, _d: { method, ...f, currency } });
+    const { data: shippedNow, error } = await supabase.rpc("mark_shipped", { _job_id: project.id, _d: { method, ...f, currency }, _reason: needsReason ? unpaidReason.trim() : undefined });
     if (error) {
       setSaving(false);
       return toast.error(error.message);
     }
-    if (needsReason) await supabase.rpc("note_unpaid_handover", { _job_id: project.id, _reason: unpaidReason.trim() });
+    if (shippedNow && project.client_id) {
+      const detail = method === "pickup" ? `Collected by ${f.collector_name.trim()}` : [f.carrier.trim(), f.tracking_number.trim() && `Tracking number ${f.tracking_number.trim()}`].filter(Boolean).join(" · ");
+      sendEmail({
+        to_user_id: project.client_id,
+        subject: `${method === "pickup" ? "Collected" : "On its way"}: ${project.ref} · ${project.title}`,
+        html: shippedEmailHtml(`${project.ref} · ${project.title}`, `${window.location.origin}${projectPath(project.id)}`, method, detail),
+      }).catch(() => {});
+    }
     let failed = 0;
     for (const file of files) {
       const ext = file.name.includes(".") ? file.name.split(".").pop() : "pdf";
@@ -227,14 +236,23 @@ export function ShipDialog({ project, shipment, onClose, onDone }: { project: Pr
           <DialogDescription>{shipment.method ? `The client chose ${shipment.method === "pickup" ? "to collect it" : "courier delivery"}.` : "Record how the item left the workshop."}</DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
-          {pay && !pay.paid && (
+          {pay && !pay.paid && billing?.policy !== "off" && (
             <div role="alert" className="space-y-2 rounded-lg border border-warning/30 bg-warning-soft p-3">
               <p className="text-sm font-medium text-foreground">
-                {pay.label}
-                {billing?.invoice_number ? ` · ${billing.invoice_number}` : ""}. It hasn't been paid for yet.
+                {needsReason || pay.blocked ? pay.label.replace(/\.$/, "") : pay.label}
+                {billing?.status?.invoice_number ? ` · ${billing.status.invoice_number}` : ""}
+                {pay.blocked
+                  ? `. This workshop needs payment before hand-over. ${override ? "As an admin, you can let it go if you say why." : "Confirm the payment on the invoice, or ask an admin."}`
+                  : needsReason
+                    ? ". It hasn't been paid for yet."
+                    : ""}
               </p>
-              <Label htmlFor="f-unpaid-reason" className="text-sm">Why is it leaving before payment?</Label>
-              <Textarea id="f-unpaid-reason" value={unpaidReason} onChange={(e) => setUnpaidReason(e.target.value)} rows={2} placeholder="e.g. Account customer, pays monthly. Agreed by the owner." />
+              {needsReason && (
+                <>
+                  <Label htmlFor="f-unpaid-reason" className="text-sm">Why is it leaving before payment?</Label>
+                  <Textarea id="f-unpaid-reason" value={unpaidReason} onChange={(e) => setUnpaidReason(e.target.value)} rows={2} maxLength={2000} placeholder="e.g. Account customer, pays monthly. Agreed by the owner." />
+                </>
+              )}
             </div>
           )}
           <div role="radiogroup" aria-label="Handover" className="grid grid-cols-2 gap-2">
@@ -307,7 +325,7 @@ export function ShipDialog({ project, shipment, onClose, onDone }: { project: Pr
           <Button variant="outline" onClick={onClose} disabled={saving}>
             Cancel
           </Button>
-          <Button onClick={() => void save()} disabled={saving || (needsReason && !unpaidReason.trim())}>
+          <Button onClick={() => void save()} disabled={saving || refused || (needsReason && !unpaidReason.trim())}>
             {saving ? "Saving…" : method === "pickup" ? "Mark as collected" : "Mark as shipped"}
           </Button>
         </DialogFooter>

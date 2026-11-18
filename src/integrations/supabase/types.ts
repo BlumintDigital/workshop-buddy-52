@@ -2713,6 +2713,7 @@ export type Database = {
           enabled_industries: string[];
           feature_flags: Json | null;
           from_email: string | null;
+          handover_payment: string;
           id: number;
           industry: string;
           instance_version: string | null;
@@ -2741,6 +2742,7 @@ export type Database = {
           enabled_industries?: string[];
           feature_flags?: Json | null;
           from_email?: string | null;
+          handover_payment?: string;
           id?: number;
           industry?: string;
           instance_version?: string | null;
@@ -2769,6 +2771,7 @@ export type Database = {
           enabled_industries?: string[];
           feature_flags?: Json | null;
           from_email?: string | null;
+          handover_payment?: string;
           id?: number;
           industry?: string;
           instance_version?: string | null;
@@ -2896,6 +2899,7 @@ export type Database = {
         };
         Returns: Database["public"]["Enums"]["app_role"];
       };
+      approve_project_without_quote: { Args: { _job_id: string }; Returns: string };
       assert_verified_session: {
         Args: Record<PropertyKey, never>;
         Returns: undefined;
@@ -2940,6 +2944,7 @@ export type Database = {
         Args: { _approve: boolean; _reason?: string; _request_id: string };
         Returns: string;
       };
+      close_project: { Args: { _job_id: string; _reason?: string }; Returns: string };
       client_id_by_email: { Args: { _email: string }; Returns: string };
       client_mark_invoice_paid: {
         Args: { _invoice_id: string };
@@ -2990,6 +2995,16 @@ export type Database = {
           p_today: string;
         };
         Returns: Json;
+      };
+      dashboard_todo_projects: {
+        Args: { p_kind: string };
+        Returns: Database["public"]["Tables"]["jobs"]["Row"][];
+        SetofOptions: {
+          from: "*";
+          to: "jobs";
+          isOneToOne: false;
+          isSetofReturn: true;
+        };
       };
       decide_project_quote: {
         Args: { _accept: boolean; _note?: string; _quote_id: string };
@@ -3087,6 +3102,10 @@ export type Database = {
         };
         Returns: string;
       };
+      handover_payment_policy: {
+        Args: Record<PropertyKey, never>;
+        Returns: string;
+      };
       has_permission: {
         Args: { _permission: string; _user_id: string };
         Returns: boolean;
@@ -3099,6 +3118,7 @@ export type Database = {
         Returns: boolean;
       };
       is_feature_enabled: { Args: { feature_key: string }; Returns: boolean };
+      is_reserved_task_title: { Args: { _title: string }; Returns: boolean };
       is_storekeeper: { Args: { _user_id: string }; Returns: boolean };
       issue_parts: {
         Args: {
@@ -3117,14 +3137,17 @@ export type Database = {
         Args: { _expected?: string; _po_id: string };
         Returns: undefined;
       };
-      mark_shipped: { Args: { _d: Json; _job_id: string }; Returns: undefined };
+      mark_shipped: {
+        Args: { _d: Json; _job_id: string; _reason?: string };
+        Returns: boolean;
+      };
       mfa_satisfied: { Args: Record<PropertyKey, never>; Returns: boolean };
+      move_project_back: {
+        Args: { _job_id: string; _reason: string; _to: string };
+        Returns: string;
+      };
       my_permissions: { Args: Record<PropertyKey, never>; Returns: string[] };
       next_project_ref: { Args: { _at?: string }; Returns: string };
-      note_unpaid_handover: {
-        Args: { _job_id: string; _reason: string };
-        Returns: undefined;
-      };
       notify_ready_to_ship: {
         Args: { _job_id: string; _message?: string };
         Returns: undefined;
@@ -3290,6 +3313,15 @@ export type Database = {
         Args: Record<PropertyKey, never>;
         Returns: number;
       };
+      seed_demo_projects: {
+        Args: { _rows: Json };
+        Returns: {
+          assigned_staff_id: string | null;
+          client_id: string | null;
+          id: string;
+          status: string;
+        }[];
+      };
       send_project_quote: { Args: { _quote_id: string }; Returns: string };
       session_verified: { Args: Record<PropertyKey, never>; Returns: boolean };
       set_feature_flag: {
@@ -3307,6 +3339,7 @@ export type Database = {
           isSetofReturn: false;
         };
       };
+      start_quality_check: { Args: { _job_id: string }; Returns: string };
       submit_purchase_order: { Args: { _po_id: string }; Returns: string };
       submit_quote: {
         Args: {

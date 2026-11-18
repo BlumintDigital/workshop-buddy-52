@@ -11,19 +11,29 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { AdminOnboardingChecklist } from "@/components/onboarding/AdminOnboardingChecklist";
 import { ActivityFeed } from "./ActivityFeed";
-import { AttentionQueue } from "./AttentionQueue";
 import { CardCustomiser } from "./CardCustomiser";
+import { CardError } from "./CardError";
 import { Figures, type Figure } from "./Figures";
 import { PageBar } from "./PageBar";
 import { Panel } from "./Panel";
 import { JobStatusPill } from "./StatusPill";
+import { TodoSummary } from "./TodoSummary";
 import { useAttentionItems } from "@/hooks/useAttentionItems";
 import { useCurrency } from "@/hooks/useCurrency";
 import { useDashboardPrefs } from "@/hooks/useDashboardPrefs";
 import { useFeature } from "@/hooks/useFeatureFlags";
-import { useTodayData, type OpenJob, type TeamLoadEntry, type TodayAppointment, type RevenuePoint } from "@/hooks/useTodayData";
+import { usePermissions } from "@/hooks/usePermissions";
+import {
+  useTodayData,
+  type OpenJob,
+  type RevenuePoint,
+  type TeamLoadEntry,
+  type TodayAppointment,
+  type TodayData,
+} from "@/hooks/useTodayData";
 import type { CardId } from "@/lib/dashboardCards";
 import { todayIso } from "@/lib/dashboardQueries";
+import { conversionFigure, efficiencyFigure, plural, type RatioFigure } from "@/lib/dashboardTodo";
 import { cn } from "@/lib/utils";
 
 /** Cards that take the full width; the rest pair up two per row on large screens. */
@@ -32,10 +42,12 @@ const WIDE: ReadonlySet<CardId> = new Set(["attention", "onboarding", "figures",
 function formatDue(due: string | null): { text: string; late: boolean } {
   if (!due) return { text: "No due date", late: false };
   const today = todayIso();
-  if (due < today) return { text: `Overdue · ${new Date(due).toLocaleDateString(undefined, { day: "numeric", month: "short" })}`, late: true };
+  if (due < today) return { text: `Late · ${new Date(due).toLocaleDateString(undefined, { day: "numeric", month: "short" })}`, late: true };
   if (due === today) return { text: "Due today", late: false };
   return { text: new Date(due).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" }), late: false };
 }
+
+const hours = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1));
 
 function EmptyRow({ children }: { children: ReactNode }) {
   return <p className="px-4 py-5 text-sm text-muted-foreground">{children}</p>;
@@ -43,14 +55,14 @@ function EmptyRow({ children }: { children: ReactNode }) {
 
 function JobsCard({ jobs, role }: { jobs: OpenJob[]; role: "admin" | "manager" }) {
   return (
-    <Panel title="Projects in progress" link={{ label: "View all projects", to: `/${role}/projects` }}>
+    <Panel title="Projects in progress" link={{ label: "View all projects", to: `/${role}/projects?status=open` }}>
       {jobs.length === 0 ? (
         <EmptyRow>
-          No open jobs.{" "}
-          <Link to={`/${role}/projects`} className="font-medium text-primary hover:underline">
-            Create a job
+          No open projects.{" "}
+          <Link to="/reception" className="font-medium text-primary underline-offset-4 hover:underline">
+            Start one at Reception
           </Link>{" "}
-          to start tracking work.
+          when work comes in.
         </EmptyRow>
       ) : (
         <ul className="divide-y">
@@ -60,13 +72,13 @@ function JobsCard({ jobs, role }: { jobs: OpenJob[]; role: "admin" | "manager" }
               <li key={job.id}>
                 <Link
                   to={`/projects/${job.id}`}
-                  className="grid min-h-[56px] grid-cols-[1fr_auto] items-center gap-x-3 gap-y-1 px-4 py-2.5 transition-colors hover:bg-secondary/60 sm:grid-cols-[1fr_140px_auto_120px]"
+                  className="grid min-h-[56px] grid-cols-[1fr_auto] items-center gap-x-3 gap-y-1 px-4 py-2.5 transition-colors hover:bg-secondary/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring sm:grid-cols-[1fr_140px_auto_120px]"
                 >
                   <span className="min-w-0 truncate text-sm font-medium"><span className="mr-1.5 font-mono text-xs font-normal text-muted-foreground">{job.ref}</span>{job.title}</span>
-                  <span className="hidden truncate text-sm text-muted-foreground sm:block">{job.assignee ?? "Unassigned"}</span>
+                  <span className="hidden truncate text-sm text-muted-foreground sm:block">{job.assignee ?? "No lead"}</span>
                   <JobStatusPill status={job.status} />
                   <span className={cn("col-span-2 text-xs sm:col-span-1 sm:text-right sm:text-sm", due.late ? "font-medium text-destructive" : "text-muted-foreground")}>
-                    <span className="sm:hidden">{job.assignee ?? "Unassigned"} · </span>
+                    <span className="sm:hidden">{job.assignee ?? "No lead"} · </span>
                     {due.text}
                   </span>
                 </Link>
@@ -88,7 +100,7 @@ function ScheduleCard({ appointments, role }: { appointments: TodayAppointment[]
         <ul className="divide-y">
           {appointments.map((a) => (
             <li key={a.id}>
-              <Link to={`/appointments/${a.id}`} className="flex min-h-[52px] items-center gap-3 px-4 py-2.5 hover:bg-secondary/60">
+              <Link to={`/appointments/${a.id}`} className="flex min-h-[52px] items-center gap-3 px-4 py-2.5 transition-colors hover:bg-secondary/60">
                 <span className="w-12 shrink-0 text-sm tabular-nums text-muted-foreground">{(a.appointment_time || "").slice(0, 5)}</span>
                 <span className="min-w-0 flex-1 truncate text-sm font-medium">{a.title || "Appointment"}</span>
                 {a.duration_minutes ? <span className="text-xs text-muted-foreground">{a.duration_minutes} min</span> : null}
@@ -102,31 +114,46 @@ function ScheduleCard({ appointments, role }: { appointments: TodayAppointment[]
 }
 
 function TeamCard({ team, role }: { team: TeamLoadEntry[]; role: "admin" | "manager" }) {
-  const useHours = team.some((t) => t.hours > 0);
-  const max = Math.max(1, ...team.map((t) => (useHours ? t.hours : t.jobs)));
+  const max = Math.max(1, ...team.map((t) => t.logged_hours));
   return (
     <Panel title="Team load" link={{ label: "View team", to: role === "admin" ? "/admin/users" : "/manager/staff" }}>
       {team.length === 0 ? (
-        <EmptyRow>No open projects are assigned yet. Assign projects to see who has capacity.</EmptyRow>
+        <EmptyRow>No hours logged this week and no open tasks assigned. Assign tasks on a project to see who has capacity.</EmptyRow>
       ) : (
-        <ul className="space-y-3 px-4 py-4">
-          {team.map((t) => {
-            const value = useHours ? t.hours : t.jobs;
-            return (
-              <li key={t.id} className="grid grid-cols-[minmax(0,7rem)_1fr_auto] items-center gap-3 text-sm">
+        <>
+          <p className="px-4 pt-3 text-xs text-muted-foreground">Hours logged this week, and open tasks assigned</p>
+          <ul className="space-y-3 px-4 pb-4 pt-3">
+            {team.map((t) => (
+              <li key={t.id} className="grid grid-cols-[minmax(0,7rem)_1fr] items-center gap-x-3 gap-y-1 text-sm sm:grid-cols-[minmax(0,8rem)_1fr_auto]">
                 <span className="truncate">{t.name}</span>
-                <span className="h-2 overflow-hidden rounded-full bg-secondary">
-                  <span className="block h-full rounded-full bg-primary" style={{ width: `${(value / max) * 100}%` }} />
+                <span className="h-2 overflow-hidden rounded-full bg-secondary" aria-hidden>
+                  <span className="block h-full rounded-full bg-primary" style={{ width: `${(t.logged_hours / max) * 100}%` }} />
                 </span>
-                <span className="tabular-nums text-muted-foreground">
-                  {useHours ? `${t.hours.toFixed(1)} h · ` : ""}
-                  {t.jobs} {t.jobs === 1 ? "project" : "projects"}
+                <span className="col-span-2 tabular-nums text-muted-foreground sm:col-span-1 sm:text-right">
+                  {hours(t.logged_hours)} h · {t.tasks} open {plural(t.tasks, "task", "tasks")}
+                  {t.remaining_hours > 0 ? ` (${hours(t.remaining_hours)} h left)` : ""}
                 </span>
               </li>
-            );
-          })}
-        </ul>
+            ))}
+          </ul>
+        </>
       )}
+    </Panel>
+  );
+}
+
+function RatioCard({ title, figure, how }: { title: string; figure: RatioFigure; how: string }) {
+  return (
+    <Panel title={title} className="flex h-full flex-col">
+      <div className="flex-1 space-y-1 px-4 py-4">
+        {figure.value ? (
+          <p className="text-3xl font-semibold tabular-nums tracking-tight">{figure.value}</p>
+        ) : (
+          <p className="text-base font-medium">Not enough data yet</p>
+        )}
+        <p className="text-sm text-muted-foreground">{figure.detail}</p>
+      </div>
+      <p className="border-t px-4 py-3 text-xs text-muted-foreground">{how}</p>
     </Panel>
   );
 }
@@ -141,7 +168,7 @@ function RevenueCard({ series, format }: { series: RevenuePoint[]; format: (n: n
         {series.map((p, i) => (
           <li key={p.label} className="flex h-full flex-col items-center justify-end gap-1">
             <span className={cn("text-xs tabular-nums", i === last ? "font-semibold text-foreground" : "text-muted-foreground")}>
-              {p.value > 0 ? format(p.value).replace(/\.00$/, "") : "–"}
+              {p.value > 0 ? format(p.value).replace(/\.00$/, "") : "None"}
             </span>
             <span
               className={cn("w-full rounded-t-sm", i === last ? "bg-primary" : "bg-primary/35")}
@@ -155,26 +182,68 @@ function RevenueCard({ series, format }: { series: RevenuePoint[]; format: (n: n
   );
 }
 
+const EFFICIENCY_HOW =
+  "Hours technicians logged on projects this week, divided by the hours available: 7.5 hours a working day for each active technician. Shoplane doesn't record clock-in times, so this uses a standard day.";
+const CONVERSION_HOW = "Quotes approved, divided by quotes approved or declined in the last 90 days. Change requests aren't counted.";
+
 interface TodayDashboardProps {
   role: "admin" | "manager";
 }
 
-/** The admin and manager home screen: what needs action first, then the day's work. Cards are user-configurable. */
+/** The admin and manager home screen: headline figures, what's waiting, then the day's work. Cards are user-configurable. */
 export function TodayDashboard({ role }: TodayDashboardProps) {
   const appointmentsEnabled = useFeature("appointments");
   const { format } = useCurrency();
+  const { has } = usePermissions();
+  const canSeeMoney = has("billing");
   const attention = useAttentionItems();
   const today = useTodayData({ appointmentsEnabled });
   const prefs = useDashboardPrefs({ appointments: appointmentsEnabled });
-  const { figures } = today;
 
   const refresh = () => {
     attention.refresh();
     today.refresh();
   };
 
-  const figureItems: Figure[] = [
-    ...(role === "admin"
+  /** Skeleton while loading, an error with "Try again" if it failed, the card once the data is in. */
+  const withData = (what: string, skeleton: string, render: (data: TodayData) => ReactNode): ReactNode => {
+    if (today.isError) {
+      return (
+        <div className="rounded-lg border bg-card">
+          <CardError what={what} onRetry={refresh} />
+        </div>
+      );
+    }
+    if (!today.data) return <Skeleton className={cn("w-full rounded-lg", skeleton)} aria-label={`Loading ${what}`} />;
+    return render(today.data);
+  };
+
+  const figureItems = ({ figures }: TodayData): Figure[] => [
+    {
+      label: "Open projects",
+      value: String(figures.openProjects),
+      detail: figures.dueToday > 0 ? `${figures.dueToday} due today or late` : "None due today",
+      detailTone: figures.dueToday > 0 ? "bad" : "default",
+      to: `/${role}/projects?status=open`,
+    },
+    {
+      label: "Intake",
+      value: String(figures.intake),
+      detail: "Received, evaluating or quoted",
+      to: `/${role}/projects?status=intake`,
+    },
+    ...(canSeeMoney
+      ? [
+          {
+            label: "Awaiting payment",
+            value: format(figures.awaitingPayment),
+            detail: figures.overdueAmount > 0 ? `${format(figures.overdueAmount)} overdue` : "Nothing overdue",
+            detailTone: figures.overdueAmount > 0 ? ("bad" as const) : ("default" as const),
+            to: figures.overdueAmount > 0 ? `/${role}/invoices?status=overdue` : `/${role}/invoices`,
+          },
+        ]
+      : []),
+    ...(role === "admin" && canSeeMoney
       ? [
           {
             label: `Revenue, ${new Date().toLocaleDateString(undefined, { month: "long" })}`,
@@ -189,57 +258,49 @@ export function TodayDashboard({ role }: TodayDashboardProps) {
         ]
       : [
           {
-            label: "In review",
+            label: "In quality check",
             value: String(figures.inReview),
             detail: figures.inReview > 0 ? "Waiting for sign-off" : "Nothing waiting",
-            to: `/${role}/projects`,
+            to: `/${role}/projects?status=review`,
           },
         ]),
-    {
-      label: "Open projects",
-      value: String(figures.openJobs),
-      detail: figures.dueToday > 0 ? `${figures.dueToday} due today or late` : "None due today",
-      detailTone: figures.dueToday > 0 ? "bad" : "default",
-      to: `/${role}/projects`,
-    },
-    {
-      label: "Awaiting payment",
-      value: format(figures.awaitingPayment),
-      detail: figures.overdueAmount > 0 ? `${format(figures.overdueAmount)} overdue` : "Nothing overdue",
-      detailTone: figures.overdueAmount > 0 ? "bad" : "default",
-      to: `/${role}/invoices`,
-    },
-    appointmentsEnabled
-      ? {
-          label: "Appointments today",
-          value: String(figures.appointmentsToday),
-          detail: figures.appointmentsToday > 0 ? "See today's list below" : "Nothing booked",
-          to: `/${role}/calendar`,
-        }
-      : {
-          label: "Open project hours",
-          value: `${today.teamLoad.reduce((s, t) => s + t.hours, 0).toFixed(1)} h`,
-          detail: "Estimated, across the team",
-          to: `/${role}/projects`,
-        },
+    ...(appointmentsEnabled
+      ? [
+          {
+            label: "Appointments today",
+            value: String(figures.appointmentsToday),
+            detail: figures.appointmentsToday > 0 ? "See today's list below" : "Nothing booked",
+            to: `/${role}/calendar`,
+          },
+        ]
+      : []),
   ];
 
   const renderCard = (id: CardId): ReactNode => {
     switch (id) {
       case "attention":
-        return <AttentionQueue items={attention.items} isLoading={attention.isLoading} />;
+        return <TodoSummary items={attention.items} isLoading={attention.isLoading} isError={attention.isError} onRetry={refresh} />;
       case "onboarding":
         return <AdminOnboardingChecklist />;
       case "figures":
-        return today.isLoading ? <Skeleton className="h-[88px] w-full rounded-lg" /> : <Figures items={figureItems} />;
+        return withData("the figures", "h-[96px]", (d) => <Figures items={figureItems(d)} />);
       case "jobs":
-        return today.isLoading ? <Skeleton className="h-64 w-full rounded-lg" /> : <JobsCard jobs={today.openJobs} role={role} />;
+        return withData("open projects", "h-64", (d) => <JobsCard jobs={d.openJobs} role={role} />);
+      case "efficiency":
+        return withData("labour efficiency", "h-44", (d) => (
+          <RatioCard title="Labour efficiency" figure={efficiencyFigure(d.figures.efficiency)} how={EFFICIENCY_HOW} />
+        ));
+      case "conversion":
+        return withData("quote conversion", "h-44", (d) => (
+          <RatioCard title="Quote conversion" figure={conversionFigure(d.figures.quoteConversion)} how={CONVERSION_HOW} />
+        ));
       case "schedule":
-        return today.isLoading ? <Skeleton className="h-48 w-full rounded-lg" /> : <ScheduleCard appointments={today.appointments} role={role} />;
+        return withData("today's appointments", "h-48", (d) => <ScheduleCard appointments={d.appointments} role={role} />);
       case "team":
-        return today.isLoading ? <Skeleton className="h-48 w-full rounded-lg" /> : <TeamCard team={today.teamLoad} role={role} />;
+        return withData("team load", "h-48", (d) => <TeamCard team={d.teamLoad} role={role} />);
       case "revenue":
-        return today.isLoading ? <Skeleton className="h-48 w-full rounded-lg" /> : <RevenueCard series={today.revenueSeries} format={format} />;
+        // Money stays hidden from anyone without Billing.
+        return canSeeMoney ? withData("revenue", "h-48", (d) => <RevenueCard series={d.revenueSeries} format={format} />) : null;
       case "activity":
         return <ActivityFeed />;
     }
@@ -258,11 +319,11 @@ export function TodayDashboard({ role }: TodayDashboardProps) {
               variant="ghost"
               size="icon"
               onClick={refresh}
-              disabled={today.isLoading}
+              disabled={today.isFetching}
               aria-label="Refresh dashboard"
               className="h-10 w-10"
             >
-              <RefreshCw className={cn(today.isLoading && "animate-spin")} />
+              <RefreshCw className={cn(today.isFetching && "animate-spin")} />
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

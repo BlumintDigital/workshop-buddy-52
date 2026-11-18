@@ -19,6 +19,7 @@ import { StatusPill, type StatusTone } from "@/components/dashboard/StatusPill";
 import { fetchProfileNames, relativeTime } from "@/lib/profileNames";
 import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { isReservedTaskTitle, RESERVED_TASK_TITLE_MESSAGE } from "@/lib/taskTitles";
 
 export type Task = {
   id: string;
@@ -138,6 +139,8 @@ export default function ProjectTasks({ project, canPlan, onChanged, onOpenTask }
     }
     toast.success(`Removed "${task.title}"`);
     void load();
+    // Removing the last open task sends the project to its quality check.
+    onChanged?.();
   };
 
   return (
@@ -374,9 +377,11 @@ function TaskDialog({
   const [saving, setSaving] = useState(false);
   const teamId = form.department_id === NONE ? null : form.department_id;
   const people = peopleIn(teamId).sort((a, b) => (names[a] ?? "").localeCompare(names[b] ?? ""));
+  const reserved = !assignOnly && isReservedTaskTitle(form.title);
 
   const save = async () => {
     if (!form.title.trim()) return toast.error("Give the task a title");
+    if (reserved) return;
     setSaving(true);
     const assignee = form.assigned_to === NONE ? null : form.assigned_to;
     const payload = assignOnly
@@ -419,7 +424,19 @@ function TaskDialog({
             <>
               <div>
                 <Label htmlFor="f-task-title">Task</Label>
-                <Input id="f-task-title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="e.g. Machine new spindle sleeve" />
+                <Input
+                  id="f-task-title"
+                  value={form.title}
+                  onChange={(e) => setForm({ ...form, title: e.target.value })}
+                  placeholder="e.g. Machine new spindle sleeve"
+                  aria-invalid={reserved}
+                  aria-describedby={reserved ? "f-task-title-error" : undefined}
+                />
+                {reserved && (
+                  <p id="f-task-title-error" role="alert" className="mt-1 text-xs text-destructive">
+                    {RESERVED_TASK_TITLE_MESSAGE}
+                  </p>
+                )}
               </div>
               <div>
                 <Label htmlFor="f-task-description">Details (optional)</Label>
@@ -478,7 +495,7 @@ function TaskDialog({
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          <Button onClick={() => void save()} disabled={saving}>
+          <Button onClick={() => void save()} disabled={saving || reserved}>
             {saving ? "Saving…" : task ? "Save" : "Add task"}
           </Button>
         </DialogFooter>
@@ -507,11 +524,13 @@ function HandoffDialog({
   const { user } = useAuth();
   const [note, setNote] = useState("");
   const [hours, setHours] = useState("");
-  const [next, setNext] = useState(nextOptions[0]?.id ?? NONE);
+  // Stage-named tasks left over from before they were refused are never offered as the next step.
+  const steps = nextOptions.filter((t) => !isReservedTaskTitle(t.title));
+  const [next, setNext] = useState(steps[0]?.id ?? NONE);
   const [photos, setPhotos] = useState<File[]>([]);
   const [saving, setSaving] = useState(false);
   const photoInput = useRef<HTMLInputElement>(null);
-  const remainingAfter = nextOptions.length;
+  const remainingAfter = steps.length;
 
   const submit = async () => {
     if (!note.trim()) return toast.error("Say what you did and anything the next person should know");
@@ -578,6 +597,9 @@ function HandoffDialog({
               <Label htmlFor="f-handoff-hours">Hours spent (optional)</Label>
               <Input id="f-handoff-hours" type="number" min={0} max={24} step={0.25} value={hours} onChange={(e) => setHours(e.target.value)} />
             </div>
+            {remainingAfter === 0 ? (
+              <p className="self-end pb-2 text-sm font-medium">Next: Quality check</p>
+            ) : (
             <div>
               <Label htmlFor="f-handoff-next">Next step</Label>
               <Select value={next} onValueChange={setNext}>
@@ -585,8 +607,8 @@ function HandoffDialog({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={NONE}>{remainingAfter === 0 ? "Quality check" : "Nobody in particular"}</SelectItem>
-                  {nextOptions.map((t) => (
+                  <SelectItem value={NONE}>Nobody in particular</SelectItem>
+                  {steps.map((t) => (
                     <SelectItem key={t.id} value={t.id}>
                       {nextLabel(t)}
                     </SelectItem>
@@ -594,6 +616,7 @@ function HandoffDialog({
                 </SelectContent>
               </Select>
             </div>
+            )}
           </div>
           <div>
             <input

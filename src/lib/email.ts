@@ -61,6 +61,19 @@ export function readyToShipEmailHtml(projectLabel: string, link: string, message
   });
 }
 
+/** Sent when shipping records the hand-over: collected, or sent by courier. */
+export function shippedEmailHtml(projectLabel: string, link: string, method: "pickup" | "courier", detail: string): string {
+  const pickup = method === "pickup";
+  return wrapEmail({
+    preheader: `${projectLabel} ${pickup ? "has been collected" : "is on its way"}.`,
+    eyebrow: pickup ? "Collected" : "On its way",
+    headline: pickup ? "Your item has been collected" : "Your item is on its way",
+    bodyHtml: `<strong>${escapeHtml(projectLabel)}</strong> ${pickup ? "has been collected from the workshop" : "has been sent by courier"}.<br><br>${escapeHtml(detail)}`,
+    ctaLabel: "View project in portal",
+    ctaUrl: link,
+  });
+}
+
 export function appointmentConfirmedEmailHtml(title: string, date: string, time: string): string {
   return wrapEmail({
     preheader: `Confirmed: ${title} on ${date} at ${time}.`,

@@ -9,7 +9,7 @@ test.describe("manager role", () => {
     await login(page, "MANAGER");
     await expect(page).toHaveURL(/\/manager\/dashboard/);
     await expect(page.getByRole("heading", { level: 1, name: "Today" })).toBeVisible();
-    await expect(page.getByText("Needs attention")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "To do", exact: true })).toBeVisible();
   });
 
   test("manager sees the staff management page", async ({ page }) => {
