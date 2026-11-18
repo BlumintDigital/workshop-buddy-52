@@ -17,7 +17,9 @@ const visibleIds = (layout: ReturnType<typeof resolveLayout>) =>
 describe("resolveLayout", () => {
   it("uses role defaults when nothing is saved", () => {
     const admin = resolveLayout("admin", null, withAppointments);
-    expect(ids(admin)[0]).toBe("attention");
+    // Headline figures first, then the To do summary.
+    expect(ids(admin).slice(0, 2)).toEqual(["figures", "attention"]);
+    expect(visibleIds(admin)).toEqual(expect.arrayContaining(["efficiency", "conversion"]));
     expect(visibleIds(admin)).toContain("revenue");
     expect(visibleIds(admin)).not.toContain("activity");
 
@@ -73,7 +75,7 @@ describe("editing a layout", () => {
 
   it("ignores moves past either end", () => {
     const start = resolveLayout("admin", null, withAppointments);
-    expect(moveCard(start, "attention", -1)).toBe(start);
+    expect(moveCard(start, start[0].meta.id, -1)).toBe(start);
     expect(moveCard(start, start[start.length - 1].meta.id, 1)).toBe(start);
   });
 });

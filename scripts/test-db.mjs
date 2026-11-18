@@ -53,8 +53,9 @@ function ensureRunning() {
   if (!isRunning()) startStack();
   else restartFunctions();
 }
-// CI installs the CLI directly; locally npx fetches it.
-const SUPABASE_CLI = process.env.SUPABASE_CLI ?? "npx supabase";
+// CI installs the CLI directly; locally npx fetches it. Pinned: CLI 3 rejects
+// this config ("inbucket ... no longer supported"). Move to 3 with a config update.
+const SUPABASE_CLI = process.env.SUPABASE_CLI ?? "npx --yes supabase@2.122.1";
 
 // The newest migration already in the production dump. Everything after it is
 // applied on top at reset. Bump it when the baseline is re-dumped.

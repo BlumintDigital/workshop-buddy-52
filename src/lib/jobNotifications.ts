@@ -40,6 +40,8 @@ export async function notifyJobStatusChange(job: NotifiableJob, status: string, 
       .maybeSingle();
     target = { ...job, client_id: data?.client_id ?? null, assigned_staff_id: data?.assigned_staff_id ?? null };
   }
+  // Passing QC tells the client nothing: Shipping's "Tell the client" is their one "it's ready" message.
+  if (status === "completed") target = { ...target, client_id: null };
 
   notifyJobParticipants(target, `${projectLabel(target)} is now ${projectStatusLabel(status)}`, actorId);
 

@@ -251,16 +251,12 @@ export default function JobDetail() {
   const handleStatusChange = async () => {
     if (!job || !statusMove || !statusReason.trim()) return;
     setMovingStatus(true);
-    const from = job.status;
-    const { error } = await supabase.from("jobs").update({ status: statusMove }).eq("id", job.id);
-    if (error) { setMovingStatus(false); toast.error(error.message); return; }
-    await supabase.from("job_comments").insert({
-      job_id: job.id,
-      user_id: user!.id,
-      is_internal: true,
-      body: `${statusMove === "cancelled" ? "Cancelled" : `Moved back from ${projectStatusLabel(from)} to ${projectStatusLabel(statusMove)}`}: ${statusReason.trim()}`,
-    });
+    // The server checks the move and keeps the reason as a team note.
+    const { error } = statusMove === "cancelled"
+      ? await supabase.rpc("close_project", { _job_id: job.id, _reason: statusReason.trim() })
+      : await supabase.rpc("move_project_back", { _job_id: job.id, _to: statusMove, _reason: statusReason.trim() });
     setMovingStatus(false);
+    if (error) { toast.error(error.message); return; }
     setJob({ ...job, status: statusMove });
     toast.success(statusMove === "cancelled" ? "Project cancelled" : `Moved back to ${projectStatusLabel(statusMove)}`);
     notifyJobStatusChange(job, statusMove, user?.id);

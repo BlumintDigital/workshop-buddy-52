@@ -11,6 +11,8 @@ export type CardId =
   | "jobs"
   | "schedule"
   | "team"
+  | "efficiency"
+  | "conversion"
   | "revenue"
   | "activity";
 
@@ -27,12 +29,14 @@ export type CardMeta = {
 };
 
 export const CARDS: CardMeta[] = [
-  { id: "attention", title: "Needs attention", description: "Overdue invoices, sign-offs, low stock and more", required: true, defaults: { admin: true, manager: true } },
+  { id: "figures", title: "Figures", description: "Open projects, intake, money owed, revenue", defaults: { admin: true, manager: true } },
+  { id: "attention", title: "To do", description: "Overdue invoices, sign-offs, approvals and more, with exact counts", required: true, defaults: { admin: true, manager: true } },
   { id: "onboarding", title: "Setup checklist", description: "Steps left to finish setting up the workshop", defaults: { admin: true } },
-  { id: "figures", title: "Figures", description: "Revenue, open projects, money owed, appointments", defaults: { admin: true, manager: true } },
   { id: "jobs", title: "Projects in progress", description: "Open projects, soonest due first", defaults: { admin: true, manager: true } },
+  { id: "efficiency", title: "Labour efficiency", description: "Hours logged this week against hours available", defaults: { admin: true, manager: true } },
+  { id: "conversion", title: "Quote conversion", description: "Quotes approved out of quotes decided, last 90 days", defaults: { admin: true, manager: true } },
   { id: "schedule", title: "Today's appointments", description: "Bookings for today", feature: "appointments", defaults: { admin: true, manager: true } },
-  { id: "team", title: "Team load", description: "Open projects and estimated hours per person", defaults: { admin: true, manager: true } },
+  { id: "team", title: "Team load", description: "Hours logged this week and open tasks per person", defaults: { admin: true, manager: true } },
   { id: "revenue", title: "Revenue trend", description: "Paid invoices over the last 6 months", defaults: { admin: true, manager: false } },
   { id: "activity", title: "Activity feed", description: "Recent changes across the workshop", defaults: { admin: false } },
 ];

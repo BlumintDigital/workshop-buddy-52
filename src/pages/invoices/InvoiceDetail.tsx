@@ -236,7 +236,7 @@ export default function InvoiceDetail() {
       return;
     }
     setNotifying(true);
-    const link = `/client/invoices/${invoice.id}`;
+    const link = `/invoices/${invoice.id}`;
 
     // 1) In-app notification — primary, always attempt
     let inAppOk = false;

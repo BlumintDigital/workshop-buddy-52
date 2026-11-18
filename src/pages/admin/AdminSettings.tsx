@@ -18,6 +18,8 @@ import {
 import { toast } from "sonner";
 import { Bell, Building2, Database, Trash2, Loader2, Upload, ImageIcon, X, Users, AlertTriangle, Lock, Mail, Palette, Receipt, Send, Download, Plug } from "lucide-react";
 import IntegrationsPanel from "@/components/settings/IntegrationsPanel";
+import HandoverPaymentSetting from "@/components/settings/HandoverPaymentSetting";
+import AutomaticReminders from "@/components/settings/AutomaticReminders";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
@@ -394,13 +396,14 @@ export default function AdminSettings() {
     };
 
     // 4. Jobs — assigned to Demo Staff, client is Demo Client
-    const { data: insertedJobs } = await supabase.from("jobs").insert([
+    // Demo projects start at later stages, which only this server function may create.
+    const { data: insertedJobs } = await supabase.rpc("seed_demo_projects", { _rows: [
       { title: "[DEMO] Lathe spindle bearing replacement", description: "Headstock bearings noisy at speed. Replace bearings and seals, check spindle runout.", status: "completed", priority: "high", client_id: clientId, assigned_staff_id: staffId, estimated_hours: 4, actual_hours: 3.5, due_date: d(-5) },
       { title: "[DEMO] Electric motor rewind", description: "7.5 kW motor tripping on start. Test windings, rewind the stator and load test.", status: "in_progress", priority: "high", client_id: clientId, assigned_staff_id: staffId, estimated_hours: 2, due_date: d(1) },
       { title: "[DEMO] Gearbox overhaul", description: "Conveyor gearbox leaking oil with worn gears. Strip, replace seals and bearings, refill.", status: "in_progress", priority: "medium", client_id: clientId, assigned_staff_id: staffId, estimated_hours: 1.5, due_date: d(2) },
       { title: "[DEMO] Fabricate machine guard", description: "Mild steel guard for the bandsaw to the customer's drawing, powder coated.", status: "pending", priority: "medium", client_id: clientId, assigned_staff_id: staffId, estimated_hours: 3, due_date: d(5) },
       { title: "[DEMO] Pump impeller repair", description: "Worn impeller and leaking mechanical seal on a centrifugal pump.", status: "pending", priority: "low", client_id: clientId, assigned_staff_id: staffId, estimated_hours: 2, due_date: d(8) },
-    ]).select("id, status, client_id");
+    ] });
 
     // 5. Job tasks for each job
     const taskMap: Record<string, string[]> = {
@@ -893,6 +896,7 @@ export default function AdminSettings() {
                 </div>
               </CardContent>
             </Card>
+            <HandoverPaymentSetting />
           </TabsContent>
 
           <TabsContent value="notifications" className="mt-0 max-w-3xl">
@@ -925,6 +929,7 @@ export default function AdminSettings() {
                 </div>
               </CardContent>
             </Card>
+            <AutomaticReminders />
           </TabsContent>
 
           <TabsContent value="branding" className="mt-0 max-w-3xl space-y-4">

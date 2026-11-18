@@ -45,6 +45,7 @@ test.describe.serial("shipping", () => {
     await login(page, "ADMIN");
     await openProjectAsAdmin(page, PROJECT);
     await page.getByRole("button", { name: "Pass quality check" }).click();
+    await page.getByRole("alertdialog").getByRole("button", { name: "Pass quality check" }).click();
     await expect(page.getByText(/shipping has been told/i)).toBeVisible();
     await expect(page.getByText("Ready, client not told yet")).toBeVisible({ timeout: 15_000 });
   });
