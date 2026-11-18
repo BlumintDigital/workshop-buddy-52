@@ -17,21 +17,22 @@ export function localDate(now: Date, timeZone = REMINDER_TIME_ZONE): string {
 }
 
 /**
- * Quote and collection reminders: reminder n goes `everyDays * n` days after the event,
- * up to `maxSteps`. `doneSteps` counts earlier runs whatever their outcome (failed ones too).
+ * Quote and collection reminders: reminder n is due `everyDays * n` days after the event, up to
+ * `maxSteps`. Returns the highest step due now if it's past `doneSteps` (the highest step already
+ * run, whatever its outcome), so missed steps are skipped rather than sent in a burst.
  */
 export function nextIntervalStep(eventAt: string, doneSteps: number, everyDays: number, maxSteps: number, now: Date): number | null {
-  const step = doneSteps + 1;
-  if (step > maxSteps || everyDays < 1) return null;
-  return now.getTime() >= new Date(eventAt).getTime() + step * everyDays * DAY_MS ? step : null;
+  if (everyDays < 1) return null;
+  const elapsed = Math.floor((now.getTime() - new Date(eventAt).getTime()) / (everyDays * DAY_MS));
+  const step = Math.min(maxSteps, elapsed);
+  return step > doneSteps ? step : null;
 }
 
-/** Overdue invoices: one reminder per chosen day after the due date, in order. */
+/** Overdue invoices: one reminder per chosen day after the due date; the latest one due wins. */
 export function nextOverdueStep(dueDate: string, doneSteps: number, days: number[], today: string): number | null {
-  const sorted = [...new Set(days)].filter((d) => d >= 1).sort((a, b) => a - b);
-  if (doneSteps >= sorted.length) return null;
   const late = Math.round((Date.parse(today) - Date.parse(dueDate)) / DAY_MS);
-  return late >= sorted[doneSteps] ? doneSteps + 1 : null;
+  const step = [...new Set(days)].filter((d) => d >= 1 && d <= late).length;
+  return step > doneSteps ? step : null;
 }
 
 /** "18 Nov 2026" */

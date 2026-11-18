@@ -58,8 +58,8 @@ serve(async (req) => {
   const doneSteps = async (recipe: Recipe, ids: string[]) => {
     const counts = new Map<string, number>();
     if (!ids.length) return counts;
-    const { data } = await db.from("automation_runs").select("subject_id").eq("recipe", recipe).in("subject_id", ids);
-    for (const r of data ?? []) counts.set(r.subject_id, (counts.get(r.subject_id) ?? 0) + 1);
+    const { data } = await db.from("automation_runs").select("subject_id, step").eq("recipe", recipe).in("subject_id", ids);
+    for (const r of data ?? []) counts.set(r.subject_id, Math.max(counts.get(r.subject_id) ?? 0, r.step));
     return counts;
   };
 
@@ -103,10 +103,10 @@ serve(async (req) => {
       const counts = await doneSteps("invoice_overdue", (invoices ?? []).map((i) => i.id));
       for (const inv of invoices ?? []) {
         const step = nextOverdueStep(inv.due_date!, counts.get(inv.id) ?? 0, days, today);
-        if (!step) continue;
+        if (!step || !inv.client_id) continue;
         const amount = `${inv.currency} ${Number(inv.total).toFixed(2)}`;
         due.push({ recipe: "invoice_overdue", subjectId: inv.id, step, label: `Invoice ${inv.invoice_number}`, toUserId: inv.client_id,
-          email: async () => overdueInvoiceEmail({ number: inv.invoice_number, amount, dueDate: inv.due_date!, link: `${site}/client/invoices/${inv.id}` }) });
+          email: async () => overdueInvoiceEmail({ number: inv.invoice_number, amount, dueDate: inv.due_date!, link: `${site}/invoices/${inv.id}` }) });
       }
     }
 
@@ -135,6 +135,12 @@ serve(async (req) => {
       .select("id");
     const runId = claimed?.[0]?.id;
     if (!runId) continue;
+    // Earlier steps missed (paused, quiet hours, a gap in the cron) are recorded as skipped, not sent in a burst.
+    const missed = Array.from({ length: d.step - 1 }, (_, i) => ({
+      recipe: d.recipe, subject_id: d.subjectId, step: i + 1, label: d.label, status: "skipped",
+      error: "Passed while not running", finished_at: new Date().toISOString(),
+    }));
+    if (missed.length) await db.from("automation_runs").upsert(missed, { onConflict: "recipe,subject_id,step", ignoreDuplicates: true });
 
     let status: "sent" | "failed" | "skipped" = "failed";
     let error: string | null = null;

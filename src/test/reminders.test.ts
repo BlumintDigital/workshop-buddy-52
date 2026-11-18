@@ -41,8 +41,9 @@ describe("nextIntervalStep", () => {
     expect(nextIntervalStep(sent, 1, 3, 2, new Date("2026-11-16T10:00:00Z"))).toBe(2);
     expect(nextIntervalStep(sent, 2, 3, 2, new Date("2027-01-01T10:00:00Z"))).toBeNull();
   });
-  it("only ever offers the next step, even when late", () => {
-    expect(nextIntervalStep(sent, 0, 3, 2, new Date("2026-12-31T10:00:00Z"))).toBe(1);
+  it("after a gap, offers only the highest step due, so missed ones aren't sent in a burst", () => {
+    expect(nextIntervalStep(sent, 0, 3, 2, new Date("2026-12-31T10:00:00Z"))).toBe(2);
+    expect(nextIntervalStep(sent, 0, 3, 2, new Date("2026-11-16T10:00:00Z"))).toBe(2);
   });
 });
 
@@ -53,6 +54,9 @@ describe("nextOverdueStep", () => {
     expect(nextOverdueStep("2026-11-01", 1, [21, 7], "2026-11-21")).toBeNull();
     expect(nextOverdueStep("2026-11-01", 1, [21, 7], "2026-11-22")).toBe(2);
     expect(nextOverdueStep("2026-11-01", 2, [7, 21], "2027-02-01")).toBeNull();
+  });
+  it("after a gap, jumps to the latest day due instead of catching up", () => {
+    expect(nextOverdueStep("2026-11-01", 0, [7, 21], "2026-11-30")).toBe(2);
   });
   it("ignores duplicate and invalid days", () => {
     expect(nextOverdueStep("2026-11-01", 1, [7, 7, 0], "2026-12-31")).toBeNull();
