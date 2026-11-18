@@ -29,13 +29,24 @@ const STAGE_FILTERS: FilterOption[] = [
   { value: "cancelled", label: "Cancelled" },
 ];
 
+// Lists the Today dashboard links to. Each one is the same server definition (dashboard_todo_projects)
+// that gives Today its count, so the list always matches the number. Shown as a chip only while active.
+const TODO_FILTERS: FilterOption[] = [
+  { value: "open", label: "Open" },
+  { value: "intake", label: "Intake" },
+  { value: "uninvoiced", label: "Finished, not invoiced" },
+  { value: "stuck", label: "Same stage over 7 days" },
+  { value: "at_risk", label: "At risk or losing money" },
+];
+const isTodoFilter = (f: string) => TODO_FILTERS.some((t) => t.value === f);
+
 export default function AdminJobs() {
   const [jobs, setJobs] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
   const [params, setParams] = useSearchParams();
   const initial = params.get("status");
-  const [filter, setFilter] = useState(initial && STAGE_FILTERS.some((f) => f.value === initial) ? initial : "all");
+  const [filter, setFilter] = useState(initial && (STAGE_FILTERS.some((f) => f.value === initial) || isTodoFilter(initial)) ? initial : "all");
   const { has } = usePermissions();
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -43,9 +54,12 @@ export default function AdminJobs() {
 
   const fetchJobs = async (currentPage: number, currentFilter: string, currentSearch: string) => {
     setIsLoading(true);
-    let query = supabase.from("jobs").select("*", { count: "exact" }).order("created_at", { ascending: false });
-    if (currentFilter === "evaluation") query = query.in("status", ["received", "evaluation"]);
-    else if (currentFilter !== "all") query = query.eq("status", currentFilter);
+    const todo = isTodoFilter(currentFilter);
+    let query = todo
+      ? supabase.rpc("dashboard_todo_projects", { p_kind: currentFilter }, { count: "exact" }).select("*").order("created_at", { ascending: false })
+      : supabase.from("jobs").select("*", { count: "exact" }).order("created_at", { ascending: false });
+    if (!todo && currentFilter === "evaluation") query = query.in("status", ["received", "evaluation"]);
+    else if (!todo && currentFilter !== "all") query = query.eq("status", currentFilter);
     const search = projectSearchFilter(currentSearch);
     if (search) query = query.or(search);
     query = query.range(currentPage * PAGE_SIZE, currentPage * PAGE_SIZE + PAGE_SIZE - 1);
@@ -92,7 +106,7 @@ export default function AdminJobs() {
     reset();
   };
 
-  const filters = STAGE_FILTERS;
+  const filters = isTodoFilter(filter) ? [...STAGE_FILTERS, TODO_FILTERS.find((t) => t.value === filter)!] : STAGE_FILTERS;
 
   const columns: Column<any>[] = [
     {

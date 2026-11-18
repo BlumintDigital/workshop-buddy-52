@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { FileText, Paperclip, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -58,7 +59,10 @@ export default function PurchasesSection({ canManage, canApprove, suppliers }: {
   const [orders, setOrders] = useState<PO[]>([]);
   const [stock, setStock] = useState<StockItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState(canManage ? "active" : "approval");
+  // ?filter=approval (the Today "waiting for approval" line) opens the list on that tab.
+  const [params] = useSearchParams();
+  const linked = params.get("filter");
+  const [filter, setFilter] = useState(linked && FILTERS.some((f) => f.value === linked) ? linked : canManage ? "active" : "approval");
   const [editing, setEditing] = useState<PO | "new" | null>(null);
   const [receiving, setReceiving] = useState<PO | null>(null);
   const [rejecting, setRejecting] = useState<PO | null>(null);

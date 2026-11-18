@@ -2991,6 +2991,16 @@ export type Database = {
         };
         Returns: Json;
       };
+      dashboard_todo_projects: {
+        Args: { p_kind: string };
+        Returns: Database["public"]["Tables"]["jobs"]["Row"][];
+        SetofOptions: {
+          from: "*";
+          to: "jobs";
+          isOneToOne: false;
+          isSetofReturn: true;
+        };
+      };
       decide_project_quote: {
         Args: { _accept: boolean; _note?: string; _quote_id: string };
         Returns: string;
