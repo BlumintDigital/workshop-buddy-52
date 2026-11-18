@@ -104,13 +104,14 @@ export default function StaffDashboard() {
               .order("appointment_time", { ascending: true })
           : Promise.resolve({ data: [] as Appointment[] }),
         supabase.from("task_timers").select("task_id, started_at").eq("user_id", user.id).maybeSingle(),
-        // Timers the server paused at closing time in the last day and a half (see auto_pause_task_timers).
+        // Timers the server paused at closing time this past week (see auto_pause_task_timers), so a
+        // Friday-night pause still shows on Monday. Dismissed ones are hidden by id below.
         supabase
           .from("time_entries")
           .select("id, hours, job_tasks(title)")
           .eq("user_id", user.id)
           .eq("note", CLOSING_NOTE)
-          .gte("created_at", new Date(Date.now() - 36 * 3_600_000).toISOString())
+          .gte("created_at", new Date(Date.now() - 7 * 86_400_000).toISOString())
           .order("created_at", { ascending: false })
           .limit(3),
       ]);
@@ -165,6 +166,11 @@ export default function StaffDashboard() {
     setBusy(null);
     if (error) return toast.error("Couldn't pause the timer. Check your connection and try again.");
     const minutes = Math.round(Number(hours ?? 0) * 60);
+    // The page can still show a timer the server already paused at closing time.
+    if (minutes === 0 && timer && Date.now() - new Date(timer.started_at).getTime() > 60_000) {
+      toast.info("This timer was already paused at closing time. Press Start to carry on.");
+      return load();
+    }
     toast.success(minutes > 0 ? `Paused. ${formatMinutes(minutes)} logged on "${t.title}".` : "Paused. Under a minute, so no time logged.");
     load();
   };

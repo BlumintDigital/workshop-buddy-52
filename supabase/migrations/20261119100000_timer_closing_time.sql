@@ -4,12 +4,14 @@
 -- Pause (up to 24 hours). Now, when the workshop has a closing time, any timer
 -- still running after it is paused for the person and logs its time only up to
 -- closing. The entry's note says so, and My day tells the person the next time
--- they open it. NULL closing time = off (the old behaviour).
+-- they open it. On by default at 18:00; an admin can change it or turn it off
+-- (NULL = off, the old behaviour) in Settings, General.
 --
 -- Every 15 minutes pg_cron calls auto_pause_task_timers(). The cut-off is the
 -- first closing time after the timer started (Europe/London, like the timer's
--- work date), so a late start (after closing) runs until the next day's close,
--- and a job that fires late still logs only up to closing.
+-- work date), so a job that fires late still logs only up to closing. A timer
+-- started after closing (overtime) stops at the next close or 4 hours after it
+-- started, whichever comes first, so a forgotten overtime timer can't run all night.
 
 ALTER TABLE public.workshop_settings
   ADD COLUMN IF NOT EXISTS timer_closing_time time DEFAULT '18:00';
@@ -59,7 +61,8 @@ AS $$
   SELECT CASE WHEN _close IS NULL THEN NULL ELSE (
     (CASE WHEN ((_started AT TIME ZONE 'Europe/London')::date + _close) > (_started AT TIME ZONE 'Europe/London')
           THEN (_started AT TIME ZONE 'Europe/London')::date + _close
-          ELSE (_started AT TIME ZONE 'Europe/London')::date + 1 + _close END) AT TIME ZONE 'Europe/London'
+          ELSE LEAST((_started AT TIME ZONE 'Europe/London')::date + 1 + _close,
+                     (_started AT TIME ZONE 'Europe/London') + interval '4 hours') END) AT TIME ZONE 'Europe/London'
   ) END;
 $$;
 REVOKE ALL ON FUNCTION public.timer_closing_cutoff(timestamptz, time) FROM PUBLIC, anon, authenticated;

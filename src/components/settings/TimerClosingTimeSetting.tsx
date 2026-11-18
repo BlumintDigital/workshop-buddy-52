@@ -21,7 +21,8 @@ export default function TimerClosingTimeSetting() {
       .select("timer_closing_time")
       .eq("id", 1)
       .maybeSingle()
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        if (error) return toast.error("Couldn't load the closing time. Reload the page to try again.");
         const v = data?.timer_closing_time ? data.timer_closing_time.slice(0, 5) : null;
         setSaved(v);
         setOn(v !== null);
@@ -30,18 +31,24 @@ export default function TimerClosingTimeSetting() {
       });
   }, []);
 
-  const save = async (next: string | null) => {
+  const save = async (next: string | null): Promise<boolean> => {
     setSaving(true);
     const { error } = await supabase.from("workshop_settings").update({ timer_closing_time: next }).eq("id", 1);
     setSaving(false);
-    if (error) return toast.error(error.message);
+    if (error) {
+      toast.error(error.message);
+      return false;
+    }
     setSaved(next);
     toast.success(next ? `Timers now pause at ${next}` : "Timers no longer pause at closing time");
+    return true;
   };
 
-  const toggle = (v: boolean) => {
+  const toggle = async (v: boolean) => {
+    const next = v ? time || "18:00" : null;
     setOn(v);
-    void save(v ? time : null);
+    if (v && !time) setTime("18:00");
+    if (!(await save(next))) setOn(!v);
   };
 
   return (
@@ -54,7 +61,7 @@ export default function TimerClosingTimeSetting() {
       </CardHeader>
       <CardContent className="flex flex-wrap items-end gap-4">
         <div className="flex items-center gap-2">
-          <Switch id="timer-close-on" checked={on} disabled={!loaded || saving} onCheckedChange={toggle} />
+          <Switch id="timer-close-on" checked={on} disabled={!loaded || saving} onCheckedChange={(v) => void toggle(v)} />
           <Label htmlFor="timer-close-on">Pause timers at closing time</Label>
         </div>
         {on && (
