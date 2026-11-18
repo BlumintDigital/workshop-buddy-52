@@ -171,7 +171,8 @@ export default function ProjectParts({ project, isStores, onChanged }: { project
 type DraftLine = { item_id: string; description: string; quantity: string };
 const OTHER = "__other__";
 
-function RequestDialog({ project, onClose, onDone }: { project: { id: string; ref: string }; onClose: () => void; onDone: () => void }) {
+/** Ask stores for parts. Also used from My day, where `taskId` ties the request to the task. */
+export function RequestDialog({ project, taskId, onClose, onDone }: { project: { id: string; ref: string }; taskId?: string; onClose: () => void; onDone: () => void }) {
   const [stock, setStock] = useState<StockOption[]>([]);
   const [lines, setLines] = useState<DraftLine[]>([{ item_id: "", description: "", quantity: "1" }]);
   const [neededBy, setNeededBy] = useState("");
@@ -198,6 +199,7 @@ function RequestDialog({ project, onClose, onDone }: { project: { id: string; re
       _items: valid.map((l) => ({ item_id: l.item_id && l.item_id !== OTHER ? l.item_id : "", description: l.description.trim(), quantity: Number(l.quantity) })),
       _notes: notes.trim() || undefined,
       _needed_by: neededBy || undefined,
+      _task_id: taskId,
     });
     setSaving(false);
     if (error) return toast.error(error.message);

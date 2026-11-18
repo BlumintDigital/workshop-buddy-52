@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StatusPill } from "@/components/dashboard/StatusPill";
 import { cn } from "@/lib/utils";
+import { ATTACHMENTS_BUCKET, uploadProjectFile } from "@/lib/attachments";
 
 export type AttachmentKind = "intake" | "work" | "shared" | "handoff" | "delivery" | "client";
 
@@ -39,7 +40,7 @@ interface Props {
   onChange?: () => void;
 }
 
-const BUCKET = "job-attachments";
+const BUCKET = ATTACHMENTS_BUCKET;
 
 export default function ProjectFiles({ jobId, title, description, kinds, uploadKind, photos, canShare, canDelete, emptyText, onChange }: Props) {
   const { user } = useAuth();
@@ -78,26 +79,9 @@ export default function ProjectFiles({ jobId, title, description, kinds, uploadK
     setUploading(true);
     let done = 0;
     for (const file of Array.from(list)) {
-      const ext = file.name.includes(".") ? file.name.split(".").pop() : "bin";
-      const path = `${jobId}/${uploadKind}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-      const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, file);
-      if (upErr) {
-        toast.error(`${file.name}: ${upErr.message}`);
-        continue;
-      }
-      const { error } = await supabase.from("job_attachments").insert({
-        job_id: jobId,
-        task_id: null,
-        uploaded_by: user.id,
-        file_name: file.name,
-        file_path: path,
-        file_type: file.type || "application/octet-stream",
-        file_size: file.size,
-        kind: uploadKind,
-      });
+      const error = await uploadProjectFile(jobId, uploadKind, file, user.id);
       if (error) {
-        await supabase.storage.from(BUCKET).remove([path]);
-        toast.error(`${file.name}: ${error.message}`);
+        toast.error(`${file.name}: ${error}`);
         continue;
       }
       done++;

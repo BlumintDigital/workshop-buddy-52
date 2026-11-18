@@ -51,6 +51,7 @@ describe("page help", () => {
     expect(findPageHelp("/projects/7d33daea-1afc-4e9d-bb50-b2ab75c5e3e7", "staff")?.entry.key).toBe("project");
     expect(findPageHelp("/manager/dashboard", "manager")?.help.guideHeading).toBe("5.1 Today");
     expect(findPageHelp("/client/invoices", "client")?.entry.key).toBe("invoices");
+    expect(findPageHelp("/staff/dashboard", "staff")?.entry.key).toBe("my-day");
     // Pages without help, and roles a page has no help for, get no button.
     expect(findPageHelp("/admin/settings", "admin")).toBeNull();
     expect(findPageHelp("/reception", "client")).toBeNull();

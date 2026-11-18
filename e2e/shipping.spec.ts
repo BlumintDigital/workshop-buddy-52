@@ -32,8 +32,9 @@ test.describe.serial("shipping", () => {
     const isInHand = (await inHand.getByText(TASK, { exact: true }).count()) > 0;
     await (isInHand ? inHand.getByRole("button", { name: "Start" }) : page.getByRole("button", { name: `Start ${TASK}` })).click();
     await expect(page.getByText(`Started: ${TASK}`)).toBeVisible({ timeout: 15_000 });
-    const stillInHand = (await inHand.getByText(TASK, { exact: true }).count()) > 0;
-    await (stillInHand ? inHand.getByRole("button", { name: "Hand off" }) : page.getByRole("button", { name: `Hand off ${TASK}` })).click();
+    // The task being timed moves into the task in hand.
+    await expect(inHand.getByText(TASK, { exact: true })).toBeVisible({ timeout: 15_000 });
+    await inHand.getByRole("button", { name: "Hand off" }).click();
     const dialog = page.getByRole("dialog");
     await dialog.getByLabel("What was done").fill("E2E: assembled and run-tested.");
     await dialog.getByRole("button", { name: "Hand off" }).click();
