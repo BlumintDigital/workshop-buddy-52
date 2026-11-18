@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Camera, CheckCircle2, Clock, FolderOpen, Hand, Package, Pause, Play, Send } from "lucide-react";
+import { Camera, CheckCircle2, Clock, MoonStar, X, FolderOpen, Hand, Package, Pause, Play, Send } from "lucide-react";
 import { toast } from "sonner";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { PageBar } from "@/components/dashboard/PageBar";
@@ -27,6 +27,17 @@ type ProjectRef = { id: string; ref: string; title: string; priority: string | n
 type MyTask = Task & { jobs: ProjectRef | null };
 type Appointment = { id: string; title: string | null; appointment_time: string; duration_minutes: number | null };
 type Timer = { task_id: string; started_at: string };
+
+/** The note the server writes when it pauses a timer at closing time (timer_closing_time migration). */
+const CLOSING_NOTE = "Timer (paused at closing time)";
+const DISMISSED_KEY = "shoplane.myday.closing-notices";
+function readDismissed(): string[] {
+  try {
+    return JSON.parse(localStorage.getItem(DISMISSED_KEY) ?? "[]");
+  } catch {
+    return [];
+  }
+}
 
 function dueLabel(due: string | null): { text: string; late: boolean } {
   if (!due) return { text: "No due date", late: false };
@@ -77,7 +88,7 @@ export default function StaffDashboard() {
       const { data: memberships } = await supabase.from("department_members").select("department_id, departments(name)").eq("user_id", user.id);
       const teamIds = (memberships ?? []).map((m) => m.department_id);
 
-      const [mineRes, queueRes, leadRes, doneRes, apptsRes, timerRes] = await Promise.all([
+      const [mineRes, queueRes, leadRes, doneRes, apptsRes, timerRes, closedRes] = await Promise.all([
         supabase.from("job_tasks").select(select).eq("assigned_to", user.id).neq("status", "completed"),
         teamIds.length
           ? supabase.from("job_tasks").select(select).is("assigned_to", null).in("department_id", teamIds).neq("status", "completed")
@@ -93,6 +104,15 @@ export default function StaffDashboard() {
               .order("appointment_time", { ascending: true })
           : Promise.resolve({ data: [] as Appointment[] }),
         supabase.from("task_timers").select("task_id, started_at").eq("user_id", user.id).maybeSingle(),
+        // Timers the server paused at closing time in the last day and a half (see auto_pause_task_timers).
+        supabase
+          .from("time_entries")
+          .select("id, hours, job_tasks(title)")
+          .eq("user_id", user.id)
+          .eq("note", CLOSING_NOTE)
+          .gte("created_at", new Date(Date.now() - 36 * 3_600_000).toISOString())
+          .order("created_at", { ascending: false })
+          .limit(3),
       ]);
       if (mineRes.error) toast.error("Couldn't load your tasks. Reload the page to try again.");
       const timer = (timerRes.data ?? null) as Timer | null;
@@ -108,10 +128,22 @@ export default function StaffDashboard() {
         handedOff: doneRes.count ?? 0,
         appointments: (apptsRes.data ?? []) as Appointment[],
         timer,
+        autoPaused: (closedRes.data ?? []).map((e) => ({ id: e.id, hours: Number(e.hours), title: (e.job_tasks as { title: string } | null)?.title ?? "a task" })),
       };
     },
   });
-  const { mine = [], queue = [], leading = [], teamNames = {}, handedOff = 0, appointments = [], timer = null } = data ?? {};
+  const { mine = [], queue = [], leading = [], teamNames = {}, handedOff = 0, appointments = [], timer = null, autoPaused = [] } = data ?? {};
+  const [dismissed, setDismissed] = useState<string[]>(readDismissed);
+  const closedNotices = autoPaused.filter((e) => !dismissed.includes(e.id));
+  const dismissClosed = () => {
+    const next = [...dismissed, ...closedNotices.map((e) => e.id)].slice(-20);
+    setDismissed(next);
+    try {
+      localStorage.setItem(DISMISSED_KEY, JSON.stringify(next));
+    } catch {
+      // Private mode: the note just comes back on the next visit.
+    }
+  };
   const load = () => void queryClient.invalidateQueries({ queryKey: ["my-day", user?.id] });
 
   // Live: tasks given to you or your teams. Timers aren't broadcast (their delete events would
@@ -156,6 +188,26 @@ export default function StaffDashboard() {
     <DashboardLayout>
       <div className="mx-auto min-w-0 max-w-2xl space-y-4">
         <PageBar title="My day" subtitle={subtitle} actions={timer && <RunningTimer timer={timer} title={timedTitle} />} />
+
+        {closedNotices.length > 0 && (
+          <section role="status" className="flex items-start gap-3 rounded-lg border border-warning/40 bg-warning-soft p-4">
+            <MoonStar className="mt-0.5 h-5 w-5 shrink-0 text-warning" aria-hidden />
+            <div className="min-w-0 flex-1 text-sm">
+              <p className="font-semibold">Your timer was paused at closing time</p>
+              <ul className="mt-1 space-y-0.5 text-muted-foreground">
+                {closedNotices.map((e) => (
+                  <li key={e.id}>
+                    {formatMinutes(Math.round(e.hours * 60))} logged on "{e.title}", up to closing.
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-1 text-muted-foreground">If you worked later, add the extra time on the project. Press Start to carry on.</p>
+            </div>
+            <Button size="icon" variant="ghost" className="h-9 w-9 shrink-0" onClick={dismissClosed} aria-label="Dismiss">
+              <X className="h-4 w-4" aria-hidden />
+            </Button>
+          </section>
+        )}
 
         {isLoading ? (
           <>

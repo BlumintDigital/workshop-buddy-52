@@ -2735,6 +2735,7 @@ export type Database = {
           feature_flags: Json | null;
           from_email: string | null;
           handover_payment: string;
+          timer_closing_time: string | null;
           id: number;
           industry: string;
           instance_version: string | null;
@@ -2764,6 +2765,7 @@ export type Database = {
           feature_flags?: Json | null;
           from_email?: string | null;
           handover_payment?: string;
+          timer_closing_time?: string | null;
           id?: number;
           industry?: string;
           instance_version?: string | null;
@@ -2793,6 +2795,7 @@ export type Database = {
           feature_flags?: Json | null;
           from_email?: string | null;
           handover_payment?: string;
+          timer_closing_time?: string | null;
           id?: number;
           industry?: string;
           instance_version?: string | null;

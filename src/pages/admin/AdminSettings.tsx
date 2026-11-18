@@ -19,6 +19,7 @@ import { toast } from "sonner";
 import { Bell, Building2, Database, Trash2, Loader2, Upload, ImageIcon, X, Users, AlertTriangle, Lock, Mail, Palette, Receipt, Send, Download, Plug } from "lucide-react";
 import IntegrationsPanel from "@/components/settings/IntegrationsPanel";
 import HandoverPaymentSetting from "@/components/settings/HandoverPaymentSetting";
+import TimerClosingTimeSetting from "@/components/settings/TimerClosingTimeSetting";
 import AutomaticReminders from "@/components/settings/AutomaticReminders";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
@@ -762,6 +763,7 @@ export default function AdminSettings() {
                 </Card>
               </aside>
             </div>
+            <TimerClosingTimeSetting />
           </TabsContent>
 
 
