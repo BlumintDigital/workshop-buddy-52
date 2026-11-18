@@ -118,7 +118,8 @@ serve(async (req) => {
       { title: "Air compressor service", description: "Service and pressure test; the customer cancelled", status: "cancelled", priority: "high", client_id: pickClient(), assigned_staff_id: pickStaff(), estimated_hours: 0.5, due_date: fmtDate(new Date(today.getTime() - 1 * dayMs)) },
     ];
 
-    const { data: insertedJobs } = await adminClient.from("jobs").insert(jobsData).select("id, status, client_id, assigned_staff_id");
+    // Sample projects start at later stages, which only this server function may create.
+    const { data: insertedJobs } = await adminClient.rpc("seed_demo_projects", { _rows: jobsData });
     counts.jobs = insertedJobs?.length || 0;
 
     // 3. Job tasks

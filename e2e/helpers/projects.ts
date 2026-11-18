@@ -27,3 +27,26 @@ export async function logProjectAtReception(page: Page, title: string, opts: { c
   await expect(page).toHaveURL(/\/projects\//, { timeout: 20_000 });
   await expect(page.getByRole("heading", { name: title, level: 1 })).toBeVisible();
 }
+
+/** The ID of the project whose page is open. */
+export function projectIdFromUrl(page: Page): string {
+  const id = page.url().match(/\/projects\/([0-9a-f-]{36})/)?.[1];
+  if (!id) throw new Error(`Not on a project page: ${page.url()}`);
+  return id;
+}
+
+/**
+ * Calls the database API directly as the signed-in user, the way a script in the
+ * browser could, to check what the server allows without the app's buttons.
+ */
+export async function apiAsUser(page: Page, method: "GET" | "POST" | "PATCH", path: string, data?: unknown) {
+  const token = await page.evaluate(() => {
+    const key = Object.keys(localStorage).find((k) => k.startsWith("sb-") && k.endsWith("-auth-token"));
+    return key ? JSON.parse(localStorage.getItem(key)!).access_token : null;
+  });
+  return page.request.fetch(`${process.env.VITE_SUPABASE_URL}/rest/v1/${path}`, {
+    method,
+    data,
+    headers: { apikey: process.env.VITE_SUPABASE_PUBLISHABLE_KEY!, Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+  });
+}
